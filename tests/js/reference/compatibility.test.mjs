@@ -51,7 +51,8 @@ const walk = tree => Array.isArray(tree) ? tree.flatMap(walk) : tree && typeof t
 const text = tree => Array.isArray(tree) ? tree.map(text).join(' ') : tree && typeof tree === 'object' ? text(tree.props?.children) : String(tree ?? '');
 const find = (tree, type) => walk(tree).find(node => node.type === type);
 const all = (tree, type) => walk(tree).filter(node => node.type === type);
-const submit = tree => find(tree, 'form').props.onSubmit({preventDefault() {}});
+const submit = tree => all(tree, 'button').find(node =>
+  ['Save changes', 'Add to library', 'Add habit'].includes(text(node))).props.onClick();
 function fixture(Component, props = {}, api = {}) {
   const subscriptions = {change: new Set(), run: new Set()};
   globalThis.space = {field: (record, name) => record.data[name] ?? record.source?.[name],
@@ -366,5 +367,121 @@ test('habit retry retains its rebased revision if that explicit retry fails', as
     assert.equal(calls[2][3].baseRev, 3);
     assert.equal(calls[2][2].done, true);
     assert.equal(indicator(f.tree).state, 'saved');
+  } finally { f.cleanup(); }
+});
+
+const action = tree => all(tree, 'button').find(node => ['Save changes', 'Add to library', 'Add habit'].includes(text(node)));
+const keyEvent = overrides => ({key: 'Enter', preventDefault() { this.prevented = true; }, ...overrides});
+for (const [label, Component, field, collection, expected] of [
+  ['Library', Library, 'title', 'papers', {title: 'Public title', status: 'queued', priority: 'normal', notes: ''}],
+  ['Planner', Planner, 'name', 'habits', {name: 'Public title'}]
+]) {
+  test(`${label} explicit click validates input and locks duplicate pending activations`, async () => {
+    const pending = deferred();
+    const calls = [];
+    const f = fixture(Component, {records: [], reload() {}}, {async query() { return []; }, put(...args) { calls.push(args); return pending.promise; }});
+    const input = () => all(f.tree, 'input').find(node => node.props.required && !node.props.type);
+    try {
+      await tick();
+      assert.equal(action(f.tree).props.type, 'button');
+      assert.equal(find(f.tree, 'form'), undefined);
+      assert.equal(action(f.tree).props.disabled, true);
+      await action(f.tree).props.onClick();
+      input().props.onInput({target: {value: '   '}}); await tick();
+      await action(f.tree).props.onClick();
+      assert.equal(calls.length, 0, `${field} must contain non-whitespace text`);
+      input().props.onInput({target: {value: ' Public title '}}); await tick();
+      input().ref.current = {reportValidity: () => false};
+      await action(f.tree).props.onClick();
+      assert.equal(calls.length, 0, 'invalid controls must not write');
+      input().ref.current = {reportValidity: () => true};
+      const click = action(f.tree).props.onClick;
+      const saving = click();
+      await click();
+      await input().props.onKeyDown(keyEvent());
+      await tick();
+      assert.equal(calls.length, 1, 'click and Enter share the synchronous pending lock');
+      assert.deepEqual(calls[0], [collection, null, expected, {baseRev: 0}]);
+      assert.equal(action(f.tree).props.disabled, true);
+      assert.equal(input().props.disabled, true);
+      assert.equal(input().props.value, ' Public title ');
+      pending.resolve({collection, id: 'created', rev: 1, data: expected});
+      await saving; await tick();
+      assert.equal(input().props.value, '');
+      assert.equal(indicator(f.tree).state, 'saved');
+    } finally { f.cleanup(); }
+  });
+
+  test(`${label} single-line Enter saves while modifiers and IME composition do not`, async () => {
+    const calls = [];
+    const f = fixture(Component, {records: [], reload() {}}, {async query() { return []; }, async put(...args) {
+      calls.push(args); return {collection, id: 'entered', rev: 1, data: args[2]};
+    }});
+    const input = () => all(f.tree, 'input').find(node => node.props.required && !node.props.type);
+    try {
+      await tick();
+      assert.equal(action(f.tree).props.type, 'button');
+      const empty = keyEvent();
+      await input().props.onKeyDown(empty); await tick();
+      assert.equal(calls.length, 0);
+      input().props.onInput({target: {value: 'Public title'}}); await tick();
+      for (const flags of [{key: 'Escape'}, {altKey: true}, {ctrlKey: true}, {metaKey: true}, {shiftKey: true}, {isComposing: true}, {keyCode: 229}, {repeat: true}]) {
+        const event = keyEvent(flags);
+        await input().props.onKeyDown(event);
+        assert.equal(event.prevented, undefined);
+      }
+      assert.equal(calls.length, 0);
+      const enter = keyEvent();
+      await input().props.onKeyDown(enter); await tick();
+      assert.equal(enter.prevented, true);
+      assert.deepEqual(calls[0], [collection, null, expected, {baseRev: 0}]);
+      assert.equal(calls.length, 1);
+      assert.equal(indicator(f.tree).state, 'saved');
+    } finally { f.cleanup(); }
+  });
+}
+
+test('Editor explicit save locks pending clicks and leaves multiline Enter to the textarea', async () => {
+  const pending = deferred();
+  const calls = [];
+  const f = fixture(Editor, {record: paper, reload() {}}, {put(...args) { calls.push(args); return pending.promise; }});
+  try {
+    await tick();
+    assert.equal(action(f.tree).props.type, 'button');
+    assert.equal(find(f.tree, 'form'), undefined);
+    await action(f.tree).props.onClick();
+    assert.equal(calls.length, 0, 'an unchanged editor must not write');
+    assert(walk(f.tree).every(node => !node.props.onKeyDown), 'textarea Enter must not invoke save');
+    find(f.tree, 'textarea').props.onInput({target: {value: 'First line\nSecond line'}}); await tick();
+    assert.equal(calls.length, 0);
+    const click = action(f.tree).props.onClick;
+    const saving = click(); await click(); await tick();
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][2].notes, 'First line\nSecond line');
+    assert.equal(find(f.tree, 'fieldset').props.disabled, true);
+    pending.resolve({...paper, rev: 2, data: {...paper.data, notes: calls[0][2].notes}});
+    await saving; await tick();
+    assert.equal(indicator(f.tree).state, 'saved');
+  } finally { f.cleanup(); }
+});
+
+test('Planner pending check-in locks immediate repeat toggles and creation', async () => {
+  const pending = deferred();
+  const calls = [];
+  const f = fixture(Planner, {}, {async query(collection) { return collection === 'habits' ? [{id: 'walk', data: {name: 'Walk'}}] : []; }, put(...args) { calls.push(args); return pending.promise; }});
+  try {
+    await tick();
+    assert.equal(action(f.tree).props.type, 'button');
+    const input = all(f.tree, 'input').find(node => !node.props.type);
+    input.props.onInput({target: {value: 'Another habit'}}); await tick();
+    const toggle = all(f.tree, 'input').find(node => node.props.type === 'checkbox').props.onChange;
+    const saving = toggle(); await toggle(); await action(f.tree).props.onClick(); await tick();
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][0], 'checkins');
+    pending.resolve({id: calls[0][1], rev: 1, data: calls[0][2]});
+    await saving; await tick();
+    assert.equal(indicator(f.tree).state, 'idle');
+    assert.equal(indicator(f.tree).message, 'Draft not saved');
+    assert.doesNotMatch(text(f.tree), /Unsaved check-in/);
   } finally { f.cleanup(); }
 });

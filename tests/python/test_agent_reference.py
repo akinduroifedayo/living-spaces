@@ -13,7 +13,7 @@ class ReferenceCompatibilityTests(unittest.TestCase):
     def test_examples_against_integrated_kit(self):
         result = subprocess.run(
             ["node", "--no-warnings", "--experimental-vm-modules",
-             "--import", "./tests/js/sandbox/env.mjs", "--test",
+             "--import", "./tests/js/reference/env.mjs", "--test", "--test-reporter=tap",
              "tests/js/reference/compatibility.test.mjs"],
             cwd=ROOT, text=True, capture_output=True, check=False,
         )
@@ -23,8 +23,8 @@ class ReferenceCompatibilityTests(unittest.TestCase):
 
 class ReferenceDraftTests(unittest.TestCase):
     def test_incoming_changes_keep_selected_editor_and_draft_identity(self):
-        (ROOT / ".run").mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix="agent-reference-", dir=ROOT / ".run") as directory:
+        (ROOT / ".run/forms").mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="agent-reference-", dir=ROOT / ".run/forms") as directory:
             with patch.dict(os.environ, {"HERMES_HOME": directory,
                                          "LIVING_SPACES_DB": str(Path(directory) / "spaces.db")}):
                 result = subprocess.run(
@@ -58,7 +58,7 @@ async function renderView(file, name, states, records) {
   const make = exports => new SyntheticModule(Object.keys(exports), function () {
     for (const [name, value] of Object.entries(exports)) this.setExport(name, value);
   });
-  const hooks = make({useState: initial => [states[cursor++], () => {}]});
+  const hooks = make({useState: initial => [states[cursor++], () => {}], useRef: initial => ({current: initial})});
   const kit = make({
     html: (strings, ...values) => ({strings, values}),
     EmptyState: function EmptyState() {}, SaveIndicator: function SaveIndicator() {},

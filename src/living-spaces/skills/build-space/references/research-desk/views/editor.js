@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { html, useSaveState, SaveIndicator, ConflictBanner } from 'spaces-kit';
 
 function fields(record) {
@@ -10,6 +10,7 @@ export function Editor({ record, reload }) {
   const [base, setBase] = useState(record);
   const [draft, setDraft] = useState(() => fields(record));
   const [conflict, setConflict] = useState(null);
+  const saving = useRef(false);
   const save = useSaveState();
   const dirty = JSON.stringify(draft) !== JSON.stringify(fields(base));
   useEffect(() => {
@@ -19,20 +20,23 @@ export function Editor({ record, reload }) {
     }
   }, [record.rev]);
   const change = (name, value) => setDraft(previous => ({ ...previous, [name]: value }));
-  const submit = async event => {
-    event.preventDefault();
-    await save.run(async () => {
-      try {
-        const saved = await window.space.put('papers', base.id, draft, { baseRev: base.rev });
-        setBase(saved);
-        setConflict(null);
-        reload();
-        return saved;
-      } catch (error) {
-        if (error.code === 'conflict') setConflict(error);
-        throw error;
-      }
-    });
+  const submit = async () => {
+    if (saving.current || !dirty || conflict) return;
+    saving.current = true;
+    try {
+      await save.run(async () => {
+        try {
+          const saved = await window.space.put('papers', base.id, draft, { baseRev: base.rev });
+          setBase(saved);
+          setConflict(null);
+          reload();
+          return saved;
+        } catch (error) {
+          if (error.code === 'conflict') setConflict(error);
+          throw error;
+        }
+      });
+    } finally { saving.current = false; }
   };
   const keepDraft = current => {
     setBase(current);
@@ -45,7 +49,7 @@ export function Editor({ record, reload }) {
   };
   const resolvedConflict = save.state === 'conflict' && !conflict;
   return html`
-    <form class="editor" onSubmit=${submit}>
+    <section class="editor" aria-label="Edit paper">
       <h3>${window.space.field(record, 'title') || 'Untitled'}</h3>
       <p class="summary">${window.space.field(record, 'summary') || 'No summary supplied.'}</p>
       ${record.source_meta && html`<p class="provenance">Source ${record.source_meta.source_id}.
@@ -58,7 +62,7 @@ export function Editor({ record, reload }) {
           <option value="high">High</option><option value="normal">Normal</option><option value="low">Low</option>
         </select></label>
         <label>Notes<textarea rows="5" value=${draft.notes} onInput=${e => change('notes', e.target.value)} /></label>
-        <button type="submit" disabled=${!dirty || !!conflict}>Save changes</button>
+        <button type="button" onClick=${submit} disabled=${save.state === 'saving' || !dirty || !!conflict}>Save changes</button>
       </fieldset>
       <${SaveIndicator} state=${resolvedConflict || dirty && save.state === 'saved' ? 'idle' : save.state}
         message=${resolvedConflict ? (dirty ? 'Draft kept. Save changes to retry.' : 'Updated record loaded') : dirty && save.state === 'saved' ? 'Unsaved draft' : save.message} />
@@ -68,5 +72,5 @@ export function Editor({ record, reload }) {
           message="This record changed elsewhere. Keep mine preserves your draft for a separate Save changes retry. Use updated discards it." />
         <p role="alert">${conflict.message} Your draft is still above.</p>
         <p>Current saved notes: ${conflict.current.data.notes || '(empty)'}</p>`}
-    </form>`;
+    </section>`;
 }

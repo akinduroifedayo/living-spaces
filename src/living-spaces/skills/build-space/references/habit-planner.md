@@ -51,7 +51,7 @@ The selected day is UI state. Check-ins survive closing the app.
 
 ```js
 import { render } from 'preact';
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { html, useCollection, useSaveState, SaveIndicator, ConflictBanner, EmptyState } from 'spaces-kit';
 
 function localDay() {
@@ -64,27 +64,41 @@ function Planner() {
   const [day, setDay] = useState(localDay);
   const [name, setName] = useState('');
   const [pending, setPending] = useState(null);
+  const nameInput = useRef(null);
+  const saving = useRef(false);
   const habits = useCollection('habits', {limit: 500});
   const checkins = useCollection('checkins', {where: {day}, limit: 500});
   const save = useSaveState();
-  const add = async event => {
+  const add = async () => {
+    if (saving.current || pending || nameInput.current?.reportValidity() === false || !name.trim()) return;
+    saving.current = true;
+    try {
+      await save.run(async () => {
+        const created = await window.space.put('habits', null, {name: name.trim()}, {baseRev: 0});
+        setName('');
+        habits.reload();
+        return created;
+      });
+    } finally { saving.current = false; }
+  };
+  const addOnEnter = event => {
+    if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229 || event.repeat ||
+        event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     event.preventDefault();
-    if (!name.trim()) return;
-    await save.run(async () => {
-      const created = await window.space.put('habits', null, {name: name.trim()}, {baseRev: 0});
-      setName('');
-      habits.reload();
-      return created;
-    });
+    return add();
   };
   const persist = async draft => {
+    if (saving.current) return;
+    saving.current = true;
     setPending(draft);
-    const saved = await save.run(() => window.space.put('checkins', draft.id,
-      draft.data, {baseRev: draft.baseRev}));
-    if (saved) {
-      setPending(null);
-      checkins.reload();
-    }
+    try {
+      const saved = await save.run(() => window.space.put('checkins', draft.id,
+        draft.data, {baseRev: draft.baseRev}));
+      if (saved) {
+        setPending(null);
+        checkins.reload();
+      }
+    } finally { saving.current = false; }
   };
   const toggle = async habit => {
     if (pending || save.state === 'saving') return;
@@ -106,10 +120,11 @@ function Planner() {
     <label>Day<input type="date" required disabled=${save.state === 'saving' || !!pending} value=${day} onChange=${event => {
       if (event.target.value) setDay(event.target.value);
     }} /></label>
-    <form onSubmit=${add}>
-      <label>New habit<input required disabled=${save.state === 'saving' || !!pending} value=${name} onInput=${e => setName(e.target.value)} /></label>
-      <button disabled=${save.state === 'saving' || !!pending || !name.trim()}>Add habit</button>
-    </form>
+    <div role="group" aria-label="Add a habit">
+      <label>New habit<input ref=${nameInput} required disabled=${save.state === 'saving' || !!pending} value=${name}
+        onInput=${e => setName(e.target.value)} onKeyDown=${addOnEnter} /></label>
+      <button type="button" onClick=${add} disabled=${save.state === 'saving' || !!pending || !name.trim()}>Add habit</button>
+    </div>
     <${SaveIndicator} state=${resolvedConflict || name.trim() && save.state === 'saved' ? 'idle' : save.state}
       message=${resolvedConflict ? 'Updated check-in loaded' : name.trim() && save.state === 'saved' ? 'Draft not saved' : save.message} />
     ${pending && html`<p role="status">Unsaved check-in for ${pending.data.day}.
