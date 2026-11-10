@@ -1,0 +1,14 @@
+<!doctype html><html><body><h1>nav probe __STEP__</h1><script>
+const C = '__CANARY__/hit?probe='
+const steps = [
+  () => { top.location = C + 'top-nav' },
+  () => { location.href = C + 'self-nav' },
+  () => { location.href = 'data:text/html,<script>fetch("' + C + 'data-nav")<\/script>' },
+  () => { location.href = URL.createObjectURL(new Blob(['<script>fetch("' + C + 'blob-nav")<\/script>'], { type: 'text/html' })) },
+  () => { const m = document.createElement('meta'); m.httpEquiv = 'refresh'; m.content = '0;url=' + C + 'meta-refresh'; document.head.append(m) },
+  () => { document.open(); document.write('<script>fetch("' + C + 'document-write").then(()=>console.log("docwrite fetch OK"),e=>console.error("docwrite fetch blocked "+e))<\/script>'); document.close() },
+  () => { const a = document.createElement('a'); a.href = C + 'anchor-blank'; a.target = '_blank'; document.body.append(a); a.click() },
+  () => { const a = document.createElement('a'); a.href = C + 'anchor-top'; a.target = '_top'; document.body.append(a); a.click() }
+]
+try { steps[__STEP__](); console.log('step __STEP__ did not throw') } catch (e) { console.error('step __STEP__ threw ' + e.name + ': ' + e.message.slice(0, 120)) }
+</script></body></html>

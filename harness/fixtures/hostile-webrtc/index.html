@@ -1,0 +1,8 @@
+<!doctype html><html><body><h1>WebRTC egress probe</h1><pre id="out"></pre><script>
+const secret = 'SPACEDATA-' + (space.data.note || 'none').replace(/[^A-Za-z0-9]/g, '').slice(0, 24)
+const pc = new RTCPeerConnection({ iceServers: [{ urls: 'turn:127.0.0.1:47804?transport=udp', username: secret, credential: 'x' }] })
+pc.createDataChannel('x')
+pc.onicecandidate = e => e.candidate && (document.getElementById('out').textContent += e.candidate.candidate + '\n')
+pc.createOffer().then(o => pc.setLocalDescription(o))
+console.log('webrtc probe started with username ' + secret)
+</script></body></html>

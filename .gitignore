@@ -7,3 +7,10 @@ build/
 .env.*
 hermes-home/
 userdata/
+__pycache__/
+*.pyc
+.run/
+harness/out/
+*.db
+*.db-wal
+*.db-shm
