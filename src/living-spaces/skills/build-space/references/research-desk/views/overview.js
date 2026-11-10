@@ -30,7 +30,7 @@ export function Overview({ records, runs }) {
         <p>Approve Refresh in the Space's Permissions before retrieving public papers.</p>
         <p>This view uses the latest 50 runs. The host shows complete freshness information.</p>
       </section>
-      ${!records.length && html`<${EmptyState} title="Start your reading library"
-        message="Add a paper in Library, or approve Refresh in Permissions and refresh the public feed." />`}
+      ${!records.length && html`<${EmptyState} title="Start your reading library">
+        <p>Add a paper in Library, or approve Refresh in Permissions and refresh the public feed.</p><//>`}
     </section>`;
 }

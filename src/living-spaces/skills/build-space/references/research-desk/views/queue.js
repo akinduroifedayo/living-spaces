@@ -22,7 +22,7 @@ export function Queue({ records, reload }) {
         <li key=${record.id}><button type="button" aria-pressed=${record.id === selected?.id}
           onClick=${() => setSelected(record)}>${window.space.field(record, 'title') || 'Untitled'}</button>
           <small>${record.data.status || 'queued'} · ${record.data.priority || 'normal'}</small></li>`)}</ul>` :
-        html`<${EmptyState} title="Nothing waiting here" message="Add papers in Library or choose another priority." />`}
+        html`<${EmptyState} title="Nothing waiting here"><p>Add papers in Library or choose another priority.</p><//>`}
       ${detail && html`
         ${!queue.some(record => record.id === detail.id) && html`
           <p role="status">This item is outside the current queue filter. Its editor and draft remain below.</p>`}

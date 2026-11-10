@@ -58,10 +58,28 @@ Use `useCollection` to subscribe to saved records, including chat edits.
 Use `useSaveState`, `SaveIndicator`, and `ConflictBanner` for durable save feedback.
 Use `EmptyState` for an empty collection or an empty search result.
 `RefreshButton` invokes the declared refresh through the bridge.
-The complete example below shows the helper calls. After creating a Space,
-call `spaces_get`, then read `kit/spaces-kit.mjs` with `spaces_read_file` to
-confirm hook result fields and component props. The copied kit is authoritative.
-If its signatures differ, adapt the calls before handing the app to the user.
+The examples use the integrated kit's public API below. For an existing Space,
+read `kit/spaces-kit.mjs` with `spaces_read_file` before editing its callers.
+After creation, check the copied kit too. Adapt callers to that source.
+
+| Export | Actual shape or props |
+| --- | --- |
+| `useCollection(collection, options)` | `{records: Record[], loading, error, reload}`. `reload()` resolves to records or `undefined` on error. Existing records remain available during a reload or failure. |
+| `useSaveState()` | `{state, message, current, run}`. `await run(callback)` returns the callback result after confirmation, or `undefined` on failure. It records `failed` or `conflict` and does not rethrow. |
+| `hashRouter(routes)` | Register `{pattern: Component}`, including `/` and optional `*`. Returns `{route, navigate(path), destroy()}`. Register once outside render. |
+| `useRoute()` | `{path, params, component, pattern}`. Takes no router argument. Render `route.component`. |
+| `Nav` | `{items: [{path, label}], label?}`. Uses the registered router through `useRoute()` internally. |
+| `SaveIndicator` | `{state, message?}`. States are `idle`, `saving`, `saved`, `failed`, `conflict`. |
+| `ConflictBanner` | `{current, onKeepMine, onUseUpdated, message?}`. Each button passes `current` to its callback. The caller owns rebase, retry, or discard. |
+| `EmptyState` | `{title?, children, action?}`. Put explanatory markup in children, and optional button markup in `action`. |
+| `RefreshButton` | No props. Requests refresh, follows run events, and reports denial or failure. A queued reply is not completion. |
+
+Keep the active view mounted while `collection.loading` changes. Show a loading
+message alongside it. Replacing the view on every requery discards its drafts.
+Do not put success side effects after `await save.run(...)` without checking
+its result. Run them inside the callback after `space.put` confirms, or check
+that the returned record exists. Disable editable creation fields while saving
+so a confirmation cannot clear newer input.
 
 ## Records and concurrent edits
 
@@ -90,9 +108,14 @@ Single-record JavaScript calls use `baseRev`. Batch operations and agent tools
 use `base_rev`. For an existing record, always send its current revision.
 Missing `baseRev` or `0` creates only. A stale revision throws `conflict` with
 `current`. Keep the user's draft visible. Offer to reload the current record or
-explicitly retry the draft against its new revision. Never auto-retry a conflict
-and never show `Saved` after failure. Use `batch` for changes that must commit
-together. A failed batch commits nothing.
+explicitly retry the draft against its new revision. `ConflictBanner` calls
+`onKeepMine(current)` and `onUseUpdated(current)`.
+Research Desk's Keep mine rebases the retained draft to `current.rev`; a separate
+Save changes click retries it. The habit planner's Keep mine is itself the
+explicit retry and preserves the intended boolean rather than toggling it again.
+Use updated discards the draft and adopts or reloads authoritative values.
+Never auto-retry a conflict and never show `Saved` after failure.
+Use `batch` for changes that must commit together. A failed batch commits nothing.
 
 The bridge also exposes `space.refresh()`, `space.runs()`,
 `space.on('change', callback)`, and `space.on('run', callback)`.
@@ -169,6 +192,10 @@ in progress. Report success only for `succeeded`. A successful no-change run is
 valid. On `blocked`, explain the reason and the action needed. On `failed`, keep
 last-good records visible and describe the error. Show last attempt, last success,
 and source-as-of separately. None implies either of the others.
+The frame has `space.runs()`, not a freshness-summary method. Research Desk uses
+recent runs and labels that limited window. If no success appears there, say
+"No success in recent history", not "Never refreshed". Keep last-good collection
+records and mounted editors visible through refresh or query errors.
 
 For a requested cadence, call `spaces_request_schedule` with cadence, IANA
 timezone, and purpose. It requests approval in the tab. It does not activate a

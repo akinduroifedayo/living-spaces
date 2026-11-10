@@ -5,8 +5,7 @@ import { Overview } from './views/overview.js';
 import { Library } from './views/library.js';
 import { Queue } from './views/queue.js';
 
-const routes = { '/overview': Overview, '/library': Library, '/queue': Queue };
-const router = hashRouter(routes);
+hashRouter({ '/': Overview, '/overview': Overview, '/library': Library, '/queue': Queue, '*': Overview });
 const items = [
   { path: '/overview', label: 'Overview' },
   { path: '/library', label: 'Library' },
@@ -15,8 +14,8 @@ const items = [
 
 function App() {
   const collection = useCollection('papers', { limit: 500 });
-  const route = useRoute(router);
-  const View = routes[route.path] || Overview;
+  const route = useRoute();
+  const View = route.component;
   const [runs, setRuns] = useState([]);
   const [runError, setRunError] = useState('');
   useEffect(() => {
@@ -39,13 +38,12 @@ function App() {
         <div><p class="eyebrow">Your reading workspace</p><h1>Research Desk</h1></div>
         <${RefreshButton} />
       </header>
-      <${Nav} items=${items} router=${router} />
+      <${Nav} items=${items} />
       ${runError && html`<p role="alert">Could not read refresh history. ${runError}</p>`}
       ${collection.error && html`<p role="alert">Could not load papers. ${collection.error.message}</p>`}
-      ${collection.loading ? html`<p role="status">Loading your library...</p>` : html`
-        <${View} records=${collection.records} runs=${runs} reload=${collection.reload} />
-        ${collection.records.length === 500 && html`<p>Showing the first 500 papers. Ask chat to narrow the collection query.</p>`}
-      `}
+      ${collection.loading && html`<p role="status">Loading your library...</p>`}
+      <${View} records=${collection.records} runs=${runs} reload=${collection.reload} />
+      ${collection.records.length === 500 && html`<p>Showing the first 500 papers. Ask chat to narrow the collection query.</p>`}
     </main>`;
 }
 

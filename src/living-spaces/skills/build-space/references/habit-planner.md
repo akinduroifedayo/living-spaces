@@ -52,7 +52,7 @@ The selected day is UI state. Check-ins survive closing the app.
 ```js
 import { render } from 'preact';
 import { useState } from 'preact/hooks';
-import { html, useCollection, useSaveState, SaveIndicator, EmptyState } from 'spaces-kit';
+import { html, useCollection, useSaveState, SaveIndicator, ConflictBanner, EmptyState } from 'spaces-kit';
 
 function localDay() {
   const date = new Date();
@@ -63,50 +63,69 @@ function localDay() {
 function Planner() {
   const [day, setDay] = useState(localDay);
   const [name, setName] = useState('');
+  const [pending, setPending] = useState(null);
   const habits = useCollection('habits', {limit: 500});
   const checkins = useCollection('checkins', {where: {day}, limit: 500});
   const save = useSaveState();
   const add = async event => {
     event.preventDefault();
     if (!name.trim()) return;
-    try {
-      await save.save(async () => {
-        await window.space.put('habits', null, {name: name.trim()}, {baseRev: 0});
-        setName('');
-        habits.reload();
-      });
-    } catch (_) {}
+    await save.run(async () => {
+      const created = await window.space.put('habits', null, {name: name.trim()}, {baseRev: 0});
+      setName('');
+      habits.reload();
+      return created;
+    });
+  };
+  const persist = async draft => {
+    setPending(draft);
+    const saved = await save.run(() => window.space.put('checkins', draft.id,
+      draft.data, {baseRev: draft.baseRev}));
+    if (saved) {
+      setPending(null);
+      checkins.reload();
+    }
   };
   const toggle = async habit => {
+    if (pending || save.state === 'saving') return;
     const id = `${habit.id}:${day}`;
     const current = checkins.records.find(record => record.id === id);
-    try {
-      await save.save(() => window.space.put('checkins', id,
-        {habit: habit.id, day, done: !current?.data.done}, {baseRev: current?.rev ?? 0}));
-      checkins.reload();
-    } catch (_) {}
+    const draft = {id, data: {habit: habit.id, day, done: !current?.data.done}, baseRev: current?.rev ?? 0};
+    await persist(draft);
   };
-  if (habits.loading || checkins.loading) return html`<p role="status">Loading your practice...</p>`;
-  if (habits.error || checkins.error) return html`<p role="alert">Could not load your habits.
-    ${(habits.error || checkins.error).message}</p>`;
+  const useUpdated = () => {
+    setPending(null);
+    checkins.reload();
+  };
+  const resolvedConflict = save.state === 'conflict' && !pending;
   return html`
     <h1>Daily Practice</h1>
-    <label>Day<input type="date" required value=${day} onChange=${event => {
+    ${(habits.loading || checkins.loading) && html`<p role="status">Loading your practice...</p>`}
+    ${(habits.error || checkins.error) && html`<p role="alert">Could not load your habits.
+      ${(habits.error || checkins.error).message}</p>`}
+    <label>Day<input type="date" required disabled=${save.state === 'saving' || !!pending} value=${day} onChange=${event => {
       if (event.target.value) setDay(event.target.value);
     }} /></label>
     <form onSubmit=${add}>
-      <label>New habit<input required value=${name} onInput=${e => setName(e.target.value)} /></label>
-      <button disabled=${save.state === 'saving' || !name.trim()}>Add habit</button>
+      <label>New habit<input required disabled=${save.state === 'saving' || !!pending} value=${name} onInput=${e => setName(e.target.value)} /></label>
+      <button disabled=${save.state === 'saving' || !!pending || !name.trim()}>Add habit</button>
     </form>
-    <${SaveIndicator} state=${name.trim() && save.state === 'saved' ? 'idle' : save.state}
-      message=${name.trim() && save.state === 'saved' ? 'Draft not saved' : save.message} />
-    ${save.state === 'conflict' && html`<p role="alert">A newer check-in was saved.
-      Review the current checkbox, then click again only if you still want to change it.</p>`}
+    <${SaveIndicator} state=${resolvedConflict || name.trim() && save.state === 'saved' ? 'idle' : save.state}
+      message=${resolvedConflict ? 'Updated check-in loaded' : name.trim() && save.state === 'saved' ? 'Draft not saved' : save.message} />
+    ${pending && html`<p role="status">Unsaved check-in for ${pending.data.day}.
+      Intended value: ${pending.data.done ? 'done' : 'not done'}.</p>`}
+    ${pending && save.state === 'conflict' && html`
+      <${ConflictBanner} current=${save.current}
+        onKeepMine=${current => persist({...pending, baseRev: current.rev})} onUseUpdated=${useUpdated}
+        message="A newer check-in was saved. Keep mine explicitly retries your intended value against that revision. Use updated discards the draft." />`}
+    ${pending && save.state === 'failed' && html`
+      <button type="button" onClick=${() => persist(pending)}>Retry check-in</button>
+      <button type="button" onClick=${useUpdated}>Discard check-in draft</button>`}
     ${habits.records.length ? html`<ul>${habits.records.map(habit => {
       const current = checkins.records.find(record => record.id === `${habit.id}:${day}`);
       return html`<li key=${habit.id}><label><input type="checkbox" checked=${!!current?.data.done}
-        disabled=${save.state === 'saving'} onChange=${() => toggle(habit)} />${habit.data.name}</label></li>`;
-    })}</ul>` : html`<${EmptyState} title="Choose your first habit" message="Add something small you want to do each day." />`}
+        disabled=${save.state === 'saving' || !!pending || checkins.loading || !!checkins.error} onChange=${() => toggle(habit)} />${habit.data.name}</label></li>`;
+    })}</ul>` : html`<${EmptyState} title="Choose your first habit"><p>Add something small you want to do each day.</p><//>`}
     ${habits.records.length === 500 && html`<p>Showing the first 500 habits.</p>`}`;
 }
 

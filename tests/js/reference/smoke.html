@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Reference compatibility smoke</title>
+<style>body{font-family:system-ui;margin:16px}#space{height:80vh;border:1px solid grey}button{margin:4px}</style></head>
+<body>
+<h1>Synthetic reference compatibility smoke</h1>
+<p>This fixture uses the actual examples, kit and sandbox. Its in-memory backend is synthetic. It does not qualify Desktop, persistence, public feeds, cron, or R1.</p>
+<p><a href="?example=research-desk">Research Desk</a> · <a href="?example=habit-planner">Habit planner</a></p>
+<button id="agent">Simulate chat edit</button><button id="fail">Fail next save</button>
+<button id="deny">Toggle refresh denial</button><button id="success">Finish refresh successfully</button>
+<button id="failure">Fail refresh</button><p id="fixture-status" role="status"></p>
+<div id="space"></div><script type="module" src="/tests/js/reference/smoke.mjs"></script>
+</body></html>
