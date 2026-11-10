@@ -19,6 +19,8 @@ const runs = [{id: 'synthetic-success', status: 'succeeded', queued_at: now() - 
 const announce = row => reference.mount.postEvent('data.changed', {seq: ++seq, changes: [{collection: row.collection, id: row.id, op: 'put', rev: row.rev}]});
 const info = message => { document.getElementById('fixture-status').textContent = message; };
 window.reference = {synthetic: true, rows, runs, calls: [], events: [], logs: [], denyRefresh: false, failNextSave: false,
+  holdSaves: false, heldSaves: [],
+  releaseSaves() { for (const release of this.heldSaves.splice(0)) release(); },
   agentWrite(collection, id, data) {
     const previous = rows.get(key(collection, id));
     const row = {...previous, collection, id, data: {...previous?.data, ...data}, rev: (previous?.rev || 0) + 1};
@@ -47,6 +49,7 @@ async function call(op, args) {
     return row ? ok(row) : error('not_found', 'Synthetic record missing');
   }
   if (op === 'data.put') {
+    if (reference.holdSaves) await new Promise(resolve => reference.heldSaves.push(resolve));
     await new Promise(resolve => setTimeout(resolve, 500));
     if (reference.failNextSave) { reference.failNextSave = false; return error('blocked', 'Synthetic backend unavailable'); }
     const current = rows.get(key(args.collection, args.id));

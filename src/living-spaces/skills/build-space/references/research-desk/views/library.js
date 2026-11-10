@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { html, useSaveState, SaveIndicator, EmptyState } from 'spaces-kit';
 import { Editor } from './editor.js';
 
@@ -6,32 +6,43 @@ export function Library({ records, reload }) {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [title, setTitle] = useState('');
+  const titleInput = useRef(null);
+  const saving = useRef(false);
   const save = useSaveState();
   const filtered = records.filter(record => ['title', 'summary', 'authors'].map(name =>
     String(window.space.field(record, name) || '')).join(' ').toLowerCase().includes(search.toLowerCase()));
   const detail = records.find(record => record.id === selected?.id) || selected;
-  const add = async event => {
+  const add = async () => {
+    if (saving.current || titleInput.current?.reportValidity() === false || !title.trim()) return;
+    saving.current = true;
+    try {
+      await save.run(async () => {
+        const created = await window.space.put('papers', null,
+          { title: title.trim(), status: 'queued', priority: 'normal', notes: '' }, { baseRev: 0 });
+        setTitle('');
+        setSelected(created);
+        reload();
+        return created;
+      });
+    } finally { saving.current = false; }
+  };
+  const addOnEnter = event => {
+    if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229 || event.repeat ||
+        event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     event.preventDefault();
-    if (!title.trim()) return;
-    await save.run(async () => {
-      const created = await window.space.put('papers', null,
-        { title: title.trim(), status: 'queued', priority: 'normal', notes: '' }, { baseRev: 0 });
-      setTitle('');
-      setSelected(created);
-      reload();
-      return created;
-    });
+    return add();
   };
   return html`
     <section aria-labelledby="library-heading">
       <h2 id="library-heading">Library</h2>
       <label>Search papers<input type="search" value=${search} onInput=${e => setSearch(e.target.value)} /></label>
-      <form class="add-item" onSubmit=${add}>
-        <label>New paper title<input required disabled=${save.state === 'saving'} value=${title} onInput=${e => setTitle(e.target.value)} /></label>
-        <button disabled=${save.state === 'saving' || !title.trim()}>Add to library</button>
+      <div class="add-item" role="group" aria-label="Add a paper">
+        <label>New paper title<input ref=${titleInput} required disabled=${save.state === 'saving'} value=${title}
+          onInput=${e => setTitle(e.target.value)} onKeyDown=${addOnEnter} /></label>
+        <button type="button" onClick=${add} disabled=${save.state === 'saving' || !title.trim()}>Add to library</button>
         <${SaveIndicator} state=${title.trim() && save.state === 'saved' ? 'idle' : save.state}
           message=${title.trim() && save.state === 'saved' ? 'Draft not saved' : save.message} />
-      </form>
+      </div>
       <div class="split">
         <div><p>${filtered.length} matching papers</p>
           ${filtered.length ? html`<ul class="paper-list">${filtered.map(record => html`
