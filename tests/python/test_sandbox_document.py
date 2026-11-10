@@ -1,4 +1,3 @@
-"""Verify the installed document's provenance at the existing bundle boundary."""
 import asyncio
 import importlib.util
 import os
