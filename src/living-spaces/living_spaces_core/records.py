@@ -196,6 +196,32 @@ def upsert_source(sid, collection, rid, source, source_meta, *, actor):
         return _upsert_source(conn, sid, collection, rid, source, source_meta, actor=actor)
 
 
+def upsert_sources(sid, collection, entries, *, actor):
+    from . import feeds, grants
+
+    if not isinstance(entries, list):
+        raise SpacesError("invalid", "entries must be an array")
+    limits.check(len(entries), limits.BATCH_OPS, "source entries")
+    limits.identifier(collection, "collection")
+    limits.text(actor, "actor")
+    counts = {"added": 0, "updated": 0, "unchanged": 0}
+    with db.write() as conn:
+        db.space(conn, sid, writable=True)
+        hosts = set()
+        for entry in entries:
+            if not isinstance(entry, (tuple, list)) or len(entry) != 3:
+                raise SpacesError("invalid", "Source entries must contain id, source and metadata")
+            rid, source, source_meta = entry
+            result = _upsert_source(conn, sid, collection, rid, source, source_meta, actor=actor)
+            counts[result] += 1
+            if source_meta.get("handler") == "feed":
+                hosts.add(feeds.source_host(source_meta["url"]))
+        # The write lock keeps revocation from racing this check and the commit.
+        if hosts and not grants._check(conn, sid, "refresh", {"hosts": sorted(hosts)}):
+            raise SpacesError("not_granted", "Capability or requested scope is not granted", capability="refresh")
+    return counts
+
+
 def changes_since(sid, seq, limit=500):
     limits.integer(seq, "seq")
     limits.integer(limit, "limit", minimum=1)
