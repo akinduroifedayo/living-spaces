@@ -281,3 +281,8 @@ Nested srcdoc frames, `sandbox="allow-scripts"` only (opaque origin), the CSP be
   ```
   The sandbox lane also owns `src/living-spaces/runtime/kit/*`. The UI lane owns `src/desktop/plugin.src.js` and `src/desktop/ui/**`, and builds `src/living-spaces/desktop/plugin.js` with `esbuild src/desktop/plugin.src.js --bundle --format=esm --external:@hermes/plugin-sdk --external:react --external:react/jsx-runtime --outfile=src/living-spaces/desktop/plugin.js`.
 - Test file ownership: `tests/python/test_core_*.py` (core), `tests/python/test_upkeep_*.py` (upkeep), `tests/python/test_agent_*.py` (agent), `tests/js/sandbox/**` (sandbox), `tests/js/ui/**` (ui). Python tests use stdlib `unittest` and run with `~/.hermes/hermes-agent/venv/bin/python -m unittest discover -s tests/python -t .`. Each test sets `LIVING_SPACES_DB` (and `HERMES_HOME` if it touches cron) to a fresh temp dir **inside the worktree's `.run/`**, never under `~/.hermes`.
+
+## 13. Amendments found during the swarm (Forge applies at integration)
+
+- **A1 (upkeep → core):** "one transaction per source" can't be built from a single-record `upsert_source`. Core adds `records.upsert_sources(sid, collection, entries: list[(rid, source, source_meta)], *, actor) -> {"added","updated","unchanged"}`, which runs in one IMMEDIATE transaction. Upkeep calls it when present and falls back to per-record calls.
+- **A2 (upkeep → schema):** `schedules` gains `reason TEXT` so `disabled` can carry a visible reason (e.g. "Hermes cron is unavailable in this process"). Migration: `ALTER TABLE schedules ADD COLUMN reason TEXT` when missing.
