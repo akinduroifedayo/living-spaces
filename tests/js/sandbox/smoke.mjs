@@ -42,4 +42,4 @@ async function call(op, args) {
   }
   return { ok: true, result: { space: bundle.space, grants: ['data', 'logs', 'refresh'], limits: {} } }
 }
-smoke.mount = mountSpace(document.getElementById('space'), { bundle, session: 'demo-session', grants: ['data', 'logs', 'refresh'], call, onEvent: e => smoke.events.push(e) })
+smoke.mount = mountSpace(document.getElementById('space'), { bundle, grants: ['data', 'logs', 'refresh'], call, onEvent: e => smoke.events.push(e) })

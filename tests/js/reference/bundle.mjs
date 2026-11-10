@@ -20,5 +20,6 @@ export async function referenceBundle(example = 'research-desk') {
   for (const path of ['kit/spaces-kit.mjs', 'kit/spaces-kit.css', 'vendor/preact.mjs', 'vendor/hooks.mjs']) {
     files.push({path, mime: mime[extname(path)], text: await readFile(resolve(root, 'src/living-spaces/runtime', path), 'utf8')});
   }
-  return {space: {id: 'reference-demo', name: manifest.name}, rev: 1, manifest, files};
+  const sandbox = {format: 1, shell_srcdoc: await readFile(resolve(root, 'src/living-spaces/guest/space-host.html'), 'utf8')};
+  return {sandbox, space: {id: 'reference-demo', name: manifest.name}, rev: 1, manifest, files};
 }

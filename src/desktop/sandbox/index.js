@@ -1,5 +1,3 @@
-import { spaceLoader, projectResolver } from './loader.js'
-
 export const BRIDGE_VERSION = 1
 export const WEBRTC_NOTE = 'Spaces block ordinary internet connections unless you approve a site or capability. This is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle.'
 export const OP_GRANT = Object.freeze({
@@ -13,9 +11,6 @@ export const OP_GRANT = Object.freeze({
   'runs.list': null,
   log: 'logs'
 })
-export const SPACE_CSP = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline' blob:; img-src blob: data:; font-src blob: data:; media-src blob: data:; worker-src blob:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; manifest-src 'none'; webrtc 'block'"
-// The shell's policy is the inner frame's immutable navigation floor.
-export const SHELL_CSP = SPACE_CSP
 export const MAX_REQUEST_SIZE = 1024 * 1024
 
 export function validateRequest(message) {
@@ -40,51 +35,22 @@ export function checkGrant(op, grants) {
   return { code: 'not_granted', message: `Approve ${capability} in Permissions`, capability }
 }
 
-function shellRelay(spaceSrcdoc) {
-  window.addEventListener('message', function onBoot(e) {
-    if (e.source !== window.parent || e.data?.type !== 'space-boot' || e.data.v !== 1 || !e.ports[0]) return
-    window.removeEventListener('message', onBoot)
-    const f = document.createElement('iframe')
-    f.setAttribute('sandbox', 'allow-scripts')
-    f.setAttribute('referrerpolicy', 'no-referrer')
-    f.style.cssText = 'border:0;width:100%;height:100%;display:block'
-    f.title = 'Space'
-    let booted = false
-    f.addEventListener('load', () => {
-      if (booted) {
-        window.parent.postMessage({ type: 'space-reloaded', v: 1 }, '*')
-        return
-      }
-      booted = true
-      f.contentWindow.postMessage(e.data, '*', [e.ports[0]])
-    })
-    f.srcdoc = spaceSrcdoc
-    document.body.append(f)
-  })
+function parseBundle(value) {
+  const sandbox = value?.sandbox
+  if (!sandbox || typeof sandbox !== 'object' || Array.isArray(sandbox) ||
+      Object.keys(sandbox).length !== 2 || !Object.hasOwn(sandbox, 'format') || !Object.hasOwn(sandbox, 'shell_srcdoc') ||
+      sandbox.format !== 1 || typeof sandbox.shell_srcdoc !== 'string' || !sandbox.shell_srcdoc.trim()) {
+    throw new Error('Living Spaces Desktop and backend are incompatible. Reinstall Living Spaces to load the packaged sandbox.')
+  }
+  const { space, rev, manifest, files } = value
+  return { project: { space, rev, manifest, files }, document: sandbox.shell_srcdoc }
 }
 
-const scriptJson = value => JSON.stringify(value).replace(/</g, '\\u003c')
-export function spaceSrcdoc() {
-  return '<!doctype html><html><head><meta charset="utf-8">' +
-    `<meta http-equiv="Content-Security-Policy" content="${SPACE_CSP}">` +
-    '<meta name="referrer" content="no-referrer">' +
-    `<script>(${spaceLoader.toString()})((${projectResolver.toString()})())</script></head><body></body></html>`
-}
-export function shellSrcdoc() {
-  return '<!doctype html><html><head><meta charset="utf-8">' +
-    `<meta http-equiv="Content-Security-Policy" content="${SHELL_CSP}">` +
-    '<style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}</style>' +
-    `<script>(${shellRelay.toString()})(${scriptJson(spaceSrcdoc())})</script></head><body></body></html>`
-}
-
-export function mountSpace(container, { bundle, session, grants = [], call, onEvent = () => {} }) {
+export function mountSpace(container, { bundle, grants = [], call, onEvent = () => {} }) {
+  const { project, document: shellDocument } = parseBundle(bundle)
   const channel = new MessageChannel()
   const port = channel.port1
-  const frame = document.createElement('iframe')
-  frame.setAttribute('sandbox', 'allow-scripts')
-  frame.setAttribute('referrerpolicy', 'no-referrer')
-  frame.style.cssText = 'border:0;width:100%;height:100%;display:block;background:transparent'
-  frame.title = `Space: ${bundle.space.name}`
+  let frame
   let state = 'created'
   let lastLog = -Infinity
   let overflowReported = false
@@ -94,7 +60,9 @@ export function mountSpace(container, { bundle, session, grants = [], call, onEv
     onEvent({ kind: 'log-overflow' })
   }
   const stop = () => {
+    if (state === 'closed') return
     state = 'closed'
+    frame?.removeEventListener('load', onLoad)
     port.onmessage = null
     port.close()
     channel.port2.close()
@@ -108,14 +76,13 @@ export function mountSpace(container, { bundle, session, grants = [], call, onEv
   function onShellMessage(e) {
     if (e.source === frame.contentWindow && e.data?.v === 1 && e.data.type === 'space-reloaded') reloaded()
   }
-  window.addEventListener('message', onShellMessage)
-  frame.addEventListener('load', () => {
+  function onLoad() {
     if (state === 'closed') return
     if (state === 'booted') return reloaded()
     state = 'booted'
-    frame.contentWindow.postMessage({ type: 'space-boot', v: 1, session, bundle, grants }, '*', [channel.port2])
+    frame.contentWindow.postMessage({ type: 'space-boot', v: 1, bundle: project, grants }, '*', [channel.port2])
     onEvent({ kind: 'booted' })
-  })
+  }
   port.onmessage = async e => {
     if (state !== 'booted') return
     const m = e.data
@@ -163,8 +130,21 @@ export function mountSpace(container, { bundle, session, grants = [], call, onEv
       reply({ ok: false, error: { code: error.code || 'blocked', message: String(error.message || error) } })
     }
   }
-  frame.srcdoc = shellSrcdoc()
-  container.append(frame)
+  try {
+    frame = document.createElement('iframe')
+    frame.setAttribute('sandbox', 'allow-scripts')
+    frame.setAttribute('referrerpolicy', 'no-referrer')
+    frame.style.cssText = 'border:0;width:100%;height:100%;display:block;background:transparent'
+    frame.title = `Space: ${project.space.name}`
+    window.addEventListener('message', onShellMessage)
+    frame.addEventListener('load', onLoad)
+    frame.srcdoc = shellDocument
+    container.append(frame)
+  } catch (error) {
+    stop()
+    frame?.remove()
+    throw error
+  }
   return {
     postEvent(event, payload) {
       if (state !== 'booted') return

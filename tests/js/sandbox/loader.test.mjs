@@ -2,7 +2,7 @@ import './env.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import vm from 'node:vm'
-import { spaceLoader, projectResolver } from '../../../src/desktop/sandbox/loader.js'
+import { spaceLoader, projectResolver } from '../../../src/guest/loader.mjs'
 
 const tick = () => new Promise(resolve => setImmediate(resolve))
 function loaderFixture(files = []) {
@@ -20,7 +20,7 @@ function loaderFixture(files = []) {
   const port = { postMessage: message => messages.push(structuredClone(message)), close() { this.closed = true } }
   const context = vm.createContext({ window, document, Map, Set, Error, TypeError, Promise, Object, JSON, String, Uint8Array, Blob, URL, atob, console: Object.fromEntries(['log', 'info', 'warn', 'error', 'debug', 'trace', 'dir', 'table', 'assert'].map(level => [level, () => {}])), setInterval(fn, ms) { timers.push({ fn, ms }); return timers.length }, clearInterval() {} })
   vm.runInContext(`(${spaceLoader.toString()})((${projectResolver.toString()})())`, context)
-  events.get('message')({ source: parent, data: { type: 'space-boot', v: 1, session: 'host-session', grants: ['data'], bundle: { space: { id: 'fixture', name: 'Fixture' }, rev: 3, manifest: { entry: 'index.html' }, files } }, ports: [port] })
+  events.get('message')({ source: parent, data: { type: 'space-boot', v: 1, grants: ['data'], bundle: { space: { id: 'fixture', name: 'Fixture' }, rev: 3, manifest: { entry: 'index.html' }, files } }, ports: [port] })
   return { api: window.space, port, messages, events, timers, document, context }
 }
 const reply = (f, message, result) => f.port.onmessage({ data: { v: 1, id: message.id, ok: true, result } })

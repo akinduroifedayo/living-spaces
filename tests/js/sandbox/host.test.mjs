@@ -2,9 +2,12 @@ import './env.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { setTimeout as delay } from 'node:timers/promises'
-import { BRIDGE_VERSION, WEBRTC_NOTE, SPACE_CSP, SHELL_CSP, spaceSrcdoc, shellSrcdoc, validateRequest, checkGrant, OP_GRANT, MAX_REQUEST_SIZE, mountSpace } from '../../../src/desktop/sandbox/index.js'
-import { projectResolver } from '../../../src/desktop/sandbox/loader.js'
+import { BRIDGE_VERSION, WEBRTC_NOTE, validateRequest, checkGrant, OP_GRANT, MAX_REQUEST_SIZE, mountSpace } from '../../../src/desktop/sandbox/index.js'
+import { projectResolver } from '../../../src/guest/loader.mjs'
+import { SPACE_CSP, SHELL_CSP, spaceSrcdoc, shellSrcdoc } from '../../../src/guest/document.mjs'
 import { readFileSync } from 'node:fs'
+
+const sandbox = { format: 1, shell_srcdoc: readFileSync('src/living-spaces/guest/space-host.html', 'utf8') }
 
 const request = (extra = {}) => ({ v: 1, id: 7, op: 'data.query', args: { collection: 'papers' }, ...extra })
 for (const [name, message] of [
@@ -75,7 +78,7 @@ function fixture(call = async () => ({ ok: true, result: { records: [] } }), gra
   const events = []
   const calls = []
   const mount = mountSpace({ append() {} }, {
-    bundle: { space: { id: 'demo', name: 'Demo' }, rev: 1 }, session: 'fixed-session', grants,
+    bundle: { space: { id: 'demo', name: 'Demo' }, rev: 1, manifest: {}, files: [], sandbox }, grants,
     call: async (op, args) => { calls.push([op, args]); return call(op, args) }, onEvent: e => events.push(e)
   })
   const frame = frames[0]
@@ -91,7 +94,8 @@ test('mount binds boot to host session, forwards replies and emits versioned eve
   const f = fixture()
   try {
     assert.equal(f.frame.attributes.sandbox, 'allow-scripts')
-    assert.equal(f.frame.boot.session, 'fixed-session')
+    assert.equal(Object.hasOwn(f.frame.boot, 'session'), false)
+    assert.equal(Object.hasOwn(f.frame.boot.bundle, 'sandbox'), false)
     assert.equal(f.frame.boot.v, 1)
     f.frame.peer.postMessage(request())
     await delay(20)

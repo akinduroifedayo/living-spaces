@@ -1,14 +1,16 @@
 const { test, before, after } = require('node:test')
 const assert = require('node:assert/strict')
-const { mkdtempSync, mkdirSync, rmSync } = require('node:fs')
+const { mkdtempSync, mkdirSync, rmSync, readFileSync } = require('node:fs')
 const { resolve, join } = require('node:path')
-let m, createSpaceSession, temp
+const sandbox = { format: 1, shell_srcdoc: readFileSync('src/living-spaces/guest/space-host.html', 'utf8') }
+let m, createSpaceSession, mountSpace, temp
 before(async () => {
   mkdirSync(resolve('.run'), { recursive: true })
   temp = mkdtempSync(resolve('.run/ui-unit-'))
   process.env.HERMES_HOME = temp
   process.env.LIVING_SPACES_DB = join(temp, 'spaces.db')
   m = await import('../../../src/desktop/ui/model.mjs')
+  ;({ mountSpace } = await import('../../../src/desktop/sandbox/index.js'))
   ;({ createSpaceSession } = await import('../../../src/desktop/ui/session.mjs'))
 })
 after(() => rmSync(temp, { recursive: true, force: true }))
@@ -97,7 +99,7 @@ function fixture(overrides = {}) {
     requests.push({ path, ...options })
     if (overrides.rest) { const result = overrides.rest(path, options); if (result !== undefined) return result }
     if (path.endsWith('/sessions')) return { session: 'demo-session', head_rev: 7, grants: ['data'] }
-    if (path.endsWith('/bundle')) return { rev: 7, manifest: {}, files: [] }
+    if (path.endsWith('/bundle')) return { space: space(), rev: 7, manifest: {}, files: [], sandbox }
     if (options.method === 'DELETE') return { closed: true }
     if (path.endsWith('/bridge')) return { ok: true, result: { rev: 1 } }
     throw new Error(`Unexpected request ${path}`)
@@ -109,7 +111,7 @@ test('mount opens a session first and binds every bridge call to that session an
   const f = fixture()
   await f.session.ready
   assert.deepEqual(f.requests.map(r => r.path), ['/spaces/research-desk/sessions', '/spaces/research-desk/bundle'])
-  assert.equal(f.bridge().session, 'demo-session')
+  assert.equal(Object.hasOwn(f.bridge(), 'session'), false)
   await f.bridge().call('data.put', { collection: 'notes', data: { note: 'public demo' }, space: 'other' })
   assert.deepEqual(f.requests[2], { path: '/spaces/research-desk/bridge', method: 'POST', body: { session: 'demo-session', op: 'data.put', args: { collection: 'notes', data: { note: 'public demo' }, space: 'other' } } })
   assert.deepEqual(f.writes.map(w => w.status), ['saving', 'saved'])
@@ -252,3 +254,17 @@ test('old backend results cannot populate the new backend view', async () => {
   result.resolve({ spaces: [{ id: 'old-space' }] })
   await assert.rejects(pending, /backend changed/)
 })
+
+for (const [name, wire] of [['missing', undefined], ['unsupported', { ...sandbox, format: 2 }]]) {
+  test(`${name} sandbox wire closes the backend session with an actionable error`, async () => {
+    const f = fixture({
+      rest: path => path.endsWith('/bundle') ? { space: space(), rev: 7, manifest: {}, files: [], sandbox: wire } : undefined,
+      mount: options => mountSpace({}, options)
+    })
+    await assert.rejects(f.session.ready, /Desktop and backend.*Reinstall Living Spaces/)
+    assert.deepEqual(f.requests.at(-1), { path: '/spaces/research-desk/sessions/demo-session', method: 'DELETE' })
+    await f.session.destroy()
+    assert.equal(f.requests.filter(r => r.method === 'DELETE').length, 1)
+    assert.equal((await f.bridge().call('data.query', {})).error.code, 'session_invalid')
+  })
+}

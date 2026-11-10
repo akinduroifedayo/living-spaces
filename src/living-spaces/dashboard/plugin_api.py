@@ -17,6 +17,11 @@ _spec = importlib.util.spec_from_file_location(
 _loader = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_loader)
 load_core = _loader.load_core
+_sandbox_spec = importlib.util.spec_from_file_location(
+    "living_spaces_sandbox", Path(__file__).resolve().parent / "_sandbox.py"
+)
+_sandbox = importlib.util.module_from_spec(_sandbox_spec)
+_sandbox_spec.loader.exec_module(_sandbox)
 SPACE_ID = re.compile(r"[a-z0-9][a-z0-9-]{1,47}\Z")
 SUMMARY_FIELDS = {"id", "name", "description", "owner", "status", "head_rev", "accent", "icon", "pinned",
                   "updated_at", "last_opened_at", "freshness", "schedule", "attention"}
@@ -97,7 +102,15 @@ async def space_detail(space_id: str):
 
 @router.get("/spaces/{space_id}/bundle")
 async def space_bundle(space_id: str):
-    return await _run(space_id, lambda core: core.bundle(space_id))
+    def action(core):
+        bundle = core.bundle(space_id)
+        try:
+            sandbox = _sandbox.trusted_document()
+        except (OSError, UnicodeError, ValueError):
+            return JSONResponse({"error": {"code": "unavailable", "message":
+                "The packaged Living Spaces sandbox is unavailable. Reinstall Living Spaces."}}, status_code=503)
+        return {**bundle, "sandbox": sandbox}
+    return await _run(space_id, action)
 
 
 @router.post("/spaces/{space_id}/sessions")
