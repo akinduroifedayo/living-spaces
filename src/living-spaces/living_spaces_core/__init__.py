@@ -10,5 +10,18 @@ from .grants import list_grants, decide, audit_log
 from .sessions import open_session, close_session, require
 from .logs import read_logs
 from .bridge import dispatch
-from .runs import list_runs, start_refresh
-from .schedules import get_schedule, request_schedule, decide_schedule, pause_schedule
+_UPKEEP_EXPORTS = {
+    "list_runs": "runs", "start_refresh": "runs",
+    "get_schedule": "schedules", "request_schedule": "schedules",
+    "decide_schedule": "schedules", "pause_schedule": "schedules",
+}
+
+
+def __getattr__(name):
+    from importlib import import_module
+
+    if name not in _UPKEEP_EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(f".{_UPKEEP_EXPORTS[name]}", __name__), name)
+    globals()[name] = value
+    return value
