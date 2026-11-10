@@ -1,0 +1,207 @@
+from __future__ import annotations
+
+import importlib
+import json
+import re
+from datetime import datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from . import db
+from .errors import SpacesError
+
+CATCH_UP_POLICY = "Runs one current refresh when Hermes wakes. Missed intervals aren't replayed."
+PACKAGE = Path(__file__).resolve().parents[1]
+
+
+def _cron():
+    return importlib.import_module("cron.jobs")
+
+
+def _space(conn, sid):
+    if not isinstance(sid, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,47}", sid):
+        raise SpacesError("invalid", "Invalid Space id")
+    row = conn.execute("SELECT status FROM spaces WHERE id=?", (sid,)).fetchone()
+    if row is None:
+        raise SpacesError("not_found", "Space not found")
+    return row
+
+
+def _shim(sid):
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,47}", sid):
+        raise SpacesError("invalid", "Invalid Space id")
+    return db.hermes_home() / "scripts" / f"living-spaces-refresh-{sid}.py"
+
+
+def _next(job):
+    value = job.get("next_run_at")
+    if value is None:
+        return None
+    if isinstance(value, (float, int)):
+        return float(value)
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+
+
+def _disabled(conn, sid, reason, actor):
+    conn.execute("UPDATE schedules SET status='disabled',next_run_at=NULL,decided_at=? WHERE space=?", (db.now(), sid))
+    conn.execute("INSERT INTO audit(space,at,actor,action,outcome,detail) VALUES(?,?,?,?,?,?)", (
+        sid, db.now(), actor, "schedule.disabled", "disabled", json.dumps({"reason": reason}),
+    ))
+
+
+def _schedule_row(sid):
+    with db.read() as conn:
+        row = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        if result["status"] == "disabled":
+            audit = conn.execute("SELECT detail FROM audit WHERE space=? AND action='schedule.disabled' ORDER BY id DESC LIMIT 1", (sid,)).fetchone()
+            if audit:
+                result["reason"] = json.loads(audit["detail"])["reason"]
+        return result
+
+
+def get_schedule(sid):
+    schedule = _schedule_row(sid)
+    if schedule is None or not schedule["cron_job_id"] or schedule["status"] not in ("active", "paused"):
+        return schedule
+    with db.write() as conn:
+        current = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
+        if current is None:
+            return None
+        if current["cron_job_id"] != schedule["cron_job_id"] or current["status"] not in ("active", "paused"):
+            return dict(current)
+        try:
+            job = _cron().get_job(current["cron_job_id"])
+        except ImportError as exc:
+            _disabled(conn, sid, f"Native cron is unavailable: {exc}", "upkeep:schedule")
+        else:
+            if job is None:
+                _disabled(conn, sid, "Native cron job is missing; approve the schedule again", "upkeep:schedule")
+            else:
+                paused = job.get("state") == "paused" or not job.get("enabled", True)
+                conn.execute("UPDATE schedules SET status=?,next_run_at=? WHERE space=?", (
+                    "paused" if paused else "active", None if paused else _next(job), sid,
+                ))
+    return _schedule_row(sid)
+
+
+def request_schedule(sid, *, cadence, timezone, purpose, actor):
+    if not isinstance(cadence, str) or not cadence.strip():
+        raise SpacesError("invalid", "Schedule cadence is required")
+    try:
+        ZoneInfo(timezone)
+    except (ZoneInfoNotFoundError, ValueError, TypeError) as exc:
+        raise SpacesError("invalid", "Schedule timezone must be an IANA timezone") from exc
+    with db.write() as conn:
+        _space(conn, sid)
+        existing = conn.execute("SELECT cron_job_id FROM schedules WHERE space=?", (sid,)).fetchone()
+        if existing and existing["cron_job_id"]:
+            try:
+                _cron().pause_job(existing["cron_job_id"], reason="Schedule change awaiting approval")
+            except ImportError as exc:
+                raise SpacesError("blocked", "Cannot pause the existing native cron job", reason=str(exc)) from exc
+        conn.execute("INSERT INTO schedules(space,status,cadence,timezone,purpose,requested_at) VALUES(?,'requested',?,?,?,?) ON CONFLICT(space) DO UPDATE SET status='requested',cadence=excluded.cadence,timezone=excluded.timezone,purpose=excluded.purpose,requested_at=excluded.requested_at,decided_at=NULL,next_run_at=NULL", (
+            sid, cadence, timezone, purpose, db.now(),
+        ))
+    return _schedule_row(sid)
+
+
+def decide_schedule(sid, decision, *, actor="user"):
+    if decision not in ("approve", "deny"):
+        raise SpacesError("invalid", "Schedule decision must be approve or deny")
+    with db.write() as conn:
+        space = _space(conn, sid)
+        row = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
+        if row is None:
+            raise SpacesError("not_found", "Schedule not found")
+        if decision == "approve" and space["status"] == "archived":
+            raise SpacesError("archived", "Unarchive the Space before approving upkeep")
+        try:
+            jobs = _cron()
+        except ImportError as exc:
+            _disabled(conn, sid, f"Native cron is unavailable: {exc}", actor)
+        else:
+            if decision == "approve" and row["status"] == "active" and row["cron_job_id"] and jobs.get_job(row["cron_job_id"]):
+                return dict(row)
+            if row["cron_job_id"]:
+                jobs.remove_job(row["cron_job_id"])
+                conn.execute("UPDATE schedules SET cron_job_id=NULL WHERE space=?", (sid,))
+            shim = _shim(sid)
+            if decision == "deny":
+                shim.unlink(missing_ok=True)
+                _disabled(conn, sid, "Schedule denied by user", actor)
+            else:
+                job = None
+                try:
+                    template = (PACKAGE / "scripts" / "refresh_space.py").read_text()
+                    script = template.replace("__LIVING_SPACES_PACKAGE__", repr(str(PACKAGE))).replace("__LIVING_SPACES_SID__", repr(sid))
+                    shim.parent.mkdir(parents=True, exist_ok=True)
+                    shim.write_text(script)
+                    job = jobs.create_job(
+                        prompt=None, schedule=row["cadence"], name=f"living-spaces:{sid}",
+                        script=shim.name, no_agent=True, deliver="local", catch_up=True, timezone=row["timezone"],
+                    )
+                    conn.execute("UPDATE schedules SET status='active',cron_job_id=?,decided_at=?,next_run_at=? WHERE space=?", (
+                        job["id"], db.now(), _next(job), sid,
+                    ))
+                except Exception as exc:
+                    if job:
+                        jobs.remove_job(job["id"])
+                    shim.unlink(missing_ok=True)
+                    _disabled(conn, sid, f"Could not enable native cron: {exc}", actor)
+    return _schedule_row(sid)
+
+
+def pause_schedule(sid, paused, *, actor):
+    if not isinstance(paused, bool):
+        raise SpacesError("invalid", "paused must be a boolean")
+    with db.write() as conn:
+        space = _space(conn, sid)
+        if not paused and space["status"] == "archived":
+            raise SpacesError("archived", "Unarchive the Space before resuming upkeep")
+        row = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
+        if row is None:
+            raise SpacesError("not_found", "Schedule not found")
+        if not row["cron_job_id"] or row["status"] not in ("active", "paused"):
+            raise SpacesError("blocked", "Approve the schedule before changing pause", reason="schedule_not_approved")
+        try:
+            jobs = _cron()
+        except ImportError as exc:
+            _disabled(conn, sid, f"Native cron is unavailable: {exc}", actor)
+        else:
+            job = jobs.pause_job(row["cron_job_id"], reason="Space upkeep paused") if paused else jobs.resume_job(row["cron_job_id"])
+            if job is None:
+                _disabled(conn, sid, "Native cron job is missing; approve the schedule again", actor)
+            else:
+                conn.execute("UPDATE schedules SET status=?,next_run_at=? WHERE space=?", ("paused" if paused else "active", None if paused else _next(job), sid))
+    return _schedule_row(sid)
+
+
+def on_archive(sid):
+    schedule = _schedule_row(sid)
+    if schedule and schedule["status"] in ("active", "paused"):
+        pause_schedule(sid, True, actor="upkeep:archive")
+
+
+def on_unarchive(sid):
+    return get_schedule(sid)
+
+
+def remove_schedule(sid):
+    with db.write() as conn:
+        _space(conn, sid)
+        row = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
+        if row and row["cron_job_id"]:
+            try:
+                jobs = _cron()
+            except ImportError as exc:
+                raise SpacesError("blocked", "Cannot remove the native cron job", reason=str(exc)) from exc
+            jobs.remove_job(row["cron_job_id"])
+        _shim(sid).unlink(missing_ok=True)
+        conn.execute("DELETE FROM schedules WHERE space=?", (sid,))
+
+
+def on_delete(sid):
+    remove_schedule(sid)
