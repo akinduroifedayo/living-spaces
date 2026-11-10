@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Living Spaces · design prototype (synthetic data)</title>
+<style>
+/* Tokens mirror Hermes Desktop styles.css (dark). Names kept so Forge can map 1:1 to --ui-* / --color-*. */
+:root{
+  --ui-accent:#0053fd; --ui-accent-lit:#5b8dff;
+  --ui-base:#f2f2f4;
+  --bg-chrome:#0d0d0e; --bg-sidebar:#0a0a0b; --bg-card:#161618; --bg-elev:#1c1c1f;
+  --stroke-1:rgba(255,255,255,.14); --stroke-2:rgba(255,255,255,.09); --stroke-3:rgba(255,255,255,.06);
+  --text-1:#f2f2f4; --text-2:#b4b4bb; --text-3:#8a8a93;
+  --green:#55a583; --red:#e75e78; --yellow:#d9a548; --purple:#9e94d5; --cyan:#6f9ba6; --orange:#e08a64;
+  --ring:#7aa2ff;
+  --r-sm:.5rem; --r-md:.625rem; --r-lg:.75rem; --r-xl:1rem;
+  --font:'Segoe UI',-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box} html,body{margin:0;height:100%}
+body{background:#050506;color:var(--text-1);font:14px/1.5 var(--font);-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px;border-radius:6px}
+::selection{background:rgba(255,210,74,.38)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* prototype control bar (NOT part of product) */
+#proto{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 12px;background:#000;border-bottom:1px solid var(--stroke-2);font-size:12px}
+#proto b{color:var(--text-3);font-weight:500;margin-right:2px}
+#proto button{background:#18181b;border:1px solid var(--stroke-2);padding:3px 9px;border-radius:999px;font-size:12px;color:var(--text-2)}
+#proto button[aria-pressed=true]{background:var(--ui-accent);border-color:var(--ui-accent);color:#fff}
+#proto .sep{width:1px;height:16px;background:var(--stroke-2);margin:0 6px}
+
+/* Hermes shell replica */
+#stage{height:calc(100vh - 41px);min-height:640px;display:grid;grid-template-columns:216px 1fr;background:var(--bg-chrome)}
+aside{background:var(--bg-sidebar);border-right:1px solid var(--stroke-3);padding:12px 8px;display:flex;flex-direction:column;gap:2px;font-size:13px}
+.dots{display:flex;gap:8px;padding:4px 8px 14px}.dots i{width:12px;height:12px;border-radius:50%}
+.tabs{display:flex;gap:14px;padding:0 8px 8px;font-size:10.5px;letter-spacing:.06em;color:var(--text-3)}
+.tabs span:first-child{color:var(--text-1);border-bottom:2px solid var(--ui-accent);padding-bottom:6px}
+.nav{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:var(--r-sm);color:var(--text-2)}
+.nav.on{background:color-mix(in srgb,var(--ui-accent) 16%,transparent);border:1px solid color-mix(in srgb,var(--ui-accent) 40%,transparent);color:var(--text-1)}
+.navlab{margin:16px 10px 4px;font-size:10px;letter-spacing:.1em;color:var(--ui-accent-lit)}
+.navnote{margin:4px 10px;color:var(--text-3);font-size:12px}
+main{position:relative;overflow:auto;min-width:0}
+.page{padding:20px 28px 40px;max-width:1180px}
+h1{font-size:20px;font-weight:600;margin:0;letter-spacing:-.01em}
+h2{font-size:14px;font-weight:600;margin:0}
+.muted{color:var(--text-2)} .dim{color:var(--text-3)}
+.num{font-variant-numeric:tabular-nums}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:var(--r-sm);background:var(--bg-elev);border:1px solid var(--stroke-1);color:var(--text-1);font-size:13px;white-space:nowrap}
+.btn:hover{background:#26262a}
+.btn.pri{background:var(--ui-accent);border-color:var(--ui-accent);color:#fff;font-weight:500}
+.btn.pri:hover{background:#1a66ff}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--text-2)} .btn.ghost:hover{background:rgba(255,255,255,.06);color:var(--text-1)}
+.btn.danger{border-color:color-mix(in srgb,var(--red) 55%,transparent);color:#ff9bb0}
+.btn.sm{height:28px;padding:0 10px;font-size:12.5px}
+.btn[aria-disabled=true]{opacity:.5;cursor:not-allowed}
+.btn.spin svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* status badge: shape+icon+text, never colour alone */
+.st{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px 0 6px;border-radius:999px;font-size:12px;font-weight:500;border:1px solid var(--stroke-1);color:var(--text-1);background:rgba(255,255,255,.04);white-space:nowrap}
+.st svg{width:13px;height:13px}
+.st.ready{color:#8fd1b3;border-color:color-mix(in srgb,var(--green) 45%,transparent)}
+.st.building{color:#b9afe8;border-color:color-mix(in srgb,var(--purple) 50%,transparent);border-style:dashed}
+.st.updating{color:#8fb4ff;border-color:color-mix(in srgb,var(--ui-accent-lit) 50%,transparent)}
+.st.failed{color:#ff9bb0;border-color:color-mix(in srgb,var(--red) 55%,transparent);background:color-mix(in srgb,var(--red) 10%,transparent)}
+.st.blocked{color:#f0c46c;border-color:color-mix(in srgb,var(--yellow) 55%,transparent);background:color-mix(in srgb,var(--yellow) 9%,transparent)}
+.st.archived{color:var(--text-3);border-style:dotted}
+.st.paused{color:var(--text-2)}
+
+/* index */
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 0 18px}
+.search{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border-radius:var(--r-md);border:1px solid var(--stroke-1);background:#101012;flex:1;min-width:220px;max-width:380px;box-shadow:inset 0 1px 1px rgba(0,0,0,.4)}
+.search input{background:none;border:0;outline:0;flex:1;min-width:0}
+.search:focus-within{outline:2px solid var(--ring);outline-offset:2px}
+.seg{display:flex;border:1px solid var(--stroke-1);border-radius:var(--r-md);overflow:hidden}
+.seg button{background:none;border:0;padding:0 12px;height:32px;color:var(--text-2);font-size:13px}
+.seg button[aria-pressed=true]{background:rgba(255,255,255,.09);color:var(--text-1);font-weight:500}
+.seg button+button{border-left:1px solid var(--stroke-2)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.card{position:relative;display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:var(--r-lg);background:var(--bg-card);border:1px solid var(--stroke-2);text-decoration:none;color:inherit;transition:border-color .15s,background .15s;--tile:var(--ui-accent)}
+.card:hover{border-color:color-mix(in srgb,var(--tile) 55%,transparent);background:color-mix(in srgb,var(--tile) 5%,var(--bg-card))}
+.card .top{display:flex;gap:12px;align-items:flex-start}
+.tile{--tile:var(--ui-accent);width:40px;height:40px;border-radius:11px;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--tile) 22%,#0d0d0e);border:1px solid color-mix(in srgb,var(--tile) 48%,transparent);color:color-mix(in srgb,var(--tile) 55%,#fff)}
+.tile svg{width:20px;height:20px}
+.tile.lg{width:32px;height:32px;border-radius:9px}.tile.lg svg{width:17px;height:17px}
+.card h3{margin:0;font-size:14.5px;font-weight:600;line-height:1.25}
+.card .desc{font-size:12.5px;color:var(--text-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .meta{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--text-2);padding-top:10px;border-top:1px solid var(--stroke-3)}
+.card .meta div{display:flex;gap:7px;align-items:center}
+.card .meta svg{width:14px;height:14px;color:var(--text-3)}
+.card.attn{border-color:color-mix(in srgb,var(--red) 40%,transparent)}
+.card.arch{opacity:.78}
+.bot{display:inline-flex;align-items:center;gap:5px;color:var(--text-1)}
+.av{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;color:#0a0a0b;background:var(--c,#9e94d5)}
+.pin{position:absolute;top:12px;right:12px;color:var(--text-3)}
+.empty{margin:48px auto 0;max-width:620px;text-align:left}
+.empty .art{display:flex;gap:10px;margin-bottom:22px}
+.empty .art .tile{width:52px;height:52px;border-radius:14px}
+.empty .art .tile:nth-child(2){--tile:var(--green);transform:translateY(8px)}.empty .art .tile:nth-child(3){--tile:var(--orange)}
+.prompt{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--r-lg);background:#101012;border:1px dashed var(--stroke-1);margin:10px 0;font-size:13.5px}
+.prompt q{flex:1;quotes:none;color:var(--text-1)}
+
+/* space frame */
+.frame-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 20px;border-bottom:1px solid var(--stroke-3);background:var(--bg-chrome);position:sticky;top:0;z-index:5}
+.crumb{display:inline-flex;align-items:center;gap:4px;color:var(--text-2);background:none;border:0;padding:4px 6px;border-radius:6px;font-size:13px}
+.crumb:hover{color:var(--text-1);background:rgba(255,255,255,.06)}
+.fb-title{display:flex;align-items:center;gap:10px;min-width:0}
+.fb-title h1{font-size:15px}
+.fb-sub{font-size:12px;color:var(--text-2);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dotsep{width:3px;height:3px;border-radius:50%;background:var(--text-3)}
+.fb-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sched{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--stroke-1);background:transparent;color:var(--text-2);font-size:13px}
+.sched:hover{background:rgba(255,255,255,.05);color:var(--text-1)}
+.save{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);min-height:24px}
+.save.failed{color:#ff9bb0}.save.conflict{color:#f0c46c}.save.saved{color:#8fd1b3}
+.banner{display:flex;gap:12px;align-items:flex-start;padding:12px 20px;border-bottom:1px solid var(--stroke-2);font-size:13px}
+.banner svg{margin-top:2px}
+.banner .b-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.banner.err{background:color-mix(in srgb,var(--red) 9%,var(--bg-chrome))}
+.banner.warn{background:color-mix(in srgb,var(--yellow) 8%,var(--bg-chrome))}
+.banner.info{background:color-mix(in srgb,var(--ui-accent) 9%,var(--bg-chrome))}
+.banner strong{font-weight:600}
+.banner .why{color:var(--text-2);display:block;margin-top:2px}
+.sandbox{margin:16px 20px 24px;border:1px solid var(--stroke-2);border-radius:var(--r-lg);background:#121214;overflow:hidden;min-height:420px;position:relative}
+.sandbox.stale .content{filter:saturate(.7)}
+.sb-tabs{display:flex;gap:2px;padding:8px 12px;border-bottom:1px solid var(--stroke-3);background:#0f0f11}
+.sb-tabs span{padding:4px 12px;border-radius:7px;color:var(--text-2);font-size:13px}
+.sb-tabs span.on{background:rgba(255,255,255,.08);color:var(--text-1)}
+.content{padding:20px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.kpi{padding:12px;border-radius:10px;background:#18181b;border:1px solid var(--stroke-3)}
+.kpi small{color:var(--text-3);font-size:11.5px;display:block}.kpi b{font-size:22px;font-weight:600}
+.content .wide{grid-column:1/-1}
+.row{display:flex;gap:10px;padding:9px 12px;border-bottom:1px solid var(--stroke-3);font-size:13px;align-items:center}
+.row span:first-child{flex:1}
+.chip{font-size:11.5px;padding:1px 8px;border-radius:999px;border:1px solid var(--stroke-1);color:var(--text-2)}
+.crash{position:absolute;inset:0;display:grid;place-items:center;background:#121214;padding:24px}
+.crash .box{max-width:520px}
+.crash h2{font-size:17px;margin:12px 0 6px}
+pre.diag{margin:12px 0;padding:10px 12px;background:#0a0a0b;border:1px solid var(--stroke-2);border-radius:8px;font:12px/1.55 var(--mono);color:#cfcfd6;overflow:auto;white-space:pre-wrap}
+.sbnote{position:absolute;right:10px;bottom:8px;font-size:11px;color:var(--text-3)}
+
+/* drawer */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:20}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--bg-card);border-left:1px solid var(--stroke-1);z-index:21;display:flex;flex-direction:column;box-shadow:-18px 0 40px rgba(0,0,0,.45)}
+.dr-h{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--stroke-3)}
+.dr-h h2{font-size:15px;flex:1}
+.dr-b{overflow:auto;padding:16px;display:flex;flex-direction:column;gap:14px;flex:1}
+.note{padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--stroke-1);background:#101012;font-size:12.5px;color:var(--text-2);line-height:1.55}
+.note strong{color:var(--text-1);display:flex;gap:7px;align-items:center;margin-bottom:4px;font-size:13px}
+.grant{padding:12px;border-radius:var(--r-md);border:1px solid var(--stroke-2);background:#121214;display:flex;flex-direction:column;gap:8px}
+.grant .gh{display:flex;gap:8px;align-items:center}
+.grant .gh h3{margin:0;font-size:13.5px;font-weight:600;flex:1}
+.grant dl{margin:0;display:grid;grid-template-columns:76px 1fr;gap:3px 10px;font-size:12.5px}
+.grant dt{color:var(--text-3)} .grant dd{margin:0;color:var(--text-2)}
+.grant .ga{display:flex;gap:8px;margin-top:2px;flex-wrap:wrap}
+.grant.pending{border-color:color-mix(in srgb,var(--yellow) 50%,transparent);background:color-mix(in srgb,var(--yellow) 6%,#121214)}
+.r2{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r-md);border:1px dashed var(--stroke-2);color:var(--text-3);font-size:13px}
+.r2 span.l{flex:1}
+.r2 em{font-style:normal;font-size:11.5px;border:1px solid var(--stroke-2);padding:0 7px;border-radius:999px}
+.h-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:6px 0 -4px}
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl li{display:grid;grid-template-columns:22px 1fr auto;gap:10px;padding:10px 0;border-bottom:1px solid var(--stroke-3);font-size:13px}
+.tl li small{display:block;color:var(--text-2);font-size:12px}
+.tl .ic{margin-top:2px}
+.dtabs{display:flex;gap:2px;padding:0 12px;border-bottom:1px solid var(--stroke-3)}
+.dtabs button{background:none;border:0;padding:9px 12px;color:var(--text-2);border-bottom:2px solid transparent;font-size:13px}
+.dtabs button[aria-selected=true]{color:var(--text-1);border-color:var(--ui-accent)}
+.modal{position:absolute;inset:0;display:grid;place-items:center;z-index:30;background:rgba(0,0,0,.55)}
+.modal .m{width:min(440px,92%);padding:18px;border-radius:var(--r-xl);background:var(--bg-elev);border:1px solid var(--stroke-1);box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.modal h2{font-size:16px;margin-bottom:8px}.modal p{margin:0 0 14px;color:var(--text-2);font-size:13px}
+.modal .ma{display:flex;gap:8px;justify-content:flex-end}
+@media (max-width:900px){#stage{grid-template-columns:1fr}aside{display:none}.content{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="proto" role="toolbar" aria-label="Prototype state switcher (not part of the product)"></div>
+<div id="stage">
+  <aside aria-label="Hermes sidebar (reference replica)">
+    <div class="dots"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div class="tabs"><span>SESSIONS</span><span>BOTS</span></div>
+    <div class="nav"><svg class="i"><use href="#i-plus"/></svg>New session</div>
+    <div class="nav"><svg class="i"><use href="#i-bolt"/></svg>Capabilities</div>
+    <div class="nav"><svg class="i"><use href="#i-chat"/></svg>Messaging</div>
+    <div class="nav"><svg class="i"><use href="#i-file"/></svg>Artifacts</div>
+    <div class="nav"><svg class="i"><use href="#i-clock"/></svg>Scheduled jobs</div>
+    <div class="nav on" aria-current="page"><svg class="i"><use href="#i-layers"/></svg>Spaces<span id="navbadge" style="margin-left:auto"></span></div>
+    <div class="navlab">PINNED</div><div class="navnote">Shift-click a chat to pin</div>
+    <div class="navlab">SESSIONS</div>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 16 16"><path d="M9 1.5 3.5 9H8l-1 5.5L12.5 7H8z"/></symbol>
+<symbol id="i-chat" viewBox="0 0 16 16"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></symbol>
+<symbol id="i-file" viewBox="0 0 16 16"><path d="M4 1.5h5l3 3v10H4zM9 1.5v3h3"/></symbol>
+<symbol id="i-clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></symbol>
+<symbol id="i-layers" viewBox="0 0 16 16"><path d="m8 2 6 3-6 3-6-3zM2 8l6 3 6-3M2 11l6 3 6-3"/></symbol>
+<symbol id="i-check" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="m5.5 8 2 2 3-3.5"/></symbol>
+<symbol id="i-spin" viewBox="0 0 16 16"><path d="M8 2a6 6 0 1 0 6 6"/></symbol>
+<symbol id="i-hammer" viewBox="0 0 16 16"><path d="M2.5 13.5 9 7M7 3.5l3-1 3.5 3.5-1 3-2.5-.5L7.5 5z"/></symbol>
+<symbol id="i-x" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="m5.8 5.8 4.4 4.4M10.2 5.8 5.8 10.2"/></symbol>
+<symbol id="i-tri" viewBox="0 0 16 16"><path d="M8 2 14.5 13.5h-13z"/><path d="M8 6.5v3.2M8 11.6v.1"/></symbol>
+<symbol id="i-block" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="m3.8 12.2 8.4-8.4"/></symbol>
+<symbol id="i-archive" viewBox="0 0 16 16"><path d="M2 3.5h12v3H2zM3 6.5v7h10v-7M6.5 9h3"/></symbol>
+<symbol id="i-pause" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.5 5.8v4.4M9.5 5.8v4.4"/></symbol>
+<symbol id="i-play" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="m6.8 5.6 3.6 2.4-3.6 2.4z"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.6-3.7M13 2.5v3h-3"/></symbol>
+<symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></symbol>
+<symbol id="i-back" viewBox="0 0 16 16"><path d="M9.5 3.5 5 8l4.5 4.5"/></symbol>
+<symbol id="i-shield" viewBox="0 0 16 16"><path d="M8 1.8 13 3.6v4.2c0 3-2.2 5.2-5 6.4-2.8-1.2-5-3.4-5-6.4V3.6z"/></symbol>
+<symbol id="i-hist" viewBox="0 0 16 16"><path d="M2.5 8a5.5 5.5 0 1 0 1.8-4M2.5 2.5v3h3M8 5v3.2l2 1.2"/></symbol>
+<symbol id="i-rev" viewBox="0 0 16 16"><circle cx="4" cy="3.5" r="1.5"/><circle cx="4" cy="12.5" r="1.5"/><circle cx="12" cy="8" r="1.5"/><path d="M4 5v6M4 8h6.5"/></symbol>
+<symbol id="i-bot" viewBox="0 0 16 16"><rect x="3" y="5" width="10" height="8" rx="2"/><path d="M8 5V2.5M6 9v.1M10 9v.1"/></symbol>
+<symbol id="i-pin" viewBox="0 0 16 16"><path d="M9.5 2 14 6.5l-2 .5-2.5 2.5.3 3-1 1L3.5 8.8l1-1 3 .3L10 5.5z"/></symbol>
+<symbol id="i-copy" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></symbol>
+<symbol id="i-info" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 7.2v3.6M8 5v.1"/></symbol>
+<symbol id="i-globe" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12"/></symbol>
+<symbol id="i-cam" viewBox="0 0 16 16"><rect x="1.8" y="4.5" width="9" height="7" rx="1.5"/><path d="m10.8 7 3.4-1.8v5.6L10.8 9"/></symbol>
+<symbol id="i-mic" viewBox="0 0 16 16"><rect x="6" y="1.8" width="4" height="7" rx="2"/><path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2"/></symbol>
+<symbol id="i-loc" viewBox="0 0 16 16"><path d="M8 14.5s4.5-4 4.5-7.5a4.5 4.5 0 0 0-9 0c0 3.5 4.5 7.5 4.5 7.5z"/><circle cx="8" cy="7" r="1.5"/></symbol>
+<symbol id="i-tool" viewBox="0 0 16 16"><path d="M10.5 2.5a3.2 3.2 0 0 0-3 4.4L2.5 12a1.4 1.4 0 0 0 2 2l5-5a3.2 3.2 0 0 0 4.4-3l-2 2-1.8-.4-.4-1.8z"/></symbol>
+<symbol id="i-folder" viewBox="0 0 16 16"><path d="M1.8 3.5h4.5l1.5 1.5h6.4v7.5H1.8z"/></symbol>
+<symbol id="i-book" viewBox="0 0 16 16"><path d="M2.5 3h4c1 0 1.5.5 1.5 1.5V13c0-.8-.5-1.2-1.5-1.2h-4zM13.5 3h-4C8.5 3 8 3.5 8 4.5V13c0-.8.5-1.2 1.5-1.2h4z"/></symbol>
+<symbol id="i-cal" viewBox="0 0 16 16"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"/></symbol>
+<symbol id="i-chart" viewBox="0 0 16 16"><path d="M2.5 2.5v11h11M5 10l2.5-3 2 2L13 5"/></symbol>
+<symbol id="i-game" viewBox="0 0 16 16"><rect x="1.8" y="4.5" width="12.4" height="7" rx="3"/><path d="M5 6.7v2.6M3.7 8h2.6M10.5 7.2v.1M12 8.6v.1"/></symbol>
+<symbol id="i-chev" viewBox="0 0 16 16"><path d="m6 4 4 4-4 4"/></symbol>
+</defs></svg>
+
+<script>
+const ic=(n,c='')=>`<svg class="i ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+/* ---------- synthetic fixtures (all fictional/public-style) ---------- */
+const BOTS={atlas:{n:'Atlas',c:'#9e94d5'},juno:{n:'Juno',c:'#6fbf9c'},kit:{n:'Kit',c:'#e0a06c'}};
+const SPACES=[
+ {id:'rd',name:'Research Desk',desc:'Reading system for public AI research: library, queue and topic overview.',icon:'book',tile:'#0053fd',bot:'atlas',st:'ready',fresh:'Updated 12 min ago',next:'Next refresh 3:00 PM',pin:1},
+ {id:'ft',name:'Fitness Planner',desc:'Weekly training plan with sets, rest timers and a progress chart.',icon:'cal',tile:'#55a583',bot:'juno',st:'updating',fresh:'Refreshing now…',next:'Last good update 8:00 AM'},
+ {id:'rt',name:'Release Tracker',desc:'Checklist, notes and a refresh trend for the weekly release.',icon:'chart',tile:'#e0a06c',bot:'kit',st:'failed',fresh:'Refresh failed 9:15 AM',next:'Showing last good data from 6:15 AM'},
+ {id:'ch',name:'Chess Trainer',desc:'Opening drills with spaced repetition.',icon:'game',tile:'#9e94d5',bot:'juno',st:'building',fresh:'Atlas is building the first version',next:'Started 2 min ago'},
+ {id:'bk',name:'Budget Notebook',desc:'Monthly categories, tags and a running balance (demo data).',icon:'file',tile:'#4c9fb0',bot:'kit',st:'blocked',fresh:'Refresh blocked 7:00 AM',next:'Owner bot Kit is unavailable'},
+ {id:'tr',name:'Trip Notes 2025',desc:'Itinerary and packing list from last year.',icon:'folder',tile:'#8a8a93',bot:'atlas',st:'archived',fresh:'Archived Oct 3',next:'Schedules stopped'},
+];
+const ST={ready:['check','Ready'],building:['hammer','Building'],updating:['refresh','Updating'],failed:['x','Failed'],blocked:['block','Blocked'],archived:['archive','Archived'],paused:['pause','Paused']};
+const badge=s=>`<span class="st ${s}">${ic(ST[s][0])}${ST[s][1]}</span>`;
+const botchip=b=>`<span class="bot"><span class="av" style="--c:${BOTS[b].c}" aria-hidden="true">${BOTS[b].n[0]}</span>${BOTS[b].n}</span>`;
+
+/* ---------- state ---------- */
+let S={screen:'index',filter:'all',q:'',panel:null,tab:'runs',save:'saved',confirm:null,
+  grants:{own:'granted',refresh:'granted',diag:'granted',ask:'pending'}, sched:'on', refreshing:false};
+const q=new URLSearchParams(location.search);
+['screen','panel','tab','save'].forEach(k=>{if(q.get(k))S[k]=q.get(k)});
+if(q.get('confirm'))S.confirm=q.get('confirm');
+if(q.get('grants')==='denied')S.grants.ask='denied';
+if(q.get('grants')==='revoked')S.grants.refresh='revoked';
+
+const PROTO=[
+ ['index','Index'],['empty','Index · first run'],['space','Space'],['failed','Failed refresh'],['blocked','Blocked'],['crashed','Crashed'],['conflict','Conflict'],['archived','Archived']
+];
+function set(p){Object.assign(S,p);render()}
+function protoBar(){
+  const sc=PROTO.map(([k,l])=>`<button aria-pressed="${S.screen===k}" onclick="set({screen:'${k}',panel:null,confirm:null,save:'saved'})">${l}</button>`).join('');
+  const pn=[['permissions','Permissions'],['history','History & revisions']].map(([k,l])=>`<button aria-pressed="${S.panel===k}" onclick="set({panel:S.panel==='${k}'?null:'${k}'})">${l}</button>`).join('');
+  const sv=['saving','saved','failed','conflict'].map(k=>`<button aria-pressed="${S.save===k}" onclick="set({save:'${k}'})">${k}</button>`).join('');
+  document.getElementById('proto').innerHTML=`<b>Screen</b>${sc}<span class="sep"></span><b>Panel</b>${pn}<span class="sep"></span><b>Save indicator</b>${sv}<span class="sep"></span><span style="color:var(--text-3)">Synthetic fixtures · prototype controls are not product UI</span>`;
+}
+
+/* ---------- index ---------- */
+function cardHTML(s){
+  const cls=s.st==='failed'||s.st==='blocked'?'attn':s.st==='archived'?'arch':'';
+  const lab=`${s.name}, ${ST[s.st][1]}, owner ${BOTS[s.bot].n}. ${s.fresh}. ${s.next}`;
+  const ficon=s.st==='failed'||s.st==='blocked'?'tri':s.st==='updating'?'refresh':s.st==='building'?'hammer':s.st==='archived'?'archive':'clock';
+  return `<a class="card ${cls}" href="#" style="--tile:${s.tile}" aria-label="${lab}" onclick="event.preventDefault();openSpace('${s.id}')">
+   ${s.pin?`<span class="pin" title="Pinned">${ic('pin')}<span class="sr">Pinned</span></span>`:''}
+   <div class="top"><span class="tile">${ic(s.icon)}</span><div style="min-width:0;padding-right:${s.pin?18:0}px"><h3>${s.name}</h3><div class="dim" style="font-size:12px;margin-top:2px">${botchip(s.bot)}</div></div></div>
+   <div class="desc">${s.desc}</div>
+   <div style="display:flex">${badge(s.st)}</div>
+   <div class="meta"><div>${ic(ficon)}<span>${s.fresh}</span></div><div style="padding-left:21px;margin-top:-2px" class="dim">${s.next}</div></div>
+  </a>`;
+}
+function openSpace(id){const m={rd:'space',rt:'failed',bk:'blocked',tr:'archived',ft:'space',ch:'space'};set({screen:m[id]||'space',panel:null})}
+function indexView(){
+  let list=SPACES.filter(s=>(S.filter==='all'?s.st!=='archived':S.filter==='attn'?['failed','blocked'].includes(s.st):s.st==='archived')&&(s.name+s.desc+BOTS[s.bot].n).toLowerCase().includes(S.q.toLowerCase()));
+  const attn=SPACES.filter(s=>['failed','blocked'].includes(s.st)).length;
+  const seg=[['all','All'],['attn',`Needs attention · ${attn}`],['arch','Archived']].map(([k,l])=>`<button aria-pressed="${S.filter===k}" onclick="set({filter:'${k}'})">${l}</button>`).join('');
+  return `<div class="page">
+   <div style="display:flex;align-items:baseline;gap:12px"><h1>Spaces</h1><span class="muted num">${SPACES.filter(s=>s.st!=='archived').length} active · ${attn} need attention</span></div>
+   <div class="toolbar" role="search">
+     <label class="search">${ic('search')}<span class="sr">Search Spaces by name, description or owner</span><input id="q" type="search" placeholder="Search Spaces or owner" value="${S.q}" oninput="S.q=this.value;render(true)"></label>
+     <div class="seg" role="group" aria-label="Filter Spaces">${seg}</div>
+     <span class="dim" style="margin-left:auto;font-size:12.5px">Sorted by recently used</span>
+   </div>
+   ${list.length?`<div class="grid" role="list" aria-label="Spaces">${list.map(s=>`<div role="listitem" style="display:contents">${cardHTML(s)}</div>`).join('')}</div>`
+     :`<div class="note" role="status">No Spaces match “${S.q||S.filter}”. ${S.filter==='attn'?'Nothing needs attention.':'Try another name or owner.'}</div>`}
+   <p class="dim" style="margin-top:22px;font-size:12.5px">Spaces are built and changed in a normal chat. Ask your agent to “build…”, “change…” or “keep … current”.</p>
+  </div>`;
+}
+function emptyView(){
+  return `<div class="page"><h1>Spaces</h1>
+  <div class="empty">
+   <div class="art" aria-hidden="true"><span class="tile">${ic('book')}</span><span class="tile">${ic('cal')}</span><span class="tile">${ic('chart')}</span></div>
+   <h1 style="font-size:24px;line-height:1.2">Build your first Space in chat</h1>
+   <p class="muted" style="max-width:52ch;margin:10px 0 18px">A Space is a dashboard, planner, game or small app your agent builds and keeps current. Describe it in any Hermes chat, then open it here.</p>
+   <div class="prompt">${ic('chat')}<q>Build Research Desk: an overview, a searchable library and a reading queue. Keep my notes and reading status.</q><button class="btn sm" onclick="this.lastChild.textContent=' Copied';setTimeout(()=>this.lastChild.textContent=' Copy',1500)">${ic('copy')}<span> Copy</span></button></div>
+   <div class="prompt">${ic('chat')}<q>Build a weekly fitness planner with a progress chart. Refresh it every Monday.</q><button class="btn sm">${ic('copy')}<span> Copy</span></button></div>
+   <div style="display:flex;gap:10px;margin-top:18px"><button class="btn pri">${ic('plus')}Start a new chat</button><span class="dim" style="align-self:center;font-size:12.5px">New Spaces appear here, labelled Building until ready.</span></div>
+  </div></div>`;
+}
+
+/* ---------- space frame ---------- */
+const SP={name:'Research Desk',tile:'#0053fd',icon:'book',bot:'atlas'};
+const SAVE={saving:['spin','Saving…','saving'],saved:['check','Saved 9:16 AM','saved'],failed:['x','Not saved — “Priority” change was not stored','failed'],conflict:['tri','Conflict — this record changed elsewhere','conflict']};
+function frame(){
+  const sc=S.screen;
+  const state=sc==='failed'?'failed':sc==='blocked'?'blocked':sc==='crashed'?'failed':sc==='archived'?'archived':S.refreshing?'updating':'ready';
+  const lab=sc==='crashed'?'Crashed':ST[state][1];
+  const stBadge=sc==='crashed'?`<span class="st failed">${ic('x')}Crashed</span>`:badge(state);
+  const ar=sc==='archived';
+  const sv=SAVE[S.save];
+  const fresh=sc==='failed'?`Last successful update <b class="num">6:15 AM</b> · last attempt <b class="num">9:15 AM</b> failed`
+    :sc==='blocked'?`Last successful update <b class="num">Yesterday 7:00 AM</b> · last attempt blocked`
+    :ar?`Archived Oct 3 · last successful update <b class="num">Oct 2, 7:00 AM</b>`
+    :`Last successful update <b class="num">9:15 AM</b> · source data from 9:10 AM`;
+  const schedTxt=ar?'Schedules stopped':sc==='blocked'?'Daily 7:00 AM · blocked':S.sched==='on'?'Daily 7:00 AM CT':'Schedule paused';
+  const bn=sc==='failed'?`<div class="banner err" role="alert">${ic('x')}<div><strong>Refresh failed at 9:15 AM. You're seeing data from 6:15 AM.</strong><span class="why">The source didn't respond (timeout after 30 s). Your notes and statuses are unchanged. Next automatic try 10:00 AM.</span></div><div class="b-actions"><button class="btn sm" onclick="set({panel:'history',tab:'runs'})">View run details</button><button class="btn sm pri">${ic('refresh')}Try again</button></div></div>`
+   :sc==='blocked'?`<div class="banner warn" role="alert">${ic('block')}<div><strong>Refresh is blocked: the owner bot is unavailable.</strong><span class="why">Atlas isn't connected, so scheduled and manual refreshes can't run. The Space still opens and your data is safe. The last run (7:00 AM) never started.</span></div><div class="b-actions"><button class="btn sm" onclick="set({panel:'permissions'})">Review permissions</button><button class="btn sm pri">Reconnect Atlas</button></div></div>`
+   :sc==='conflict'||S.save==='conflict'?`<div class="banner warn" role="alert">${ic('tri')}<div><strong>“Attention Is All You Need” changed while you were editing.</strong><span class="why">A refresh updated this record at 9:15 AM. Your note is kept below; nothing has been overwritten.</span></div><div class="b-actions"><button class="btn sm">Keep my note</button><button class="btn sm">Use updated record</button><button class="btn sm ghost">Compare</button></div></div>`
+   :ar?`<div class="banner info" role="status">${ic('archive')}<div><strong>This Space is archived. Refreshes and schedules are off.</strong><span class="why">Restore it to resume upkeep. Delete removes it and its data permanently.</span></div><div class="b-actions"><button class="btn sm pri">Restore Space</button><button class="btn sm danger">Delete…</button></div></div>`
+   :S.save==='failed'?`<div class="banner err" role="alert">${ic('x')}<div><strong>Your last change wasn't saved.</strong><span class="why">Hermes couldn't write to this Space's data. Nothing shows as saved that isn't.</span></div><div class="b-actions"><button class="btn sm pri" onclick="set({save:'saving'});setTimeout(()=>set({save:'saved'}),900)">Retry save</button></div></div>`:'';
+  const sandbox=sc==='crashed'?`<div class="crash"><div class="box"><span class="tile lg" style="--tile:var(--red)">${ic('tri')}</span>
+    <h2>Research Desk stopped working</h2>
+    <p class="muted" style="margin:0">The Space hit an error and was stopped. Your records are safe and weren't changed by the crash.</p>
+    <pre class="diag">TypeError: Cannot read properties of undefined (reading 'map')
+  at Queue.render (views/queue.js:42:18)
+revision 7 · 9:21 AM · logged to this Space only</pre>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri">${ic('refresh')}Reload Space</button><button class="btn" onclick="set({panel:'history',tab:'revs'})">${ic('rev')}Restore revision 6…</button></div>
+    <div class="prompt" style="margin-top:14px">${ic('chat')}<q>Atlas, Research Desk crashed in the Queue view. Please read its error log and fix it.</q><button class="btn sm">${ic('copy')}<span> Copy</span></button></div>
+    <p class="dim" style="font-size:12.5px;margin:4px 0 0">Repairs happen in chat. Atlas can read this error and apply a new revision.</p></div></div>`:
+   `<div class="sb-tabs" role="tablist" aria-label="Views in Research Desk (generated by the Space)"><span class="on">Overview</span><span>Library</span><span>Queue</span></div>
+    <div class="content" ${sc==='failed'||sc==='blocked'?'':''}>
+     <div class="kpi"><small>Papers in library</small><b class="num">128</b></div><div class="kpi"><small>In reading queue</small><b class="num">14</b></div><div class="kpi"><small>Read this week</small><b class="num">5</b></div>
+     <div class="wide" style="border:1px solid var(--stroke-3);border-radius:10px;overflow:hidden"><div class="row" style="background:#18181b"><span class="dim">Title · status</span><span class="dim">Source</span></div>
+      <div class="row"><span>Attention Is All You Need</span><span class="chip">Reading</span><span class="dim">arXiv</span></div>
+      <div class="row"><span>Scaling Laws for Neural Language Models</span><span class="chip">Queued</span><span class="dim">arXiv</span></div>
+      <div class="row"><span>Constitutional AI: Harmlessness from AI Feedback</span><span class="chip">Done</span><span class="dim">arXiv</span></div></div></div>
+    <div class="sbnote">${ic('shield')} Content below the bar is generated by this Space and runs sandboxed</div>`;
+  return `<div style="display:flex;flex-direction:column;min-height:100%;position:relative">
+   <header class="frame-bar">
+    <button class="crumb" onclick="set({screen:'index',panel:null})">${ic('back')}Spaces</button>
+    <div class="fb-title"><span class="tile lg" style="--tile:${SP.tile}">${ic(SP.icon)}</span>
+      <div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h1>${SP.name}</h1>${stBadge}</div>
+       <div class="fb-sub">${botchip('atlas')}<span class="dotsep"></span><span>${fresh}</span></div></div></div>
+    <div class="fb-actions">
+     <span class="save ${sv[2]}" role="status" aria-live="polite">${ic(sv[0])}${sv[1]}</span>
+     <button class="sched" onclick="set({panel:'schedule'})" aria-label="Schedule: ${schedTxt}. Edit schedule">${ic('clock')}${schedTxt}</button>
+     <button class="btn ghost" onclick="set({sched:S.sched==='on'?'paused':'on'})" aria-pressed="${S.sched!=='on'}" ${ar?'aria-disabled="true"':''}>${ic(S.sched==='on'?'pause':'play')}${S.sched==='on'?'Pause upkeep':'Resume upkeep'}</button>
+     <button class="btn ghost" onclick="set({panel:'history',tab:'runs'})">${ic('hist')}History</button>
+     <button class="btn ghost" onclick="set({panel:'permissions'})">${ic('shield')}Permissions</button>
+     <button class="btn pri ${S.refreshing?'spin':''}" id="rf" ${ar||sc==='blocked'?'aria-disabled="true"':''} onclick="doRefresh()">${ic('refresh')}${S.refreshing?'Refreshing…':'Refresh now'}</button>
+    </div>
+   </header>
+   ${bn}
+   <div class="sandbox ${sc==='failed'?'stale':''}" aria-label="Space content">${sandbox}</div>
+  </div>`;
+}
+function doRefresh(){if(S.refreshing||S.screen==='blocked'||S.screen==='archived')return;S.refreshing=true;render();setTimeout(()=>{S.refreshing=false;render()},1800)}
+
+/* ---------- panels ---------- */
+function grantCard(k,icon,title,scope,purpose,egress,mode){
+  const g=S.grants[k]; const stt=g==='granted'?`<span class="st ready">${ic('check')}Allowed</span>`:g==='pending'?`<span class="st blocked">${ic('info')}Needs your decision</span>`:g==='denied'?`<span class="st failed">${ic('block')}Denied</span>`:`<span class="st archived">${ic('block')}Revoked</span>`;
+  const acts=g==='granted'?`<button class="btn sm danger" onclick="set({confirm:'revoke-${k}'})">Revoke</button>`:g==='pending'?`<button class="btn sm pri" onclick="S.grants.${k}='granted';render()">Approve</button><button class="btn sm" onclick="S.grants.${k}='denied';render()">Deny</button><button class="btn sm ghost">Approve narrower…</button>`:`<button class="btn sm" onclick="S.grants.${k}='granted';render()">Allow again</button>`;
+  const res=g==='denied'?`<div class="dim" style="font-size:12.5px">Denied. The Space shows “Ask the agent isn't available” instead of prompting again.</div>`:g==='revoked'?`<div class="dim" style="font-size:12.5px">Revoked. Refresh is off for this Space; scheduled runs show Blocked. Data already delivered can't be recalled.</div>`:'';
+  return `<section class="grant ${g==='pending'?'pending':''}" aria-label="${title}"><div class="gh">${ic(icon)}<h3>${title}</h3>${stt}</div>
+   <dl><dt>Scope</dt><dd>${scope}</dd><dt>Purpose</dt><dd>${purpose}</dd><dt>Data leaves device</dt><dd>${egress}</dd><dt>Access</dt><dd>${mode}</dd></dl>
+   ${res}<div class="ga">${acts}</div></section>`;
+}
+function permissions(){
+  return `<div class="note" role="note"><strong>${ic('info')}Before you approve anything</strong>Spaces block ordinary internet connections unless you approve a site or capability. This is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle.</div>
+   <div class="h-label">Granted to Research Desk</div>
+   ${grantCard('own','folder','Own data',"This Space's records only. Cannot see other Spaces.",'Store your library, notes and statuses.','No','Continuing')}
+   ${grantCard('refresh','refresh','Refresh','Handler “Public sources refresh”. Reads public arXiv listings.','Keep papers current while closed.','Yes — requests public listings','Continuing · daily 7:00 AM CT')}
+   ${grantCard('diag','info','Diagnostics','Error logs from this Space, secrets redacted.','Let Atlas see crashes and repair them.','No','Continuing')}
+   <div class="h-label">Waiting for your decision</div>
+   ${grantCard('ask','bot','Ask the agent','Task “Summarize new papers” on Atlas. No arbitrary prompts.',"Draft a weekly summary from this Space's records.",'Yes — sent to your model provider','Once per run')}
+   <div class="h-label">Coming in release 2 — not available yet</div>
+   <div class="r2" aria-disabled="true">${ic('globe')}<span class="l">Approved sites (embeds, maps, video)</span><em>Not available yet</em></div>
+   <div class="r2" aria-disabled="true">${ic('cam')}<span class="l">Camera</span><em>Not available yet</em></div>
+   <div class="r2" aria-disabled="true">${ic('mic')}<span class="l">Microphone</span><em>Not available yet</em></div>
+   <div class="r2" aria-disabled="true">${ic('loc')}<span class="l">Location</span><em>Not available yet</em></div>
+   <div class="r2" aria-disabled="true">${ic('tool')}<span class="l">Hermes tools, per tool</span><em>Not available yet</em></div>
+   <div class="r2" aria-disabled="true">${ic('folder')}<span class="l">Files and folders</span><em>Not available yet</em></div>
+   <div class="dim" style="font-size:12px">Camera, microphone and location will start off and also follow Hermes and macOS permission prompts. Release 2 will revisit what Spaces can read before tool and file access is offered.</div>`;
+}
+function historyPanel(){
+  const runs=[
+   ['ok','Refresh succeeded','Manual · 9:15 AM · 6 s','2 new papers · 0 notes changed'],
+   ['ok','Refresh succeeded','Scheduled · Today 7:00 AM · 8 s','No new papers (no change)'],
+   ['fail','Refresh failed','Scheduled · Yesterday 7:00 AM','Source timed out after 30 s. Last good data kept.'],
+   ['block','Refresh blocked','Scheduled · Nov 8 7:00 AM','Permission “Refresh” was revoked. Never started.']];
+  const ri=t=>t==='ok'?ic('check'):t==='fail'?ic('x'):ic('block');
+  const revs=[
+   ['Revision 7','Today 9:20 AM','Atlas · Added priority filter to Queue','current'],
+   ['Revision 6','Today 8:02 AM','Atlas · Restyled Library cards',''],
+   ['Revision 5','Yesterday','Atlas · Added reading Queue view','']];
+  const tabs=`<div class="dtabs" role="tablist"><button role="tab" aria-selected="${S.tab==='runs'}" onclick="set({tab:'runs'})">Run history</button><button role="tab" aria-selected="${S.tab==='revs'}" onclick="set({tab:'revs'})">Revisions</button></div>`;
+  const body=S.tab==='runs'?`<ul class="tl">${runs.map(r=>`<li><span class="ic">${ri(r[0])}</span><div><b>${r[1]}</b><small>${r[2]}</small><small>${r[3]}</small></div><span class="st ${r[0]==='ok'?'ready':r[0]==='fail'?'failed':'blocked'}">${r[0]==='ok'?'Succeeded':r[0]==='fail'?'Failed':'Blocked'}</span></li>`).join('')}</ul>`
+   :`<div class="note" role="note">Restoring brings back an earlier version of the Space's <b>code and layout</b> as a new revision. Your records, notes and statuses are not rewound.</div><ul class="tl">${revs.map(r=>`<li><span class="ic">${ic('rev')}</span><div><b>${r[0]}${r[3]?' · current':''}</b><small>${r[1]}</small><small>${r[2]}</small></div>${r[3]?'<span class="chip">Current</span>':`<button class="btn sm" onclick="set({confirm:'restore'})">Restore…</button>`}</li>`).join('')}</ul>`;
+  return [tabs,body];
+}
+function schedule(){return `<div class="note"><strong>${ic('clock')}Schedule</strong>Daily at 7:00 AM Central Time. Owner Atlas. Purpose: refresh public arXiv listings.</div>
+ <div class="grant"><dl><dt>Next run</dt><dd class="num">Tomorrow 7:00 AM CT</dd><dt>Last attempt</dt><dd>Today 9:15 AM · succeeded</dd><dt>Cost</dt><dd>No model calls. A refresh uses the public-source handler only.</dd><dt>If asleep</dt><dd>Runs one current refresh when Hermes wakes. Missed intervals aren't replayed.</dd></dl>
+ <div class="ga"><button class="btn sm">Change schedule in chat</button><button class="btn sm" onclick="set({sched:'paused',panel:null})">Pause upkeep</button></div></div>
+ <div class="dim" style="font-size:12.5px">Schedules are set up by asking your agent. This panel shows and pauses them.</div>`;
+}
+function drawer(){
+  if(!S.panel)return '';
+  const t=S.panel==='permissions'?'Permissions · Research Desk':S.panel==='history'?'History & revisions':'Schedule';
+  let tabs='',body='';
+  if(S.panel==='permissions')body=permissions();else if(S.panel==='schedule')body=schedule();else{[tabs,body]=historyPanel()}
+  return `<div class="scrim" onclick="set({panel:null})"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-label="${t}" id="drawer" style="background:var(--bg-card);padding:0;border-left:1px solid var(--stroke-1);display:flex;flex-direction:column">
+   <div class="dr-h"><h2>${t}</h2><button class="btn ghost sm" aria-label="Close panel" onclick="set({panel:null})">${ic('x')}Close</button></div>${tabs}<div class="dr-b">${body}</div></aside>`;
+}
+function confirmModal(){
+  if(!S.confirm)return '';
+  const rv=S.confirm.startsWith('revoke');
+  return `<div class="modal" role="alertdialog" aria-modal="true" aria-label="Confirm"><div class="m">
+   ${rv?`<h2>Revoke Refresh for Research Desk?</h2><p>Scheduled and manual refreshes stop and show Blocked. Data already delivered to the Space can't be recalled, and completed requests can't be undone.</p>
+   <div class="ma"><button class="btn" onclick="set({confirm:null})">Keep access</button><button class="btn danger" onclick="S.grants.refresh='revoked';set({confirm:null})">Revoke access</button></div>`
+   :`<h2>Restore revision 5?</h2><p>This brings back the Space's earlier code as a new revision 8. Revisions 6–7 stay in history. Your records, notes and statuses stay as they are now.</p>
+   <div class="ma"><button class="btn" onclick="set({confirm:null})">Cancel</button><button class="btn pri" onclick="set({confirm:null,panel:null})">Restore as new revision</button></div>`}</div></div>`;
+}
+
+function render(keepFocus){
+  protoBar();
+  const m=document.getElementById('main');
+  let h;
+  if(S.screen==='index')h=indexView();else if(S.screen==='empty')h=emptyView();else h=frame();
+  m.innerHTML=h+drawer()+confirmModal();
+  document.getElementById('navbadge').innerHTML=S.screen==='empty'?'':`<span class="st failed" style="height:18px;padding:0 6px" aria-label="2 Spaces need attention">${ic('tri')}2</span>`;
+  if(keepFocus){const i=document.getElementById('q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
+  const d=document.querySelector('.modal .m button')||document.querySelector('#drawer button');
+  if((S.panel||S.confirm)&&!keepFocus&&d)d.focus();
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(S.confirm)set({confirm:null});else if(S.panel)set({panel:null})}});
+render();
+</script>
+</body>
+</html>
