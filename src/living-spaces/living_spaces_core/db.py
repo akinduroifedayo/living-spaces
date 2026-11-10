@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import sqlite3
 import time
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -50,6 +51,7 @@ CREATE TABLE IF NOT EXISTS schedules(space TEXT PRIMARY KEY REFERENCES spaces(id
 CREATE TABLE IF NOT EXISTS logs(id INTEGER PRIMARY KEY AUTOINCREMENT, space TEXT NOT NULL, session TEXT, rev INTEGER,
   at REAL NOT NULL, level TEXT NOT NULL, msg TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS changes_space_seq ON changes(space, seq);
+CREATE INDEX IF NOT EXISTS changes_record_rev ON changes(space, collection, record_id, rev);
 CREATE INDEX IF NOT EXISTS records_space_coll ON records(space, collection, updated_at);
 CREATE INDEX IF NOT EXISTS runs_space_q ON runs(space, queued_at);
 CREATE INDEX IF NOT EXISTS logs_space_id ON logs(space, id);
@@ -73,21 +75,24 @@ def db_path() -> Path:
 
 
 _initialized: set[str] = set()
+_schema_lock = threading.Lock()
 
 
 def connect() -> sqlite3.Connection:
     path = db_path()
+    existed = path.exists()
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path, timeout=5.0, check_same_thread=False, isolation_level=None)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("PRAGMA foreign_keys=ON")
     key = str(path)
-    if key not in _initialized or not path.exists():
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.executescript(DDL)
-        conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
-        _initialized.add(key)
+    with _schema_lock:
+        if key not in _initialized or not existed:
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.executescript(DDL)
+            conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+            _initialized.add(key)
     return conn
 
 
@@ -95,6 +100,7 @@ def connect() -> sqlite3.Connection:
 def read():
     conn = connect()
     try:
+        conn.execute("BEGIN")
         yield conn
     finally:
         conn.close()
@@ -118,3 +124,16 @@ def write():
 
 def now() -> float:
     return time.time()
+
+
+def space(conn, sid, *, writable=False):
+    from .errors import SpacesError
+    from .limits import identifier
+
+    identifier(sid, "space")
+    row = conn.execute("SELECT * FROM spaces WHERE id=?", (sid,)).fetchone()
+    if row is None:
+        raise SpacesError("not_found", "Space not found")
+    if writable and row["status"] == "archived":
+        raise SpacesError("archived", "Space is archived")
+    return row
