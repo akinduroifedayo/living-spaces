@@ -15,7 +15,8 @@ export async function createSmokeServer() {
   for (const path of ['kit/spaces-kit.mjs', 'kit/spaces-kit.css', 'vendor/preact.mjs', 'vendor/hooks.mjs']) {
     files.push({ path, mime: mime[extname(path)], text: await readFile(resolve(root, 'src/living-spaces/runtime', path), 'utf8') })
   }
-  const bundle = { space: { id: 'demo-desk', name: 'Demo Research Desk' }, rev: 1, manifest: { entry: 'index.html', imports: { preact: 'vendor/preact.mjs', 'preact/hooks': 'vendor/hooks.mjs', 'spaces-kit': 'kit/spaces-kit.mjs' } }, files }
+  const sandbox = { format: 1, shell_srcdoc: await readFile(resolve(root, 'src/living-spaces/guest/space-host.html'), 'utf8') }
+  const bundle = { sandbox, space: { id: 'demo-desk', name: 'Demo Research Desk' }, rev: 1, manifest: { entry: 'index.html', imports: { preact: 'vendor/preact.mjs', 'preact/hooks': 'vendor/hooks.mjs', 'spaces-kit': 'kit/spaces-kit.mjs' } }, files }
   const requests = []
   const server = createServer(async (request, response) => {
     requests.push(request.url)

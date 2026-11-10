@@ -69,7 +69,7 @@ async function call(op, args) {
   if (op === 'meta') return ok({space: bundle.space, grants: ['data', 'logs', 'refresh'], limits: {}});
   return error('invalid', 'Unsupported synthetic operation');
 }
-reference.mount = mountSpace(document.getElementById('space'), {bundle, session: 'synthetic-reference-session',
+reference.mount = mountSpace(document.getElementById('space'), {bundle,
   grants: ['data', 'logs', 'refresh'], call, onEvent: event => reference.events.push(event)});
 document.getElementById('agent').onclick = () => {
   if (example === 'research-desk') reference.agentWrite('papers', 'demo', {notes: 'Synthetic chat notes', status: 'done', priority: 'low'});
