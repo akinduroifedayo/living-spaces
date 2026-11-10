@@ -9,6 +9,18 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 
 
+class ReferenceCompatibilityTests(unittest.TestCase):
+    def test_examples_against_integrated_kit(self):
+        result = subprocess.run(
+            ["node", "--no-warnings", "--experimental-vm-modules",
+             "--import", "./tests/js/sandbox/env.mjs", "--test",
+             "tests/js/reference/compatibility.test.mjs"],
+            cwd=ROOT, text=True, capture_output=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("# fail 0", result.stdout)
+
+
 class ReferenceDraftTests(unittest.TestCase):
     def test_incoming_changes_keep_selected_editor_and_draft_identity(self):
         (ROOT / ".run").mkdir(exist_ok=True)
