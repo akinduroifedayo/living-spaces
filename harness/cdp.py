@@ -1,97 +1,111 @@
-"""Minimal CDP driver for the isolated spike app. Usage: cdp.py eval '<js>' | cdp.py shot <png> | cdp.py frames"""
+"""CDP driver for the isolated app (stdlib + websockets from the hermes venv).
+
+  cdp.py eval '<js>'            evaluate in the app page (awaits promises, returns by value)
+  cdp.py shot out.png           screenshot of the app page
+  cdp.py feval '<js>' [depth]   evaluate inside Space frames (isolated world; depth 1 = Space document)
+  cdp.py click '<css>'          click the first element matching a selector in the app page"""
+from __future__ import annotations
+
 import asyncio
 import base64
 import json
+import os
 import sys
 import urllib.request
 
 import websockets
 
-PORT = 9339
+PORT = int(os.environ.get("LS_CDP_PORT", "9341"))
 
 
-def page_ws():
-    for t in json.load(urllib.request.urlopen(f"http://127.0.0.1:{PORT}/json/list")):
+def _targets():
+    return json.load(urllib.request.urlopen(f"http://127.0.0.1:{PORT}/json/list", timeout=5))
+
+
+def page_ws() -> str:
+    for t in _targets():
         if t["type"] == "page" and "/dist/index.html" in t["url"]:
             return t["webSocketDebuggerUrl"]
     raise SystemExit("no app page")
 
 
-async def run(cmds):
+class Session:
+    def __init__(self, ws):
+        self.ws, self.n = ws, 0
+
+    async def call(self, method, **params):
+        self.n += 1
+        await self.ws.send(json.dumps({"id": self.n, "method": method, "params": params}))
+        while True:
+            m = json.loads(await self.ws.recv())
+            if m.get("id") == self.n:
+                if "error" in m:
+                    raise RuntimeError(m["error"])
+                return m["result"]
+
+
+async def _page(fn):
     async with websockets.connect(page_ws(), max_size=64 << 20) as ws:
-        n = 0
-
-        async def call(method, **params):
-            nonlocal n
-            n += 1
-            await ws.send(json.dumps({"id": n, "method": method, "params": params}))
-            while True:
-                m = json.loads(await ws.recv())
-                if m.get("id") == n:
-                    if "error" in m:
-                        raise RuntimeError(m["error"])
-                    return m["result"]
-
-        out = []
-        for kind, arg in cmds:
-            if kind == "eval":
-                r = await call("Runtime.evaluate", expression=arg, awaitPromise=True, returnByValue=True)
-                out.append(r.get("result", {}).get("value", r))
-            elif kind == "shot":
-                r = await call("Page.captureScreenshot", format="png")
-                open(arg, "wb").write(base64.b64decode(r["data"]))
-                out.append(arg)
-            elif kind == "frames":
-                out.append(await call("Page.getFrameTree"))
-        return out
+        return await fn(Session(ws))
 
 
-def frame_targets():
-    return [t for t in json.load(urllib.request.urlopen(f"http://127.0.0.1:{PORT}/json/list")) if t["type"] == "iframe"]
+def evaluate(js: str):
+    async def run(s):
+        r = await s.call("Runtime.evaluate", expression=js, awaitPromise=True, returnByValue=True)
+        if r.get("exceptionDetails"):
+            return {"exception": r["exceptionDetails"].get("exception", {}).get("description") or r["exceptionDetails"]}
+        return r.get("result", {}).get("value")
+    return asyncio.run(_page(run))
 
 
-async def frame_eval(js, depth):
-    """Evaluate in an isolated world of the frame `depth` levels below the iframe target root (DOM is shared,
-    page globals are not). depth=1 is the Space document when the target root is the shell."""
-    results = []
-    for t in frame_targets():
+def screenshot(path: str) -> str:
+    async def run(s):
+        r = await s.call("Page.captureScreenshot", format="png")
+        open(path, "wb").write(base64.b64decode(r["data"]))
+        return path
+    return asyncio.run(_page(run))
+
+
+def frame_eval(js: str, depth: int = 1) -> list:
+    async def one(t):
         async with websockets.connect(t["webSocketDebuggerUrl"], max_size=64 << 20) as ws:
-            n = 0
-
-            async def call(method, **params):
-                nonlocal n
-                n += 1
-                await ws.send(json.dumps({"id": n, "method": method, "params": params}))
-                while True:
-                    m = json.loads(await ws.recv())
-                    if m.get("id") == n:
-                        if "error" in m:
-                            raise RuntimeError(m["error"])
-                        return m["result"]
-
-            tree = (await call("Page.getFrameTree"))["frameTree"]
-            node = tree
+            s = Session(ws)
+            node = (await s.call("Page.getFrameTree"))["frameTree"]
             for _ in range(depth):
-                if not node.get("childFrames"):
-                    node = None
-                    break
-                node = node["childFrames"][0]
-            if node is None:
-                continue
-            ctx = (await call("Page.createIsolatedWorld", frameId=node["frame"]["id"], worldName="probe"))["executionContextId"]
-            r = await call("Runtime.evaluate", expression=js, contextId=ctx, awaitPromise=True, returnByValue=True)
-            results.append(r.get("result", {}).get("value", r))
-    return results
+                kids = node.get("childFrames") or []
+                if not kids:
+                    return None
+                node = kids[0]
+            ctx = (await s.call("Page.createIsolatedWorld", frameId=node["frame"]["id"], worldName="probe"))["executionContextId"]
+            r = await s.call("Runtime.evaluate", expression=js, contextId=ctx, awaitPromise=True, returnByValue=True)
+            return r.get("result", {}).get("value", r)
+
+    async def run():
+        out = []
+        for t in _targets():
+            if t["type"] == "iframe":
+                v = await one(t)
+                if v is not None:
+                    out.append(v)
+        return out
+    return asyncio.run(run())
 
 
-if len(sys.argv) > 1 and sys.argv[1] == "feval":
-    for r in asyncio.run(frame_eval(sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else 1)):
-        print(r if isinstance(r, str) else json.dumps(r))
-    raise SystemExit(0)
+def click(selector: str):
+    return evaluate(f"(() => {{ const el = document.querySelector({json.dumps(selector)}); if (!el) return 'missing';"
+                    f" el.click(); return 'clicked' }})()")
 
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    cmds = [(args[i], args[i + 1] if i + 1 < len(args) else None) for i in range(0, len(args), 2)]
-    for r in asyncio.run(run(cmds)):
-        print(json.dumps(r, indent=1) if not isinstance(r, str) else r)
+    cmd, *rest = sys.argv[1:]
+    if cmd == "eval":
+        v = evaluate(rest[0])
+    elif cmd == "shot":
+        v = screenshot(rest[0])
+    elif cmd == "feval":
+        v = frame_eval(rest[0], int(rest[1]) if len(rest) > 1 else 1)
+    elif cmd == "click":
+        v = click(rest[0])
+    else:
+        raise SystemExit(__doc__)
+    print(v if isinstance(v, str) else json.dumps(v, indent=1))
