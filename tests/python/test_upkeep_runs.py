@@ -44,7 +44,7 @@ class UpkeepCase(unittest.TestCase):
         with db.write() as conn:
             conn.execute("INSERT INTO spaces(id,name,owner,status,created_at,updated_at) VALUES('research-desk','Research Desk','Demo','active',?,?)", (db.now(), db.now()))
         self.projects = types.SimpleNamespace(get_space=self.get_space, bundle=lambda sid: {"manifest": copy.deepcopy(self.manifest)})
-        self.records = types.SimpleNamespace(upsert_source=self.upsert_source)
+        self.records = types.SimpleNamespace(upsert_source=self.upsert_source, upsert_sources=self.upsert_sources)
         self.grants = types.SimpleNamespace(check=self.check)
         for name, module in (("projects", self.projects), ("records", self.records), ("grants", self.grants)):
             item = patch.object(core, name, module, create=True)
@@ -71,18 +71,26 @@ class UpkeepCase(unittest.TestCase):
         if self.grant_status != "granted" or not set((scope_need or {}).get("hosts", [])).issubset(self.allowed):
             raise SpacesError("not_granted", "Refresh is not granted", capability=capability)
 
-    def upsert_source(self, sid, collection, rid, source, source_meta, *, actor):
+    def upsert_sources(self, sid, collection, entries, *, actor):
+        counts = {"added": 0, "updated": 0, "unchanged": 0}
         with db.write() as conn:
-            row = conn.execute("SELECT * FROM records WHERE space=? AND collection=? AND id=?", (sid, collection, rid)).fetchone()
-            if row and json.loads(row["source"]) == source:
-                return "unchanged"
-            now = db.now()
-            rev = row["rev"] + 1 if row else 1
-            conn.execute("INSERT INTO records(space,collection,id,source,source_meta,rev,created_at,updated_at,updated_by) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(space,collection,id) DO UPDATE SET source=excluded.source,source_meta=excluded.source_meta,rev=excluded.rev,updated_at=excluded.updated_at,updated_by=excluded.updated_by", (
-                sid, collection, rid, json.dumps(source), json.dumps(source_meta), rev, now, now, actor,
-            ))
-            conn.execute("INSERT INTO changes(space,collection,record_id,op,rev,actor,at) VALUES(?,?,?,'source',?,?,?)", (sid, collection, rid, rev, actor, now))
-            return "updated" if row else "added"
+            db.space(conn, sid, writable=True)
+            for rid, source, source_meta in entries:
+                result = self.records.upsert_source(conn, sid, collection, rid, source, source_meta, actor=actor)
+                counts[result] += 1
+        return counts
+
+    def upsert_source(self, conn, sid, collection, rid, source, source_meta, *, actor):
+        row = conn.execute("SELECT * FROM records WHERE space=? AND collection=? AND id=?", (sid, collection, rid)).fetchone()
+        if row and json.loads(row["source"]) == source:
+            return "unchanged"
+        now = db.now()
+        rev = row["rev"] + 1 if row else 1
+        conn.execute("INSERT INTO records(space,collection,id,source,source_meta,rev,created_at,updated_at,updated_by) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(space,collection,id) DO UPDATE SET source=excluded.source,source_meta=excluded.source_meta,rev=excluded.rev,updated_at=excluded.updated_at,updated_by=excluded.updated_by", (
+            sid, collection, rid, json.dumps(source), json.dumps(source_meta), rev, now, now, actor,
+        ))
+        conn.execute("INSERT INTO changes(space,collection,record_id,op,rev,actor,at) VALUES(?,?,?,'source',?,?,?)", (sid, collection, rid, rev, actor, now))
+        return "updated" if row else "added"
 
     def refresh(self):
         return runs.start_refresh("research-desk", trigger="manual", actor="user", wait=True)
@@ -375,7 +383,7 @@ class RunTests(UpkeepCase):
         self.assertEqual(self.refresh()["status"], "blocked")
         self.fetch.assert_not_called()
 
-    def test_source_write_failure_reports_the_changes_already_committed(self):
+    def test_source_write_failure_reports_zero_committed_changes(self):
         original = self.records.upsert_source
         calls = 0
 
@@ -389,11 +397,15 @@ class RunTests(UpkeepCase):
         self.records.upsert_source = fail_second
         run = self.refresh()
         self.assertEqual(run["status"], "failed")
-        self.assertEqual(run["changed"]["added"], 1)
-        self.assertEqual(run["detail"]["sources"][0]["added"], 1)
-        self.assertEqual(len(self.stored()), 1)
+        self.assertEqual(calls, 2)
+        self.assertEqual(run["changed"], {"added": 0, "updated": 0, "unchanged": 0, "removed": 0})
+        source = run["detail"]["sources"][0]
+        self.assertEqual({key: source[key] for key in ("added", "updated", "unchanged")},
+                         {"added": 0, "updated": 0, "unchanged": 0})
+        self.assertEqual(self.stored(), [])
+        with db.read() as conn:
+            self.assertEqual(conn.execute("SELECT count(*) FROM changes").fetchone()[0], 0)
 
-    @unittest.expectedFailure
     def test_source_write_failure_rolls_back_all_source_changes(self):
         self.refresh()
         before = self.stored()
@@ -410,7 +422,8 @@ class RunTests(UpkeepCase):
 
         self.records.upsert_source = fail_second
         self.assertEqual(self.refresh()["status"], "failed")
-        self.assertEqual(self.stored(), before, "The frozen upsert_source API has no shared source transaction")
+        self.assertEqual(calls, 2)
+        self.assertEqual(self.stored(), before, "A failed source must roll back all source changes")
 
 
 class FeedTests(UpkeepCase):

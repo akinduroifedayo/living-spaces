@@ -133,15 +133,18 @@ def refresh_source(sid, source, *, actor, before_write, fetcher=None, counts=Non
     grants.check(sid, "refresh", {"hosts": [host]})
     entries = parse((fetcher or fetch)(sid, source["url"]))
     fetched_at = db.now()
-    before_write()
-    grants.check(sid, "refresh", {"hosts": [host]})
-    if counts is None:
-        counts = {"added": 0, "updated": 0, "unchanged": 0}
     source_as_of = max((fields["updated"] or fetched_at for _, fields in entries), default=fetched_at)
-    for rid, fields in entries:
-        result = records.upsert_source(sid, source["collection"], rid, fields, {
+    source_entries = [
+        (rid, fields, {
             "handler": "feed", "source_id": source["id"], "url": source["url"],
             "fetched_at": fetched_at, "source_updated": fields["updated"],
-        }, actor=actor)
-        counts[result] += 1
+        }) for rid, fields in entries
+    ]
+    before_write()
+    grants.check(sid, "refresh", {"hosts": [host]})
+    result = records.upsert_sources(sid, source["collection"], source_entries, actor=actor)
+    if counts is None:
+        counts = {"added": 0, "updated": 0, "unchanged": 0}
+    for key in ("added", "updated", "unchanged"):
+        counts[key] += result[key]
     return counts, source_as_of
