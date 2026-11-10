@@ -1,0 +1,23 @@
+name: living-spaces
+version: 0.1.0
+description: Build persistent applications in the Spaces tab and keep their data current with approved refreshes.
+author: Living Spaces contributors
+kind: standalone
+requires_hermes: ">=0.23.1"
+capabilities: []
+provides_hooks: []
+provides_middleware: []
+provides_tools:
+  - spaces_list
+  - spaces_get
+  - spaces_create
+  - spaces_read_file
+  - spaces_write_files
+  - spaces_edit_file
+  - spaces_query
+  - spaces_write_records
+  - spaces_read_logs
+  - spaces_revisions
+  - spaces_restore
+  - spaces_refresh
+  - spaces_request_schedule
