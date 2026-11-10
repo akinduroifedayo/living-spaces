@@ -263,3 +263,21 @@ Project ≤ 25 MB total, ≤ 600 files, file ≤ 8 MB. Record `data` ≤ 256 KB 
 ## 11. Sandbox (carried from the spike, `src/desktop/sandbox`)
 
 Nested srcdoc frames, `sandbox="allow-scripts"` only (opaque origin), the CSP below on both frames, and the shell frame's `frame-src 'none'` governing the inner frame's navigation. Project files become frame-local `blob:` URLs. Import maps resolve relative ESM and bare names from `manifest.imports`. CSP: `default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline' blob:; img-src blob: data:; font-src blob: data:; media-src blob: data:; worker-src blob:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; manifest-src 'none'; webrtc 'block'` (`webrtc` is declared but not enforced by this Chromium, a disclosed limit). Runtime errors, `console.*` and CSP violations go to `log` (batched). External links are offered by the host only, never by app navigation.
+
+## 12. Cross-lane seams (who calls whom; lazy imports so each lane tests alone)
+
+- Core (`projects`, `grants`, `bridge`) calls upkeep only through these functions, imported lazily inside the function with `from . import runs, schedules`. Upkeep implements them:
+  `runs.cancel_pending(sid, reason) -> int` · `runs.freshness(sid) -> Freshness` · `runs.list_runs(sid, limit)` · `runs.start_refresh(sid, *, trigger, actor) -> Run` · `schedules.get_schedule(sid) -> Schedule|None` · `schedules.on_archive(sid)` · `schedules.on_unarchive(sid)` · `schedules.on_delete(sid)`.
+  Until upkeep lands, core treats an `ImportError` or `AttributeError` there as "no upkeep": empty freshness `{all None}`, schedule `None`, no-op hooks. Core tests must not depend on upkeep.
+- Grant revoke/deny for `refresh` calls `runs.cancel_pending(sid, "refresh revoked")`. Archive calls `runs.cancel_pending(sid, "archived")` and `schedules.on_archive(sid)`.
+- Upkeep calls core: `records.upsert_source`, `grants.check(sid, "refresh", {"hosts":[host]})`, `projects.get_space`, `projects.bundle(sid)["manifest"]`, `db.write/read`, `errors.SpacesError`.
+- The desktop host (UI lane) mounts Spaces only through `src/desktop/sandbox/index.js` (sandbox lane):
+  ```js
+  export const BRIDGE_VERSION = 1
+  export function mountSpace(container, { bundle, session, grants, call, onEvent }) -> { postEvent(event, payload), destroy() }
+  // bundle = GET /spaces/{sid}/bundle response; call(op, args) -> Promise<reply> (UI lane implements it as POST /bridge);
+  // onEvent({kind:'booted'|'reloaded'|'denied'|'error'|'log-overflow', ...}). On 'reloaded' the UI closes the session and remounts.
+  export const WEBRTC_NOTE  // the exact spec §2 disclosure string (UI renders it; single source)
+  ```
+  The sandbox lane also owns `src/living-spaces/runtime/kit/*`. The UI lane owns `src/desktop/plugin.src.js` and `src/desktop/ui/**`, and builds `src/living-spaces/desktop/plugin.js` with `esbuild src/desktop/plugin.src.js --bundle --format=esm --external:@hermes/plugin-sdk --external:react --external:react/jsx-runtime --outfile=src/living-spaces/desktop/plugin.js`.
+- Test file ownership: `tests/python/test_core_*.py` (core), `tests/python/test_upkeep_*.py` (upkeep), `tests/python/test_agent_*.py` (agent), `tests/js/sandbox/**` (sandbox), `tests/js/ui/**` (ui). Python tests use stdlib `unittest` and run with `~/.hermes/hermes-agent/venv/bin/python -m unittest discover -s tests/python -t .`. Each test sets `LIVING_SPACES_DB` (and `HERMES_HOME` if it touches cron) to a fresh temp dir **inside the worktree's `.run/`**, never under `~/.hermes`.
