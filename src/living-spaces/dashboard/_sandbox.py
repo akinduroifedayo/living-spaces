@@ -1,4 +1,3 @@
-"""Read the reviewed guest document from the installed package."""
 from pathlib import Path
 
 
