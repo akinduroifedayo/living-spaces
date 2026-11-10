@@ -6,7 +6,7 @@ import { PermissionsSheet } from './permissions.jsx'
 import { ScheduleSheet } from './schedule.jsx'
 import { advanceCursor, diagnosticText, errorText, inFlight, refreshReason, runResult, spacePath, spaceStatus } from './model.mjs'
 import { createSpaceSession } from './session.mjs'
-import { mountSpace } from './sandbox-shim.js'
+import { mountSpace } from '../sandbox/index.js'
 
 function SaveStatus({ write, announcement }) {
   const labels = { saving: 'Saving…', saved: `Saved ${write?.at ? absolute(write.at) : ''}`, failed: 'Not saved — this change was not stored', conflict: 'Conflict — this record changed elsewhere' }

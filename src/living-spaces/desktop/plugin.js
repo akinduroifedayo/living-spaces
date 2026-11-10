@@ -453,230 +453,374 @@ function HistorySheet({ ctx, space, onClose, onChanged, initialTab = "runs", ret
 import { Badge as Badge3, ErrorState as ErrorState3, Skeleton as Skeleton3, useQuery as useQuery3 } from "@hermes/plugin-sdk";
 import { useRef as useRef2, useState as useState4 } from "react";
 
-// src/desktop/sandbox/spike-sandbox-core.js
-var BRIDGE_VERSION = 1;
-var V1_GRANTS = ["data", "refresh", "logs"];
-var OP_GRANT = {
-  "data.get": "data",
-  "data.set": "data",
-  "data.delete": "data",
-  refresh: "refresh",
-  log: "logs"
-};
-var SPACE_CSP = [
-  "default-src 'none'",
-  "script-src 'unsafe-inline' 'unsafe-eval' blob:",
-  "style-src 'unsafe-inline' blob:",
-  "img-src blob: data:",
-  "font-src blob: data:",
-  "media-src blob: data:",
-  "worker-src blob:",
-  "connect-src 'none'",
-  "frame-src 'none'",
-  "form-action 'none'",
-  "base-uri 'none'",
-  "object-src 'none'",
-  "manifest-src 'none'",
-  // CSP3 webrtc directive: the only in-frame control over STUN/TURN egress, which connect-src does not cover.
-  "webrtc 'block'"
-].join("; ");
-var SHELL_CSP = SPACE_CSP;
-var VIRTUAL_ROOT = "https://space.invalid/";
-function spaceLoader(VIRTUAL_ROOT2) {
+// src/desktop/sandbox/loader.js
+function projectResolver() {
+  const root = "https://space.invalid/";
+  const resolve = (base, ref) => {
+    const url = new URL(ref, root + base);
+    return url.origin + "/" === root ? { path: decodeURIComponent(url.pathname.slice(1)), hash: url.hash } : null;
+  };
+  const relative2 = (ref) => !/^[a-z][a-z0-9+.-]*:/i.test(ref) && !ref.startsWith("//") && !ref.startsWith("#");
+  const moduleRef = (base, ref) => {
+    if (!/^(\.{1,2}\/|\/)/.test(ref) || !relative2(ref)) return ref;
+    const target = resolve(base, ref);
+    return target ? root + target.path : ref;
+  };
+  const rewriteImports = (base, source) => {
+    const tokens = [];
+    let at = 0;
+    const add = (start, end) => tokens.push({ 0: source.slice(start, end), index: start });
+    const quoted = (quote) => {
+      const start = at++;
+      while (at < source.length) {
+        if (source[at] === "\\") at += 2;
+        else if (source[at++] === quote) break;
+      }
+      add(start, at);
+    };
+    const scan = (nested = false) => {
+      let depth = 0;
+      while (at < source.length) {
+        const start = at;
+        const char = source[at];
+        if (/\s/.test(char)) {
+          at++;
+          continue;
+        }
+        if (source.startsWith("//", at)) {
+          while (at < source.length && source[at] !== "\n") at++;
+          continue;
+        }
+        if (source.startsWith("/*", at)) {
+          const end = source.indexOf("*/", at + 2);
+          at = end < 0 ? source.length : end + 2;
+          continue;
+        }
+        if (char === '"' || char === "'") {
+          quoted(char);
+          continue;
+        }
+        if (char === "`") {
+          at++;
+          while (at < source.length) {
+            if (source[at] === "\\") at += 2;
+            else if (source[at] === "`") {
+              at++;
+              break;
+            } else if (source.startsWith("${", at)) {
+              at += 2;
+              scan(true);
+            } else at++;
+          }
+          continue;
+        }
+        const previous = tokens.at(-1)?.[0];
+        if (char === "/" && (!previous || /^(return|throw|case|typeof|void|delete|yield|await|=>|[=(:,;!&|?{\[])$/.test(previous))) {
+          at++;
+          let inClass = false;
+          while (at < source.length) {
+            if (source[at] === "\\") at += 2;
+            else {
+              const next = source[at++];
+              if (next === "[") inClass = true;
+              if (next === "]") inClass = false;
+              if (next === "/" && !inClass) break;
+            }
+          }
+          while (/[a-z]/i.test(source[at] || "")) at++;
+          add(start, at);
+          continue;
+        }
+        if (nested && char === "}" && depth === 0) {
+          at++;
+          return;
+        }
+        if (char === "{") depth++;
+        if (char === "}") depth--;
+        if (source.startsWith("=>", at)) {
+          at += 2;
+          add(start, at);
+          continue;
+        }
+        if (/[\w$]/.test(char)) {
+          while (/[\w$]/.test(source[at] || "")) at++;
+        } else at++;
+        add(start, at);
+      }
+    };
+    scan();
+    const edits = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i][0];
+      if (!["import", "export"].includes(token) || tokens[i - 1]?.[0] === ".") continue;
+      if (token === "import" && tokens[i + 1]?.[0] === "(") {
+        edits.push([tokens[i].index, tokens[i].index + 6, `globalThis.__spaceImport.bind(null,${JSON.stringify(base)})`]);
+        continue;
+      }
+      if (tokens[i + 1]?.[0] === ".") continue;
+      let spec = token === "import" && /^["']/.test(tokens[i + 1]?.[0] || "") ? tokens[i + 1] : null;
+      if (!spec) {
+        for (let j = i + 1; j < tokens.length && ![";", "import", "export"].includes(tokens[j][0]); j++) {
+          if (tokens[j][0] === "from" && /^["']/.test(tokens[j + 1]?.[0] || "")) {
+            spec = tokens[j + 1];
+            break;
+          }
+        }
+      }
+      if (spec) {
+        const ref = spec[0].slice(1, -1);
+        if (/^(\.{1,2}\/|\/)/.test(ref) && relative2(ref)) edits.push([spec.index, spec.index + spec[0].length, JSON.stringify(moduleRef(base, ref))]);
+      }
+    }
+    for (const [start, end, text] of edits.sort((a, b) => b[0] - a[0])) source = source.slice(0, start) + text + source.slice(end);
+    return source;
+  };
+  return { root, resolve, relative: relative2, moduleRef, rewriteImports };
+}
+function spaceLoader(resolver) {
   const parent = window.parent;
+  document.addEventListener("click", (event) => {
+    const anchor = event.target?.closest?.("a[href]");
+    const href = anchor?.getAttribute("href");
+    if (!href?.startsWith("#") || event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (anchor.target && anchor.target !== "_self") return;
+    event.preventDefault();
+    window.location.hash = href.slice(1);
+  });
   let port = null;
+  let closed = false;
   let seq = 0;
   const pending = /* @__PURE__ */ new Map();
-  const dataListeners = /* @__PURE__ */ new Set();
-  const state = { data: {}, revs: {} };
+  const listeners = { change: /* @__PURE__ */ new Set(), run: /* @__PURE__ */ new Set() };
   const logQueue = [];
+  let dropped = 0;
+  class SpaceError extends Error {
+    constructor(error) {
+      super(error.message);
+      this.name = "SpaceError";
+      Object.assign(this, error);
+    }
+  }
   const send = (op, args) => new Promise((resolve, reject) => {
+    if (closed) return reject(new SpaceError({ code: "session_invalid", message: "Space session is closed" }));
     const id = ++seq;
     pending.set(id, { resolve, reject });
     port.postMessage({ v: 1, id, op, args });
   });
-  const flushLogs = () => {
-    if (port && logQueue.length) {
-      port.postMessage({ v: 1, op: "log", args: { entries: logQueue.splice(0) } });
+  const safeText = (value) => {
+    try {
+      return value instanceof Error ? value.stack || String(value) : typeof value === "string" ? value : JSON.stringify(value);
+    } catch {
+      return "[unserializable]";
     }
   };
   const pushLog = (level, parts) => {
-    const msg = parts.map((p) => p instanceof Error ? p.stack || String(p) : typeof p === "string" ? p : safeJson(p)).join(" ");
-    logQueue.push({ level, msg: msg.slice(0, 4e3) });
-    if (logQueue.length > 40) logQueue.splice(0, logQueue.length - 40);
-    queueMicrotask(flushLogs);
-  };
-  const safeJson = (v) => {
-    try {
-      return JSON.stringify(v);
-    } catch {
-      return String(v);
+    if (logQueue.length === 50) {
+      dropped++;
+      return;
     }
+    logQueue.push({ level, msg: parts.map(safeText).join(" ").slice(0, 4e3) });
   };
-  for (const level of ["log", "info", "warn", "error"]) {
-    const orig = console[level].bind(console);
-    console[level] = (...a) => {
-      pushLog(level, a);
-      orig(...a);
+  for (const level of Object.getOwnPropertyNames(console).filter((name) => typeof console[name] === "function")) {
+    const original = console[level].bind(console);
+    console[level] = (...parts) => {
+      if (level !== "assert" || !parts[0]) pushLog(level, parts);
+      original(...parts);
     };
   }
-  window.addEventListener("error", (e) => pushLog("error", [e.error || e.message + " @" + e.filename + ":" + e.lineno]));
+  window.addEventListener("error", (e) => pushLog("error", [e.error || `${e.message} @${e.filename}:${e.lineno}`]));
   window.addEventListener("unhandledrejection", (e) => pushLog("error", ["unhandled rejection:", e.reason]));
-  document.addEventListener(
-    "securitypolicyviolation",
-    (e) => pushLog("warn", ["blocked by sandbox policy: " + e.effectiveDirective + " " + e.blockedURI])
-  );
-  const applyData = (data) => {
-    state.data = {};
-    state.revs = {};
-    for (const [k, rec] of Object.entries(data || {})) {
-      state.data[k] = rec.value;
-      state.revs[k] = rec.rev;
-    }
-    for (const cb of dataListeners) {
-      try {
-        cb(state.data);
-      } catch (err) {
-        pushLog("error", [err]);
-      }
-    }
-  };
+  document.addEventListener("securitypolicyviolation", (e) => pushLog("warn", [`blocked by sandbox policy: ${e.effectiveDirective} ${e.blockedURI}`]));
+  const logTimer = setInterval(() => {
+    if (!port || closed || !logQueue.length) return;
+    const entries = logQueue.splice(0);
+    if (dropped) entries[entries.length - 1] = { level: "warn", msg: `Space log overflow: dropped ${dropped + 1} entries` };
+    const args = { entries };
+    dropped = 0;
+    send("log", args).catch(() => {
+    });
+  }, 510);
   const api = {
-    version: 1,
-    manifest: null,
-    grants: [],
-    get data() {
-      return state.data;
-    },
-    get: (key) => state.data[key],
-    async set(key, value) {
-      const res = await send("data.set", { key, value, base_rev: state.revs[key] ?? 0 });
-      if (res && res.conflict) {
-        state.data[key] = res.current.value;
-        state.revs[key] = res.current.rev;
-        const err = new Error("stale write: " + key + " changed elsewhere; reloaded current value");
-        err.conflict = res.current;
-        throw err;
-      }
-      state.data[key] = value;
-      state.revs[key] = res.rev;
-      return res;
-    },
-    delete: (key) => send("data.delete", { key }),
+    meta: null,
+    query: async (collection, options = {}) => (await send("data.query", { ...options, collection })).records,
+    get: (collection, id) => send("data.get", { collection, id }),
+    put: (collection, id, data, { baseRev, merge } = {}) => send("data.put", { collection, id, data, base_rev: baseRev, merge }),
+    delete: (collection, id, { baseRev } = {}) => send("data.delete", { collection, id, base_rev: baseRev }),
+    batch: (ops) => send("data.batch", { ops }),
     refresh: () => send("refresh", {}),
-    call: (op, args) => send(op, args),
-    onData(cb) {
-      dataListeners.add(cb);
-      return () => dataListeners.delete(cb);
-    }
+    runs: () => send("runs.list", {}),
+    on(event, cb) {
+      if (!listeners[event]) throw new TypeError(`Unknown Space event: ${event}`);
+      listeners[event].add(cb);
+      return () => listeners[event].delete(cb);
+    },
+    field: (record, name) => record.data?.[name] ?? record.source?.[name]
   };
   Object.defineProperty(window, "space", { value: api, enumerable: true });
-  const resolvePath = (base, rel) => {
-    const u = new URL(rel, VIRTUAL_ROOT2 + base);
-    return u.origin + "/" === VIRTUAL_ROOT2 ? decodeURIComponent(u.pathname.slice(1)) : null;
+  Object.defineProperty(window, "__spaceImport", { value: (base, ref, options) => import(resolver.moduleRef(base, String(ref)), options) });
+  const showError = (error) => {
+    pushLog("error", ["Space failed to load:", error]);
+    const panel = document.createElement("section");
+    panel.setAttribute("role", "alert");
+    panel.style.cssText = "padding:24px;font:16px system-ui;color:#971b1b;background:#fff4f4";
+    const title = document.createElement("h1");
+    title.textContent = "This Space could not load";
+    const detail = document.createElement("p");
+    detail.textContent = error.message || String(error);
+    panel.append(title, detail);
+    document.body.replaceChildren(panel);
   };
-  const isRelative = (s) => !/^[a-z][a-z0-9+.-]*:/i.test(s) && !s.startsWith("//") && !s.startsWith("#");
-  async function boot(bundle) {
-    api.manifest = bundle.manifest;
-    api.grants = bundle.grants;
+  async function boot(bundle, grants) {
+    api.meta = { space: { id: bundle.space.id, name: bundle.space.name, rev: bundle.rev }, grants };
     const files = new Map(bundle.files.map((f) => [f.path, f]));
     const urls = /* @__PURE__ */ new Map();
-    const blobOf = (f, body) => URL.createObjectURL(new Blob([body], { type: f.mime }));
     const bytes = (f) => f.text !== void 0 ? f.text : Uint8Array.from(atob(f.b64), (c) => c.charCodeAt(0));
+    const blob = (f, body = bytes(f)) => URL.createObjectURL(new Blob([body], { type: f.mime }));
     for (const f of files.values()) {
-      if (!/\.(css|m?js|html?)$/.test(f.path)) urls.set(f.path, blobOf(f, bytes(f)));
+      if (!/\.(css|m?js)$/.test(f.path)) urls.set(f.path, blob(f));
     }
     const assetUrl = (base, ref) => {
-      if (!isRelative(ref)) return null;
-      const p = resolvePath(base, ref.split("#")[0].split("?")[0]);
-      return p && urls.get(p);
+      if (!resolver.relative(ref)) return null;
+      const target = resolver.resolve(base, ref);
+      if (!target || !urls.has(target.path)) return null;
+      return urls.get(target.path) + target.hash;
     };
-    const rewriteCss = (base, css) => css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, (m, q, ref) => {
-      const u = assetUrl(base, ref.trim());
-      return u ? `url("${u}")` : m;
+    const rewriteCss = (base, css) => css.replace(/url\(\s*(['"]?)([^'"\)]+)\1\s*\)/g, (match, quote, ref) => {
+      const url = assetUrl(base, ref.trim());
+      return url ? `url("${url}")` : match;
     });
     for (const f of files.values()) {
-      if (f.path.endsWith(".css")) urls.set(f.path, blobOf(f, rewriteCss(f.path, f.text)));
+      if (f.path.endsWith(".css")) urls.set(f.path, blob(f, rewriteCss(f.path, f.text)));
     }
-    const rewriteImports = (base, src) => src.replace(
-      /(\bimport\s*(?:[\w*{}\s,$]+?\s*from\s*)?|\bexport\s*[\w*{}\s,$]+?\s*from\s*|\bimport\s*\(\s*)(['"])(\.{1,2}\/[^'"]+|\/[^'"]+)\2/g,
-      (m, head, q, spec) => {
-        const p = resolvePath(base, spec);
-        return p ? head + q + VIRTUAL_ROOT2 + p + q : m;
-      }
-    );
     const imports = {};
     for (const f of files.values()) {
       if (/\.m?js$/.test(f.path)) {
-        const u = blobOf({ mime: "text/javascript" }, rewriteImports(f.path, f.text));
-        urls.set(f.path, u);
-        imports[VIRTUAL_ROOT2 + f.path] = u;
+        const url = blob({ mime: "text/javascript" }, resolver.rewriteImports(f.path, f.text));
+        urls.set(f.path, url);
+        imports[resolver.root + f.path] = url;
       }
     }
     for (const [name, path] of Object.entries(bundle.manifest.imports || {})) {
-      if (urls.has(path)) imports[name] = urls.get(path);
+      const target = resolver.resolve("index.html", path);
+      if (target && urls.has(target.path)) imports[name] = urls.get(target.path);
     }
     const entryPath = bundle.manifest.entry || "index.html";
     const entry = files.get(entryPath);
-    if (!entry) throw new Error("entry not found: " + entryPath);
+    if (!entry) throw new Error(`Entry not found: ${entryPath}`);
     const doc = new DOMParser().parseFromString(entry.text, "text/html");
+    const scripts = [...doc.querySelectorAll("script")];
     for (const el of doc.querySelectorAll("[src],link[href]")) {
       const attr = el.hasAttribute("src") ? "src" : "href";
       const ref = el.getAttribute(attr);
-      if (!isRelative(ref)) continue;
-      const p = resolvePath(entryPath, ref);
+      if (!resolver.relative(ref)) continue;
       if (el.tagName === "SCRIPT" && el.type === "module") {
         el.removeAttribute("src");
-        el.textContent = `import ${JSON.stringify(VIRTUAL_ROOT2 + p)}`;
-      } else if (urls.has(p)) el.setAttribute(attr, urls.get(p));
+        const target = resolver.resolve(entryPath, ref);
+        el.textContent = `import ${JSON.stringify(target ? resolver.root + target.path : ref)}`;
+      } else {
+        const url = assetUrl(entryPath, ref);
+        if (url) el.setAttribute(attr, url);
+      }
     }
-    for (const el of doc.querySelectorAll("script[type=module]:not([src])")) {
-      el.textContent = rewriteImports(entryPath, el.textContent);
-    }
+    for (const el of doc.querySelectorAll("script[type=module]")) el.textContent = resolver.rewriteImports(entryPath, el.textContent);
     for (const el of doc.querySelectorAll("style")) el.textContent = rewriteCss(entryPath, el.textContent);
+    for (const el of doc.querySelectorAll("[style]")) el.setAttribute("style", rewriteCss(entryPath, el.getAttribute("style")));
+    for (const script of scripts) script.remove();
     const map = document.createElement("script");
     map.type = "importmap";
     map.textContent = JSON.stringify({ imports });
     document.head.append(map);
     if (doc.title) document.title = doc.title;
-    const scripts = [];
-    const adopt = (from, to) => {
-      for (const node of [...from.childNodes]) {
-        if (node.nodeName === "SCRIPT") scripts.push(node);
-        else to.append(document.importNode(node, true));
-      }
-    };
-    adopt(doc.head, document.head);
-    for (const a of doc.body.attributes) document.body.setAttribute(a.name, a.value);
-    adopt(doc.body, document.body);
+    for (const node of [...doc.head.childNodes]) document.head.append(document.importNode(node, true));
+    for (const attribute of doc.body.attributes) document.body.setAttribute(attribute.name, attribute.value);
+    for (const node of [...doc.body.childNodes]) document.body.append(document.importNode(node, true));
     for (const old of scripts) {
-      const s = document.createElement("script");
-      for (const a of old.attributes) s.setAttribute(a.name, a.value);
-      s.textContent = old.textContent;
-      const done = s.src && s.type !== "module" ? new Promise((r) => (s.onload = r, s.onerror = r)) : null;
-      document.body.append(s);
+      const script = document.createElement("script");
+      for (const attribute of old.attributes) script.setAttribute(attribute.name, attribute.value);
+      script.textContent = old.type === "module" ? old.textContent : resolver.rewriteImports(entryPath, old.textContent);
+      const done = script.src || script.type === "module" ? new Promise((resolve, reject) => {
+        script.onload = resolve;
+        script.onerror = () => reject(new Error(`Script failed: ${old.getAttribute("src") || "entry module"}`));
+      }) : null;
+      document.body.append(script);
       if (done) await done;
     }
   }
   window.addEventListener("message", function onBoot(e) {
-    if (e.source !== parent || !e.data || e.data.type !== "space-boot" || !e.ports[0]) return;
+    if (e.source !== parent || e.data?.type !== "space-boot" || e.data.v !== 1 || !e.ports[0]) return;
     window.removeEventListener("message", onBoot);
     port = e.ports[0];
-    port.onmessage = (ev) => {
-      const m = ev.data || {};
-      if (m.type === "data") return applyData(m.data);
-      const p = pending.get(m.id);
-      if (!p) return;
-      pending.delete(m.id);
-      m.ok ? p.resolve(m.result) : p.reject(new Error(m.error));
+    port.onmessage = (event) => {
+      const message = event.data;
+      if (message?.v !== 1 || closed) return;
+      if (message.type === "event") {
+        if (message.event === "session.closed") {
+          closed = true;
+          clearInterval(logTimer);
+          for (const { reject } of pending.values()) reject(new SpaceError({ code: "session_invalid", message: message.payload.reason }));
+          pending.clear();
+          port.close();
+          return;
+        }
+        const name = { "data.changed": "change", "run.updated": "run" }[message.event];
+        for (const cb of listeners[name] || []) {
+          try {
+            cb(message.payload);
+          } catch (error) {
+            pushLog("error", [error]);
+          }
+        }
+        return;
+      }
+      const request = pending.get(message.id);
+      if (!request) return;
+      pending.delete(message.id);
+      message.ok ? request.resolve(message.result) : request.reject(new SpaceError(message.error));
     };
-    applyData(e.data.bundle.data);
-    boot(e.data.bundle).catch((err) => pushLog("error", ["space failed to load:", err]));
+    boot(e.data.bundle, e.data.grants).catch(showError);
   });
+}
+
+// src/desktop/sandbox/index.js
+var BRIDGE_VERSION = 1;
+var WEBRTC_NOTE = "Spaces block ordinary internet connections unless you approve a site or capability. This is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle.";
+var OP_GRANT = Object.freeze({
+  meta: null,
+  "data.query": "data",
+  "data.get": "data",
+  "data.put": "data",
+  "data.delete": "data",
+  "data.batch": "data",
+  refresh: "refresh",
+  "runs.list": null,
+  log: "logs"
+});
+var SPACE_CSP = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline' blob:; img-src blob: data:; font-src blob: data:; media-src blob: data:; worker-src blob:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; manifest-src 'none'; webrtc 'block'";
+var SHELL_CSP = SPACE_CSP;
+var MAX_REQUEST_SIZE = 1024 * 1024;
+function validateRequest(message) {
+  if (!message || typeof message !== "object" || Array.isArray(message)) return "request must be an object";
+  if (message.v !== BRIDGE_VERSION) return "unsupported bridge version";
+  if (!Number.isSafeInteger(message.id)) return "id must be an integer";
+  if (typeof message.op !== "string") return "op must be a string";
+  if (!message.args || typeof message.args !== "object" || Array.isArray(message.args)) return "args must be an object";
+  try {
+    if (JSON.stringify(message).length > MAX_REQUEST_SIZE) return "request exceeds 1 MB";
+  } catch {
+    return "request is not JSON serializable";
+  }
+  return null;
+}
+function checkGrant(op, grants) {
+  if (!Object.hasOwn(OP_GRANT, op)) return { code: "not_granted", message: `Operation isn't available: ${op}` };
+  const capability = OP_GRANT[op];
+  if (capability === null) return null;
+  if (grants.some((g) => typeof g === "string" ? g === capability : g.capability === capability && g.status === "granted")) return null;
+  return { code: "not_granted", message: `Approve ${capability} in Permissions`, capability };
 }
 function shellRelay(spaceSrcdoc2) {
   window.addEventListener("message", function onBoot(e) {
-    if (e.source !== window.parent || !e.data || e.data.type !== "space-boot" || !e.ports[0]) return;
+    if (e.source !== window.parent || e.data?.type !== "space-boot" || e.data.v !== 1 || !e.ports[0]) return;
     window.removeEventListener("message", onBoot);
     const f = document.createElement("iframe");
     f.setAttribute("sandbox", "allow-scripts");
@@ -685,7 +829,10 @@ function shellRelay(spaceSrcdoc2) {
     f.title = "Space";
     let booted = false;
     f.addEventListener("load", () => {
-      if (booted) return;
+      if (booted) {
+        window.parent.postMessage({ type: "space-reloaded", v: 1 }, "*");
+        return;
+      }
       booted = true;
       f.contentWindow.postMessage(e.data, "*", [e.ports[0]]);
     });
@@ -695,12 +842,12 @@ function shellRelay(spaceSrcdoc2) {
 }
 var scriptJson = (value) => JSON.stringify(value).replace(/</g, "\\u003c");
 function spaceSrcdoc() {
-  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${SPACE_CSP}"><meta name="referrer" content="no-referrer"><script>(${spaceLoader.toString()})(${scriptJson(VIRTUAL_ROOT)})<\/script></head><body></body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${SPACE_CSP}"><meta name="referrer" content="no-referrer"><script>(${spaceLoader.toString()})((${projectResolver.toString()})())<\/script></head><body></body></html>`;
 }
 function shellSrcdoc() {
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${SHELL_CSP}"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}</style><script>(${shellRelay.toString()})(${scriptJson(spaceSrcdoc())})<\/script></head><body></body></html>`;
 }
-function mountSpace(container, { bundle, grants = V1_GRANTS, call, onEvent = () => {
+function mountSpace(container, { bundle, session, grants = [], call, onEvent = () => {
 } }) {
   const channel = new MessageChannel();
   const port = channel.port1;
@@ -708,47 +855,98 @@ function mountSpace(container, { bundle, grants = V1_GRANTS, call, onEvent = () 
   frame.setAttribute("sandbox", "allow-scripts");
   frame.setAttribute("referrerpolicy", "no-referrer");
   frame.style.cssText = "border:0;width:100%;height:100%;display:block;background:transparent";
-  frame.title = `Space: ${bundle.name}`;
-  let booted = false;
+  frame.title = `Space: ${bundle.space.name}`;
+  let state = "created";
+  let lastLog = -Infinity;
+  let overflowReported = false;
+  const overflow = () => {
+    if (overflowReported) return;
+    overflowReported = true;
+    onEvent({ kind: "log-overflow" });
+  };
+  const stop = () => {
+    state = "closed";
+    port.onmessage = null;
+    port.close();
+    channel.port2.close();
+    window.removeEventListener("message", onShellMessage);
+  };
+  const reloaded = () => {
+    if (state !== "booted") return;
+    stop();
+    onEvent({ kind: "reloaded" });
+  };
+  function onShellMessage(e) {
+    if (e.source === frame.contentWindow && e.data?.v === 1 && e.data.type === "space-reloaded") reloaded();
+  }
+  window.addEventListener("message", onShellMessage);
   frame.addEventListener("load", () => {
-    if (booted) return onEvent({ kind: "reloaded" });
-    booted = true;
-    frame.contentWindow.postMessage(
-      { type: "space-boot", bundle: { ...bundle, grants: [...grants] } },
-      "*",
-      [channel.port2]
-    );
+    if (state === "closed") return;
+    if (state === "booted") return reloaded();
+    state = "booted";
+    frame.contentWindow.postMessage({ type: "space-boot", v: 1, session, bundle, grants }, "*", [channel.port2]);
+    onEvent({ kind: "booted" });
   });
-  port.onmessage = async (ev) => {
-    const m = ev.data;
-    if (!m || m.v !== BRIDGE_VERSION || typeof m.op !== "string") return;
-    const grant = OP_GRANT[m.op];
-    const reply = (msg) => m.id !== void 0 && port.postMessage({ id: m.id, ...msg });
-    if (!grant || !grants.includes(grant)) {
-      onEvent({ kind: "denied", op: m.op });
-      return reply({ ok: false, error: `not granted: ${m.op}` });
+  port.onmessage = async (e) => {
+    if (state !== "booted") return;
+    const m = e.data;
+    const reason = validateRequest(m);
+    if (reason) {
+      onEvent({ kind: "denied", op: typeof m?.op === "string" ? m.op : null, reason });
+      return;
+    }
+    const reply = (body) => {
+      if (state === "booted") port.postMessage({ v: 1, id: m.id, ...body });
+    };
+    const denied = checkGrant(m.op, grants);
+    if (denied) {
+      onEvent({ kind: "denied", op: m.op, reason: denied.message });
+      reply({ ok: false, error: denied });
+      return;
+    }
+    let args = m.args;
+    if (m.op === "log") {
+      if (!Array.isArray(args.entries) || args.entries.length > 50 || args.entries.some((entry) => !entry || typeof entry.level !== "string" || typeof entry.msg !== "string" || entry.msg.length > 4e3)) {
+        onEvent({ kind: "denied", op: "log", reason: "invalid log entries" });
+        reply({ ok: false, error: { code: "invalid", message: "Invalid log entries" } });
+        return;
+      }
+      if (args.entries.some((entry) => entry.level === "warn" && entry.msg.startsWith("Space log overflow:"))) overflow();
+      const now = performance.now();
+      if (now - lastLog < 500) {
+        overflow();
+        reply({ ok: true, result: { stored: 0 } });
+        return;
+      }
+      lastLog = now;
+      args = { entries: args.entries };
     }
     try {
-      const args = m.args && typeof m.args === "object" ? m.args : {};
-      reply({ ok: true, result: await call(m.op, args) });
-    } catch (err) {
-      reply({ ok: false, error: String(err && err.message ? err.message : err) });
+      const result = await call(m.op, args);
+      const revoked = checkGrant(m.op, grants);
+      if (revoked && result.ok) {
+        onEvent({ kind: "denied", op: m.op, reason: revoked.message });
+        reply({ ok: false, error: revoked });
+      } else reply(result);
+    } catch (error) {
+      onEvent({ kind: "error", message: String(error.message || error) });
+      reply({ ok: false, error: { code: error.code || "blocked", message: String(error.message || error) } });
     }
   };
   frame.srcdoc = shellSrcdoc();
   container.append(frame);
   return {
-    frame,
-    pushData: (data) => port.postMessage({ type: "data", data }),
+    postEvent(event, payload) {
+      if (state !== "booted") return;
+      port.postMessage({ v: 1, type: "event", event, payload });
+      if (event === "session.closed") stop();
+    },
     destroy() {
-      port.close();
+      stop();
       frame.remove();
     }
   };
 }
-
-// src/desktop/ui/sandbox-shim.js
-var WEBRTC_NOTE = "Spaces block ordinary internet connections unless you approve a site or capability. This is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle.";
 
 // src/desktop/ui/permissions.jsx
 import { Fragment as Fragment3, jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";

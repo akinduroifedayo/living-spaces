@@ -2,7 +2,7 @@ import { Badge, ErrorState, Skeleton, useQuery } from '@hermes/plugin-sdk'
 import { useRef, useState } from 'react'
 import { Action, Banner, DecisionDialog, Drawer, Icon, OwnerChip, StatusPill, Time } from './components.jsx'
 import { CATCH_UP, errorText, spacePath } from './model.mjs'
-import { WEBRTC_NOTE } from './sandbox-shim.js'
+import { WEBRTC_NOTE } from '../sandbox/index.js'
 
 const CAPABILITIES = {
   data: { name: 'Own data', icon: 'folder', scope: "This Space's records only. Cannot see other Spaces.", purpose: 'Store your records, notes and statuses.', leaves: 'No ordinary network access. Space-readable data is subject to the WebRTC limit above.' },
