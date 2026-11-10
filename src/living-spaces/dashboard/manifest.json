@@ -1,0 +1,8 @@
+{
+  "name": "living-spaces",
+  "label": "Spaces",
+  "description": "Persistent applications built and maintained in Hermes chat.",
+  "version": "0.1.0",
+  "tab": {"path": "/spaces", "hidden": true},
+  "api": "plugin_api.py"
+}

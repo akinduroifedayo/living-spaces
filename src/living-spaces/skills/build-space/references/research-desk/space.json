@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "name": "Research Desk",
+  "description": "A public research library with a reading queue and saved notes.",
+  "entry": "index.html",
+  "imports": {
+    "preact": "vendor/preact.mjs",
+    "preact/hooks": "vendor/hooks.mjs",
+    "spaces-kit": "kit/spaces-kit.mjs"
+  },
+  "accent": "blue",
+  "icon": "book",
+  "data": {
+    "version": 1,
+    "collections": {
+      "papers": {
+        "description": "Public research and user-added reading items",
+        "source_owned": ["title", "summary", "url", "authors", "published", "updated"]
+      }
+    },
+    "migrations": []
+  },
+  "upkeep": {
+    "handler": "feed",
+    "sources": [{
+      "id": "arxiv-ai",
+      "url": "https://export.arxiv.org/api/query?search_query=cat:cs.AI&sortBy=submittedDate&max_results=20",
+      "collection": "papers",
+      "purpose": "New public AI research for the reading library"
+    }]
+  }
+}
