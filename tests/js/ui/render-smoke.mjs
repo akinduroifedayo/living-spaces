@@ -42,7 +42,7 @@ function context(space = base, spaces = [space]) {
     if (path === '/spaces') return { spaces, seq_global: 5 }
     if (path === '/spaces/research-desk') return space
     if (path.endsWith('/grants')) return { grants: space.grants, future: [], audit: [{ id: 1, at: 1794343200, actor: 'user', action: 'grant', capability: 'data', outcome: 'granted' }] }
-    if (path.endsWith('/upkeep')) return { link: { cron_job_id: 'job1', kind: 'feed', created_at: 1, created_by: 'agent' }, job: { id: 'job1', prompt: null, schedule_display: 'every day at 7:00', cadence: '0 7 * * *', timezone: 'America/Chicago', enabled: true, state: 'scheduled', next_run_at: '2026-11-12T13:00:00+00:00', last_run_at: null, last_status: null, last_error: null }, executions: [], missing: false, error: null }
+    if (path.endsWith('/upkeep')) return { link: { cron_job_id: 'job1', kind: 'feed', created_at: 1, created_by: 'agent' }, job: { id: 'job1', uses_model: false, prompt: null, schedule_display: 'every day at 7:00', cadence: '0 7 * * *', timezone: 'America/Chicago', enabled: true, state: 'scheduled', next_run_at: '2026-11-12T13:00:00+00:00', last_run_at: null, last_status: null, last_error: null }, executions: [], missing: false, error: null }
     if (path.endsWith('/runs')) return space.recent_runs
     if (path.endsWith('/revisions')) return [{ rev: 7, created_at: 1794343200, author: 'agent:Atlas', summary: 'Current app' }, { rev: 5, created_at: 1794340000, author: 'agent:Atlas', summary: 'Earlier app' }]
     throw new Error(`Unexpected REST call ${path}`)
@@ -69,16 +69,16 @@ check(view.includes('aria-label="Space content"'), 'labelled sandbox')
 check(view.includes('data-testid="space-host"'), 'mount region')
 check(view.includes('Refresh now') && view.includes('Permissions'), 'primary actions')
 check(!view.includes('Saved '), 'no saved claim without a write')
-check(view.includes('Last successful update') && view.includes('source data from'), 'frame freshness')
+check(view.includes('Updated') && view.includes('Source data from') && view.includes('<time dateTime='), 'relative frame freshness with semantic time')
 save('space', view)
 const permissions = await ready(ui.PermissionsSheet, { ctx: context(), space: base, onClose() {}, onChanged() {} })
-check(permissions.indexOf('Before you approve anything') < permissions.indexOf('Granted to Research Desk'), 'WebRTC note before grants')
-check(permissions.indexOf('Spaces block ordinary internet connections') < permissions.indexOf('ls-sheet-scroll'), 'WebRTC note is outside the scrolling body')
-check(permissions.includes('Spaces block ordinary internet connections unless you approve a site or capability. This is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle.'), 'complete exact disclosure')
-const future = permissions.split('data-testid="release-two"')[1].split('</section>')[0]
-check(!/<button|<input|role="switch"/.test(future), 'release-two rows have no controls')
-check((future.match(/Not available yet/g) || []).length === 8, 'all future rows labelled')
-check(!/Refresh|Scheduled upkeep/.test(permissions.split('data-testid="release-two"')[0]), 'no Refresh row or schedule approval')
+check(!permissions.includes('Before you approve anything'), 'no repeated approval warning')
+check(!permissions.includes('data-testid="release-two"'), 'no future permissions dashboard')
+check(permissions.includes('Your canvas and its bot'), 'native bot direction is discoverable')
+check(!permissions.includes('role="switch"'), 'missing net fact is not invented')
+const offline = await ready(ui.PermissionsSheet, { ctx: context({ ...base, grants: [...base.grants, { capability: 'net', status: 'revoked' }] }), space: base, onClose() {}, onChanged() {} })
+check(offline.includes("Off is not a complete block. A browser feature called WebRTC can still send data this Space can read. It still can&#x27;t reach Hermes, your credentials, your files or other Spaces."), 'verbatim WebRTC disclosure when Off')
+check(!/Refresh|Scheduled upkeep/.test(permissions), 'no Refresh row or schedule approval')
 check(!permissions.includes('Approve narrower'), 'no invented narrower scopes')
 save('permissions', permissions)
 for (const [name, patch, expected] of [
@@ -86,7 +86,7 @@ for (const [name, patch, expected] of [
   ['failed', { attention: { kind: 'failed', message: 'Source timed out' }, freshness: { ...base.freshness, last_attempt_status: 'failed' } }, 'ls-stale'],
   ['blocked', { attention: { kind: 'blocked', message: 'Refresh was revoked in Permissions' }, freshness: { ...base.freshness, last_attempt_status: 'blocked' } }, 'Refresh is blocked'],
   ['crashed', { attention: { kind: 'crashed', message: 'Demo entry load failed' } }, 'Research Desk stopped working'],
-  ['archived', { status: 'archived' }, 'This Space is archived. Refreshes and schedules are off.']
+  ['archived', { status: 'archived' }, 'This Space is archived. Future upkeep is paused.']
 ]) {
   const html = await ready(ui.SpaceView, { ctx: context({ ...active, ...patch }), sid: base.id })
   check(html.includes(expected), `${name} state rendered`)

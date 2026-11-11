@@ -55,7 +55,7 @@ test('freshness keeps success, attempt, source and next run as separate facts', 
   const facts = m.freshnessFacts(space({ freshness: { last_success_at: 10, last_attempt_at: 20, last_attempt_status: 'failed', source_as_of: 5, next_run_at: 30 } }), t => `time ${t}`)
   assert.deepEqual(facts.map(f => f.value), ['time 10', 'time 20 · failed', 'time 5', 'time 30'])
   assert.deepEqual(facts.map(f => f.at), [10, 20, 5, 30])
-  assert.deepEqual(m.freshnessFacts(space(), String).map(f => f.value), ['Never', 'Never', 'Not reported', 'Not scheduled'])
+  assert.deepEqual(m.freshnessFacts(space(), String), [])
 })
 test('failed card never presents a failed attempt as a good update', () => {
   assert.deepEqual(m.cardLines(space({ freshness: { last_success_at: 10, last_attempt_at: 20, last_attempt_status: 'failed' } }), String), ['Refresh failed 20', 'Showing last good data from 10'])

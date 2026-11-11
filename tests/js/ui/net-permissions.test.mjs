@@ -65,7 +65,7 @@ async function mounted(status, run, { busyRequest = false } = {}) {
     await act(async () => { finish?.(); view.unmount() })
   }
 }
-const toggle = () => document.querySelector('[role="switch"][aria-label="Internet access"]')
+const toggle = () => document.querySelector('[role="switch"][aria-labelledby="ls-net-title"]')
 const click = async element => { assert.ok(element); await act(async () => element.click()) }
 
 test('Internet access is first, On, accessible, and has no Off warning', async () => {
@@ -114,12 +114,21 @@ test('data revoke control remains available and no Refresh row renders', async (
   })
 })
 
-test('switch disables while a grant decision is in flight', async () => {
+test('switch retains focus and blocks duplicate decisions while busy', async () => {
   await mounted('granted', async finish => {
-    await click(toggle())
-    assert.equal(toggle().disabled, true)
+    const button = toggle()
+    button.focus()
+    await click(button)
+    assert.equal(button.disabled, false)
+    assert.equal(button.getAttribute('aria-disabled'), 'true')
+    assert.equal(document.activeElement, button)
+    await click(button)
+    assert.equal(requests.length, 1)
     await act(async () => finish())
-    assert.equal(toggle().disabled, false)
+    assert.equal(button.getAttribute('aria-disabled'), 'false')
+    assert.equal(document.activeElement, button)
+    assert.match(document.body.textContent, /Internet access turned off for Demo/)
+
   }, { busyRequest: true })
 })
 

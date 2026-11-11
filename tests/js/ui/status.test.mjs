@@ -149,7 +149,7 @@ test('Upkeep sheet renders the native prompt, cadence, next run and executions',
     const text = document.body.textContent
     assert.match(text, /Update Demo from public sources\./)
     assert.match(text, /every 1h/)
-    assert.match(text, /0 \* \* \* \*/)
+    assert.doesNotMatch(text, /0 \* \* \* \*/, 'human-readable native schedule replaces raw cron')
     assert.match(text, /America\/Chicago/)
     assert.ok(text.includes(absolute(Date.parse('2026-11-11T16:00:00+00:00') / 1000)), 'next run')
     assert.match(text, /Succeeded/)
@@ -229,7 +229,7 @@ test('missing job shows the missing copy and Remove link', async () => {
   const calls = []
   try {
     await render(UpkeepSheet, upkeepProps(calls))
-    assert.match(document.body.textContent, /The linked Hermes job no longer exists/)
+    assert.match(document.body.textContent, /Hermes no longer has this job/)
     assert.doesNotMatch(document.body.textContent, /Run now|Pause/)
     await click('Remove link')
     assert.match(document.querySelector('[role="alertdialog"]').textContent, /Remove upkeep/)
@@ -248,7 +248,7 @@ test('no link shows No upkeep scheduled and a CopyPrompt', async () => {
   data.upkeep = { link: null, job: null, executions: [], missing: false, error: null }
   try {
     await render(UpkeepSheet, upkeepProps([]))
-    assert.match(document.body.textContent, /No upkeep scheduled/)
+    assert.match(document.body.textContent, /No upkeep yet/)
     const copy = document.querySelector('[data-copy]')
     assert.match(copy.getAttribute('data-copy'), /Hermes, schedule upkeep for Demo/)
     assert.doesNotMatch(document.body.textContent, /Run now|Remove/)
@@ -328,8 +328,11 @@ test('failed catch-up in SpaceView preserves last-good header timestamps and fai
   try {
     await render(SpaceView, props)
     const header = document.querySelector('.ls-frame-meta').textContent
-    assert.ok(header.includes(`Last successful update ${absolute(1700000000)}`))
-    assert.ok(header.includes(`source data from ${absolute(1699999900)}`))
+    assert.match(header, /Updated relative 1700000000000/)
+    assert.match(header, /Source data from relative 1699999900000/)
+    const times = document.querySelectorAll('.ls-frame-meta time')
+    assert.equal(times[0].title, absolute(1700000000))
+    assert.equal(times[1].title, absolute(1699999900))
     assert.match(document.querySelector('.ls-identity').textContent, /Failed/)
     const banner = document.querySelector('.ls-banner.ls-failed').textContent
     assert.match(banner, /Refresh failed/)

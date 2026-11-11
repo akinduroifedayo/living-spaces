@@ -1,6 +1,6 @@
 // src/desktop/plugin.src.js
 import { ROUTES_AREA, SIDEBAR_NAV_AREA, TRANSCRIPT_DIRECTIVE_AREA, ErrorState as ErrorState6, host as host4, useQuery as useQuery6 } from "@hermes/plugin-sdk";
-import { useEffect as useEffect2, useState as useState7 } from "react";
+import { useEffect as useEffect3, useState as useState7 } from "react";
 import { jsx as jsx7, jsxs as jsxs7 } from "react/jsx-runtime";
 
 // src/desktop/ui/index.jsx
@@ -61,27 +61,35 @@ function visibleSpaces(spaces, search, filter) {
   const q = search.trim().toLocaleLowerCase();
   return spaces.filter((s) => filter === "archived" ? s.status === "archived" : s.status !== "archived" && (filter !== "attention" || needsAttention(s))).filter((s) => `${s.name} ${s.owner}`.toLocaleLowerCase().includes(q)).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || (b.last_opened_at ?? 0) - (a.last_opened_at ?? 0) || b.updated_at - a.updated_at || a.id.localeCompare(b.id));
 }
+function headerFacts(space) {
+  const f = space.freshness || {};
+  if (space.status === "archived") return [{ key: "archive", label: "Archived", at: space.archived_at ?? space.updated_at }];
+  if (space.status === "building" || !space.head_rev) return [{ key: "building", label: "Building the first version" }];
+  if (f.last_success_at == null) return [{ key: "success", label: ["failed", "blocked"].includes(f.last_attempt_status) ? "No successful update yet" : "Not refreshed yet" }];
+  const facts = [{ key: "success", label: "Updated", at: f.last_success_at }];
+  if (f.source_as_of != null && Math.abs(f.source_as_of - f.last_success_at) >= 60) facts.push({ key: "source", label: "Source data from", at: f.source_as_of });
+  return facts;
+}
 function freshnessFacts(space, format) {
   const f = space.freshness || {};
-  const at = (value) => value == null ? "Never" : format(value);
   return [
-    { key: "success", label: "Last successful update", value: at(f.last_success_at), at: f.last_success_at },
-    { key: "attempt", label: "Last attempt", value: f.last_attempt_at == null ? "Never" : `${format(f.last_attempt_at)} \xB7 ${f.last_attempt_status || "Unknown"}`, at: f.last_attempt_at },
-    { key: "source", label: "Source data from", value: f.source_as_of == null ? "Not reported" : format(f.source_as_of), at: f.source_as_of },
-    { key: "next", label: "Next refresh", value: f.next_run_at == null ? "Not scheduled" : format(f.next_run_at), at: f.next_run_at }
-  ];
+    { key: "success", label: "Last successful update", at: f.last_success_at },
+    { key: "attempt", label: "Last attempt", at: f.last_attempt_at },
+    { key: "source", label: "Source data from", at: f.source_as_of },
+    { key: "next", label: "Next refresh", at: f.next_run_at }
+  ].filter((fact) => fact.at != null).map((fact) => ({ ...fact, value: `${format(fact.at)}${fact.key === "attempt" && f.last_attempt_status ? ` \xB7 ${f.last_attempt_status}` : ""}` }));
 }
 function cardLines(space, format) {
   const f = space.freshness || {};
-  const at = (value) => value == null ? "not yet available" : format(value);
+  const at = (value) => value == null ? "" : ` ${format(value)}`;
   const state = spaceStatus(space);
-  if (state === "building") return [`${space.owner} is building the first version`, `Started ${at(space.created_at ?? space.updated_at)}`];
-  if (state === "archived") return [`Archived ${at(space.archived_at ?? space.updated_at)}`, "Schedules stopped"];
-  if (space.attention?.kind === "crashed") return [`Stopped working ${at(f.last_attempt_at)}`, space.attention.message];
-  if (state === "updating") return ["Refreshing now\u2026", `Last good update ${at(f.last_success_at)}`];
-  if (state === "failed") return [`Refresh failed ${at(f.last_attempt_at)}`, `Showing last good data from ${at(f.last_success_at)}`];
-  if (state === "blocked") return [`Refresh blocked ${at(f.last_attempt_at)}`, space.attention?.message || "Refresh needs your approval in Permissions"];
-  return [f.last_success_at == null ? "No successful update yet" : `Updated ${at(f.last_success_at)}`, space.upkeep && space.upkeep.enabled === false ? "Upkeep paused" : `Next refresh ${f.next_run_at == null ? "not scheduled" : format(f.next_run_at)}`];
+  if (state === "building") return [`${space.owner} is building the first version`, space.created_at != null ? `Started${at(space.created_at)}` : ""];
+  if (state === "archived") return [`Archived${at(space.archived_at ?? space.updated_at)}`, "Future upkeep paused"];
+  if (space.attention?.kind === "crashed") return [`Stopped working${at(f.last_attempt_at)}`, space.attention.message || ""];
+  if (state === "updating") return ["Refreshing now\u2026", f.last_success_at != null ? `Last good update${at(f.last_success_at)}` : ""];
+  if (state === "failed") return [`Refresh failed${at(f.last_attempt_at)}`, f.last_success_at != null ? `Showing last good data from${at(f.last_success_at)}` : "No successful update yet"];
+  if (state === "blocked") return [`Refresh blocked${at(f.last_attempt_at)}`, space.attention?.message || "Review the last run for details"];
+  return [f.last_success_at == null ? "Not refreshed yet" : `Updated${at(f.last_success_at)}`, space.upkeep?.enabled === false ? "Upkeep paused" : f.next_run_at != null ? `Next refresh${at(f.next_run_at)}` : ""];
 }
 function advanceCursor(cursor, page) {
   const changes = (page?.changes || []).filter((c) => Number.isSafeInteger(c.seq) && c.seq > cursor).sort((a, b) => a.seq - b.seq);
@@ -104,14 +112,16 @@ function runResult(run) {
 }
 function dispatchText(dispatch, format) {
   if (!dispatch) return "";
-  const at = (value) => value == null ? "Not reported" : format(typeof value === "number" ? value : Date.parse(value) / 1e3);
+  const at = (value) => value == null ? "" : format(typeof value === "number" ? value : Date.parse(value) / 1e3);
   const catchUp = dispatch.kind === "catch_up";
   const delay = ["late", "catch_up"].includes(dispatch.kind) && dispatch.lateness_seconds != null ? ` Delayed by ${dispatch.lateness_seconds} s.` : "";
-  return `${catchUp ? "Catch-up refresh. Missed scheduled time" : "Scheduled time"} ${at(dispatch.scheduled_at)}. Actual dispatch ${at(dispatch.dispatched_at)}.${delay}${catchUp ? " Missed intervals were not replayed." : ""}`;
+  const scheduled = at(dispatch.scheduled_at);
+  const actual = at(dispatch.dispatched_at);
+  return `${catchUp ? "Catch-up refresh. " : ""}${scheduled ? `${catchUp ? "Missed scheduled time" : "Scheduled time"} ${scheduled}. ` : ""}${actual ? `Actual dispatch ${actual}.` : ""}${delay}${catchUp ? " Missed intervals were not replayed." : ""}`.trim();
 }
-var CATCH_UP = "Runs one current refresh when Hermes wakes. Missed intervals aren't replayed.";
+var CATCH_UP = "If Hermes is asleep at run time, it runs once when it wakes. Missed runs aren't replayed.";
 var EXECUTION_LABELS = { succeeded: "Succeeded", failed: "Failed", running: "Running", claimed: "Claimed", queued: "Queued", unknown: "Outcome unknown, side effects may have run" };
-var executionLabel = (status) => EXECUTION_LABELS[status] || String(status ?? "Unknown");
+var executionLabel = (status) => EXECUTION_LABELS[status] || String(status ?? "");
 var toSeconds = (value) => value == null ? null : typeof value === "number" ? value : Number.isFinite(Date.parse(value)) ? Date.parse(value) / 1e3 : null;
 var PROMPTS = [
   "Build Research Desk: an overview, a searchable library and a reading queue. Keep my notes and reading status.",
@@ -156,16 +166,27 @@ function scopedRest(rest, currentScope2, expected) {
 }
 
 // src/desktop/ui/components.jsx
-import { jsx, jsxs } from "react/jsx-runtime";
+import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 var relative = (seconds) => relativeTime(seconds * 1e3);
 function absolute(seconds) {
-  if (seconds == null) return "Not reported";
+  if (seconds == null || !Number.isFinite(seconds)) return "";
   const date = new Date(seconds * 1e3);
   const zone = new Intl.DateTimeFormat(void 0, { timeZoneName: "short" }).formatToParts(date).find((p) => p.type === "timeZoneName")?.value || "";
   return `${fmtDateTime.format(date)} ${zone}`.trim();
 }
-function Time({ at, children }) {
-  return /* @__PURE__ */ jsx("span", { title: at == null ? void 0 : absolute(at), children: children ?? (at == null ? "Not reported" : absolute(at)) });
+function Time({ at, children, relative: asRelative = false }) {
+  if (!absolute(at)) return null;
+  return /* @__PURE__ */ jsx("time", { dateTime: new Date(at * 1e3).toISOString(), title: absolute(at), children: children ?? (asRelative ? relative(at) : absolute(at)) });
+}
+function Freshness({ facts }) {
+  return facts.map((fact, index) => /* @__PURE__ */ jsxs("span", { children: [
+    index > 0 && " \xB7 ",
+    fact.at == null ? fact.label : /* @__PURE__ */ jsxs(Fragment, { children: [
+      fact.label,
+      " ",
+      /* @__PURE__ */ jsx(Time, { at: fact.at, relative: true })
+    ] })
+  ] }, fact.key));
 }
 function Icon({ name, spin = false }) {
   return /* @__PURE__ */ jsx(Codicon, { name, "aria-hidden": "true", className: spin ? "ls-spin" : void 0 });
@@ -246,11 +267,12 @@ function Drawer({ title, description, children, onClose, note, returnFocus }) {
     }
   ) });
 }
-function DecisionDialog({ title, description, confirmLabel, cancelLabel = "Cancel", danger = false, onClose, onConfirm, returnFocus }) {
+function DecisionDialog({ title, description, confirmLabel, cancelLabel = "Cancel", danger = false, onClose, onConfirm, returnFocus, successFocus }) {
   const cancel = useRef(null);
   const trigger = useRef(returnFocus || (typeof document === "undefined" ? null : document.activeElement));
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
+  const completed = useRef(false);
   const [error, setError] = useState("");
   async function confirm() {
     if (pending.current) return;
@@ -259,6 +281,7 @@ function DecisionDialog({ title, description, confirmLabel, cancelLabel = "Cance
     setError("");
     try {
       await onConfirm();
+      completed.current = true;
       onClose();
     } catch (e) {
       setError(errorText(e));
@@ -279,7 +302,7 @@ function DecisionDialog({ title, description, confirmLabel, cancelLabel = "Cance
       },
       onCloseAutoFocus: (event) => {
         event.preventDefault();
-        trigger.current?.focus();
+        (completed.current && successFocus?.current ? successFocus.current : trigger.current)?.focus();
       },
       children: [
         /* @__PURE__ */ jsxs(DialogHeader, { children: [
@@ -297,7 +320,7 @@ function DecisionDialog({ title, description, confirmLabel, cancelLabel = "Cance
 }
 
 // src/desktop/ui/index.jsx
-import { Fragment, jsx as jsx2, jsxs as jsxs2 } from "react/jsx-runtime";
+import { Fragment as Fragment2, jsx as jsx2, jsxs as jsxs2 } from "react/jsx-runtime";
 function SpaceCard({ space }) {
   const status = spaceStatus(space);
   const lines = cardLines(space, relative);
@@ -330,17 +353,18 @@ function SpaceCard({ space }) {
         /* @__PURE__ */ jsx2("p", { className: "ls-card-description", children: space.description }),
         /* @__PURE__ */ jsx2("div", { children: /* @__PURE__ */ jsx2(StatusPill, { status }) }),
         /* @__PURE__ */ jsxs2("div", { className: "ls-card-freshness", children: [
-          /* @__PURE__ */ jsx2(Time, { at: space.freshness?.last_attempt_at, children: lines[0] }),
-          /* @__PURE__ */ jsx2("span", { className: "ls-secondary", children: lines[1] }),
-          space.status !== "archived" && status !== "building" && /* @__PURE__ */ jsxs2(Fragment, { children: [
-            /* @__PURE__ */ jsx2("div", { className: "ls-secondary", children: /* @__PURE__ */ jsxs2(Time, { at: space.freshness?.last_attempt_at, children: [
+          /* @__PURE__ */ jsx2("span", { children: lines[0] }),
+          lines[1] && /* @__PURE__ */ jsx2("span", { className: "ls-secondary", children: lines[1] }),
+          space.status !== "archived" && status !== "building" && /* @__PURE__ */ jsxs2(Fragment2, { children: [
+            space.freshness?.last_attempt_at != null && /* @__PURE__ */ jsxs2("div", { className: "ls-secondary", children: [
               "Last attempt ",
-              space.freshness?.last_attempt_at == null ? "never" : `${relative(space.freshness.last_attempt_at)} \xB7 ${space.freshness.last_attempt_status}`
-            ] }) }),
-            /* @__PURE__ */ jsx2("div", { className: "ls-secondary", children: /* @__PURE__ */ jsxs2(Time, { at: space.freshness?.source_as_of, children: [
+              /* @__PURE__ */ jsx2(Time, { at: space.freshness.last_attempt_at, relative: true }),
+              space.freshness.last_attempt_status && ` \xB7 ${space.freshness.last_attempt_status}`
+            ] }),
+            space.freshness?.source_as_of != null && /* @__PURE__ */ jsxs2("div", { className: "ls-secondary", children: [
               "Source data from ",
-              space.freshness?.source_as_of == null ? "not reported" : relative(space.freshness.source_as_of)
-            ] }) })
+              /* @__PURE__ */ jsx2(Time, { at: space.freshness.source_as_of, relative: true })
+            ] })
           ] })
         ] })
       ]
@@ -361,7 +385,7 @@ function FirstSpace({ ctx }) {
       /* @__PURE__ */ jsx2(SpaceTile, { space: { accent: "green", icon: "calendar" } }),
       /* @__PURE__ */ jsx2(SpaceTile, { space: { accent: "purple", icon: "graph" } })
     ] }),
-    /* @__PURE__ */ jsx2(EmptyState, { title: "Build your first Space in chat", description: "A Space is a dashboard, planner, game or small app your agent builds and keeps current. Describe it in any Hermes chat, then open it here." }),
+    /* @__PURE__ */ jsx2(EmptyState, { title: "Build your first Space in chat", description: "An open canvas for your bots that live in Hermes. Describe what you want in a normal Hermes chat, then open it here." }),
     PROMPTS.map((text) => /* @__PURE__ */ jsx2(CopyPrompt, { text }, text)),
     /* @__PURE__ */ jsxs2("div", { className: "ls-actions", children: [
       action ? /* @__PURE__ */ jsx2(Action, { primary: true, icon: "add", onClick: start, children: "Start a new chat" }) : /* @__PURE__ */ jsx2(CopyPrompt, { text: PROMPTS[0], label: "Start a new chat" }),
@@ -374,7 +398,7 @@ function FirstSpace({ ctx }) {
 function SpacesIndex({ ctx }) {
   const [search, setSearch] = useState2("");
   const [filter, setFilter] = useState2("all");
-  const list = useQuery({ queryKey: ["living-spaces", ctx.queryScope || null, "spaces"], queryFn: () => ctx.rest("/spaces"), refetchInterval: 2e3 });
+  const list = useQuery({ queryKey: ["living-spaces", ctx.queryScope || null, "spaces"], queryFn: () => ctx.rest("/spaces"), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "isLoading", "dataUpdatedAt"] });
   const spaces = list.data?.spaces || [];
   const counts = summaryCounts(spaces);
   const visible = visibleSpaces(spaces, search, filter);
@@ -389,7 +413,7 @@ function SpacesIndex({ ctx }) {
       ] })
     ] }),
     list.error && /* @__PURE__ */ jsx2(ErrorState, { title: "Spaces could not be loaded", description: list.error.message, children: /* @__PURE__ */ jsx2(Action, { onClick: () => list.refetch(), children: "Try again" }) }),
-    list.isLoading ? /* @__PURE__ */ jsx2("div", { className: "ls-grid", "aria-label": "Loading Spaces", children: [1, 2, 3].map((n) => /* @__PURE__ */ jsx2(Skeleton, { style: { height: 240 } }, n)) }) : list.data && !spaces.length ? /* @__PURE__ */ jsx2(FirstSpace, { ctx }) : list.data ? /* @__PURE__ */ jsxs2(Fragment, { children: [
+    list.isLoading ? /* @__PURE__ */ jsx2("div", { className: "ls-grid", "aria-label": "Loading Spaces", children: [1, 2, 3].map((n) => /* @__PURE__ */ jsx2(Skeleton, { style: { height: 240 } }, n)) }) : list.data && !spaces.length ? /* @__PURE__ */ jsx2(FirstSpace, { ctx }) : list.data ? /* @__PURE__ */ jsxs2(Fragment2, { children: [
       /* @__PURE__ */ jsxs2("div", { className: "ls-toolbar", children: [
         /* @__PURE__ */ jsx2(SearchField, { value: search, onChange: setSearch, placeholder: "Search Spaces or owner", "aria-label": "Search Spaces or owner", variant: "box", containerClassName: "ls-search" }),
         /* @__PURE__ */ jsx2(SegmentedControl, { value: filter, onChange: setFilter, sizing: "content", options: [{ id: "all", label: "All" }, { id: "attention", label: `Needs attention \xB7 ${counts.attention}` }, { id: "archived", label: "Archived" }] }),
@@ -403,12 +427,12 @@ function SpacesIndex({ ctx }) {
 
 // src/desktop/ui/space.jsx
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery5 } from "@hermes/plugin-sdk";
-import { useEffect, useRef as useRef4, useState as useState6 } from "react";
+import { useEffect as useEffect2, useRef as useRef4, useState as useState6 } from "react";
 
 // src/desktop/ui/history.jsx
 import { Badge as Badge2, EmptyState as EmptyState2, ErrorState as ErrorState2, Skeleton as Skeleton2, Tabs, TabsList, TabsTrigger, useQuery as useQuery2 } from "@hermes/plugin-sdk";
 import { useState as useState3 } from "react";
-import { Fragment as Fragment2, jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
+import { Fragment as Fragment3, jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
 function RunRow({ run }) {
   const duration = run.ended_at != null && run.started_at != null ? `${Math.max(0, run.ended_at - run.started_at).toFixed(1)} s` : run.status === "queued" ? "Not started" : run.status === "running" ? "In progress" : "No duration reported";
   return /* @__PURE__ */ jsxs3("article", { className: "ls-row", children: [
@@ -454,7 +478,7 @@ function HistorySheet({ ctx, space, onClose, onChanged, initialTab = "runs", ret
   const runs = useQuery2({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "runs"], queryFn: () => ctx.rest(`${base}/runs`), refetchInterval: 2e3 });
   const revisions = useQuery2({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "revisions"], queryFn: () => ctx.rest(`${base}/revisions`), refetchInterval: 2e3 });
   const query = tab === "runs" ? runs : revisions;
-  return /* @__PURE__ */ jsxs3(Fragment2, { children: [
+  return /* @__PURE__ */ jsxs3(Fragment3, { children: [
     /* @__PURE__ */ jsxs3(Drawer, { title: "History & revisions", description: `History and code revisions for ${space.name}`, onClose, returnFocus, children: [
       /* @__PURE__ */ jsx3(Tabs, { value: tab, onValueChange: setTab, className: "ls-tabs", children: /* @__PURE__ */ jsxs3(TabsList, { "aria-label": "History & revisions", children: [
         /* @__PURE__ */ jsx3(TabsTrigger, { id: "ls-runs-tab", "aria-controls": "ls-runs-panel", value: "runs", children: "Run history" }),
@@ -474,9 +498,9 @@ function HistorySheet({ ctx, space, onClose, onChanged, initialTab = "runs", ret
 }
 
 // src/desktop/ui/permissions.jsx
-import { Badge as Badge3, ErrorState as ErrorState3, Skeleton as Skeleton3, useQuery as useQuery3 } from "@hermes/plugin-sdk";
+import { ErrorState as ErrorState3, Skeleton as Skeleton3, useQuery as useQuery3 } from "@hermes/plugin-sdk";
 import { useRef as useRef2, useState as useState4 } from "react";
-import { Fragment as Fragment3, jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
+import { Fragment as Fragment4, jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
 var NET_DESCRIPTION = "This Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.";
 var NET_OFF_DESCRIPTION = "This Space can't load content from or send data to the internet through Internet access.";
 var NET_OFF_NOTE = "Off is not a complete block. A browser feature called WebRTC can still send data this Space can read. It still can't reach Hermes, your credentials, your files or other Spaces.";
@@ -484,35 +508,42 @@ var CAPABILITIES = {
   data: { name: "Own data", icon: "folder", scope: "This Space's records only. Cannot see other Spaces.", purpose: "Store your records, notes and statuses.", leaves: "This grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off." },
   logs: { name: "Diagnostics", icon: "info", scope: "Error logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.", purpose: "Let the owner see crashes and repair them.", leaves: "No ordinary network access. The owner can read these logs in chat." }
 };
-var FUTURE = ["Approved sites", "Camera", "Microphone", "Location", "Hermes tools (per tool)", "Files and folders", "Cross-Space access", "Agent requests"];
 function WebRTCNote() {
-  return /* @__PURE__ */ jsxs4("div", { className: "ls-disclosure", "data-testid": "webrtc-note", children: [
-    /* @__PURE__ */ jsxs4("strong", { children: [
-      /* @__PURE__ */ jsx4(Icon, { name: "info" }),
-      " Before you approve anything"
-    ] }),
-    /* @__PURE__ */ jsx4("p", { children: NET_OFF_NOTE })
+  return /* @__PURE__ */ jsxs4("p", { className: "ls-disclosure ls-secondary", id: "ls-net-note", "data-testid": "webrtc-note", children: [
+    /* @__PURE__ */ jsx4(Icon, { name: "info" }),
+    " ",
+    NET_OFF_NOTE
   ] });
 }
-function InternetAccess({ grant, onDecide, busy }) {
+function InternetAccess({ grant, owner, onDecide, busy, pending }) {
   const enabled = grant.status === "granted";
-  return /* @__PURE__ */ jsx4("section", { className: "ls-section", children: /* @__PURE__ */ jsxs4("article", { className: "ls-grant", "data-testid": "internet-access", children: [
+  const requested = grant.status === "requested";
+  return /* @__PURE__ */ jsx4("section", { className: "ls-section", children: /* @__PURE__ */ jsxs4("article", { className: "ls-grant ls-internet", "data-testid": "internet-access", "aria-busy": busy, children: [
     /* @__PURE__ */ jsxs4("div", { className: "ls-row-top", children: [
-      /* @__PURE__ */ jsx4("strong", { children: "Internet access" }),
-      /* @__PURE__ */ jsx4(Action, { role: "switch", "aria-label": "Internet access", "aria-checked": enabled, "aria-describedby": "ls-net-description", disabled: busy, onClick: () => onDecide(grant, enabled ? "revoke" : "grant"), children: enabled ? "On" : "Off" })
+      /* @__PURE__ */ jsx4("strong", { id: "ls-net-title", children: "Internet access" }),
+      /* @__PURE__ */ jsxs4("div", { className: "ls-switch-value", children: [
+        /* @__PURE__ */ jsx4("span", { "aria-hidden": "true", children: enabled ? "On" : "Off" }),
+        /* @__PURE__ */ jsx4("button", { type: "button", className: "ls-switch", role: "switch", "aria-labelledby": "ls-net-title", "aria-checked": enabled, "aria-describedby": `ls-net-description${!enabled ? " ls-net-note" : ""}`, "aria-busy": busy, "aria-disabled": busy || requested, onClick: () => !busy && !requested && onDecide(grant, enabled ? "revoke" : "grant"), children: /* @__PURE__ */ jsx4("span", { className: "ls-switch-track", children: /* @__PURE__ */ jsx4("span", { className: "ls-switch-thumb" }) }) })
+      ] })
     ] }),
     /* @__PURE__ */ jsx4("p", { id: "ls-net-description", className: "ls-secondary", children: enabled ? NET_DESCRIPTION : NET_OFF_DESCRIPTION }),
-    grant.status === "requested" && /* @__PURE__ */ jsxs4("div", { className: "ls-actions", children: [
-      /* @__PURE__ */ jsx4(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" }),
-      /* @__PURE__ */ jsx4(Action, { disabled: busy, onClick: () => onDecide(grant, "deny"), children: "Deny" })
-    ] }),
-    !enabled && /* @__PURE__ */ jsx4(WebRTCNote, {})
+    !enabled && /* @__PURE__ */ jsx4(WebRTCNote, {}),
+    busy && pending?.capability === "net" && /* @__PURE__ */ jsx4("p", { role: "status", children: pending.decision === "grant" ? "Turning on\u2026" : pending.decision === "revoke" ? "Turning off\u2026" : "Denying request\u2026" }),
+    requested && /* @__PURE__ */ jsxs4(Fragment4, { children: [
+      /* @__PURE__ */ jsxs4("p", { children: [
+        owner,
+        " is asking to turn this on."
+      ] }),
+      /* @__PURE__ */ jsxs4("div", { className: "ls-actions", children: [
+        /* @__PURE__ */ jsx4(Action, { primary: true, "aria-disabled": busy, onClick: () => !busy && onDecide(grant, "grant"), children: "Approve" }),
+        /* @__PURE__ */ jsx4(Action, { "aria-disabled": busy, onClick: () => !busy && onDecide(grant, "deny"), children: "Deny" })
+      ] })
+    ] })
   ] }) });
 }
 function GrantCard({ grant, onDecide, busy }) {
   const model = CAPABILITIES[grant.capability];
   if (!model) return null;
-  const scope = grant.requested_scope || grant.scope || {};
   const scopeText = model.scope;
   return /* @__PURE__ */ jsxs4("article", { className: `ls-grant${grant.status === "requested" ? " ls-pending" : ""}`, children: [
     /* @__PURE__ */ jsxs4("div", { className: "ls-row-top", children: [
@@ -540,19 +571,19 @@ function GrantCard({ grant, onDecide, busy }) {
         /* @__PURE__ */ jsx4("dd", { children: "Continuing" })
       ] })
     ] }),
-    /* @__PURE__ */ jsx4("div", { className: "ls-actions", children: grant.status === "granted" ? /* @__PURE__ */ jsx4(Action, { danger: true, disabled: busy, onClick: () => onDecide(grant, "revoke"), children: "Revoke" }) : grant.status === "requested" ? /* @__PURE__ */ jsxs4(Fragment3, { children: [
+    /* @__PURE__ */ jsx4("div", { className: "ls-actions", children: grant.status === "granted" ? /* @__PURE__ */ jsx4(Action, { danger: true, disabled: busy, onClick: () => onDecide(grant, "revoke"), children: "Revoke" }) : grant.status === "requested" ? /* @__PURE__ */ jsxs4(Fragment4, { children: [
       /* @__PURE__ */ jsx4(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" }),
       /* @__PURE__ */ jsx4(Action, { disabled: busy, onClick: () => onDecide(grant, "deny"), children: "Deny" })
     ] }) : /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: grant.status === "denied" ? `Denied. The Space shows \u201C${model.name} isn't available\u201D instead of prompting again.` : `${model.name} was revoked. Ask in chat to request access again.` }) })
   ] });
 }
-function PermissionsContent({ space, grants: all, audit = [], onDecide, busy = false }) {
+function PermissionsContent({ space, grants: all, audit = [], onDecide, busy = false, pending: pendingAction }) {
   const grants = all.filter((g) => g.capability === "net" || CAPABILITIES[g.capability]);
   const net = grants.find((g) => g.capability === "net");
   const pending = grants.filter((g) => g.capability !== "net" && g.status === "requested");
   const settled = grants.filter((g) => g.capability !== "net" && g.status !== "requested");
-  return /* @__PURE__ */ jsxs4(Fragment3, { children: [
-    net && /* @__PURE__ */ jsx4(InternetAccess, { grant: net, onDecide, busy }),
+  return /* @__PURE__ */ jsxs4(Fragment4, { children: [
+    net && /* @__PURE__ */ jsx4(InternetAccess, { grant: net, owner: space.owner, onDecide, busy, pending: pendingAction }),
     /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
       /* @__PURE__ */ jsxs4("h2", { className: "ls-section-title", children: [
         "Granted to ",
@@ -566,13 +597,14 @@ function PermissionsContent({ space, grants: all, audit = [], onDecide, busy = f
       pending.map((g) => /* @__PURE__ */ jsx4(GrantCard, { grant: g, onDecide, busy }, g.capability)),
       !pending.length && /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "Nothing waiting for your decision." })
     ] }),
-    /* @__PURE__ */ jsxs4("section", { className: "ls-section", "data-testid": "release-two", children: [
-      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "Coming in release 2 \u2014 not available yet" }),
-      FUTURE.map((name) => /* @__PURE__ */ jsx4("div", { className: "ls-grant ls-future", children: /* @__PURE__ */ jsxs4("div", { className: "ls-row-top", children: [
-        /* @__PURE__ */ jsx4("strong", { children: name }),
-        /* @__PURE__ */ jsx4(Badge3, { variant: "outline", children: "Not available yet" })
-      ] }) }, name)),
-      /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "Camera, microphone and location will start off and also follow Hermes and macOS permission prompts. Release 2 will revisit what Spaces can read before tool and file access is offered." })
+    /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
+      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "Your canvas and its bot" }),
+      /* @__PURE__ */ jsxs4("p", { children: [
+        "Ask ",
+        space.owner,
+        " in a normal Hermes chat to build or change this canvas, use connected tools, or bring in files. Bot actions follow Hermes's native rules, not extra per-site, per-tool or device permissions here."
+      ] }),
+      /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "Canvas controls that ask their maintaining bot need a working native bot connection. This panel does not submit a bot request." })
     ] }),
     /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
       /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "Owner" }),
@@ -596,7 +628,9 @@ function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
   const base = spacePath(space.id);
   const query = useQuery3({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "grants"], queryFn: () => ctx.rest(`${base}/grants`), refetchInterval: 2e3 });
   const [revoke, setRevoke] = useState4(null);
-  const [busy, setBusy] = useState4(false);
+  const [pending, setPending] = useState4(null);
+  const busy = !!pending;
+  const [feedback, setFeedback] = useState4("");
   const [error, setError] = useState4("");
   const lock = useRef2(false);
   async function decide(grant, decision) {
@@ -604,31 +638,44 @@ function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
       setRevoke(grant);
       return;
     }
-    await change(`${base}/grants/${grant.capability}`, { decision, ...decision === "grant" ? { requested_scope: grant.requested_scope ?? grant.scope ?? {} } : {} });
+    await change(grant, `${base}/grants/${grant.capability}`, { decision, ...decision === "grant" ? { requested_scope: grant.requested_scope ?? grant.scope ?? {} } : {} });
   }
-  async function change(path, body) {
+  async function change(grant, path, body) {
     if (lock.current) return;
     lock.current = true;
-    setBusy(true);
+    setPending({ capability: grant.capability, decision: body.decision });
     setError("");
+    setFeedback("");
     try {
       await ctx.rest(path, { method: "POST", body });
-      await Promise.all([query.refetch(), onChanged()]);
+      const [current] = await Promise.all([query.refetch(), onChanged()]);
+      if (current?.error) throw current.error;
+      const state = current?.data?.grants?.find((item) => item.capability === grant.capability)?.status;
+      if (current?.data && state !== { grant: "granted", revoke: "revoked", deny: "denied" }[body.decision]) throw new Error("Hermes has not confirmed the requested setting.");
+      setFeedback(grant.capability === "net" ? body.decision === "deny" ? "Internet access request denied." : `Internet access turned ${body.decision === "grant" ? "on" : "off"} for ${space.name}.` : "Access updated.");
     } catch (e) {
       if ((e?.error || e?.body?.error || e)?.code === "conflict") setError("Permission request changed. Review the new request before approving.");
-      else setError(`${errorText(e)} Review the current request before trying again.`);
+      else {
+        const [current] = await Promise.all([query.refetch(), onChanged()]);
+        const net = current?.data?.grants?.find((item) => item.capability === "net");
+        const still = grant.capability === "net" && !current?.error && net ? ` It's ${net.status === "granted" ? "on" : "off"}.` : "";
+        setError(`${grant.capability === "net" ? body.decision === "deny" ? "Couldn't deny the Internet access request. " : `Couldn't turn Internet access ${body.decision === "grant" ? "on" : "off"}. ` : ""}${errorText(e)}${still} Review the current setting before trying again.`);
+        return;
+      }
       await Promise.all([query.refetch(), onChanged()]);
     } finally {
       lock.current = false;
-      setBusy(false);
+      setPending(null);
     }
   }
-  return /* @__PURE__ */ jsxs4(Fragment3, { children: [
+  return /* @__PURE__ */ jsxs4(Fragment4, { children: [
     /* @__PURE__ */ jsxs4(Drawer, { title: `Permissions \xB7 ${space.name}`, description: "Review this Space's access.", onClose, returnFocus, children: [
       error && /* @__PURE__ */ jsx4(Banner, { kind: "failed", title: error }),
-      query.error ? /* @__PURE__ */ jsx4(ErrorState3, { title: "Permissions could not be loaded", description: errorText(query.error), children: /* @__PURE__ */ jsx4(Action, { onClick: () => {
+      /* @__PURE__ */ jsx4("div", { role: "status", "aria-live": "polite", children: feedback }),
+      query.error && query.data && /* @__PURE__ */ jsx4(Banner, { kind: "failed", title: "Showing the last loaded access settings. Controls are unavailable until Hermes responds.", actions: /* @__PURE__ */ jsx4(Action, { onClick: () => query.refetch(), children: "Try again" }), children: errorText(query.error) }),
+      query.error && !query.data ? /* @__PURE__ */ jsx4(ErrorState3, { title: "Permissions could not be loaded", description: errorText(query.error), children: /* @__PURE__ */ jsx4(Action, { onClick: () => {
         query.refetch();
-      }, children: "Try again" }) }) : query.isLoading ? /* @__PURE__ */ jsx4(Skeleton3, { style: { height: 180 } }) : /* @__PURE__ */ jsx4(PermissionsContent, { space, grants: query.data?.grants || [], audit: query.data?.audit || [], onDecide: decide, busy })
+      }, children: "Try again" }) }) : query.isLoading ? /* @__PURE__ */ jsx4(Skeleton3, { style: { height: 180 } }) : /* @__PURE__ */ jsx4(PermissionsContent, { space, grants: query.data?.grants || [], audit: query.data?.audit || [], onDecide: decide, busy: busy || !!query.error, pending })
     ] }),
     revoke && /* @__PURE__ */ jsx4(DecisionDialog, { danger: true, title: `Revoke ${CAPABILITIES[revoke.capability].name} for ${space.name}?`, description: `The Space loses ${CAPABILITIES[revoke.capability].name.toLowerCase()} access. Data already delivered to the Space can't be recalled, and completed requests can't be undone.`, cancelLabel: "Keep access", confirmLabel: "Revoke", onClose: () => setRevoke(null), onConfirm: async () => {
       await ctx.rest(`${base}/grants/${revoke.capability}`, { method: "POST", body: { decision: "revoke" } });
@@ -640,149 +687,206 @@ function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
 
 // src/desktop/ui/upkeep.jsx
 import { ErrorState as ErrorState4, Skeleton as Skeleton4, useQuery as useQuery4 } from "@hermes/plugin-sdk";
-import { useRef as useRef3, useState as useState5 } from "react";
-import { Fragment as Fragment4, jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
-function UpkeepCost({ job, kind }) {
-  return (job ? job.uses_model : kind === "agent") ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
-    /* @__PURE__ */ jsx5("p", { children: "Uses model calls. Runs a Hermes agent with the tools enabled for native cron jobs." }),
-    /* @__PURE__ */ jsxs5("div", { children: [
-      /* @__PURE__ */ jsx5("strong", { children: "Upkeep prompt" }),
-      /* @__PURE__ */ jsx5("p", { style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" }, children: job?.prompt })
-    ] })
-  ] }) : /* @__PURE__ */ jsx5("p", { children: "No model calls. Refreshes use the declared public-source handler and approved hosts." });
+import { useEffect, useRef as useRef3, useState as useState5 } from "react";
+import { Fragment as Fragment5, jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
+function UpkeepCost({ job, expanded = false }) {
+  if (job?.uses_model === false) return /* @__PURE__ */ jsx5("p", { children: "Refreshes from public sources. No model calls." });
+  if (job?.uses_model !== true) return null;
+  return /* @__PURE__ */ jsxs5("div", { className: "ls-upkeep-prompt", children: [
+    job.prompt && /* @__PURE__ */ jsxs5(Fragment5, { children: [
+      /* @__PURE__ */ jsx5("h3", { children: "What Hermes does each run" }),
+      /* @__PURE__ */ jsx5("p", { id: "ls-upkeep-prompt", className: expanded ? "" : "ls-clamp-six", children: job.prompt })
+    ] }),
+    /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "Uses model calls." })
+  ] });
 }
 function Executions({ executions }) {
   if (!executions?.length) return /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "No runs recorded yet." });
-  return /* @__PURE__ */ jsx5("ul", { className: "ls-audit", "aria-label": "Upkeep executions", children: executions.map((run) => /* @__PURE__ */ jsxs5("li", { "data-status": run.status, children: [
-    /* @__PURE__ */ jsx5(Time, { at: toSeconds(run.finished_at ?? run.started_at ?? run.claimed_at ?? run.scheduled_instant) }),
-    " \xB7 ",
-    /* @__PURE__ */ jsx5("strong", { children: executionLabel(run.status) }),
-    run.error ? ` \xB7 ${run.error}` : ""
-  ] }, run.id)) });
+  return /* @__PURE__ */ jsx5("ul", { className: "ls-audit", "aria-label": "Upkeep executions", children: executions.map((run) => {
+    const at = toSeconds(run.finished_at ?? run.started_at ?? run.claimed_at ?? run.scheduled_instant);
+    return /* @__PURE__ */ jsxs5("li", { "data-status": run.status, children: [
+      at != null && /* @__PURE__ */ jsxs5(Fragment5, { children: [
+        /* @__PURE__ */ jsx5(Time, { at }),
+        " \xB7 "
+      ] }),
+      /* @__PURE__ */ jsx5("strong", { children: executionLabel(run.status) }),
+      run.error ? ` \xB7 ${run.error}` : ""
+    ] }, run.id);
+  }) });
 }
+var isRunning = (data) => data?.job?.state === "running" || data?.executions?.some((run) => ["running", "claimed"].includes(run.status)) === true;
 function UpkeepSheet({ ctx, space, onClose, onChanged, returnFocus }) {
   const base = spacePath(space.id);
-  const query = useQuery4({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "upkeep"], queryFn: () => ctx.rest(`${base}/upkeep`), refetchInterval: 5e3 });
+  const [busy, setBusy] = useState5(null);
+  const [feedback, setFeedback] = useState5("");
   const [error, setError] = useState5("");
-  const [busy, setBusy] = useState5(false);
   const [confirm, setConfirm] = useState5(false);
+  const [recentAction, setRecentAction] = useState5(0);
+  const [slow, setSlow] = useState5(false);
+  const [fullError, setFullError] = useState5(false);
+  const [fullPrompt, setFullPrompt] = useState5(false);
+  const [visible, setVisible] = useState5(() => typeof document === "undefined" || !document.hidden);
   const lock = useRef3(false);
+  const feedbackNode = useRef3(null);
+  const query = useQuery4({
+    queryKey: ["living-spaces", ctx.queryScope || null, space.id, "upkeep"],
+    queryFn: () => ctx.rest(`${base}/upkeep`),
+    refetchInterval: (native) => !visible ? false : isRunning(native.state?.data) || recentAction ? 2e3 : 5e3,
+    refetchIntervalInBackground: false,
+    notifyOnChangeProps: ["data", "error", "dataUpdatedAt"]
+  });
   const data = query.data;
   const link = data?.link;
   const job = data?.job;
   const archived = space.status === "archived";
+  const running = isRunning(data);
+  const unavailable = !!data?.error || !!query.error || !!link && !job && !data?.missing;
+  const blocked = archived || unavailable || !!busy;
+  useEffect(() => {
+    const update = () => setVisible(!document.hidden);
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+  useEffect(() => {
+    if (data || query.error) {
+      setSlow(false);
+      return;
+    }
+    const timer = setTimeout(() => setSlow(true), 8e3);
+    return () => clearTimeout(timer);
+  }, [!!data, !!query.error]);
+  useEffect(() => {
+    if (!recentAction) return;
+    const timer = setTimeout(() => setRecentAction(0), 6e4);
+    return () => clearTimeout(timer);
+  }, [recentAction]);
+  useEffect(() => {
+    if (!feedback || busy) return;
+    const timer = setTimeout(() => setFeedback(""), 8e3);
+    return () => clearTimeout(timer);
+  }, [feedback, busy]);
   async function act(action) {
     if (lock.current) return;
+    if (blocked || action === "run" && running) {
+      if (action === "remove") throw new Error("Upkeep is unavailable. Reload the native state before removing it.");
+      return;
+    }
     lock.current = true;
-    setBusy(true);
+    setBusy(action);
     setError("");
+    setFeedback(action === "run" ? "Starting\u2026" : "Working\u2026");
+    setRecentAction(Date.now());
     try {
       await ctx.rest(`${base}/upkeep`, { method: "POST", body: { action } });
-      await Promise.all([query.refetch(), onChanged?.()]);
+      const [current] = await Promise.all([query.refetch(), onChanged?.()]);
+      if (current?.error || current?.data?.error) throw new Error(`The action was submitted, but the current native state couldn't be loaded. ${errorText(current.error || current.data.error)}`);
+      if (current?.data && (action === "pause" && current.data.job?.enabled !== false || action === "resume" && current.data.job?.enabled !== true || action === "remove" && current.data.link)) throw new Error("Hermes has not confirmed the requested state.");
+      const next = toSeconds(current?.data?.job?.next_run_at);
+      setFeedback(action === "run" ? "Run started. Hermes is working on it." : action === "pause" ? "Paused. Future runs stop until you resume. Already-running work may finish." : action === "resume" ? `Resumed.${next != null ? ` Next run ${absolute(next)}.` : ""}` : `Upkeep removed. ${space.name} is unchanged.`);
     } catch (e) {
-      setError(errorText(e));
+      setFeedback("");
+      setError(`${action === "run" ? "Couldn't start the run." : action === "pause" ? "Couldn't pause upkeep." : action === "resume" ? "Couldn't resume upkeep." : "Couldn't remove upkeep."} ${errorText(e)} Review the current native state before trying again.`);
       await query.refetch();
+      if (action === "remove") throw e;
     } finally {
       lock.current = false;
-      setBusy(false);
+      setBusy(null);
     }
   }
-  const removeButton = /* @__PURE__ */ jsx5(Action, { danger: true, disabled: busy, onClick: () => setConfirm(true), children: data?.missing ? "Remove link" : "Remove" });
+  const removeButton = /* @__PURE__ */ jsx5(Action, { danger: true, "aria-disabled": blocked, onClick: () => !blocked && setConfirm(true), children: data?.missing ? "Remove link" : "Remove" });
+  const ask = /* @__PURE__ */ jsx5(CopyPrompt, { text: `${space.owner}, schedule upkeep for ${space.name}. Please confirm the cadence and timezone, then create it as a Hermes cron job.`, label: "Copy prompt" });
+  const lastAt = toSeconds(job?.last_run_at);
+  const lastResult = running ? "Running now\u2026" : job?.last_status ? executionLabel(["ok", "success"].includes(job.last_status) ? "succeeded" : job.last_status === "error" ? "failed" : job.last_status) : null;
   let body;
-  if (query.error && !data) body = /* @__PURE__ */ jsx5(ErrorState4, { title: "Upkeep could not be loaded", description: errorText(query.error), children: /* @__PURE__ */ jsx5(Action, { onClick: () => query.refetch(), children: "Try again" }) });
-  else if (!data) body = /* @__PURE__ */ jsx5(Skeleton4, { style: { height: 180 } });
-  else if (!link) body = /* @__PURE__ */ jsxs5(Fragment4, { children: [
-    /* @__PURE__ */ jsx5("p", { children: "No upkeep scheduled" }),
-    /* @__PURE__ */ jsx5("div", { className: "ls-section", children: /* @__PURE__ */ jsx5(CopyPrompt, { text: `${space.owner}, schedule upkeep for ${space.name}. Please confirm the cadence and timezone, then create it as a Hermes cron job.`, label: "Ask in chat" }) })
+  if (query.error && !data) body = /* @__PURE__ */ jsx5(ErrorState4, { title: "Upkeep couldn't be loaded", description: `Hermes didn't respond. ${errorText(query.error)}`, children: /* @__PURE__ */ jsx5(Action, { onClick: () => query.refetch(), children: "Try again" }) });
+  else if (!data) body = /* @__PURE__ */ jsxs5("div", { "aria-busy": "true", "aria-label": "Loading upkeep", children: [
+    /* @__PURE__ */ jsx5(Skeleton4, { style: { width: 80, height: 24 } }),
+    [1, 2, 3].map((row) => /* @__PURE__ */ jsx5(Skeleton4, { style: { height: 32, marginTop: 12 } }, row)),
+    /* @__PURE__ */ jsx5(Skeleton4, { style: { height: 32, marginTop: 20 } }),
+    /* @__PURE__ */ jsx5("p", { role: "status", children: slow ? "Still waiting for Hermes\u2026" : "Loading upkeep\u2026" })
   ] });
-  else body = /* @__PURE__ */ jsxs5(Fragment4, { children: [
-    data.error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: "Hermes cron is unavailable", children: data.error }),
-    data.missing ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
-      /* @__PURE__ */ jsxs5(Banner, { kind: "blocked", title: "The linked Hermes job no longer exists", actions: removeButton, children: [
+  else body = /* @__PURE__ */ jsxs5(Fragment5, { children: [
+    query.error && /* @__PURE__ */ jsx5(Banner, { title: `Showing the last loaded state${query.dataUpdatedAt ? ` from ${relative(query.dataUpdatedAt / 1e3)}` : ""}.`, actions: /* @__PURE__ */ jsx5(Action, { onClick: () => query.refetch(), children: "Try again" }), children: errorText(query.error) }),
+    data.error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: "Hermes cron is unavailable", children: errorText(data.error) }),
+    archived && /* @__PURE__ */ jsx5("p", { children: "Archived Spaces don't run upkeep. Restore the Space to use it. Already-running work may finish." }),
+    !link ? /* @__PURE__ */ jsxs5(Fragment5, { children: [
+      /* @__PURE__ */ jsx5("h3", { children: "No upkeep yet" }),
+      /* @__PURE__ */ jsxs5("p", { children: [
+        "This Space isn't updated automatically. Ask ",
+        space.owner,
+        " in chat to set up upkeep as a Hermes cron job."
+      ] }),
+      ask
+    ] }) : data.missing ? /* @__PURE__ */ jsxs5(Fragment5, { children: [
+      /* @__PURE__ */ jsx5(StatusPill, { status: "blocked", label: "Job missing" }),
+      /* @__PURE__ */ jsxs5(Banner, { kind: "blocked", title: "Hermes no longer has this job", actions: removeButton, children: [
         "Nothing will run. Ask ",
         space.owner,
         " in chat to schedule upkeep again."
       ] }),
-      /* @__PURE__ */ jsx5("div", { className: "ls-section", children: /* @__PURE__ */ jsx5(CopyPrompt, { text: `${space.owner}, the Hermes cron job for ${space.name} no longer exists. Please schedule upkeep again.`, label: "Ask in chat" }) })
-    ] }) : job && /* @__PURE__ */ jsxs5(Fragment4, { children: [
-      /* @__PURE__ */ jsx5(StatusPill, { status: job.enabled ? "ready" : "paused", label: job.enabled ? "Active" : "Paused" }),
+      ask
+    ] }) : job ? /* @__PURE__ */ jsxs5(Fragment5, { children: [
+      /* @__PURE__ */ jsx5(StatusPill, { status: running ? "running" : job.enabled ? "ready" : "paused", label: running ? "Running now" : job.enabled ? "Active" : "Paused" }),
+      /* @__PURE__ */ jsx5(UpkeepCost, { job, expanded: fullPrompt }),
       /* @__PURE__ */ jsxs5("dl", { className: "ls-facts", children: [
-        /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "Kind" }),
-          /* @__PURE__ */ jsx5("dd", { children: job.uses_model ? "Agent" : "Feed" })
-        ] }),
-        /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "Schedule" }),
-          /* @__PURE__ */ jsx5("dd", { children: job.schedule_display || job.cadence })
-        ] }),
-        /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "Cadence" }),
-          /* @__PURE__ */ jsx5("dd", { children: job.cadence })
-        ] }),
-        /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "Timezone" }),
-          /* @__PURE__ */ jsx5("dd", { children: job.timezone })
-        ] }),
-        /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "State" }),
+        (job.schedule_display || job.cadence || job.timezone) && /* @__PURE__ */ jsxs5("div", { children: [
+          /* @__PURE__ */ jsx5("dt", { children: "Runs" }),
           /* @__PURE__ */ jsxs5("dd", { children: [
-            job.enabled ? "Enabled" : "Disabled",
-            " \xB7 ",
-            job.state
+            job.schedule_display || job.cadence,
+            job.timezone && /* @__PURE__ */ jsx5("div", { className: "ls-secondary", children: job.timezone })
           ] })
         ] }),
         /* @__PURE__ */ jsxs5("div", { children: [
           /* @__PURE__ */ jsx5("dt", { children: "Next run" }),
-          /* @__PURE__ */ jsx5("dd", { children: job.enabled && job.next_run_at ? /* @__PURE__ */ jsx5(Time, { at: toSeconds(job.next_run_at) }) : "Not scheduled" })
-        ] }),
-        /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "Last run" }),
-          /* @__PURE__ */ jsx5("dd", { children: job.last_run_at ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
-            /* @__PURE__ */ jsx5(Time, { at: toSeconds(job.last_run_at) }),
+          /* @__PURE__ */ jsx5("dd", { children: !job.enabled ? "Paused. Future runs stop until resumed. Already-running work may finish." : toSeconds(job.next_run_at) != null ? /* @__PURE__ */ jsxs5(Fragment5, { children: [
+            /* @__PURE__ */ jsx5(Time, { at: toSeconds(job.next_run_at) }),
             " \xB7 ",
-            job.last_status || "No status"
-          ] }) : "Never" })
+            /* @__PURE__ */ jsx5(Time, { at: toSeconds(job.next_run_at), relative: true })
+          ] }) : "Waiting for Hermes to schedule it" })
         ] }),
-        job.last_error && /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "Last error" }),
-          /* @__PURE__ */ jsx5("dd", { children: job.last_error })
+        (lastResult || lastAt == null) && /* @__PURE__ */ jsxs5("div", { children: [
+          /* @__PURE__ */ jsx5("dt", { children: "Last result" }),
+          /* @__PURE__ */ jsxs5("dd", { children: [
+            lastResult || "Hasn't run yet",
+            !running && lastAt != null && /* @__PURE__ */ jsxs5(Fragment5, { children: [
+              " \xB7 ",
+              /* @__PURE__ */ jsx5(Time, { at: lastAt })
+            ] })
+          ] })
         ] })
       ] }),
-      /* @__PURE__ */ jsxs5("section", { className: "ls-section", children: [
-        /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Cost" }),
-        /* @__PURE__ */ jsx5(UpkeepCost, { job, kind: link.kind })
-      ] }),
-      /* @__PURE__ */ jsxs5("section", { className: "ls-section", children: [
-        /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "If Hermes is asleep" }),
-        /* @__PURE__ */ jsx5("p", { children: CATCH_UP })
-      ] }),
-      /* @__PURE__ */ jsxs5("div", { className: "ls-actions", children: [
-        /* @__PURE__ */ jsx5(Action, { disabled: busy || !job.enabled && archived, icon: job.enabled ? "debug-pause" : "play", onClick: () => act(job.enabled ? "pause" : "resume"), children: job.enabled ? "Pause" : "Resume" }),
-        /* @__PURE__ */ jsx5(Action, { disabled: busy || archived, icon: "run", onClick: () => act("run"), children: "Run now" }),
+      /* @__PURE__ */ jsx5("p", { className: "ls-upkeep-note ls-secondary", children: CATCH_UP }),
+      /* @__PURE__ */ jsxs5("div", { className: "ls-actions ls-upkeep-actions", children: [
+        /* @__PURE__ */ jsx5(Action, { "aria-busy": busy === "run", "aria-disabled": blocked || running, title: running ? "Already running" : void 0, icon: "run", onClick: () => act("run"), children: "Run now" }),
+        /* @__PURE__ */ jsx5(Action, { primary: !job.enabled, "aria-busy": busy === (job.enabled ? "pause" : "resume"), "aria-disabled": blocked, icon: job.enabled ? "debug-pause" : "play", onClick: () => act(job.enabled ? "pause" : "resume"), children: job.enabled ? "Pause" : "Resume" }),
         removeButton
       ] })
-    ] }),
-    /* @__PURE__ */ jsxs5("section", { className: "ls-section", children: [
-      /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Executions" }),
-      /* @__PURE__ */ jsx5(Executions, { executions: data.executions })
-    ] })
+    ] }) : !data.error && /* @__PURE__ */ jsx5(Banner, { kind: "blocked", title: "Waiting for the native job state", actions: /* @__PURE__ */ jsx5(Action, { onClick: () => query.refetch(), children: "Try again" }), children: "Controls are unavailable until Hermes responds." })
   ] });
-  const oneShots = data?.one_shots || [];
-  const refreshes = oneShots.length > 0 && /* @__PURE__ */ jsxs5("section", { className: "ls-section", "data-testid": "one-shots", children: [
-    /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Refresh now runs" }),
-    /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "One-time Hermes agent runs started with Refresh now. Each uses model calls." }),
-    /* @__PURE__ */ jsx5(Executions, { executions: oneShots.flatMap((shot) => shot.executions) })
-  ] });
-  return /* @__PURE__ */ jsxs5(Fragment4, { children: [
+  return /* @__PURE__ */ jsxs5(Fragment5, { children: [
     /* @__PURE__ */ jsxs5(Drawer, { title: `Upkeep \xB7 ${space.name}`, description: "The Hermes cron job that keeps this Space current", onClose, returnFocus, children: [
-      error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: error }),
       body,
-      refreshes
+      /* @__PURE__ */ jsx5("div", { ref: feedbackNode, tabIndex: -1, role: "status", "aria-live": "polite", className: "ls-upkeep-feedback", children: feedback }),
+      error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: error }),
+      job?.uses_model === true && job.prompt && /* @__PURE__ */ jsx5("div", { className: "ls-section", children: /* @__PURE__ */ jsx5(Action, { "aria-expanded": fullPrompt, "aria-controls": "ls-upkeep-prompt", onClick: () => setFullPrompt(!fullPrompt), children: fullPrompt ? "Show less" : "Show full prompt" }) }),
+      job?.last_error && ["failed", "error"].includes(job.last_status) && /* @__PURE__ */ jsxs5(Banner, { kind: "failed", title: `Last run failed${lastAt != null ? ` ${absolute(lastAt)}` : ""}`, actions: /* @__PURE__ */ jsxs5(Fragment5, { children: [
+        /* @__PURE__ */ jsx5(Action, { "aria-disabled": blocked || running, onClick: () => act("run"), children: "Run now" }),
+        /* @__PURE__ */ jsx5(Action, { onClick: () => document.getElementById("ls-upkeep-executions")?.focus(), children: "View history" })
+      ] }), children: [
+        /* @__PURE__ */ jsx5("p", { id: "ls-upkeep-error", className: fullError ? "" : "ls-clamp-three", children: job.last_error }),
+        /* @__PURE__ */ jsx5(Action, { "aria-expanded": fullError, "aria-controls": "ls-upkeep-error", onClick: () => setFullError(!fullError), children: fullError ? "Show less" : "Show more" })
+      ] }),
+      link && /* @__PURE__ */ jsxs5("section", { className: "ls-section", id: "ls-upkeep-executions", tabIndex: -1, children: [
+        /* @__PURE__ */ jsx5("h3", { className: "ls-section-title", children: "Executions" }),
+        /* @__PURE__ */ jsx5(Executions, { executions: data.executions })
+      ] }),
+      !!data?.one_shots?.length && /* @__PURE__ */ jsxs5("section", { className: "ls-section", "data-testid": "one-shots", children: [
+        /* @__PURE__ */ jsx5("h3", { className: "ls-section-title", children: "Refresh now runs" }),
+        /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "One-time Hermes agent runs started with Refresh now. Each uses model calls." }),
+        /* @__PURE__ */ jsx5(Executions, { executions: data.one_shots.flatMap((shot) => shot.executions || []) })
+      ] })
     ] }),
-    confirm && /* @__PURE__ */ jsx5(DecisionDialog, { danger: true, title: `Remove upkeep for ${space.name}?`, description: "This deletes the Hermes cron job. The Space and its data are kept.", confirmLabel: "Remove", onClose: () => setConfirm(false), onConfirm: async () => {
-      await ctx.rest(`${base}/upkeep`, { method: "POST", body: { action: "remove" } });
-      await Promise.all([query.refetch(), onChanged?.()]);
-    } })
+    confirm && /* @__PURE__ */ jsx5(DecisionDialog, { danger: true, successFocus: feedbackNode, title: `Remove upkeep for ${space.name}?`, description: "This deletes the Hermes cron job. Future runs stop, but already-running work may finish. The Space and its data are kept.", cancelLabel: "Keep upkeep", confirmLabel: "Remove", onClose: () => setConfirm(false), onConfirm: () => act("remove") })
   ] });
 }
 
@@ -1065,12 +1169,14 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
 }
 
 // src/desktop/ui/space.jsx
-import { Fragment as Fragment5, jsx as jsx6, jsxs as jsxs6 } from "react/jsx-runtime";
+import { Fragment as Fragment6, jsx as jsx6, jsxs as jsxs6 } from "react/jsx-runtime";
 function SaveStatus({ write, announcement }) {
   const labels = { saving: "Saving\u2026", saved: `Saved ${write?.at ? absolute(write.at) : ""}`, failed: "Not saved \u2014 this change was rejected", unknown: "Save outcome unknown \u2014 the change may have been stored", conflict: "Conflict \u2014 this record changed elsewhere" };
   return /* @__PURE__ */ jsxs6("span", { className: "ls-save", role: "status", "aria-live": "polite", "aria-atomic": "true", children: [
-    /* @__PURE__ */ jsx6(Icon, { name: write?.status === "saving" ? "refresh" : ["failed", "unknown", "conflict"].includes(write?.status) ? "warning" : "check", spin: write?.status === "saving" }),
-    write ? labels[write.status] : "No unsaved changes",
+    write && /* @__PURE__ */ jsxs6(Fragment6, { children: [
+      /* @__PURE__ */ jsx6(Icon, { name: write.status === "saving" ? "refresh" : ["failed", "unknown", "conflict"].includes(write.status) ? "warning" : "check", spin: write.status === "saving" }),
+      labels[write.status]
+    ] }),
     announcement && /* @__PURE__ */ jsx6("span", { children: announcement })
   ] });
 }
@@ -1083,7 +1189,7 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
     {
       kind: write.status === "conflict" ? "conflict" : "failed",
       title: write.status === "conflict" ? "Conflict \u2014 this record changed elsewhere" : write.status === "unknown" ? "Save outcome unknown \u2014 the change may have been stored" : "Not saved \u2014 this change was rejected",
-      actions: write.status === "conflict" ? /* @__PURE__ */ jsxs6(Fragment5, { children: [
+      actions: write.status === "conflict" ? /* @__PURE__ */ jsxs6(Fragment6, { children: [
         canKeep && /* @__PURE__ */ jsx6(Action, { onClick: () => write.retry({ ...write.args, base_rev: current.rev }), children: "Keep my note" }),
         /* @__PURE__ */ jsx6(Action, { onClick: () => {
           setWrite(null);
@@ -1097,7 +1203,7 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
 }
 function SpaceView({ ctx, sid }) {
   const base = spacePath(sid);
-  const detail = useQuery5({ queryKey: ["living-spaces", ctx.queryScope || null, sid, "detail"], queryFn: () => ctx.rest(base), refetchInterval: 2e3 });
+  const detail = useQuery5({ queryKey: ["living-spaces", ctx.queryScope || null, sid, "detail"], queryFn: () => ctx.rest(base), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "dataUpdatedAt"] });
   const space = detail.data;
   const [sheet, setSheet] = useState6(null);
   const [confirmation, setConfirmation] = useState6(null);
@@ -1125,7 +1231,7 @@ function SpaceView({ ctx, sid }) {
   const status = crash || remoteCrash ? "crashed" : space ? spaceStatus(ignoredCrashRev === space.head_rev ? { ...space, attention: null } : space, true) : "building";
   const lastRun = space?.recent_runs?.[0];
   const runKey = JSON.stringify(lastRun || null);
-  useEffect(() => {
+  useEffect2(() => {
     let disposed = false;
     ctx.rest(`${base}/opened`, { method: "POST" }).catch((e) => {
       if (!disposed) setActionError(`Could not mark this Space as opened. ${errorText(e)}`);
@@ -1134,7 +1240,7 @@ function SpaceView({ ctx, sid }) {
       disposed = true;
     };
   }, [ctx, base]);
-  useEffect(() => {
+  useEffect2(() => {
     if (building || archived || crash || remoteCrash || !content.current) return;
     let disposed = false;
     let errors = 0;
@@ -1155,8 +1261,8 @@ function SpaceView({ ctx, sid }) {
         if (event.kind === "booted") setReady(true);
         if (event.kind === "denied") setAnnouncement("A Space request was denied. Review Permissions for access details.");
         if (event.kind === "log-overflow") setAnnouncement("Some diagnostic entries were dropped because the log limit was reached.");
-        if (event.kind === "error" && (event.fatal || event.phase === "load" || /load|entry|boot/i.test(event.message || "") || ++errors >= 3)) setCrash(diagnosticText(`${event.message || event.error || "Repeated runtime errors"}
-Location: ${event.location || event.filename || "Not reported by runtime"}`));
+        if (event.kind === "error" && (event.fatal || event.phase === "load" || /load|entry|boot/i.test(event.message || "") || ++errors >= 3)) setCrash(diagnosticText(`${event.message || event.error || "Repeated runtime errors"}${event.location || event.filename ? `
+Location: ${event.location || event.filename}` : ""}`));
       }
     });
     controller.current = session;
@@ -1174,7 +1280,7 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
     };
   }, [ctx, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
   const changes = useQuery5({ queryKey: ["living-spaces", ctx.queryScope || null, sid, "changes", space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 });
-  useEffect(() => {
+  useEffect2(() => {
     if (!hasData || !ready || !changes.data || !controller.current) return;
     const page = advanceCursor(cursor.current, changes.data);
     if (page.changes.length) {
@@ -1182,19 +1288,19 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
       cursor.current = page.seq;
     }
   }, [hasData, ready, changes.data, changes.dataUpdatedAt]);
-  useEffect(() => {
+  useEffect2(() => {
     if (!lastRun) return;
     if (ready) controller.current?.postEvent("run.updated", lastRun);
     if (seenRun.current && seenRun.current !== runKey && !inFlight(lastRun.status)) setAnnouncement(lastRun.status === "succeeded" ? `Refresh succeeded: ${runResult(lastRun)}` : `Refresh ${lastRun.status}: ${runResult(lastRun)}`);
     seenRun.current = runKey;
   }, [runKey, ready]);
-  useEffect(() => {
+  useEffect2(() => {
     if (crash && space?.head_rev) {
       setCrash(null);
     }
   }, [space?.head_rev]);
   async function refresh() {
-    if (refreshLock.current || refreshPending || inFlight(lastRun?.status) || refreshReason(space)) return;
+    if (refreshLock.current || refreshPending || status === "updating" || inFlight(lastRun?.status) || refreshReason(space)) return;
     refreshLock.current = true;
     setRefreshPending(true);
     setActionError("");
@@ -1235,8 +1341,6 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
   const upkeep = space.upkeep;
   const busy = refreshPending || inFlight(lastRun?.status) || status === "updating";
   const reason = refreshReason(space);
-  const pause = () => act("upkeep", { action: upkeep.enabled ? "pause" : "resume" });
-  const pauseAction = upkeep && !upkeep.missing && !archived ? /* @__PURE__ */ jsx6(Action, { icon: upkeep.enabled ? "debug-pause" : "play", onClick: pause, children: upkeep.enabled ? "Pause upkeep" : "Resume upkeep" }) : null;
   const opener = () => document.activeElement?.getAttribute("role") === "menuitem" ? overflow.current : document.activeElement;
   const openSheet = (kind, tab) => setSheet({ kind, tab, returnFocus: opener() });
   const openHistory = (tab) => openSheet("history", tab || "runs");
@@ -1258,32 +1362,26 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
           /* @__PURE__ */ jsxs6("div", { className: "ls-frame-meta", children: [
             /* @__PURE__ */ jsx6(OwnerChip, { owner: space.owner }),
             /* @__PURE__ */ jsxs6("span", { children: [
-              "Last successful update ",
-              /* @__PURE__ */ jsx6(Time, { at: space.freshness?.last_success_at }),
-              " \xB7 source data from ",
-              /* @__PURE__ */ jsx6(Time, { at: space.freshness?.source_as_of })
+              " \xB7 ",
+              /* @__PURE__ */ jsx6(Freshness, { facts: headerFacts(space) })
             ] })
           ] })
         ] })
       ] }),
       /* @__PURE__ */ jsxs6("div", { className: "ls-frame-actions", children: [
         /* @__PURE__ */ jsx6(SaveStatus, { write, announcement }),
-        !building && /* @__PURE__ */ jsxs6(Fragment5, { children: [
-          /* @__PURE__ */ jsx6("div", { className: "ls-wide-only", children: /* @__PURE__ */ jsx6(Action, { icon: "watch", onClick: () => openSheet("upkeep"), children: !upkeep ? "No upkeep" : upkeep.missing ? "Upkeep missing" : upkeep.enabled ? "Upkeep on" : "Upkeep paused" }) }),
-          /* @__PURE__ */ jsx6("div", { className: "ls-wide-only", children: pauseAction })
-        ] }),
+        !building && /* @__PURE__ */ jsx6("div", { className: "ls-upkeep-action", children: /* @__PURE__ */ jsx6(Action, { icon: "watch", onClick: () => openSheet("upkeep"), children: !upkeep ? "Upkeep: none" : upkeep.missing ? "Upkeep: job missing" : upkeep.enabled === true ? "Upkeep: on" : upkeep.enabled === false ? "Upkeep: paused" : "Upkeep" }) }),
         /* @__PURE__ */ jsx6("span", { className: "ls-wide-only", children: /* @__PURE__ */ jsx6(Action, { onClick: () => openHistory(), children: "History" }) }),
-        !building && /* @__PURE__ */ jsxs6(Fragment5, { children: [
+        !building && /* @__PURE__ */ jsxs6(Fragment6, { children: [
           /* @__PURE__ */ jsx6(Action, { onClick: () => openSheet("permissions"), children: "Permissions" }),
-          /* @__PURE__ */ jsx6(DisabledReason, { reason, children: /* @__PURE__ */ jsx6(Action, { primary: true, icon: "refresh", "aria-busy": busy, "aria-disabled": !!reason, title: reason || void 0, onClick: refresh, children: busy ? "Refreshing\u2026" : "Refresh now" }) })
+          /* @__PURE__ */ jsx6(DisabledReason, { reason, children: /* @__PURE__ */ jsx6(Action, { primary: true, icon: "refresh", "aria-busy": busy, "aria-disabled": !!reason || busy, title: reason || void 0, onClick: refresh, children: busy ? "Refreshing\u2026" : "Refresh now" }) })
         ] }),
         /* @__PURE__ */ jsxs6(DropdownMenu, { children: [
           /* @__PURE__ */ jsx6(DropdownMenuTrigger, { asChild: true, children: /* @__PURE__ */ jsx6(Action, { ref: overflow, "aria-label": "More Space actions", icon: "ellipsis" }) }),
           /* @__PURE__ */ jsxs6(DropdownMenuContent, { align: "end", children: [
             /* @__PURE__ */ jsx6("div", { className: "ls-compact-only", children: /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openHistory(), children: "History" }) }),
-            !building && /* @__PURE__ */ jsxs6(Fragment5, { children: [
-              /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openSheet("upkeep"), children: "Upkeep" }),
-              pauseAction && /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: pause, children: upkeep.enabled ? "Pause upkeep" : "Resume upkeep" }),
+            !building && /* @__PURE__ */ jsxs6(Fragment6, { children: [
+              /* @__PURE__ */ jsx6("div", { className: "ls-upkeep-compact", children: /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openSheet("upkeep"), children: "Upkeep" }) }),
               /* @__PURE__ */ jsx6(DropdownMenuSeparator, {}),
               /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => act("pin", { pinned: !space.pinned }), children: space.pinned ? "Unpin Space" : "Pin Space" }),
               /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => archived ? act("unarchive") : askConfirmation("archive"), children: archived ? "Restore Space" : "Archive Space\u2026" }),
@@ -1300,10 +1398,10 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
       controller.current?.dismissWrite(write.token);
       setReload((n) => n + 1);
     } }),
-    archived ? /* @__PURE__ */ jsx6(Banner, { title: "This Space is archived. Refreshes and schedules are off.", actions: /* @__PURE__ */ jsxs6(Fragment5, { children: [
+    archived ? /* @__PURE__ */ jsx6(Banner, { title: "This Space is archived. Future upkeep is paused.", actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
       /* @__PURE__ */ jsx6(Action, { onClick: () => act("unarchive"), children: "Restore Space" }),
       /* @__PURE__ */ jsx6(Action, { danger: true, onClick: () => askConfirmation("delete"), children: "Delete\u2026" })
-    ] }), children: "Restore it to resume upkeep. Delete removes it and its data permanently." }) : status === "failed" ? /* @__PURE__ */ jsxs6(Banner, { kind: "failed", title: `Refresh failed at ${absolute(space.freshness?.last_attempt_at)}. You're seeing data from ${absolute(space.freshness?.last_success_at)}.`, actions: /* @__PURE__ */ jsxs6(Fragment5, { children: [
+    ] }), children: "Restore it to open the canvas, then resume upkeep separately. Already-running work may finish. Delete removes it and its data permanently." }) : status === "failed" ? /* @__PURE__ */ jsxs6(Banner, { kind: "failed", title: `Refresh failed${space.freshness?.last_attempt_at != null ? ` at ${absolute(space.freshness.last_attempt_at)}` : ""}. ${space.freshness?.last_success_at != null ? `You're seeing data from ${absolute(space.freshness.last_success_at)}.` : "No successful update yet."}`, actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
       /* @__PURE__ */ jsx6(Action, { onClick: () => openHistory(), children: "View run details" }),
       /* @__PURE__ */ jsx6(Action, { onClick: refresh, children: "Try again" })
     ] }), children: [
@@ -1314,36 +1412,33 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
       "The Space still opens and your data is safe. ",
       /* @__PURE__ */ jsx6(CopyPrompt, { text: `${space.owner}, ${space.name} is blocked. Please review its last run and help me restore upkeep.` })
     ] }) : null,
-    /* @__PURE__ */ jsxs6("section", { className: "ls-content", "aria-label": "Space content", children: [
-      /* @__PURE__ */ jsx6("div", { className: "ls-caption", children: "Content below the bar is generated by this Space and runs sandboxed" }),
-      /* @__PURE__ */ jsx6("div", { className: `ls-sandbox${status === "failed" ? " ls-stale" : ""}`, children: building ? /* @__PURE__ */ jsxs6("div", { className: "ls-building", children: [
-        /* @__PURE__ */ jsxs6("p", { role: "status", children: [
-          space.owner,
-          " is building the first version. This opens automatically when it's ready."
-        ] }),
-        /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 100 } }),
-        /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 180 } })
-      ] }) : status === "crashed" ? /* @__PURE__ */ jsxs6("div", { className: "ls-crash", children: [
-        /* @__PURE__ */ jsx6(ErrorState5, { title: `${space.name} stopped working`, description: "The Space hit an error and was stopped. Your records are safe and weren't changed by the crash." }),
-        /* @__PURE__ */ jsx6("pre", { className: "ls-diagnostic", children: `Revision ${space.head_rev}
+    /* @__PURE__ */ jsx6("section", { className: "ls-content", "aria-label": "Space content", children: /* @__PURE__ */ jsx6("div", { className: `ls-sandbox${status === "failed" ? " ls-stale" : ""}`, children: building ? /* @__PURE__ */ jsxs6("div", { className: "ls-building", children: [
+      /* @__PURE__ */ jsxs6("p", { role: "status", children: [
+        space.owner,
+        " is building the first version. This opens automatically when it's ready."
+      ] }),
+      /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 100 } }),
+      /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 180 } })
+    ] }) : status === "crashed" ? /* @__PURE__ */ jsxs6("div", { className: "ls-crash", children: [
+      /* @__PURE__ */ jsx6(ErrorState5, { title: `${space.name} stopped working`, description: "The Space hit an error and was stopped. Your records are safe and weren't changed by the crash." }),
+      /* @__PURE__ */ jsx6("pre", { className: "ls-diagnostic", children: `Revision ${space.head_rev}
 ${crashMessage}
 Logged to this Space only. Common credential values redacted.` }),
-        /* @__PURE__ */ jsxs6("div", { className: "ls-actions", children: [
-          /* @__PURE__ */ jsx6(Action, { primary: true, onClick: () => {
-            setCrash(null);
-            setIgnoredCrashRev(space.head_rev);
-            setReload((n) => n + 1);
-          }, children: "Reload Space" }),
-          /* @__PURE__ */ jsx6(Action, { onClick: () => openHistory("revisions"), children: "Restore revision\u2026" })
-        ] }),
-        /* @__PURE__ */ jsx6(CopyPrompt, { text: `${space.owner}, ${space.name} crashed. Please read its error log and fix it.` }),
-        /* @__PURE__ */ jsxs6("p", { className: "ls-secondary", children: [
-          "Repairs happen in chat. ",
-          space.owner,
-          " can read this error and apply a new revision."
-        ] })
-      ] }) : archived ? /* @__PURE__ */ jsx6("div", { className: "ls-building", children: /* @__PURE__ */ jsx6("p", { children: "Restore Space to open its content. Your records and revisions are kept." }) }) : /* @__PURE__ */ jsx6("div", { ref: content, className: "ls-mount", "data-testid": "space-host" }) })
-    ] }),
+      /* @__PURE__ */ jsxs6("div", { className: "ls-actions", children: [
+        /* @__PURE__ */ jsx6(Action, { primary: true, onClick: () => {
+          setCrash(null);
+          setIgnoredCrashRev(space.head_rev);
+          setReload((n) => n + 1);
+        }, children: "Reload Space" }),
+        /* @__PURE__ */ jsx6(Action, { onClick: () => openHistory("revisions"), children: "Restore revision\u2026" })
+      ] }),
+      /* @__PURE__ */ jsx6(CopyPrompt, { text: `${space.owner}, ${space.name} crashed. Please read its error log and fix it.` }),
+      /* @__PURE__ */ jsxs6("p", { className: "ls-secondary", children: [
+        "Repairs happen in chat. ",
+        space.owner,
+        " can read this error and apply a new revision."
+      ] })
+    ] }) : archived ? /* @__PURE__ */ jsx6("div", { className: "ls-building", children: /* @__PURE__ */ jsx6("p", { children: "Restore Space to open its content. Your records and revisions are kept." }) }) : /* @__PURE__ */ jsx6("div", { ref: content, className: "ls-mount", "data-testid": "space-host" }) }) }),
     sheet?.kind === "permissions" && /* @__PURE__ */ jsx6(PermissionsSheet, { returnFocus: sheet.returnFocus, ctx, space, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
     sheet?.kind === "history" && /* @__PURE__ */ jsx6(HistorySheet, { returnFocus: sheet.returnFocus, ctx, space, initialTab: sheet.tab, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
     sheet?.kind === "upkeep" && /* @__PURE__ */ jsx6(UpkeepSheet, { returnFocus: sheet.returnFocus, ctx, space, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
@@ -1353,7 +1448,7 @@ Logged to this Space only. Common credential values redacted.` }),
       /* @__PURE__ */ jsx6("h2", { children: "Updated record" }),
       /* @__PURE__ */ jsx6("pre", { className: "ls-diagnostic", children: JSON.stringify(write.reply?.error?.current, null, 2) })
     ] }) }),
-    confirmation && /* @__PURE__ */ jsx6(DecisionDialog, { returnFocus: confirmationTrigger.current, danger: true, title: confirmation === "delete" ? `Delete ${space.name}?` : `Archive ${space.name}?`, description: confirmation === "delete" ? "Delete removes this Space, all its records and revisions permanently and stops future upkeep. Exported copies aren't recalled." : "Archiving stops refreshes and schedules. Your records and revisions are kept. You can restore this Space later.", confirmLabel: confirmation === "delete" ? "Delete Space" : "Archive Space", onClose: () => setConfirmation(null), onConfirm: async () => {
+    confirmation && /* @__PURE__ */ jsx6(DecisionDialog, { returnFocus: confirmationTrigger.current, danger: true, title: confirmation === "delete" ? `Delete ${space.name}?` : `Archive ${space.name}?`, description: confirmation === "delete" ? "Delete removes this Space, all its records and revisions permanently and stops future upkeep. Already-running work may finish. Exported copies aren't recalled." : "Archiving pauses future upkeep. Already-running work may finish. Your records and revisions are kept. Restoring this Space does not resume upkeep.", confirmLabel: confirmation === "delete" ? "Delete Space" : "Archive Space", onClose: () => setConfirmation(null), onConfirm: async () => {
       if (confirmation === "delete") {
         await ctx.rest(`${base}?confirm=${encodeURIComponent(sid)}`, { method: "DELETE" });
         host2.navigate("/spaces");
@@ -1376,9 +1471,9 @@ var styles = `
 .ls-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:12px}.ls-card{display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid var(--ls-line);border-radius:12px;background:var(--ls-surface);color:inherit;text-decoration:none;transition:background .15s,border-color .15s}.ls-card:hover{background:color-mix(in srgb,var(--ls-accent) 5%,var(--ls-surface));border-color:color-mix(in srgb,var(--ls-accent) 55%,var(--ls-line))}.ls-card.ls-failed,.ls-card.ls-blocked{border-color:color-mix(in srgb,var(--ls-danger) 40%,var(--ls-line))}.ls-card.ls-archived{opacity:.9}.ls-card-top{display:flex;align-items:flex-start;gap:12px}.ls-card-name{font-weight:600;font-size:14px}.ls-card-description{margin:0!important;min-height:42px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--ui-text-secondary)}.ls-card-freshness{border-top:1px solid var(--ls-line);padding-top:10px;font-size:12px;display:grid;gap:3px}.ls-facts{margin:10px 0;display:grid;gap:8px;font-size:12px}.ls-facts>div{display:grid;grid-template-columns:110px 1fr;gap:10px}.ls-facts dt{color:var(--ui-text-secondary)}.ls-facts dd{margin:0;overflow-wrap:anywhere}
 .ls-tile{display:inline-flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;border-radius:10px;border:1px solid color-mix(in srgb,var(--ls-accent) 48%,transparent);background:color-mix(in srgb,var(--ls-accent) 22%,var(--ui-bg-primary));color:color-mix(in srgb,var(--ls-accent) 70%,var(--ui-text-primary))}.ls-tile .codicon{font-size:20px}.ls-tile-small{width:32px;height:32px;border-radius:8px}.ls-owner{display:inline-flex;gap:5px;align-items:center;font-size:12px;color:var(--ui-text-secondary)}.ls-avatar{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:10px;background:var(--ui-bg-quaternary);color:var(--ui-text-primary)}.ls-pin{margin-left:auto}
 .ls-pill{display:inline-flex;gap:5px;align-items:center;min-height:22px;padding:2px 8px!important;border:1px solid var(--ls-line);border-radius:999px!important;background:transparent!important;color:var(--ui-text-primary)!important;font-size:12px!important;font-weight:500}.ls-pill.ls-ready,.ls-pill.ls-succeeded,.ls-pill.ls-granted{color:var(--ls-good)!important}.ls-pill.ls-failed,.ls-pill.ls-crashed{color:var(--ls-danger)!important;border-color:currentColor}.ls-pill.ls-blocked,.ls-pill.ls-requested{color:var(--ls-warning)!important}.ls-pill.ls-updating{color:var(--ui-accent-lit,var(--ui-accent))!important}.ls-action{min-height:32px!important;border-radius:8px!important;padding:0 12px!important;font-size:13px!important}.ls-action[aria-disabled=true]{opacity:.55;cursor:not-allowed}.ls-danger{color:var(--ls-danger)!important;border:1px solid color-mix(in srgb,var(--ls-danger) 55%,var(--ls-line))!important}.ls-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}.ls-footer{font-size:12px;color:var(--ui-text-secondary);margin-top:22px!important}.ls-empty{max-width:780px;margin:55px auto}.ls-empty-tiles{display:flex;gap:12px;justify-content:center}.ls-empty .ls-prompt{margin-top:12px}.ls-prompt{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--ls-line);border-radius:8px;background:var(--ls-surface);font-size:13px}.ls-prompt q{flex:1;user-select:text;overflow-wrap:anywhere}.ls-prompt button{min-height:28px}.ls-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
-.ls-frame{height:100%;display:flex;flex-direction:column}.ls-framebar{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 22px;border-bottom:1px solid var(--ls-line);background:var(--ui-bg-primary)}.ls-identity{display:flex;align-items:center;gap:10px;min-width:0;flex:1}.ls-name-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ls-frame-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}.ls-frame-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ls-save{font-size:12px;display:inline-flex;gap:5px;align-items:center;min-width:100px}.ls-content{display:flex;flex:1;min-height:420px;flex-direction:column;padding:16px 20px 20px;gap:8px}.ls-caption{font-size:12px;color:var(--ui-text-secondary)}.ls-sandbox{flex:1;min-height:380px;border:1px solid var(--ls-line);border-radius:12px;overflow:hidden;position:relative}.ls-mount{height:100%;min-height:380px}.ls-stale{filter:saturate(.7)}.ls-banner{display:flex;gap:10px;padding:14px 22px;border-bottom:1px solid var(--ls-line);background:var(--ui-bg-secondary);font-size:13px}.ls-banner.ls-failed,.ls-banner.ls-crashed,.ls-banner.ls-conflict{border-color:color-mix(in srgb,var(--ls-danger) 45%,var(--ls-line));background:color-mix(in srgb,var(--ls-danger) 8%,var(--ui-bg-primary))}.ls-banner.ls-blocked{border-color:var(--ls-warning)}.ls-crash{max-width:620px;padding:40px 24px;margin:auto}.ls-diagnostic{max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;background:var(--ui-bg-secondary);border:1px solid var(--ls-line);font:12px/1.5 var(--font-mono,monospace)}.ls-building{padding:40px;display:grid;gap:16px}.ls-compact-only{display:none}
-.ls-sheet{position:fixed!important;top:0!important;right:0!important;left:auto!important;bottom:0!important;transform:none!important;translate:none!important;width:min(460px,100vw)!important;max-width:460px!important;max-height:100dvh!important;height:100dvh!important;border-radius:0!important;background:var(--ui-bg-elevated,var(--ui-surface-background,Canvas))!important;animation:none!important}.ls-sheet-body{display:flex!important;flex-direction:column!important;height:100%;max-height:100dvh!important;padding:0!important;gap:0!important;overflow:hidden!important}.ls-sheet-header{display:flex!important;flex-direction:row!important;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--ls-line);flex:none}.ls-sheet-scroll{padding:18px 16px;overflow:auto;min-height:0;flex:1}.ls-disclosure{margin:16px 16px 0;padding:12px;border:1px solid var(--ls-line);border-radius:10px;font-size:12px;flex:none;line-height:1.55}.ls-disclosure p{margin:6px 0 0}.ls-section{margin:0 0 22px}.ls-section-title{font-size:12px!important;font-weight:600!important;letter-spacing:.025em;margin:4px 0 12px!important}.ls-grant,.ls-row{padding:12px;border:1px solid var(--ls-line);border-radius:8px;margin-bottom:12px}.ls-row-top{display:flex;align-items:center;gap:8px;justify-content:space-between}.ls-row-top>strong{display:flex;gap:8px;align-items:center}.ls-pending{background:color-mix(in srgb,var(--ls-warning) 6%,var(--ls-surface))}.ls-future{border-style:dashed}.ls-future p{font-size:12px;color:var(--ui-text-secondary)}.ls-audit{padding-left:18px;font-size:12px}.ls-tabs{margin-bottom:16px}.ls-confirm{max-width:520px!important}.ls-compare{display:grid;gap:12px}.ls-directive{padding:14px;border:1px solid var(--ui-stroke-secondary);border-radius:12px;max-width:440px;background:var(--ui-bg-card,var(--ui-bg-secondary));display:grid;gap:10px}.ls-spin{animation:ls-spin 1s linear infinite}@keyframes ls-spin{to{transform:rotate(360deg)}}
-@media(max-width:1200px){.ls-frame-actions{width:100%;justify-content:flex-end}}@media(max-width:899px){.ls-wide-only{display:none!important}.ls-compact-only{display:inline-flex}.ls-page{padding:20px 16px}.ls-framebar{padding:12px}.ls-frame-meta{gap:4px}.ls-frame-actions{justify-content:flex-start}.ls-content{padding:12px}.ls-page-heading{flex-wrap:wrap;gap:4px}.ls-sort{width:100%}.ls-sheet{width:min(460px,100vw)!important}}@media(prefers-reduced-motion:reduce){.ls-spin{animation:none}.ls-root *,.ls-sheet *,.ls-confirm *{transition:none!important;animation:none!important}}@media(forced-colors:active){.ls-pill,.ls-card,.ls-tile,.ls-action{border:1px solid CanvasText!important}}
+.ls-frame{height:100%;display:flex;flex-direction:column}.ls-framebar{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--ls-line);background:var(--ui-bg-primary)}.ls-identity{display:flex;align-items:center;gap:10px;min-width:0;flex:1}.ls-identity>div{min-width:0}.ls-name-row{display:flex;align-items:center;gap:8px}.ls-name-row h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px}.ls-name-row .ls-pill{flex:none}.ls-frame-meta{font-size:12px;color:var(--ui-text-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.ls-frame-actions{display:flex;align-items:center;gap:6px;flex:none;flex-wrap:wrap}.ls-save{font-size:12px;display:inline-flex;gap:5px;align-items:center;max-width:220px}.ls-save:empty{width:0}.ls-content{display:flex;flex:1;min-height:420px;flex-direction:column;padding:12px;gap:8px}.ls-sandbox{flex:1;min-height:380px;border:1px solid var(--ls-line);border-radius:12px;overflow:hidden;position:relative}.ls-mount{height:100%;min-height:380px}.ls-stale{filter:saturate(.7)}.ls-banner{display:flex;gap:10px;padding:14px 22px;border-bottom:1px solid var(--ls-line);background:var(--ui-bg-secondary);font-size:13px}.ls-banner.ls-failed,.ls-banner.ls-crashed,.ls-banner.ls-conflict{border-color:color-mix(in srgb,var(--ls-danger) 45%,var(--ls-line));background:color-mix(in srgb,var(--ls-danger) 8%,var(--ui-bg-primary))}.ls-banner.ls-blocked{border-color:var(--ls-warning)}.ls-crash{max-width:620px;padding:40px 24px;margin:auto}.ls-diagnostic{max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;background:var(--ui-bg-secondary);border:1px solid var(--ls-line);font:12px/1.5 var(--font-mono,monospace)}.ls-building{padding:40px;display:grid;gap:16px}.ls-compact-only,.ls-upkeep-compact{display:none}
+.ls-sheet{position:fixed!important;top:0!important;right:0!important;left:auto!important;bottom:0!important;transform:none!important;translate:none!important;width:min(460px,100vw)!important;max-width:460px!important;max-height:100dvh!important;height:100dvh!important;border-radius:0!important;background:var(--ui-bg-elevated,var(--ui-surface-background,Canvas))!important;animation:none!important}.ls-sheet-body{display:flex!important;flex-direction:column!important;height:100%;max-height:100dvh!important;padding:0!important;gap:0!important;overflow:hidden!important}.ls-sheet-header{display:flex!important;flex-direction:row!important;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--ls-line);flex:none}.ls-sheet-scroll{padding:18px 16px;overflow:auto;min-height:0;flex:1}.ls-disclosure{margin:8px 0!important;font-size:12px;line-height:1.55;max-width:60ch}.ls-internet .ls-row-top{min-height:56px}.ls-internet>.ls-secondary{font-size:12px;max-width:60ch}.ls-switch-value{display:flex;gap:8px;align-items:center}.ls-switch{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:40px;padding:0;border:0;background:none;cursor:pointer;flex:none}.ls-switch-track{display:block;width:40px;height:24px;border-radius:999px;border:1px solid var(--ui-stroke-secondary);background:var(--ui-stroke-secondary);position:relative}.ls-switch-thumb{position:absolute;left:2px;top:2px;width:18px;height:18px;border-radius:50%;background:var(--ui-text-primary);transition:transform 120ms ease-out}.ls-switch[aria-checked=true] .ls-switch-track{background:var(--ui-accent);border-color:var(--ui-accent)}.ls-switch[aria-checked=true] .ls-switch-thumb{transform:translateX(16px);background:var(--ui-text-on-accent,#fff)}.ls-switch[aria-disabled=true]{cursor:not-allowed}.ls-upkeep-prompt{margin:16px 0}.ls-upkeep-prompt h3,.ls-sheet h3{font-size:13px;font-weight:600;margin:0}.ls-upkeep-prompt p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}.ls-clamp-six,.ls-clamp-three{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}.ls-clamp-three{-webkit-line-clamp:3}.ls-upkeep-note{font-size:12px}.ls-upkeep-actions>.ls-danger{margin-left:auto}.ls-upkeep-feedback{font-size:12px;margin:12px 0;outline-offset:2px}.ls-section{margin:0 0 22px}.ls-section-title{font-size:12px!important;font-weight:600!important;letter-spacing:.025em;margin:4px 0 12px!important}.ls-grant,.ls-row{padding:12px;border:1px solid var(--ls-line);border-radius:8px;margin-bottom:12px}.ls-row-top{display:flex;align-items:center;gap:8px;justify-content:space-between}.ls-row-top>strong{display:flex;gap:8px;align-items:center}.ls-pending{background:color-mix(in srgb,var(--ls-warning) 6%,var(--ls-surface))}.ls-audit{padding-left:18px;font-size:12px}.ls-tabs{margin-bottom:16px}.ls-confirm{max-width:520px!important}.ls-compare{display:grid;gap:12px}.ls-directive{padding:14px;border:1px solid var(--ui-stroke-secondary);border-radius:12px;max-width:440px;background:var(--ui-bg-card,var(--ui-bg-secondary));display:grid;gap:10px}.ls-spin{animation:ls-spin 1s linear infinite}@keyframes ls-spin{to{transform:rotate(360deg)}}
+@media(max-width:899px){.ls-wide-only{display:none!important}.ls-compact-only{display:inline-flex}.ls-page{padding:20px 16px}.ls-framebar{padding:12px;flex-wrap:wrap}.ls-frame-actions{width:100%;justify-content:flex-end}.ls-save{margin-right:auto}.ls-content{padding:12px}.ls-page-heading{flex-wrap:wrap;gap:4px}.ls-sort{width:100%}.ls-sheet{width:min(460px,100vw)!important}}@media(max-width:599px){.ls-upkeep-action{display:none}.ls-upkeep-compact{display:block}.ls-frame-actions .ls-action{padding:0 8px!important}.ls-save{max-width:100%;flex-basis:100%}.ls-save:empty{display:none}}@media(max-width:359px){.ls-internet .ls-row-top{flex-wrap:wrap}.ls-internet .ls-switch-value{width:100%}}@media(prefers-reduced-motion:reduce){.ls-spin{animation:none}.ls-root *,.ls-sheet *,.ls-confirm *{transition:none!important;animation:none!important}}@media(forced-colors:active){.ls-pill,.ls-card,.ls-tile,.ls-action{border:1px solid CanvasText!important}.ls-switch-track{border:1px solid ButtonText!important;background:Canvas!important}.ls-switch-thumb{background:ButtonText!important}.ls-switch[aria-checked=true] .ls-switch-track{background:Highlight!important}.ls-switch[aria-checked=true] .ls-switch-thumb{background:HighlightText!important}}
 `;
 
 // src/desktop/ui/context.jsx
@@ -1396,7 +1491,7 @@ function useScopedContext(ctx) {
 function SpacesPage({ ctx }) {
   const scoped = useScopedContext(ctx);
   const [hash, setHash] = useState7(() => typeof location === "undefined" ? "" : location.hash);
-  useEffect2(() => {
+  useEffect3(() => {
     const changed = () => setHash(location.hash);
     window.addEventListener("hashchange", changed);
     return () => window.removeEventListener("hashchange", changed);
