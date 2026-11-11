@@ -452,10 +452,10 @@ def delete_space(sid, *, actor, confirm):
         raise SpacesError("invalid", "Deletion confirmation must equal the Space id")
     with db.read() as conn:
         db.space(conn, sid)
-    had_upkeep = upkeep.on_delete(sid)
     runs.cancel_pending(sid, "deleted")
     with db.write() as conn:
         db.space(conn, sid)
+        had_upkeep = upkeep.on_delete(conn, sid)
         removed = {table: conn.execute(f"SELECT count(*) FROM {table} WHERE space=?", (sid,)).fetchone()[0]
                    for table in ("records", "revisions")}
         removed["upkeep"] = had_upkeep

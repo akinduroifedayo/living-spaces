@@ -498,7 +498,7 @@ class AuthorityTests(CoreCase):
         logs.add_logs(self.sid, session, [{"level": "info", "msg": "Demo"}])
         calls = []
         with patch.object(projects.upkeep, "pause_for_archive", lambda conn, sid: calls.append(("archive", sid))), \
-                patch.object(projects.upkeep, "on_delete", lambda sid: calls.append(("delete", sid)) or False), \
+                patch.object(projects.upkeep, "on_delete", lambda conn, sid: calls.append(("delete", sid)) or False), \
                 patch.object(projects.runs, "cancel_pending", lambda sid, reason: calls.append(("cancel", reason))):
             projects.set_status(self.sid, "archived", actor="user")
             self.error("archived", self.put, "new")
@@ -583,7 +583,7 @@ class AuthorityTests(CoreCase):
         self.assertNotIn("result", reply)
 
     def test_delete_upkeep_failure_preserves_space(self):
-        def fail(sid):
+        def fail(conn, sid):
             raise SpacesError("blocked", "Cron unavailable", reason="no_handler")
         with patch.object(projects.upkeep, "on_delete", fail):
             self.error("blocked", projects.delete_space, self.sid, actor="user", confirm=self.sid)

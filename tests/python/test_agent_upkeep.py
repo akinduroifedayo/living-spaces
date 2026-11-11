@@ -16,11 +16,14 @@ import threading
 import unittest
 from unittest.mock import Mock, patch
 
+from tests.python.review_customization_support import available_empty_cron_modules
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
 class AgentIntegrationSeamTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(patch.dict(sys.modules, available_empty_cron_modules()))
         self.temp = tempfile.TemporaryDirectory(prefix="agent-integration-", dir=ROOT / ".run" if (ROOT / ".run").exists() else None)
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
