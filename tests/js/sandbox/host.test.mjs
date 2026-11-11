@@ -117,6 +117,18 @@ test('invalid envelopes and ungranted ops never reach call', async () => {
     assert.equal(f.replies[0].error.code, 'not_granted')
   } finally { f.cleanup() }
 })
+test('oversized or malformed requests with a usable id settle with an error instead of hanging', async () => {
+  const f = fixture()
+  try {
+    f.frame.peer.postMessage(request({ id: 11, args: { text: 'a'.repeat(MAX_REQUEST_SIZE) } }))
+    f.frame.peer.postMessage(request({ id: 12, args: [] }))
+    f.frame.peer.postMessage(request({ id: 'x', args: { text: 'a'.repeat(MAX_REQUEST_SIZE) } }))
+    await delay(20)
+    assert.equal(f.calls.length, 0)
+    assert.deepEqual(f.replies.map(r => [r.id, r.ok, r.error.code]), [[11, false, 'limit'], [12, false, 'invalid']])
+    assert.equal(f.events.filter(e => e.kind === 'denied').length, 3)
+  } finally { f.cleanup() }
+})
 test('reload closes the port, stops late calls and suppresses in-flight results', async () => {
   let complete
   const f = fixture(() => new Promise(resolve => { complete = resolve }))

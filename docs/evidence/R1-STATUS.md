@@ -22,6 +22,14 @@ The real-model trace is `evidence/normal-chat-03.trace.json` in that build direc
 
 The independent packaging review found that the renderer graph gate resolved paths against the process cwd and compared case-sensitively. Commit `783cff8` resolves against the repo root and lowercases. Three regression tests fail on the old gate and pass on the new one, and the real esbuild metafile still passes.
 
+## Failure, restore and lifecycle checkpoint (20:00 CT)
+
+`harness/qualify_failure_restore.py` passed 18/18 in the isolated Desktop. A disclosed harness-authored revision points the feed at a failing path on the already-granted host. Refresh now records a failed run. Every record keeps its data, source and rev. The host banner names the last-good data and says notes and statuses are unchanged. Restore through the host Revisions dialog creates a new `restore` revision whose file map equals the good revision; user records are not rewound. The next refresh succeeds and clears the banner. One earlier run had a vacuous file-equality check (it compared missing keys); it is retained and not counted.
+
+`harness/qualify_lifecycle.py` passed 23/23. Guest calls run in the Space frame's own realm through the real bridge. Results: oversized and malformed writes fail with typed errors and store nothing; a guest batch op carrying `space: 'pair-play'` lands only in the bound Space and Pair Play is byte-identical; closing the Space closes its session and a replay of that session through `core.dispatch` returns `session_invalid` and writes nothing; reopening issues a fresh session; three rapid Refresh now presses create one run. A disposable `Lifecycle Probe` fixture Space with an active native schedule was archived through host controls (cron job paused, refresh blocked, retention copy shown) and deleted (Space, cron job and shim removed). Model-built Spaces were untouched.
+
+That run found a real host defect. The renderer silently dropped any bridge request over 1 MB, so the guest promise never settled. The host now replies `limit` (or `invalid`) when a rejected envelope carries a usable id. A host test failed before the fix and passes after. The bundle was rebuilt with `--jsx=automatic`, which matches the committed artifact; the contract build line omitted that flag and is corrected.
+
 ## Acceptance ledger
 
 | Check | Status | Missing evidence |

@@ -540,6 +540,9 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
     const reason = validateRequest(m);
     if (reason) {
       onEvent({ kind: "denied", op: typeof m?.op === "string" ? m.op : null, reason });
+      if (m?.v === BRIDGE_VERSION && Number.isSafeInteger(m.id)) {
+        port.postMessage({ v: 1, id: m.id, ok: false, error: { code: reason === "request exceeds 1 MB" ? "limit" : "invalid", message: reason } });
+      }
       return;
     }
     const reply = (body) => {

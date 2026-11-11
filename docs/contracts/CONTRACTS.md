@@ -279,7 +279,7 @@ Nested srcdoc frames, `sandbox="allow-scripts"` only (opaque origin), the CSP be
   // onEvent({kind:'booted'|'reloaded'|'denied'|'error'|'log-overflow', ...}). On 'reloaded' the UI closes the session and remounts.
   export const WEBRTC_NOTE  // the exact spec §2 disclosure string (UI renders it; single source)
   ```
-  The sandbox lane also owns `src/living-spaces/runtime/kit/*`. The UI lane owns `src/desktop/plugin.src.js` and `src/desktop/ui/**`, and builds `src/living-spaces/desktop/plugin.js` with `esbuild src/desktop/plugin.src.js --bundle --format=esm --external:@hermes/plugin-sdk --external:react --external:react/jsx-runtime --outfile=src/living-spaces/desktop/plugin.js`.
+  The sandbox lane also owns `src/living-spaces/runtime/kit/*`. The UI lane owns `src/desktop/plugin.src.js` and `src/desktop/ui/**`, and builds `src/living-spaces/desktop/plugin.js` with `esbuild src/desktop/plugin.src.js --bundle --format=esm --jsx=automatic --external:@hermes/plugin-sdk --external:react --external:react/jsx-runtime --outfile=src/living-spaces/desktop/plugin.js`.
 - Test file ownership: `tests/python/test_core_*.py` (core), `tests/python/test_upkeep_*.py` (upkeep), `tests/python/test_agent_*.py` (agent), `tests/js/sandbox/**` (sandbox), `tests/js/ui/**` (ui). Python tests use stdlib `unittest` and run with `~/.hermes/hermes-agent/venv/bin/python -m unittest discover -s tests/python -t .`. Each test sets `LIVING_SPACES_DB` (and `HERMES_HOME` if it touches cron) to a fresh temp dir **inside the worktree's `.run/`**, never under `~/.hermes`.
 
 ## 13. Amendments found during the swarm (Forge applies at integration)
