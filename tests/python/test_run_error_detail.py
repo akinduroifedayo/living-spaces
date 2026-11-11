@@ -28,7 +28,6 @@ class RunErrorDetailTests(unittest.TestCase):
                 "id": "public-feed", "url": "https://research.example/feed", "collection": "papers",
             }]}},
         )["id"]
-        grants.decide(self.sid, "refresh", "grant")
 
     def refresh(self):
         return runs.start_refresh(self.sid, trigger="manual", actor="user", wait=True)

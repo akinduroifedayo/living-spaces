@@ -197,7 +197,7 @@ def upsert_source(sid, collection, rid, source, source_meta, *, actor):
 
 
 def upsert_sources(sid, collection, entries, *, actor):
-    from . import feeds, grants
+    from . import grants
 
     if not isinstance(entries, list):
         raise SpacesError("invalid", "entries must be an array")
@@ -207,18 +207,17 @@ def upsert_sources(sid, collection, entries, *, actor):
     counts = {"added": 0, "updated": 0, "unchanged": 0}
     with db.write() as conn:
         db.space(conn, sid, writable=True)
-        hosts = set()
+        feed = False
         for entry in entries:
             if not isinstance(entry, (tuple, list)) or len(entry) != 3:
                 raise SpacesError("invalid", "Source entries must contain id, source and metadata")
             rid, source, source_meta = entry
             result = _upsert_source(conn, sid, collection, rid, source, source_meta, actor=actor)
             counts[result] += 1
-            if source_meta.get("handler") == "feed":
-                hosts.add(feeds.source_host(source_meta["url"]))
+            feed = feed or source_meta.get("handler") == "feed"
         # The write lock keeps revocation from racing this check and the commit.
-        if hosts and not grants._check(conn, sid, "refresh", {"hosts": sorted(hosts)}):
-            raise SpacesError("not_granted", "Capability or requested scope is not granted", capability="refresh")
+        if feed and not grants._check(conn, sid, "net"):
+            raise SpacesError("not_granted", "Internet access is off", capability="net")
     return counts
 
 

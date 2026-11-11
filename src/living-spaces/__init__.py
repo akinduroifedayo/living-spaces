@@ -286,8 +286,6 @@ def spaces_write_records(core, args, owner):
         counts = {"added": 0, "updated": 0, "unchanged": 0}
         with core.db.write() as conn:
             core.db.space(conn, sid, writable=True)
-            if not core.grants._check(conn, sid, "refresh"):
-                raise core.SpacesError("not_granted", "Refresh is not granted", capability="refresh")
             for op in ops:
                 if not isinstance(op, dict) or op.get("op") != "put" or "data" in op:
                     raise _invalid(core, "Source-owned operations must put source fields, without data")
@@ -325,10 +323,20 @@ def spaces_refresh(core, args, owner):
     return core.start_refresh(_space(core, args), trigger="chat", actor=f"agent:{owner}")
 
 
-def spaces_request_schedule(core, args, owner):
+def spaces_schedule_upkeep(core, args, owner):
     sid = _space(core, args)
-    return core.request_schedule(sid, cadence=_text(core, args, "cadence"), timezone=_text(core, args, "timezone"),
-                                 purpose=_text(core, args, "purpose"), actor=f"agent:{owner}")
+    kind = _text(core, args, "kind")
+    prompt = _text(core, args, "prompt", required=kind == "agent")
+    return core.schedule_upkeep(sid, kind=kind, cadence=_text(core, args, "cadence"),
+                                timezone=_text(core, args, "timezone"), prompt=prompt, actor=f"agent:{owner}")
+
+
+def spaces_upkeep(core, args, owner):
+    sid = _space(core, args)
+    action = _text(core, args, "action")
+    if action == "status":
+        return core.get_upkeep(sid)
+    return core.upkeep_action(sid, action, actor=f"agent:{owner}")
 
 
 REF_NOTE = (" An ambiguous or unknown space fails with code ambiguous/not_found and lists candidates: ask the user "
@@ -343,13 +351,13 @@ BINARY_NOTE = (" Pass binary images, audio and fonts as {\"b64\":\"<base64>\",\"
 TOOLS = [
     (spaces_list, _schema(
         "spaces_list",
-        "List every Space (id, name, owner, status, head_rev, freshness, schedule, attention). Use it first whenever "
+        "List every Space (id, name, owner, status, head_rev, freshness, upkeep, attention). Use it first whenever "
         "the user mentions a Space, so you work with real ids instead of inventing them.",
         {})),
     (spaces_get, _schema(
         "spaces_get",
         "Get one Space: manifest, file list, grants, collections with record counts, recent refresh runs, freshness, "
-        "schedule and recent error count. Read this before changing a Space's code or data." + REF_NOTE,
+        "upkeep (the linked Hermes cron job, or null) and recent error count. Read this before changing a Space's code or data." + REF_NOTE,
         {"space": SPACE_ARG}, ["space"])),
     (spaces_create, _schema(
         "spaces_create",
@@ -410,7 +418,7 @@ TOOLS = [
         "spaces_query; omit base_rev (or 0) only to create a new record. A stale base_rev fails the whole batch with "
         "code conflict and the record's current value: re-read and retry, never overwrite blindly. Only write the "
         "user's own fields (data) by default. For upkeep, set source_owned=true and use put operations with "
-        "source and optional source_meta instead of data. This requires Refresh and preserves user data; "
+        "source and optional source_meta instead of data. This preserves user data; "
         "source-owned deletes are not supported. For source-owned puts, a supplied base_rev must be a nonnegative "
         "integer matching the current rev (0 to create); omitting base_rev performs an idempotent upsert "
         "without a revision check." + REF_NOTE,
@@ -445,20 +453,33 @@ TOOLS = [
         ["space", "rev"])),
     (spaces_refresh, _schema(
         "spaces_refresh",
-        "Run the Space's declared upkeep refresh now (the feed sources in its manifest). Returns the run, usually "
-        "queued or running; check spaces_get recent_runs for the outcome before reporting it. Fails with code "
-        "blocked when the user has not approved Refresh in the Space's Permissions; say so and ask them to "
-        "approve it there." + REF_NOTE,
+        "Refresh now. A feed Space runs its declared feed sources in-process (needs Internet access) and returns "
+        "the run; check spaces_get recent_runs for the outcome before reporting it. An agent Space triggers its "
+        "linked Hermes cron job, or starts a one-time Hermes cron agent run when none is linked, and returns "
+        "{kind:'cron', cron_job_id, triggered}; that run uses model calls, and spaces_upkeep status shows its "
+        "outcome." + REF_NOTE,
         {"space": SPACE_ARG}, ["space"])),
-    (spaces_request_schedule, _schema(
-        "spaces_request_schedule",
-        "Ask the user to approve a refresh schedule. This only files a request: the schedule starts after the user "
-        "approves it in the Space's Permissions, so never say it is active until spaces_get shows status active." + REF_NOTE,
+    (spaces_schedule_upkeep, _schema(
+        "spaces_schedule_upkeep",
+        "Schedule this Space's upkeep as an ordinary Hermes cron job, created now. The user asking for it is the "
+        "consent, as for any Hermes cron job; only call this when the user asked for scheduled upkeep. It replaces "
+        "any existing upkeep job for the Space. kind agent runs the prompt as a Hermes agent turn on each fire, "
+        "which uses model calls: tell the user so. kind feed runs the manifest's feed sources with no model calls. "
+        "Returns the native job as Hermes stores it; report its prompt, schedule and next run." + REF_NOTE,
         {"space": SPACE_ARG,
-         "cadence": {"type": "string", "description": "Cron expression or interval, e.g. \"0 7 * * *\" or \"every 6h\"."},
+         "kind": {"type": "string", "enum": ["agent", "feed"]},
+         "cadence": {"type": "string", "description": "Hermes cron schedule, e.g. \"0 7 * * *\" or \"every 6h\"."},
          "timezone": {"type": "string", "description": "IANA timezone, e.g. \"America/Chicago\"."},
-         "purpose": {"type": "string", "description": "Why, in words the user will see when approving."}},
-        ["space", "cadence", "timezone", "purpose"])),
+         "prompt": {"type": "string", "description": "Required for agent: the upkeep task, at most 4000 characters."}},
+        ["space", "kind", "cadence", "timezone"])),
+    (spaces_upkeep, _schema(
+        "spaces_upkeep",
+        "Read or control this Space's linked Hermes cron job. status returns the link, the live native job and its "
+        "recent executions. pause, resume and run pass straight to Hermes cron; remove deletes the job and the "
+        "link." + REF_NOTE,
+        {"space": SPACE_ARG,
+         "action": {"type": "string", "enum": ["status", "pause", "resume", "run", "remove"]}},
+        ["space", "action"])),
 ]
 
 

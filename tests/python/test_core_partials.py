@@ -29,7 +29,6 @@ class CorePartialsTests(unittest.TestCase):
                                      files={'index.html': '<main>Public demo</main>'},
                                      manifest={'data': {'version': 1}, 'upkeep': {'handler': 'feed', 'sources': [
                                          {'id': 'demo', 'url': 'https://research.example/feed', 'collection': 'papers'}]}})['id']
-        core.decide(self.sid, 'refresh', 'grant', actor='user')
         with patch.object(feeds, 'fetch', return_value=FEED):
             self.assertEqual(runs.start_refresh(self.sid, trigger='manual', actor='user', wait=True)['status'], 'succeeded')
         self.record = next(r for r in core.query(self.sid, 'papers')['records']
