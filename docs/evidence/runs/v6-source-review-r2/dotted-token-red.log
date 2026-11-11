@@ -1,0 +1,17 @@
+test_explicit_admin_token_file_is_refused (__main__.CredentialSuffixProbe.test_explicit_admin_token_file_is_refused) ... FAIL
+test_known_ssh_path_remains_refused (__main__.CredentialSuffixProbe.test_known_ssh_path_remains_refused) ... ok
+test_public_design_tokens_still_import (__main__.CredentialSuffixProbe.test_public_design_tokens_still_import) ... ok
+
+======================================================================
+FAIL: test_explicit_admin_token_file_is_refused (__main__.CredentialSuffixProbe.test_explicit_admin_token_file_is_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Build/living-spaces-r1/run/credential-suffix-probe-v6.py", line 15, in test_explicit_admin_token_file_is_refused
+    self.assertFalse(reply['ok'], reply)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : {'ok': True, 'result': {'space': 'token-refusal-probe', 'rev': 1, 'open': {'directive': '::living-space{id="token-refusal-probe"}', 'route': '/spaces?space=token-refusal-probe'}, 'grants_pending': [], 'warnings': ['Entry file is missing: index.html', 'Canvas bot actions are unavailable because native maintaining-session context was missing. Bind it from a native maintenance turn with spaces_bind_maintainer.', "Entry file 'index.html' is missing, so the Space cannot boot."], 'notes': [], 'next': 'End your reply with the directive paragraph so the user gets an Open Space card.'}}
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.065s
+
+FAILED (failures=1)

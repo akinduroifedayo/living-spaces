@@ -1,0 +1,8 @@
+test_explicit_admin_token_file_is_refused (__main__.CredentialSuffixProbe.test_explicit_admin_token_file_is_refused) ... ok
+test_known_ssh_path_remains_refused (__main__.CredentialSuffixProbe.test_known_ssh_path_remains_refused) ... ok
+test_public_design_tokens_still_import (__main__.CredentialSuffixProbe.test_public_design_tokens_still_import) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.046s
+
+OK

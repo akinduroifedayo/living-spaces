@@ -1,0 +1,180 @@
+TAP version 13
+# Subtest: a switched active chat/profile cannot replace the pinned owner and queued is not complete
+ok 1 - a switched active chat/profile cannot replace the pinned owner and queued is not complete
+  ---
+  duration_ms: 8.195
+  type: 'test'
+  ...
+# Subtest: native receipt alone determines busy and correlated completion with answer
+ok 2 - native receipt alone determines busy and correlated completion with answer
+  ---
+  duration_ms: 1.30275
+  type: 'test'
+  ...
+# Subtest: unknown admission has no automatic resend; explicit retry preserves exact input and payload
+ok 3 - unknown admission has no automatic resend; explicit retry preserves exact input and payload
+  ---
+  duration_ms: 1.554916
+  type: 'test'
+  ...
+# Subtest: reload observes a durable intent without submitting again
+ok 4 - reload observes a durable intent without submitting again
+  ---
+  duration_ms: 0.360042
+  type: 'test'
+  ...
+# Subtest: duplicate requests coalesce and changed same-key payload fails visibly
+ok 5 - duplicate requests coalesce and changed same-key payload fails visibly
+  ---
+  duration_ms: 1.216458
+  type: 'test'
+  ...
+# Subtest: mount and timer actions without user activation never call native transport
+ok 6 - mount and timer actions without user activation never call native transport
+  ---
+  duration_ms: 0.416208
+  type: 'test'
+  ...
+# Subtest: a missing or ambiguous registered route fails offline without fallback
+ok 7 - a missing or ambiguous registered route fails offline without fallback
+  ---
+  duration_ms: 0.427291
+  type: 'test'
+  ...
+# Subtest: canonical profile mismatch prevents any native submission
+ok 8 - canonical profile mismatch prevents any native submission
+  ---
+  duration_ms: 0.365417
+  type: 'test'
+  ...
+# Subtest: route removed after resume fails the fresh registered-route check
+ok 9 - route removed after resume fails the fresh registered-route check
+  ---
+  duration_ms: 0.4755
+  type: 'test'
+  ...
+# Subtest: an unrelated receipt cannot complete or release the activation
+ok 10 - an unrelated receipt cannot complete or release the activation
+  ---
+  duration_ms: 1.520708
+  type: 'test'
+  ...
+# Subtest: closing during admission suppresses late observation and delivery
+ok 11 - closing during admission suppresses late observation and delivery
+  ---
+  duration_ms: 0.343417
+  type: 'test'
+  ...
+# Subtest: native denial remains visible and never reports completion
+ok 12 - native denial remains visible and never reports completion
+  ---
+  duration_ms: 0.794167
+  type: 'test'
+  ...
+# Subtest: Space action REST and cleanup stay on the captured backend after ambient switch
+ok 13 - Space action REST and cleanup stay on the captured backend after ambient switch
+  ---
+  duration_ms: 0.877
+  type: 'test'
+  ...
+# Subtest: coalescing a different activation explicitly says no new request was sent
+ok 14 - coalescing a different activation explicitly says no new request was sent
+  ---
+  duration_ms: 0.563709
+  type: 'test'
+  ...
+# Subtest: legacy runtime identity is refused without creating a replacement session
+ok 15 - legacy runtime identity is refused without creating a replacement session
+  ---
+  duration_ms: 0.393667
+  type: 'test'
+  ...
+# Subtest: one activation burst cannot dispatch new inputs after coalesced work settles
+not ok 16 - one activation burst cannot dispatch new inputs after coalesced work settles
+  ---
+  duration_ms: 4.728584
+  type: 'test'
+  location: '/Volumes/Expansion/Development/Projects/living-spaces-wt/cut-integration/tests/js/ui/canvas-actions.test.mjs:338:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Queued keys from one expired activation must not send later native work
+    
+    2 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 2
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Volumes/Expansion/Development/Projects/living-spaces-wt/cut-integration/tests/js/ui/canvas-actions.test.mjs:353:10)
+    async Test.run (node:internal/test_runner/test:1208:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+  ...
+# Subtest: a fresh activation after completed work admits a different input and payload
+ok 17 - a fresh activation after completed work admits a different input and payload
+  ---
+  duration_ms: 1.030291
+  type: 'test'
+  ...
+# Subtest: definitive permission_denied settles refusal across reload and permits a fresh intent
+not ok 18 - definitive permission_denied settles refusal across reload and permits a fresh intent
+  ---
+  duration_ms: 0.412375
+  type: 'test'
+  location: '/Volumes/Expansion/Development/Projects/living-spaces-wt/cut-integration/tests/js/ui/canvas-actions.test.mjs:381:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    A definitive refusal must release the unresolved intent slot
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Volumes/Expansion/Development/Projects/living-spaces-wt/cut-integration/tests/js/ui/canvas-actions.test.mjs:392:12)
+    async Test.run (node:internal/test_runner/test:1208:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+  ...
+# Subtest: definitive queue_full settles refusal across reload and permits a fresh intent
+not ok 19 - definitive queue_full settles refusal across reload and permits a fresh intent
+  ---
+  duration_ms: 0.605833
+  type: 'test'
+  location: '/Volumes/Expansion/Development/Projects/living-spaces-wt/cut-integration/tests/js/ui/canvas-actions.test.mjs:381:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'unknown'
+    - 'failed'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'failed'
+  actual: 'unknown'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Volumes/Expansion/Development/Projects/living-spaces-wt/cut-integration/tests/js/ui/canvas-actions.test.mjs:389:12)
+    async Test.run (node:internal/test_runner/test:1208:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:831:7)
+  ...
+# Subtest: ambiguous transport loss remains unresolved across reload until exact-ID explicit retry
+ok 20 - ambiguous transport loss remains unresolved across reload until exact-ID explicit retry
+  ---
+  duration_ms: 1.756791
+  type: 'test'
+  ...
+1..20
+# tests 20
+# suites 0
+# pass 17
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 210.587791
