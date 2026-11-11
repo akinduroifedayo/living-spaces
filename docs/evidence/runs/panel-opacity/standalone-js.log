@@ -1,0 +1,898 @@
+TAP version 13
+# Subtest: boot copies vetted html attributes, drops handlers, and retains body attributes
+ok 1 - boot copies vetted html attributes, drops handlers, and retains body attributes
+  ---
+  duration_ms: 115.55625
+  type: 'test'
+  ...
+# Subtest: manifest preset wins and one token style precedes every app stylesheet
+ok 2 - manifest preset wins and one token style precedes every app stylesheet
+  ---
+  duration_ms: 28.189042
+  type: 'test'
+  ...
+# Subtest: tokens alone preserve the entry html preset
+ok 3 - tokens alone preserve the entry html preset
+  ---
+  duration_ms: 16.14325
+  type: 'test'
+  ...
+# Subtest: all frozen presets are applied without requiring tokens
+ok 4 - all frozen presets are applied without requiring tokens
+  ---
+  duration_ms: 135.898959
+  type: 'test'
+  ...
+# Subtest: invalid tokens are skipped while valid boundary values survive, with one warning
+ok 5 - invalid tokens are skipped while valid boundary values survive, with one warning
+  ---
+  duration_ms: 25.376208
+  type: 'test'
+  ...
+# Subtest: theme token count is bounded at 64 and overflow warns once
+ok 6 - theme token count is bounded at 64 and overflow warns once
+  ---
+  duration_ms: 30.726792
+  type: 'test'
+  ...
+# Subtest: malformed theme fields cannot replace the entry preset or inject declarations
+ok 7 - malformed theme fields cannot replace the entry preset or inject declarations
+  ---
+  duration_ms: 74.015584
+  type: 'test'
+  ...
+# Subtest: space.asset resolves a project-root image for DOM created after boot
+ok 8 - space.asset resolves a project-root image for DOM created after boot
+  ---
+  duration_ms: 12.636459
+  type: 'test'
+  ...
+# Subtest: space.net.fetch sends exactly the frozen operation and defined fields
+ok 9 - space.net.fetch sends exactly the frozen operation and defined fields
+  ---
+  duration_ms: 8.849375
+  type: 'test'
+  ...
+# Subtest: space.net.fetch preserves host errors and session closure behavior
+ok 10 - space.net.fetch preserves host errors and session closure behavior
+  ---
+  duration_ms: 8.331125
+  type: 'test'
+  ...
+# Subtest: kit defaults precede manifest tokens while app styles follow them
+ok 11 - kit defaults precede manifest tokens while app styles follow them
+  ---
+  duration_ms: 16.71075
+  type: 'test'
+  ...
+# Subtest: the shipped plaintext document equals deterministic producer output
+ok 12 - the shipped plaintext document equals deterministic producer output
+  ---
+  duration_ms: 0.992209
+  type: 'test'
+  ...
+# Subtest: the shipped shell admits one parent boot and retains the inner policy and reload signal
+ok 13 - the shipped shell admits one parent boot and retains the inner policy and reload signal
+  ---
+  duration_ms: 3.3705
+  type: 'test'
+  ...
+# Subtest: the renderer graph gate rejects guest modules, guest HTML and the removed loader
+ok 14 - the renderer graph gate rejects guest modules, guest HTML and the removed loader
+  ---
+  duration_ms: 2.230084
+  type: 'test'
+  ...
+# Subtest: the renderer graph gate judges root-relative inputs identically from a foreign working directory
+ok 15 - the renderer graph gate judges root-relative inputs identically from a foreign working directory
+  ---
+  duration_ms: 1.725
+  type: 'test'
+  ...
+# Subtest: the renderer graph gate rejects case-variant guest paths from the root and from a foreign working directory
+ok 16 - the renderer graph gate rejects case-variant guest paths from the root and from a foreign working directory
+  ---
+  duration_ms: 1.452584
+  type: 'test'
+  ...
+# Subtest: the renderer graph command exits nonzero for guest metafile inputs and zero for ordinary ones from any working directory
+ok 17 - the renderer graph command exits nonzero for guest metafile inputs and zero for ordinary ones from any working directory
+  ---
+  duration_ms: 1197.973209
+  type: 'test'
+  ...
+# Subtest: useSaveState waits for confirmation and maps failed and conflicted writes
+ok 18 - useSaveState waits for confirmation and maps failed and conflicted writes
+  ---
+  duration_ms: 4.007167
+  type: 'test'
+  ...
+# Subtest: useSaveState keeps the newest save outcome when confirmations arrive out of order
+ok 19 - useSaveState keeps the newest save outcome when confirmations arrive out of order
+  ---
+  duration_ms: 0.706917
+  type: 'test'
+  ...
+# Subtest: useCollection subscribes by collection, preserves errors and unsubscribes on unmount
+ok 20 - useCollection subscribes by collection, preserves errors and unsubscribes on unmount
+  ---
+  duration_ms: 1.865375
+  type: 'test'
+  ...
+# Subtest: useCollection ignores stale query completions and old collection results
+ok 21 - useCollection ignores stale query completions and old collection results
+  ---
+  duration_ms: 0.979
+  type: 'test'
+  ...
+# Subtest: useRecord loads one record and follows collection changes
+ok 22 - useRecord loads one record and follows collection changes
+  ---
+  duration_ms: 0.775459
+  type: 'test'
+  ...
+# Subtest: RefreshButton follows run events and handles not_granted with actionable text
+ok 23 - RefreshButton follows run events and handles not_granted with actionable text
+  ---
+  duration_ms: 2.510958
+  type: 'test'
+  ...
+# Subtest: RefreshButton keeps a terminal run event newer than the refresh reply
+ok 24 - RefreshButton keeps a terminal run event newer than the refresh reply
+  ---
+  duration_ms: 0.6525
+  type: 'test'
+  ...
+# Subtest: Nav uses regular hash links and aria-current for the selected view
+ok 25 - Nav uses regular hash links and aria-current for the selected view
+  ---
+  duration_ms: 1.745208
+  type: 'test'
+  ...
+# Subtest: validator drops null
+ok 26 - validator drops null
+  ---
+  duration_ms: 6.874791
+  type: 'test'
+  ...
+# Subtest: validator drops array
+ok 27 - validator drops array
+  ---
+  duration_ms: 0.134042
+  type: 'test'
+  ...
+# Subtest: validator drops version
+ok 28 - validator drops version
+  ---
+  duration_ms: 0.084917
+  type: 'test'
+  ...
+# Subtest: validator drops fractional id
+ok 29 - validator drops fractional id
+  ---
+  duration_ms: 0.0725
+  type: 'test'
+  ...
+# Subtest: validator drops missing id
+ok 30 - validator drops missing id
+  ---
+  duration_ms: 0.082833
+  type: 'test'
+  ...
+# Subtest: validator drops op
+ok 31 - validator drops op
+  ---
+  duration_ms: 0.069834
+  type: 'test'
+  ...
+# Subtest: validator drops null args
+ok 32 - validator drops null args
+  ---
+  duration_ms: 0.070458
+  type: 'test'
+  ...
+# Subtest: validator drops array args
+ok 33 - validator drops array args
+  ---
+  duration_ms: 0.06275
+  type: 'test'
+  ...
+# Subtest: validator drops string args
+ok 34 - validator drops string args
+  ---
+  duration_ms: 0.087417
+  type: 'test'
+  ...
+# Subtest: validator accepts the v1 envelope, measures JSON length and catches serialization errors
+ok 35 - validator accepts the v1 envelope, measures JSON length and catches serialization errors
+  ---
+  duration_ms: 15.457041
+  type: 'test'
+  ...
+# Subtest: grant map exactly covers the frozen v1 operations
+ok 36 - grant map exactly covers the frozen v1 operations
+  ---
+  duration_ms: 0.733958
+  type: 'test'
+  ...
+# Subtest: both frames carry identical frozen CSP and the exact disclosure
+ok 37 - both frames carry identical frozen CSP and the exact disclosure
+  ---
+  duration_ms: 0.558125
+  type: 'test'
+  ...
+# Subtest: project resolver handles query strings, fragments, static and computed dynamic imports
+ok 38 - project resolver handles query strings, fragments, static and computed dynamic imports
+  ---
+  duration_ms: 1.203958
+  type: 'test'
+  ...
+# Subtest: mount binds boot to host session, forwards replies and emits versioned events
+ok 39 - mount binds boot to host session, forwards replies and emits versioned events
+  ---
+  duration_ms: 75.24575
+  type: 'test'
+  ...
+# Subtest: invalid envelopes and ungranted ops never reach call
+ok 40 - invalid envelopes and ungranted ops never reach call
+  ---
+  duration_ms: 22.385583
+  type: 'test'
+  ...
+# Subtest: oversized or malformed requests with a usable id settle with an error instead of hanging
+ok 41 - oversized or malformed requests with a usable id settle with an error instead of hanging
+  ---
+  duration_ms: 25.364
+  type: 'test'
+  ...
+# Subtest: reload closes the port, stops late calls and suppresses in-flight results
+ok 42 - reload closes the port, stops late calls and suppresses in-flight results
+  ---
+  duration_ms: 46.52625
+  type: 'test'
+  ...
+# Subtest: shell reload signals only from this frame and session.closed stops forwarding
+ok 43 - shell reload signals only from this frame and session.closed stops forwarding
+  ---
+  duration_ms: 24.118042
+  type: 'test'
+  ...
+# Subtest: host limits log batches and reports flooding once
+ok 44 - host limits log batches and reports flooding once
+  ---
+  duration_ms: 25.473
+  type: 'test'
+  ...
+# Subtest: revoking a host grant withholds an in-flight successful result
+ok 45 - revoking a host grant withholds an in-flight successful result
+  ---
+  duration_ms: 47.5965
+  type: 'test'
+  ...
+# Subtest: import rewriting leaves comments, strings, regexes and bare dynamic imports intact
+ok 46 - import rewriting leaves comments, strings, regexes and bare dynamic imports intact
+  ---
+  duration_ms: 0.479208
+  type: 'test'
+  ...
+# Subtest: the shell can report an inner reload but other senders cannot close the port
+ok 47 - the shell can report an inner reload but other senders cannot close the port
+  ---
+  duration_ms: 22.366125
+  type: 'test'
+  ...
+# Subtest: validator measures the complete UTF-8 envelope at the byte boundary
+ok 48 - validator measures the complete UTF-8 envelope at the byte boundary
+  ---
+  duration_ms: 4.668625
+  type: 'test'
+  ...
+# Subtest: oversized writes reply with exact UTF-8 envelope bytes and notify the host without dispatch
+ok 49 - oversized writes reply with exact UTF-8 envelope bytes and notify the host without dispatch
+  ---
+  duration_ms: 44.853083
+  type: 'test'
+  ...
+# Subtest: all malformed envelopes with usable ids settle invalid and never dispatch
+ok 50 - all malformed envelopes with usable ids settle invalid and never dispatch
+  ---
+  duration_ms: 32.646041
+  type: 'test'
+  ...
+# Subtest: malformed local writes report full typed rejection errors even without a usable id
+ok 51 - malformed local writes report full typed rejection errors even without a usable id
+  ---
+  duration_ms: 31.812625
+  type: 'test'
+  ...
+# Subtest: ungranted writes notify the host with the complete permission error without dispatch
+ok 52 - ungranted writes notify the host with the complete permission error without dispatch
+  ---
+  duration_ms: 30.334917
+  type: 'test'
+  ...
+# Subtest: allowed writes still dispatch and do not emit local write rejections
+ok 53 - allowed writes still dispatch and do not emit local write rejections
+  ---
+  duration_ms: 33.030916
+  type: 'test'
+  ...
+# Subtest: log count and message length violations return numeric limits without dispatch
+ok 54 - log count and message length violations return numeric limits without dispatch
+  ---
+  duration_ms: 32.450083
+  type: 'test'
+  ...
+# Subtest: malformed log entries stay invalid while exact log limits still dispatch
+ok 55 - malformed log entries stay invalid while exact log limits still dispatch
+  ---
+  duration_ms: 41.66125
+  type: 'test'
+  ...
+# Subtest: data change metadata requires a live data grant while run events remain available
+ok 56 - data change metadata requires a live data grant while run events remain available
+  ---
+  duration_ms: 109.029917
+  type: 'test'
+  ...
+# Subtest: guest console makes truncation visible within the 4000-character cap and preserves original counts
+ok 57 - guest console makes truncation visible within the 4000-character cap and preserves original counts
+  ---
+  duration_ms: 3.460458
+  type: 'test'
+  ...
+# Subtest: guest console preserves messages at the cap and reports the combined count for multi-part messages
+ok 58 - guest console preserves messages at the cap and reports the combined count for multi-part messages
+  ---
+  duration_ms: 1.257333
+  type: 'test'
+  ...
+# Subtest: sparse log entries settle invalid without dispatch
+ok 59 - sparse log entries settle invalid without dispatch
+  ---
+  duration_ms: 32.847875
+  type: 'test'
+  ...
+# Subtest: revoking an in-flight write grant emits the full local rejection
+ok 60 - revoking an in-flight write grant emits the full local rejection
+  ---
+  duration_ms: 155.051417
+  type: 'test'
+  ...
+# Subtest: hosting Worker fixture executes its generated fetch probe
+ok 61 - hosting Worker fixture executes its generated fetch probe
+  ---
+  duration_ms: 5.3165
+  type: 'test'
+  ...
+# Subtest: hosting SharedWorker fixture executes its generated fetch probe
+ok 62 - hosting SharedWorker fixture executes its generated fetch probe
+  ---
+  duration_ms: 6.908042
+  type: 'test'
+  ...
+# Subtest: fresh srcdoc fixture reports execution and all network attempts
+ok 63 - fresh srcdoc fixture reports execution and all network attempts
+  ---
+  duration_ms: 2.08925
+  type: 'test'
+  ...
+# Subtest: html parses nested elements, attributes and literal text
+ok 64 - html parses nested elements, attributes and literal text
+  ---
+  duration_ms: 2.74175
+  type: 'test'
+  ...
+# Subtest: html preserves interpolated strings as data, numbers, booleans and arrays
+ok 65 - html preserves interpolated strings as data, numbers, booleans and arrays
+  ---
+  duration_ms: 0.226708
+  type: 'test'
+  ...
+# Subtest: html handles components, props, generic closing and self-closing components
+ok 66 - html handles components, props, generic closing and self-closing components
+  ---
+  duration_ms: 0.192
+  type: 'test'
+  ...
+# Subtest: html handles spreads, override order, event handlers and boolean attrs
+ok 67 - html handles spreads, override order, event handlers and boolean attrs
+  ---
+  duration_ms: 0.207667
+  type: 'test'
+  ...
+# Subtest: html handles quoted interpolation and mixed attribute parts
+ok 68 - html handles quoted interpolation and mixed attribute parts
+  ---
+  duration_ms: 0.152084
+  type: 'test'
+  ...
+# Subtest: html accepts void tags, multiple roots, comments, entities and indentation
+ok 69 - html accepts void tags, multiple roots, comments, entities and indentation
+  ---
+  duration_ms: 0.196583
+  type: 'test'
+  ...
+# Subtest: html rejects malformed tags and attributes
+ok 70 - html rejects malformed tags and attributes
+  ---
+  duration_ms: 0.76575
+  type: 'test'
+  ...
+# Subtest: html nested templates and mapped children remain VNodes
+ok 71 - html nested templates and mapped children remain VNodes
+  ---
+  duration_ms: 0.1525
+  type: 'test'
+  ...
+# Subtest: status and conflict components expose accessible status and explicit actions
+ok 72 - status and conflict components expose accessible status and explicit actions
+  ---
+  duration_ms: 2.681542
+  type: 'test'
+  ...
+# Subtest: hashRouter matches parameters, fallback, escaping and encoded ids
+ok 73 - hashRouter matches parameters, fallback, escaping and encoded ids
+  ---
+  duration_ms: 0.831625
+  type: 'test'
+  ...
+# Subtest: frame API translates collection methods into the frozen envelopes
+ok 74 - frame API translates collection methods into the frozen envelopes
+  ---
+  duration_ms: 3.561917
+  type: 'test'
+  ...
+# Subtest: frame API throws SpaceError with conflict code and current record
+ok 75 - frame API throws SpaceError with conflict code and current record
+  ---
+  duration_ms: 0.556917
+  type: 'test'
+  ...
+# Subtest: frame events dispatch only v1 messages and unsubscribe removes listeners
+ok 76 - frame events dispatch only v1 messages and unsubscribe removes listeners
+  ---
+  duration_ms: 1.615583
+  type: 'test'
+  ...
+# Subtest: session.closed rejects pending and future operations without forwarding
+ok 77 - session.closed rejects pending and future operations without forwarding
+  ---
+  duration_ms: 9.42375
+  type: 'test'
+  ...
+# Subtest: missing entry produces a visible error screen and a bounded diagnostic
+ok 78 - missing entry produces a visible error screen and a bounded diagnostic
+  ---
+  duration_ms: 6.292583
+  type: 'test'
+  ...
+# Subtest: console, errors, rejected promises and CSP diagnostics share a fifty-entry batch
+ok 79 - console, errors, rejected promises and CSP diagnostics share a fifty-entry batch
+  ---
+  duration_ms: 6.939959
+  type: 'test'
+  ...
+# Subtest: theme light text color pairs meet 4.5:1 contrast
+ok 80 - theme light text color pairs meet 4.5:1 contrast
+  ---
+  duration_ms: 0.525334
+  type: 'test'
+  ...
+# Subtest: theme dark text color pairs meet 4.5:1 contrast
+ok 81 - theme dark text color pairs meet 4.5:1 contrast
+  ---
+  duration_ms: 0.082291
+  type: 'test'
+  ...
+# Subtest: theme supplies a two-pixel keyboard focus ring and reduced motion rules
+ok 82 - theme supplies a two-pixel keyboard focus ring and reduced motion rules
+  ---
+  duration_ms: 0.121625
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects missing before acquiring resources
+ok 83 - sandbox wire rejects missing before acquiring resources
+  ---
+  duration_ms: 13.17
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects null before acquiring resources
+ok 84 - sandbox wire rejects null before acquiring resources
+  ---
+  duration_ms: 0.211417
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects array before acquiring resources
+ok 85 - sandbox wire rejects array before acquiring resources
+  ---
+  duration_ms: 0.11575
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects string before acquiring resources
+ok 86 - sandbox wire rejects string before acquiring resources
+  ---
+  duration_ms: 0.575125
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects number before acquiring resources
+ok 87 - sandbox wire rejects number before acquiring resources
+  ---
+  duration_ms: 0.192208
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects boolean before acquiring resources
+ok 88 - sandbox wire rejects boolean before acquiring resources
+  ---
+  duration_ms: 0.386125
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects missing format before acquiring resources
+ok 89 - sandbox wire rejects missing format before acquiring resources
+  ---
+  duration_ms: 0.131916
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects missing document before acquiring resources
+ok 90 - sandbox wire rejects missing document before acquiring resources
+  ---
+  duration_ms: 0.098834
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects renamed format before acquiring resources
+ok 91 - sandbox wire rejects renamed format before acquiring resources
+  ---
+  duration_ms: 0.263583
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects document path before acquiring resources
+ok 92 - sandbox wire rejects document path before acquiring resources
+  ---
+  duration_ms: 3.20525
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects extra field before acquiring resources
+ok 93 - sandbox wire rejects extra field before acquiring resources
+  ---
+  duration_ms: 0.060125
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects string format before acquiring resources
+ok 94 - sandbox wire rejects string format before acquiring resources
+  ---
+  duration_ms: 0.051291
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects null format before acquiring resources
+ok 95 - sandbox wire rejects null format before acquiring resources
+  ---
+  duration_ms: 0.028875
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects boolean format before acquiring resources
+ok 96 - sandbox wire rejects boolean format before acquiring resources
+  ---
+  duration_ms: 0.027541
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects fractional format before acquiring resources
+ok 97 - sandbox wire rejects fractional format before acquiring resources
+  ---
+  duration_ms: 0.030208
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects unsupported format before acquiring resources
+ok 98 - sandbox wire rejects unsupported format before acquiring resources
+  ---
+  duration_ms: 0.15075
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects null document before acquiring resources
+ok 99 - sandbox wire rejects null document before acquiring resources
+  ---
+  duration_ms: 0.134541
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects object document before acquiring resources
+ok 100 - sandbox wire rejects object document before acquiring resources
+  ---
+  duration_ms: 0.084417
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects array document before acquiring resources
+ok 101 - sandbox wire rejects array document before acquiring resources
+  ---
+  duration_ms: 0.045542
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects number document before acquiring resources
+ok 102 - sandbox wire rejects number document before acquiring resources
+  ---
+  duration_ms: 0.048542
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects boolean document before acquiring resources
+ok 103 - sandbox wire rejects boolean document before acquiring resources
+  ---
+  duration_ms: 0.12275
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects empty document before acquiring resources
+ok 104 - sandbox wire rejects empty document before acquiring resources
+  ---
+  duration_ms: 0.067125
+  type: 'test'
+  ...
+# Subtest: sandbox wire rejects blank document before acquiring resources
+ok 105 - sandbox wire rejects blank document before acquiring resources
+  ---
+  duration_ms: 0.046625
+  type: 'test'
+  ...
+# Subtest: sandbox wire boots only project fields and grants through one port
+ok 106 - sandbox wire boots only project fields and grants through one port
+  ---
+  duration_ms: 1.128541
+  type: 'test'
+  ...
+# Subtest: sandbox setup failure releases its frame, both ports and shell listener
+ok 107 - sandbox setup failure releases its frame, both ports and shell listener
+  ---
+  duration_ms: 0.277417
+  type: 'test'
+  ...
+# Subtest: frame creation failure closes both acquired ports without installing a listener
+ok 108 - frame creation failure closes both acquired ports without installing a listener
+  ---
+  duration_ms: 0.2085
+  type: 'test'
+  ...
+# Subtest: document assignment failure releases listeners, frame and both acquired ports
+ok 109 - document assignment failure releases listeners, frame and both acquired ports
+  ---
+  duration_ms: 0.268584
+  type: 'test'
+  ...
+# Subtest: Internet access is first, On, accessible, and has no Off warning
+ok 110 - Internet access is first, On, accessible, and has no Off warning
+  ---
+  duration_ms: 69.854667
+  type: 'test'
+  ...
+# Subtest: switch revokes through host route and shows the Off warning
+ok 111 - switch revokes through host route and shows the Off warning
+  ---
+  duration_ms: 27.800417
+  type: 'test'
+  ...
+# Subtest: Off switch grants through host approval route and removes the warning
+ok 112 - Off switch grants through host approval route and removes the warning
+  ---
+  duration_ms: 24.846125
+  type: 'test'
+  ...
+# Subtest: agent re-request stays Off until the host Approve action
+ok 113 - agent re-request stays Off until the host Approve action
+  ---
+  duration_ms: 17.117083
+  type: 'test'
+  ...
+# Subtest: refresh approval and data revoke controls remain available
+ok 114 - refresh approval and data revoke controls remain available
+  ---
+  duration_ms: 19.186375
+  type: 'test'
+  ...
+# Subtest: switch disables while a grant decision is in flight
+ok 115 - switch disables while a grant decision is in flight
+  ---
+  duration_ms: 23.670167
+  type: 'test'
+  ...
+# Subtest: host operation map admits only a granted net capability
+ok 116 - host operation map admits only a granted net capability
+  ---
+  duration_ms: 0.385041
+  type: 'test'
+  ...
+# Subtest: F1 approval binds scope and refreshes after structured conflict
+ok 117 - F1 approval binds scope and refreshes after structured conflict
+  ---
+  duration_ms: 72.429042
+  type: 'test'
+  ...
+# Subtest: F1 approval binds scope and refreshes after native IPC conflict
+ok 118 - F1 approval binds scope and refreshes after native IPC conflict
+  ---
+  duration_ms: 27.275541
+  type: 'test'
+  ...
+# Subtest: F6 missing data grant stops polling and cached event delivery
+ok 119 - F6 missing data grant stops polling and cached event delivery
+  ---
+  duration_ms: 11.545875
+  type: 'test'
+  ...
+# Subtest: F6 revoked data grant stops polling and cached event delivery
+ok 120 - F6 revoked data grant stops polling and cached event delivery
+  ---
+  duration_ms: 6.771917
+  type: 'test'
+  ...
+# Subtest: F6 requested data grant stops polling and cached event delivery
+ok 121 - F6 requested data grant stops polling and cached event delivery
+  ---
+  duration_ms: 12.401041
+  type: 'test'
+  ...
+# Subtest: F6 revocation suppresses a late changes response while approved Spaces receive changes
+ok 122 - F6 revocation suppresses a late changes response while approved Spaces receive changes
+  ---
+  duration_ms: 12.677875
+  type: 'test'
+  ...
+# Subtest: F2 the host shows uncertainty and Retry save after a lost response
+ok 123 - F2 the host shows uncertainty and Retry save after a lost response
+  ---
+  duration_ms: 15.847333
+  type: 'test'
+  ...
+# Subtest: F5 the view pins native session cleanup and notifies after exhaustion
+ok 124 - F5 the view pins native session cleanup and notifies after exhaustion
+  ---
+  duration_ms: 859.28575
+  type: 'test'
+  ...
+# Subtest: F2 lost put response reuses create IDs and never overwrites a later edit
+ok 125 - F2 lost put response reuses create IDs and never overwrites a later edit
+  ---
+  duration_ms: 8.687916
+  type: 'test'
+  ...
+# Subtest: F2 lost batch response reuses create IDs and never overwrites a later edit
+ok 126 - F2 lost batch response reuses create IDs and never overwrites a later edit
+  ---
+  duration_ms: 0.609583
+  type: 'test'
+  ...
+# Subtest: F2 uncertain transport outcome is distinct from a confirmed rejection
+ok 127 - F2 uncertain transport outcome is distinct from a confirmed rejection
+  ---
+  duration_ms: 1.109333
+  type: 'test'
+  ...
+# Subtest: F2 retry keeps the first draft snapshot and preserves explicit record revisions
+ok 128 - F2 retry keeps the first draft snapshot and preserves explicit record revisions
+  ---
+  duration_ms: 0.425042
+  type: 'test'
+  ...
+# Subtest: F5 cleanup retries transient failures and reports each failed attempt
+ok 129 - F5 cleanup retries transient failures and reports each failed attempt
+  ---
+  duration_ms: 252.223208
+  type: 'test'
+  ...
+# Subtest: F5 exhausted cleanup is observable and a later destroy retries
+ok 130 - F5 exhausted cleanup is observable and a later destroy retries
+  ---
+  duration_ms: 755.412
+  type: 'test'
+  ...
+# Subtest: F5 close uses the opening backend after a profile switch, including a late open
+ok 131 - F5 close uses the opening backend after a profile switch, including a late open
+  ---
+  duration_ms: 0.444209
+  type: 'test'
+  ...
+# Subtest: local data.put rejection replaces Saved and exposes typed numbers without Retry save
+ok 132 - local data.put rejection replaces Saved and exposes typed numbers without Retry save
+  ---
+  duration_ms: 72.369958
+  type: 'test'
+  ...
+# Subtest: local data.delete rejection replaces Saved and exposes typed numbers without Retry save
+ok 133 - local data.delete rejection replaces Saved and exposes typed numbers without Retry save
+  ---
+  duration_ms: 14.64975
+  type: 'test'
+  ...
+# Subtest: local data.batch rejection replaces Saved and exposes typed numbers without Retry save
+ok 134 - local data.batch rejection replaces Saved and exposes typed numbers without Retry save
+  ---
+  duration_ms: 23.009917
+  type: 'test'
+  ...
+# Subtest: local rejection keeps earlier unknown outcome and ignores events after session destruction
+ok 135 - local rejection keeps earlier unknown outcome and ignores events after session destruction
+  ---
+  duration_ms: 0.586709
+  type: 'test'
+  ...
+# Subtest: succeeded catch-up history shows both times without changing the outcome or freshness
+ok 136 - succeeded catch-up history shows both times without changing the outcome or freshness
+  ---
+  duration_ms: 5.009333
+  type: 'test'
+  ...
+# Subtest: failed catch-up history shows both times without changing the outcome or freshness
+ok 137 - failed catch-up history shows both times without changing the outcome or freshness
+  ---
+  duration_ms: 3.2695
+  type: 'test'
+  ...
+# Subtest: late dispatch does not become catch-up from ticker slip
+ok 138 - late dispatch does not become catch-up from ticker slip
+  ---
+  duration_ms: 2.628458
+  type: 'test'
+  ...
+# Subtest: on_time dispatch does not become catch-up from ticker slip
+ok 139 - on_time dispatch does not become catch-up from ticker slip
+  ---
+  duration_ms: 2.7445
+  type: 'test'
+  ...
+# Subtest: schedule shows overdue awaiting Hermes, last dispatch and disabled reason
+ok 140 - schedule shows overdue awaiting Hermes, last dispatch and disabled reason
+  ---
+  duration_ms: 12.962708
+  type: 'test'
+  ...
+# Subtest: revoked Refresh can be reapproved but upkeep resumes only explicitly
+ok 141 - revoked Refresh can be reapproved but upkeep resumes only explicitly
+  ---
+  duration_ms: 27.532208
+  type: 'test'
+  ...
+# Subtest: denied Refresh can be reapproved but upkeep resumes only explicitly
+ok 142 - denied Refresh can be reapproved but upkeep resumes only explicitly
+  ---
+  duration_ms: 19.403292
+  type: 'test'
+  ...
+# Subtest: Refresh revoke explains paused upkeep and explicit reapproval and resume
+ok 143 - Refresh revoke explains paused upkeep and explicit reapproval and resume
+  ---
+  duration_ms: 15.234208
+  type: 'test'
+  ...
+# Subtest: Diagnostics discloses the latest 2,000 retained log entries
+ok 144 - Diagnostics discloses the latest 2,000 retained log entries
+  ---
+  duration_ms: 1.486667
+  type: 'test'
+  ...
+# Subtest: History incompatible restore explains versions for structured error
+ok 145 - History incompatible restore explains versions for structured error
+  ---
+  duration_ms: 5.237375
+  type: 'test'
+  ...
+# Subtest: History incompatible restore explains versions for native IPC error
+ok 146 - History incompatible restore explains versions for native IPC error
+  ---
+  duration_ms: 5.810792
+  type: 'test'
+  ...
+# Subtest: local rejection can be dismissed without retrying or claiming it was saved
+ok 147 - local rejection can be dismissed without retrying or claiming it was saved
+  ---
+  duration_ms: 14.74025
+  type: 'test'
+  ...
+# Subtest: failed catch-up in SpaceView preserves last-good header timestamps and failure state
+ok 148 - failed catch-up in SpaceView preserves last-good header timestamps and failure state
+  ---
+  duration_ms: 17.042958
+  type: 'test'
+  ...
+1..148
+# tests 148
+# suites 0
+# pass 148
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1995.8515

@@ -1,0 +1,294 @@
+test_f01_agent_prompt_change_blocks_manual_and_scheduled_admission (tests.python.test_review_customization.ReviewCustomizationTests.test_f01_agent_prompt_change_blocks_manual_and_scheduled_admission) ... ok
+test_f01_feed_to_agent_requires_fresh_refresh_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_f01_feed_to_agent_requires_fresh_refresh_approval) ... ok
+test_f01_matching_agent_approval_allows_manual_refresh_control (tests.python.test_review_customization.ReviewCustomizationTests.test_f01_matching_agent_approval_allows_manual_refresh_control) ... ok
+test_f01_stale_agent_scope_cannot_approve_changed_prompt (tests.python.test_review_customization.ReviewCustomizationTests.test_f01_stale_agent_scope_cannot_approve_changed_prompt) ... ok
+test_f01_unchanged_feed_manifest_preserves_host_scope_control (tests.python.test_review_customization.ReviewCustomizationTests.test_f01_unchanged_feed_manifest_preserves_host_scope_control) ... ok
+test_f02_matching_displayed_schedule_approves_exact_fields (tests.python.test_review_customization.ReviewCustomizationTests.test_f02_matching_displayed_schedule_approves_exact_fields) ... ok
+test_f02_rest_denial_disables_schedule_without_native_job_control (tests.python.test_review_customization.ReviewCustomizationTests.test_f02_rest_denial_disables_schedule_without_native_job_control) ... ok
+test_f02_stale_displayed_schedule_conflicts_at_rest_boundary (tests.python.test_review_customization.ReviewCustomizationTests.test_f02_stale_displayed_schedule_conflicts_at_rest_boundary) ... ok
+test_f03_bridge_passes_bound_session_to_real_net_fetch (tests.python.test_review_customization.ReviewCustomizationTests.test_f03_bridge_passes_bound_session_to_real_net_fetch) ... ok
+test_f03_closed_session_prevents_redirect_post (tests.python.test_review_customization.ReviewCustomizationTests.test_f03_closed_session_prevents_redirect_post) ... ok
+test_f03_net_revocation_prevents_redirect_post_control (tests.python.test_review_customization.ReviewCustomizationTests.test_f03_net_revocation_prevents_redirect_post_control) ... ok
+test_f03_open_session_preserves_redirect_post_control (tests.python.test_review_customization.ReviewCustomizationTests.test_f03_open_session_preserves_redirect_post_control) ... ok
+test_f04_current_source_revision_preserves_user_fields_control (tests.python.test_review_customization.ReviewCustomizationTests.test_f04_current_source_revision_preserves_user_fields_control) ... ok
+test_f04_stale_source_revision_conflicts_and_rolls_back_whole_batch (tests.python.test_review_customization.ReviewCustomizationTests.test_f04_stale_source_revision_conflicts_and_rolls_back_whole_batch) ... ok
+test_f04_stale_user_revision_still_conflicts_control (tests.python.test_review_customization.ReviewCustomizationTests.test_f04_stale_user_revision_still_conflicts_control) ... ok
+test_f05_revoke_cancels_already_mirrored_execution_control (tests.python.test_review_customization.ReviewCustomizationTests.test_f05_revoke_cancels_already_mirrored_execution_control) ... ok
+test_f05_revoke_discovers_unmirrored_running_execution (tests.python.test_review_customization.ReviewCustomizationTests.test_f05_revoke_discovers_unmirrored_running_execution) ... ok
+test_f06_denial_preserves_already_mirrored_history_control (tests.python.test_review_customization.ReviewCustomizationTests.test_f06_denial_preserves_already_mirrored_history_control) ... ok
+test_f06_denial_preserves_unmirrored_completed_history (tests.python.test_review_customization.ReviewCustomizationTests.test_f06_denial_preserves_unmirrored_completed_history) ... ok
+test_f07_history_backfill_includes_501st_execution (tests.python.test_review_customization.ReviewCustomizationTests.test_f07_history_backfill_includes_501st_execution) ... ok
+test_f07_history_import_at_500_is_idempotent_control (tests.python.test_review_customization.ReviewCustomizationTests.test_f07_history_import_at_500_is_idempotent_control) ... ok
+test_f08_feed_rejects_approved_loopback_before_transport (tests.python.test_review_customization.ReviewCustomizationTests.test_f08_feed_rejects_approved_loopback_before_transport) ... ok
+test_f08_mediated_net_rejects_loopback_control (tests.python.test_review_customization.ReviewCustomizationTests.test_f08_mediated_net_rejects_loopback_control) ... ok
+test_f08_public_feed_uses_vetted_pinned_destination (tests.python.test_review_customization.ReviewCustomizationTests.test_f08_public_feed_uses_vetted_pinned_destination) ... ok
+test_f08_refresh_authority_works_with_net_revoked_control (tests.python.test_review_customization.ReviewCustomizationTests.test_f08_refresh_authority_works_with_net_revoked_control) ... ok
+test_f09_active_feed_stays_paused_after_regrant_until_resume_control (tests.python.test_review_customization.ReviewCustomizationTests.test_f09_active_feed_stays_paused_after_regrant_until_resume_control) ... ok
+test_f09_feed_approval_rechecks_separately_committed_revocation (tests.python.test_review_customization.ReviewCustomizationTests.test_f09_feed_approval_rechecks_separately_committed_revocation) ... ok
+test_r01_denial_needs_neither_snapshot_and_creates_no_job_control (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_denial_needs_neither_snapshot_and_creates_no_job_control) ... ok
+test_r01_matching_upkeep_and_schedule_approve_one_native_job_control (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_matching_upkeep_and_schedule_approve_one_native_job_control) ... ok
+test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval) ... 
+  test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval) (boundary='missing upkeep rejected at REST', handler='agent') ... FAIL
+  test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval) (boundary='no native creation', handler='agent') ... FAIL
+  test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval) (boundary='request remains unapproved', handler='agent') ... FAIL
+  test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval) (boundary='missing upkeep rejected at REST', handler='feed') ... FAIL
+  test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval) (boundary='no native creation', handler='feed') ... FAIL
+  test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval) (boundary='request remains unapproved', handler='feed') ... FAIL
+test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant) ... 
+  test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant) (boundary='revoke returns success') ... FAIL
+  test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant) (boundary='native interruption precedes durable grant') ... FAIL
+  test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant) (boundary='native job cannot remain enabled') ... FAIL
+  test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant) (boundary='schedule awaits explicit approval or Resume') ... FAIL
+test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed) ... 
+  test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed) (boundary='typed refusal while interruption is unavailable') ... FAIL
+  test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed) (boundary='Refresh stays revoked') ... FAIL
+  test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed) (boundary='revoke succeeds despite unavailable adapter') ... FAIL
+  test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed) (boundary='inactive schedule retains visible unavailable reason') ... FAIL
+test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) ... 
+  test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='revoke persists and returns successfully', native_status='claimed') ... FAIL
+  test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='inactive schedule without a getter repair', native_status='claimed') ... FAIL
+  test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='regrant is a typed refusal', native_status='claimed') ... FAIL
+  test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='Refresh remains revoked', native_status='claimed') ... FAIL
+  test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='revoke persists and returns successfully', native_status='running') ... FAIL
+  test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='inactive schedule without a getter repair', native_status='running') ... FAIL
+  test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='regrant is a typed refusal', native_status='running') ... FAIL
+  test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='Refresh remains revoked', native_status='running') ... FAIL
+test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest) ... 
+  test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest) (boundary='REST revoke succeeds') ... FAIL
+  test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest) (boundary='inactive before any reconciling read') ... FAIL
+  test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest) (boundary='unconfirmed native interruption is visible') ... FAIL
+test_r02_working_adapter_revoke_and_regrant_preserve_unrelated_state_control (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_working_adapter_revoke_and_regrant_preserve_unrelated_state_control) ... ok
+
+======================================================================
+FAIL: test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval) (boundary='missing upkeep rejected at REST', handler='agent')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 478, in test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval
+    self.assertEqual(response.status_code, 400, response.text)
+AssertionError: 200 != 400 : {"space":"review-space","status":"active","cadence":"0 7 1 * *","timezone":"UTC","purpose":"Monthly approved task","cron_job_id":"review-cron-1","catch_up":"one","requested_at":1794379484.8044548,"decided_at":1794379484.8131762,"next_run_at":1804809600.0}
+
+======================================================================
+FAIL: test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval) (boundary='no native creation', handler='agent')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 481, in test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval
+    self.assertEqual(fx.cron.calls, calls_before)
+AssertionError: Lists differ: [('create', 'review-cron-1')] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+('create', 'review-cron-1')
+
+- [('create', 'review-cron-1')]
++ []
+
+======================================================================
+FAIL: test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval) (boundary='request remains unapproved', handler='agent')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 487, in test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval
+    self.assertEqual(stored["status"], "requested")
+AssertionError: 'active' != 'requested'
+- active
++ requested
+
+
+======================================================================
+FAIL: test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval) (boundary='missing upkeep rejected at REST', handler='feed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 478, in test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval
+    self.assertEqual(response.status_code, 400, response.text)
+AssertionError: 200 != 400 : {"space":"review-space-2","status":"active","cadence":"0 7 1 * *","timezone":"UTC","purpose":"Monthly approved task","cron_job_id":"review-cron-2","catch_up":"one","requested_at":1794379484.830245,"decided_at":1794379484.836705,"next_run_at":1804809600.0}
+
+======================================================================
+FAIL: test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval) (boundary='no native creation', handler='feed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 481, in test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval
+    self.assertEqual(fx.cron.calls, calls_before)
+AssertionError: Lists differ: [('create', 'review-cron-1'), ('create', 'review-cron-2')] != [('create', 'review-cron-1')]
+
+First list contains 1 additional elements.
+First extra element 1:
+('create', 'review-cron-2')
+
+- [('create', 'review-cron-1'), ('create', 'review-cron-2')]
++ [('create', 'review-cron-1')]
+
+======================================================================
+FAIL: test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval) (boundary='request remains unapproved', handler='feed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 487, in test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval
+    self.assertEqual(stored["status"], "requested")
+AssertionError: 'active' != 'requested'
+- active
++ requested
+
+
+======================================================================
+FAIL: test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant) (boundary='revoke returns success')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 620, in test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant
+    self.assertEqual(response.status_code, 200, response.text)
+AssertionError: 500 != 200 : Internal Server Error
+
+======================================================================
+FAIL: test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant) (boundary='native interruption precedes durable grant')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 625, in test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant
+    self.assertTrue(interruptions, "Regrant must resolve the enabled native job")
+AssertionError: [] is not true : Regrant must resolve the enabled native job
+
+======================================================================
+FAIL: test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant) (boundary='native job cannot remain enabled')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 634, in test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant
+    self.assertFalse(job["enabled"])
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant) (boundary='schedule awaits explicit approval or Resume')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 645, in test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant
+    self.assertIn(stored["status"], ("disabled", "paused", "requested"))
+AssertionError: 'active' not found in ('disabled', 'paused', 'requested')
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed) (boundary='typed refusal while interruption is unavailable')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 663, in test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed
+    with self.assertRaises(fx.core.SpacesError):
+AssertionError: SpacesError not raised
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed) (boundary='Refresh stays revoked')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 666, in test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed
+    self.assertEqual(fx.refresh_grant(sid)["status"], "revoked")
+AssertionError: 'granted' != 'revoked'
+- granted
++ revoked
+
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed) (boundary='revoke succeeds despite unavailable adapter')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 668, in test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed
+    self.assertEqual(response.status_code, 200, response.text)
+AssertionError: 500 != 200 : Internal Server Error
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed) (boundary='inactive schedule retains visible unavailable reason')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 673, in test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed
+    self.assertIn(stored["status"], ("disabled", "paused", "requested"))
+AssertionError: 'active' not found in ('disabled', 'paused', 'requested')
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='revoke persists and returns successfully', native_status='claimed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 708, in test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant
+    self.assertEqual(response.status_code, 200, response.text)
+AssertionError: 500 != 200 : Internal Server Error
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='inactive schedule without a getter repair', native_status='claimed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 711, in test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant
+    self.assertIn(stored["status"], ("disabled", "paused", "requested"))
+AssertionError: 'active' not found in ('disabled', 'paused', 'requested')
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='regrant is a typed refusal', native_status='claimed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 721, in test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant
+    with self.assertRaises(fx.core.SpacesError):
+AssertionError: SpacesError not raised
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='Refresh remains revoked', native_status='claimed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 724, in test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant
+    self.assertEqual(fx.refresh_grant(sid)["status"], "revoked")
+AssertionError: 'granted' != 'revoked'
+- granted
++ revoked
+
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='revoke persists and returns successfully', native_status='running')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 708, in test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant
+    self.assertEqual(response.status_code, 200, response.text)
+AssertionError: 500 != 200 : Internal Server Error
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='inactive schedule without a getter repair', native_status='running')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 711, in test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant
+    self.assertIn(stored["status"], ("disabled", "paused", "requested"))
+AssertionError: 'active' not found in ('disabled', 'paused', 'requested')
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='regrant is a typed refusal', native_status='running')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 721, in test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant
+    with self.assertRaises(fx.core.SpacesError):
+AssertionError: SpacesError not raised
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant) (boundary='Refresh remains revoked', native_status='running')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 724, in test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant
+    self.assertEqual(fx.refresh_grant(sid)["status"], "revoked")
+AssertionError: 'granted' != 'revoked'
+- granted
++ revoked
+
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest) (boundary='REST revoke succeeds')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 575, in test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest
+    self.assertEqual(response.status_code, 200, response.text)
+AssertionError: 500 != 200 : Internal Server Error
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest) (boundary='inactive before any reconciling read')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 580, in test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest
+    self.assertIn(stored["status"], ("disabled", "paused", "requested"))
+AssertionError: 'active' not found in ('disabled', 'paused', 'requested')
+
+======================================================================
+FAIL: test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest (tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest) (boundary='unconfirmed native interruption is visible')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/tests/python/test_review_customization.py", line 583, in test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest
+    self.assertIn("unavailable", (visible.get("reason") or "").lower())
+AssertionError: 'unavailable' not found in ''
+
+----------------------------------------------------------------------
+Ran 35 tests in 2.677s
+
+FAILED (failures=25)
