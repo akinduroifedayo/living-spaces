@@ -303,7 +303,12 @@ export function spaceLoader(resolver) {
       if (invalid) console.warn('Skipped invalid manifest theme settings')
     }
     if (doc.title) document.title = doc.title
-    for (const node of [...doc.head.childNodes]) document.head.append(document.importNode(node, true))
+    for (const node of [...doc.head.childNodes]) {
+      const copy = document.importNode(node, true)
+      const themeStyle = document.querySelector('style[data-space-theme]')
+      if (node.nodeName === 'LINK' && node.getAttribute('href') === urls.get('kit/spaces-kit.css') && themeStyle) document.head.insertBefore(copy, themeStyle)
+      else document.head.append(copy)
+    }
     for (const attribute of doc.body.attributes) document.body.setAttribute(attribute.name, attribute.value)
     for (const node of [...doc.body.childNodes]) document.body.append(document.importNode(node, true))
     for (const old of scripts) {

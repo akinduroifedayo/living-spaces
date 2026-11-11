@@ -171,3 +171,16 @@ test('space.net.fetch preserves host errors and session closure behavior', async
   await assert.rejects(api.net.fetch('https://example.com/public-demo'), error => error.code === 'session_invalid')
   assert.equal(messages.length, 5)
 })
+
+
+test('kit defaults precede manifest tokens while app styles follow them', async t => {
+  const { document } = await boot(t, {
+    html: '<html><head><link rel="stylesheet" href="kit/spaces-kit.css"><link rel="stylesheet" href="app.css"></head><body></body></html>',
+    manifest: { theme: { preset: 'journal', tokens: { bg: '#112233' } } },
+    files: [{ path: 'kit/spaces-kit.css', mime: 'text/css', text: '[data-theme="journal"]{--space-bg:tan}' }, { path: 'app.css', mime: 'text/css', text: ':root{--space-link:blue}' }]
+  })
+  const nodes = [...document.head.querySelectorAll('link,style[data-space-theme]')]
+  assert.equal(nodes[0].tagName, 'LINK')
+  assert.equal(nodes[1].hasAttribute('data-space-theme'), true)
+  assert.equal(nodes[2].tagName, 'LINK')
+})
