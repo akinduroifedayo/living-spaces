@@ -17,6 +17,16 @@ CREATE TABLE IF NOT EXISTS spaces(id TEXT PRIMARY KEY, name TEXT NOT NULL, descr
   accent TEXT NOT NULL DEFAULT 'blue', icon TEXT NOT NULL DEFAULT 'layers',
   pinned INTEGER NOT NULL DEFAULT 0, last_opened_at REAL, created_at REAL NOT NULL,
   updated_at REAL NOT NULL, archived_at REAL);
+CREATE TABLE IF NOT EXISTS maintainers(space TEXT PRIMARY KEY REFERENCES spaces(id) ON DELETE CASCADE,
+  binding TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS action_intents(space TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+  activation_id TEXT NOT NULL, input_id TEXT NOT NULL UNIQUE, target TEXT NOT NULL, text TEXT NOT NULL,
+  admission_id TEXT, settled INTEGER NOT NULL DEFAULT 0 CHECK(settled IN (0,1)), created_at REAL NOT NULL,
+  PRIMARY KEY(space, activation_id));
+CREATE UNIQUE INDEX IF NOT EXISTS one_unresolved_action ON action_intents(space) WHERE settled=0;
+CREATE TABLE IF NOT EXISTS action_keys(space TEXT NOT NULL, activation_id TEXT NOT NULL, request TEXT NOT NULL,
+  intent_id TEXT NOT NULL, PRIMARY KEY(space,activation_id),
+  FOREIGN KEY(space,intent_id) REFERENCES action_intents(space,activation_id) ON DELETE CASCADE);
 CREATE TABLE IF NOT EXISTS blobs(sha TEXT PRIMARY KEY, size INTEGER NOT NULL, content BLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS revisions(space TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE, rev INTEGER NOT NULL,
   parent_rev INTEGER, kind TEXT NOT NULL CHECK(kind IN ('create','edit','restore')),

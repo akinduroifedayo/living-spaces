@@ -10,6 +10,7 @@ _OPS = {
     "data.put": ("data", {"collection", "data"}, {"id", "base_rev", "merge"}),
     "data.delete": ("data", {"collection", "id"}, {"base_rev"}),
     "data.batch": ("data", {"ops"}, set()),
+    "bot.request": (None, {"activation_id", "text"}, {"records"}),
     "refresh": (None, set(), set()),
     "runs.list": (None, set(), {"limit"}),
     "log": ("logs", {"entries"}, set()),
@@ -49,6 +50,8 @@ def _call(sid, session, op, args):
             space = {"id": sid, "name": row["name"], "rev": row["head_rev"]}
         return {"space": space, "grants": [row["capability"] for row in grants.list_grants(sid) if row["status"] == "granted"],
                 "limits": limits.LIMITS.copy()}
+    if op == "bot.request":
+        raise SpacesError("blocked", "Bot requests require the native Desktop action adapter")
     if op == "refresh":
         return runs.start_refresh(sid, trigger="manual", actor="app", session=session)
     if op == "runs.list":

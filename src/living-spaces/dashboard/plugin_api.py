@@ -246,3 +246,28 @@ async def opened(space_id: str):
 @router.delete("/spaces/{space_id}")
 async def delete(space_id: str, confirm: str = ""):
     return await _run(space_id, lambda core: core.delete_space(space_id, actor="user", confirm=confirm))
+
+
+@router.post("/spaces/{space_id}/actions/context")
+async def action_context(space_id: str, body=Body(default=None)):
+    def action(core):
+        _body(core, body, ("session", "activation_id"), ("session",))
+        return core.action_context(space_id, **body)
+    return await _run(space_id, action)
+
+
+@router.post("/spaces/{space_id}/actions/claim")
+async def action_claim(space_id: str, body=Body(default=None)):
+    def action(core):
+        _body(core, body, ("session", "activation_id", "text", "records", "target"),
+              ("session", "activation_id", "text", "records", "target"))
+        return core.claim_action(space_id, **body)
+    return await _run(space_id, action)
+
+
+@router.post("/spaces/{space_id}/actions/observe")
+async def action_observe(space_id: str, body=Body(default=None)):
+    def action(core):
+        _body(core, body, ("session", "activation_id", "receipt"), ("session", "activation_id", "receipt"))
+        return core.observe_action(space_id, **body)
+    return await _run(space_id, action)

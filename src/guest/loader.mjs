@@ -120,7 +120,7 @@ export function spaceLoader(resolver) {
   let closed = false
   let seq = 0
   const pending = new Map()
-  const listeners = { change: new Set(), run: new Set() }
+  const listeners = { change: new Set(), run: new Set(), bot: new Set() }
   const logQueue = []
   let dropped = 0
   class SpaceError extends Error {
@@ -177,6 +177,7 @@ export function spaceLoader(resolver) {
     put: (collection, id, data, { baseRev, merge } = {}) => send('data.put', { collection, id, data, base_rev: baseRev, merge }),
     delete: (collection, id, { baseRev } = {}) => send('data.delete', { collection, id, base_rev: baseRev }),
     batch: ops => send('data.batch', { ops }),
+    ask: (text, { activationId = crypto.randomUUID(), records = [] } = {}) => send('bot.request', { activation_id: activationId, text, records }),
     refresh: () => send('refresh', {}),
     runs: () => send('runs.list', {}),
     net: {
@@ -339,7 +340,7 @@ export function spaceLoader(resolver) {
           port.close()
           return
         }
-        const name = { 'data.changed': 'change', 'run.updated': 'run' }[message.event]
+        const name = { 'data.changed': 'change', 'run.updated': 'run', 'bot.status': 'bot' }[message.event]
         for (const cb of listeners[name] || []) {
           try { cb(message.payload) } catch (error) { pushLog('error', [error]) }
         }

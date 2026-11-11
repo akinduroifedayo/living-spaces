@@ -1,8 +1,9 @@
 import { spacePath } from './model.mjs'
+import { createBotActions } from './actions.mjs'
 
 const errorCode = error => [error?.error?.code, error?.body?.error?.code, error?.message, String(error)].filter(Boolean).join(' ')
 
-export function createSpaceSession({ rest, backend, sid, container, mount, onEvent, onWrite = () => {}, onCloseError = error => console.warn('Space session cleanup failed', error) }) {
+export function createSpaceSession({ rest, backend, sid, container, mount, onEvent, host, onAction = () => {}, onWrite = () => {}, onCloseError = error => console.warn('Space session cleanup failed', error) }) {
   const base = spacePath(sid)
   const { api, connectionId, profile } = backend || {}
   const lifecycleRest = api ? (path, options = {}) => api({ ...options, path: `/api/plugins/living-spaces${path}`, connectionId, profile, timeoutMs: options.method === 'DELETE' ? 5000 : undefined }) : rest
@@ -15,6 +16,14 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
   const failures = new Map()
   const retries = new Map()
   const publish = event => onWrite(failures.values().next().value || (pendingWrites ? { status: 'saving' } : event))
+  const actions = host ? createBotActions({ host, backend, isActive: () => !closed,
+    post: (operation, body) => lifecycleRest(`${base}/actions/${operation}`, { method: 'POST', body: { ...body, session } }),
+    onStatus: status => {
+      if (closed) return
+      onAction(status)
+      mounted?.postEvent?.('bot.status', status)
+    }
+  }) : null
   const close = () => {
     if (!session) return Promise.resolve()
     closePromise ??= (async () => {
@@ -34,6 +43,12 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
   }
   const call = async (op, args, retryToken) => {
     if (closed) return { ok: false, error: { code: 'session_invalid', message: 'This Space session is closed' } }
+    if (op === 'bot.request') {
+      if (!actions) return { ok: false, error: { code: 'blocked', message: 'Native bot actions are unavailable' } }
+      const result = await actions.request(args)
+      if (closed) return { ok: false, error: { code: 'session_invalid', message: 'This Space session is closed' } }
+      return { ok: true, result }
+    }
     const writing = ['data.put', 'data.delete', 'data.batch'].includes(op)
     if (writing && retryToken == null) {
       args = structuredClone(args)
@@ -90,6 +105,7 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
         }
         onEvent(event)
       } })
+      actions?.restore()
     } catch (error) {
       closed = true
       await close().catch(() => {})
@@ -98,10 +114,13 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
   })()
   return {
     ready,
+    checkAction() { return actions?.check() },
+    retryAction() { return actions?.retry() },
     dismissWrite(token) { failures.delete(token); publish(null) },
     postEvent(event, payload) { if (!closed) mounted?.postEvent?.(event, payload) },
     destroy() {
       closed = true
+      actions?.destroy()
       mounted?.destroy()
       mounted = null
       return close()

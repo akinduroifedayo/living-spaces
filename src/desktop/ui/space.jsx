@@ -33,6 +33,7 @@ export function SpaceView({ ctx, sid }) {
   const [write, setWrite] = useState(null)
   const [announcement, setAnnouncement] = useState('')
   const [actionError, setActionError] = useState('')
+  const [botAction, setBotAction] = useState(null)
   const [refreshPending, setRefreshPending] = useState(false)
   const [ready, setReady] = useState(false)
   const refreshLock = useRef(false)
@@ -64,9 +65,10 @@ export function SpaceView({ ctx, sid }) {
     let errors = 0
     cursor.current = 0
     setReady(false)
+    setBotAction(null)
     const [connectionId, profile] = ctx.queryScope ? JSON.parse(ctx.queryScope) : [host.state.connectionId.get(), host.state.profile.get()]
     const backend = { api: window.hermesDesktop?.api, connectionId, profile }
-    const session = createSpaceSession({ backend, rest: (path, options) => ctx.rest(path, options), sid, container: content.current, mount: mountSpace,
+    const session = createSpaceSession({ backend, host, onAction: event => !disposed && setBotAction(event), rest: (path, options) => ctx.rest(path, options), sid, container: content.current, mount: mountSpace,
       onWrite: event => !disposed && setWrite(event),
       onEvent: event => {
         if (disposed) return
@@ -141,6 +143,10 @@ export function SpaceView({ ctx, sid }) {
       {!building && <><Action onClick={() => openSheet('permissions')}>Permissions</Action><DisabledReason reason={reason}><Action primary icon="refresh" aria-busy={busy} aria-disabled={!!reason || busy} title={reason || undefined} onClick={refresh}>{busy ? 'Refreshing…' : 'Refresh now'}</Action></DisabledReason></>}
       <DropdownMenu><DropdownMenuTrigger asChild><Action ref={overflow} aria-label="More Space actions" icon="ellipsis" /></DropdownMenuTrigger><DropdownMenuContent align="end"><div className="ls-compact-only"><DropdownMenuItem onSelect={() => openHistory()}>History</DropdownMenuItem></div>{!building && <><div className="ls-upkeep-compact"><DropdownMenuItem onSelect={() => openSheet('upkeep')}>Upkeep</DropdownMenuItem></div><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => act('pin', { pinned: !space.pinned })}>{space.pinned ? 'Unpin Space' : 'Pin Space'}</DropdownMenuItem><DropdownMenuItem onSelect={() => archived ? act('unarchive') : askConfirmation('archive')}>{archived ? 'Restore Space' : 'Archive Space…'}</DropdownMenuItem>{archived && <DropdownMenuItem onSelect={() => askConfirmation('delete')}>Delete…</DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
     </div></header>
+    {botAction && <Banner kind={['failed', 'offline', 'unknown'].includes(botAction.status) ? 'failed' : undefined} title={`Bot request: ${botAction.status}`} actions={<>
+      <Action onClick={() => controller.current?.checkAction()}>Check bot status</Action>
+      {botAction.activationId && ['unknown', 'failed', 'offline'].includes(botAction.status) && <Action onClick={() => controller.current?.retryAction()}>Retry same request</Action>}
+    </>}><span role="status" aria-live="polite">{botAction.message}</span>{botAction.answer && <p>{botAction.answer}</p>}</Banner>}
     {actionError && <Banner kind="failed" title={actionError} />}
     {detail.error && <Banner kind="failed" title="Space status could not be refreshed. You're seeing the last loaded state." actions={<Action onClick={() => detail.refetch()}>Try again</Action>}>{errorText(detail.error)}</Banner>}
     {changes.error && <Banner kind="failed" title="Live record updates are delayed. Your displayed data may be out of date." actions={<Action onClick={() => changes.refetch()}>Retry live updates</Action>}>{errorText(changes.error)}</Banner>}

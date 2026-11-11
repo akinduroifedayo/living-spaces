@@ -8,6 +8,7 @@ export const OP_GRANT = Object.freeze({
   'data.put': 'data',
   'data.delete': 'data',
   'data.batch': 'data',
+  'bot.request': null,
   refresh: null,
   'runs.list': null,
   log: 'logs'

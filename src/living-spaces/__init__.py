@@ -306,7 +306,7 @@ def spaces_get(core, args, owner):
     return detail
 
 
-def spaces_create(core, args, owner):
+def spaces_create(core, args, owner, maintainer=None):
     name = _text(core, args, "name")
     description = args.get("description", "")
     if not isinstance(description, str):
@@ -322,7 +322,15 @@ def spaces_create(core, args, owner):
     detail = core.create_space(name, description=description, owner=owner, files=files, manifest=manifest,
                                libraries=libraries, author=actor, summary=_summary_with_sources("Created", sources))
     sid = detail["id"]
-    return _change_result(core, sid, detail.get("head_rev"), detail.get("warnings") or ())
+    warnings = list(detail.get("warnings") or ())
+    if maintainer:
+        core.bind_maintainer(sid, maintainer)
+    else:
+        warnings.append("Canvas bot actions are unavailable because native maintaining-session context was missing. Bind it from a native maintenance turn with spaces_bind_maintainer.")
+    result = _change_result(core, sid, detail.get("head_rev"), warnings)
+    if maintainer:
+        result["notes"].append("Canvas controls can call space.ask(text, {activationId, records: [{collection, id}]}) and listen with space.on('bot', status => ...). Keep activationId stable for an uncertain retry. Requests use native model turns and need a current user activation. Use space.refresh() for no-model feed refresh.")
+    return result
 
 
 def spaces_read_file(core, args, owner):
@@ -588,6 +596,36 @@ TOOLS = [
 ]
 
 
+def spaces_bind_maintainer(core, args, owner, maintainer=None):
+    if not maintainer:
+        raise core.SpacesError("blocked", "Native maintaining-session context is unavailable")
+    return core.bind_maintainer(_space(core, args), maintainer)
+
+
+TOOLS.append((spaces_bind_maintainer, _schema(
+    "spaces_bind_maintainer",
+    "Bind an existing unbound Space to this native maintaining conversation when the user asks. "
+    "Uses trusted native context, never a supplied owner or route. Refuses to replace a different maintainer.",
+    {"space": SPACE_ARG}, ["space"])))
+
+
+def _maintainer(context):
+    conversation = context.get("conversation_id")
+    stored = context.get("session_id")
+    if not all(isinstance(value, str) and value.strip() for value in (conversation, stored)):
+        return None
+    try:
+        from hermes_constants import get_hermes_home
+        from hermes_cli.plugin_session import session_key
+        key = session_key()
+        if not key:
+            return None
+        return {"profile_id": str(Path(get_hermes_home()).resolve()), "conversation_id": conversation,
+                "stored_session_id": stored, "session_key": key}
+    except (ImportError, OSError, RuntimeError):
+        return None
+
+
 def _owner(context):
     for source in (context, context.get("context"), context.get("tool_context"), context.get("parent_agent")):
         if source is None:
@@ -618,7 +656,10 @@ def _handler(fn):
             core = _core.load_core()
             if not isinstance(args, dict):
                 raise _invalid(core, "arguments must be a JSON object")
-            result = fn(core, args, _owner(context))
+            if fn in (spaces_create, spaces_bind_maintainer):
+                result = fn(core, args, _owner(context), _maintainer(context))
+            else:
+                result = fn(core, args, _owner(context))
             return json.dumps({"ok": True, "result": result}, ensure_ascii=False, default=str)
         except Exception as exc:
             return json.dumps({"ok": False, "error": _error(exc)}, ensure_ascii=False, default=str)
