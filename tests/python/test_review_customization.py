@@ -1005,5 +1005,233 @@ class ReviewCustomizationTests(unittest.TestCase):
                 self.assertEqual(newer, newer_before)
                 self.assertEqual([call for call in fx.cron.calls[call_start:] if call[1] == other_jid], [])
 
+    def test_r03_superseded_schedules_require_fresh_schedule_approval(self):
+        fx = self.fx
+        control = fx.make()
+        control_jid = fx.approve_schedule(control)["cron_job_id"]
+        self.assertEqual(fx.schedules.get_schedule(control)["status"], "active")
+        fx.grants.decide(control, "refresh", "revoke")
+        fx.approve_refresh(control)
+        self.assertEqual(fx.schedules.get_schedule(control)["status"], "paused")
+        self.assertFalse(fx.cron.jobs[control_jid]["enabled"])
+        fx.schedules.pause_schedule(control, False, actor="user")
+        self.assertEqual(fx.schedules.get_schedule(control)["status"], "active")
+        self.assertTrue(fx.cron.jobs[control_jid]["enabled"])
+        self.assertTrue(fx.cron.jobs[control_jid]["prompt"].endswith(AGENT_PROMPT))
+
+        for transition in ("prompt_refresh_approval", "cadence_revoke_regrant", "prompt_archive_unarchive"):
+            with self.subTest(transition=transition):
+                sid = fx.make()
+                old_jid = fx.approve_schedule(sid)["cron_job_id"]
+                upkeep = {"handler": "agent", "prompt": AGENT_PROMPT}
+                if transition == "cadence_revoke_regrant":
+                    displayed = fx.schedules.request_schedule(
+                        sid, cadence="*/5 * * * *", timezone="Asia/Tokyo",
+                        purpose="New five-minute task", actor="agent:review")
+                else:
+                    upkeep = {"handler": "agent", "prompt": "Maintain only the newly approved public records."}
+                    fx.change_upkeep(sid, upkeep)
+                    displayed = fx.schedules.get_schedule(sid)
+                snapshot = {key: displayed[key] for key in SCHEDULE_FIELDS}
+                self.assertEqual(displayed["status"], "requested")
+                self.assertFalse(fx.cron.jobs[old_jid]["enabled"])
+                if transition == "cadence_revoke_regrant":
+                    fx.grants.decide(sid, "refresh", "revoke")
+                    with self.subTest(boundary="withdrawal preserves missing schedule approval"):
+                        self.assertEqual(fx.schedules.get_schedule(sid)["status"], "requested")
+                elif transition == "prompt_archive_unarchive":
+                    self.assertEqual(fx.projects.set_status(sid, "archived", actor="user")["status"], "archived")
+                    with self.subTest(boundary="archive preserves missing schedule approval"):
+                        self.assertEqual(fx.schedules.get_schedule(sid)["status"], "requested")
+                    self.assertEqual(fx.projects.set_status(sid, "active", actor="user")["status"], "active")
+                    with self.subTest(boundary="unarchive preserves missing schedule approval"):
+                        self.assertEqual(fx.schedules.get_schedule(sid)["status"], "requested")
+                fx.approve_refresh(sid)
+                with self.subTest(boundary="Refresh approval is not schedule approval"):
+                    self.assertEqual(fx.schedules.get_schedule(sid)["status"], "requested")
+                with self.subTest(boundary="Resume requires fresh schedule approval"):
+                    with self.assertRaises(fx.core.SpacesError) as refused:
+                        fx.schedules.pause_schedule(sid, False, actor="user")
+                    self.assertEqual(refused.exception.code, "blocked")
+                with self.subTest(boundary="refused Resume cannot enable native work"):
+                    self.assertFalse(any(job["enabled"] for job in fx.cron.jobs.values()
+                                         if job.get("name") == f"living-spaces:{sid}"))
+                    self.assertEqual(fx.schedules.get_schedule(sid)["status"], "requested")
+                approved = fx.schedules.decide_schedule(
+                    sid, "approve", requested_upkeep=copy.deepcopy(upkeep),
+                    requested_schedule=copy.deepcopy(snapshot))
+                with self.subTest(boundary="fresh approval replaces the superseded job"):
+                    self.assertNotEqual(approved["cron_job_id"], old_jid)
+                    if old_jid in fx.cron.jobs:
+                        self.assertFalse(fx.cron.jobs[old_jid]["enabled"])
+                with self.subTest(boundary="fresh approval creates the displayed native task"):
+                    self.assertEqual(approved["status"], "active")
+                    self.assertEqual({key: approved[key] for key in SCHEDULE_FIELDS}, snapshot)
+                    job = fx.cron.jobs[approved["cron_job_id"]]
+                    self.assertTrue(job["enabled"])
+                    self.assertFalse(job["no_agent"])
+                    self.assertTrue(job["prompt"].endswith("Upkeep task:\n" + upkeep["prompt"]))
+                    self.assertEqual((job["schedule"], job["timezone"]),
+                                     (snapshot["cadence"], snapshot["timezone"]))
+                    self.assertEqual([jid for jid, native in fx.cron.jobs.items()
+                                      if native.get("name") == f"living-spaces:{sid}" and native["enabled"]],
+                                     [approved["cron_job_id"]])
+
+    def test_r03_failed_native_pause_is_retried_by_ordinary_reads(self):
+        fx = self.fx
+        control = fx.make()
+        control_jid = fx.approve_schedule(control)["cron_job_id"]
+        fx.grants.decide(control, "refresh", "revoke")
+        self.assertEqual(fx.refresh_grant(control)["status"], "revoked")
+        self.assertFalse(fx.cron.jobs[control_jid]["enabled"])
+
+        sid = fx.make()
+        jid = fx.approve_schedule(sid)["cron_job_id"]
+        self.assertTrue(fx.cron.jobs[jid]["enabled"])
+        pause = fx.cron.pause_job
+        failed = False
+
+        def fail_once(job_id, *args, **kwargs):
+            nonlocal failed
+            if not failed:
+                failed = True
+                raise OSError("Transient native pause failure")
+            return pause(job_id, *args, **kwargs)
+
+        with patch.object(fx.cron, "pause_job", side_effect=fail_once):
+            revoked = fx.grants.decide(sid, "refresh", "revoke")
+        self.assertTrue(failed, "The transient failure must reach the native pause boundary")
+        self.assertEqual(revoked["status"], "revoked")
+        jobs_before_reads = set(fx.cron.jobs)
+        executions_before_reads = copy.deepcopy(fx.cron.executions)
+        fx.schedules.get_schedule(sid)
+        self.assertEqual(fx.runs.list_runs(sid), [])
+        self.assertEqual(fx.refresh_grant(sid)["status"], "revoked")
+        schedule = fx.schedules.get_schedule(sid)
+        self.assertIn(schedule["status"], ("disabled", "paused", "requested"))
+        self.assertIsNone(schedule["next_run_at"])
+        self.assertTrue(set(fx.cron.jobs).issubset(jobs_before_reads))
+        self.assertEqual(fx.cron.executions, executions_before_reads)
+        self.assertFalse(any(job["enabled"] for job in fx.cron.jobs.values()))
+        for job in fx.cron.jobs.values():
+            self.assertIsNone(job.get("manual_run_at"))
+
+    def test_r03_native_unknown_manual_run_is_failed_and_does_not_block_refresh(self):
+        fx = self.fx
+        sid = fx.make()
+        completed = fx.runs.start_refresh(sid, trigger="manual", actor="user")
+        control = fx.cron.execution(completed["detail"]["cron_job_id"], "completed")
+        stamp = datetime.fromtimestamp(completed["queued_at"] + 1).astimezone().isoformat()
+        control.update(claimed_at=stamp, started_at=stamp, finished_at=stamp)
+        self.assertEqual(fx.runs.get_run(completed["id"])["status"], "succeeded")
+
+        run = fx.runs.start_refresh(sid, trigger="manual", actor="user")
+        self.assertNotEqual(run["id"], completed["id"])
+        self.assertEqual(run["status"], "queued")
+        jid = run["detail"]["cron_job_id"]
+        execution = fx.cron.execution(jid)
+        stamp = datetime.fromtimestamp(run["queued_at"] + 1).astimezone().isoformat()
+        execution.update(claimed_at=stamp, started_at=stamp)
+        self.assertEqual(fx.runs.get_run(run["id"])["status"], "running")
+        execution.update(status="unknown", finished_at=stamp, error=None)
+        visible = fx.runs.get_run(run["id"])
+        with self.subTest(boundary="unknown is terminal locally"):
+            self.assertEqual(visible["status"], "failed")
+            self.assertIsNotNone(visible["ended_at"])
+        with self.subTest(boundary="unknown outcome and possible side effects are visible"):
+            diagnostic = json.dumps({"error": visible["error"], "detail": visible["detail"]}).lower()
+            self.assertIn("unknown", diagnostic)
+            self.assertRegex(diagnostic, r"side[ _-]?effects?")
+            self.assertRegex(diagnostic, r"may|might|possible|possibly|could")
+        subsequent = fx.runs.start_refresh(sid, trigger="manual", actor="user")
+        with self.subTest(boundary="another refresh is admitted"):
+            self.assertNotEqual(subsequent["id"], run["id"])
+            self.assertEqual(subsequent["status"], "queued")
+            self.assertNotEqual(subsequent["detail"]["cron_job_id"], jid)
+            native = fx.cron.jobs[subsequent["detail"]["cron_job_id"]]
+            self.assertTrue(native["enabled"])
+            self.assertTrue(native["prompt"].endswith("Upkeep task:\n" + AGENT_PROMPT))
+        self.assertEqual(execution["status"], "unknown")
+        self.assertEqual(execution["finished_at"], stamp)
+
+    def test_r03_terminal_unknown_allows_regrant_only_after_native_claims_clear(self):
+        fx = self.fx
+        for native_state in ("paused", "absent", "run_claim"):
+            with self.subTest(native_state=native_state):
+                sid = fx.make()
+                jid = fx.approve_schedule(sid)["cron_job_id"]
+                run = fx.runs.start_refresh(sid, trigger="manual", actor="user")
+                self.assertEqual(run["status"], "queued")
+                one_shot_jid = run["detail"]["cron_job_id"]
+                execution = fx.cron.execution(one_shot_jid, "unknown")
+                stamp = datetime.fromtimestamp(run["queued_at"] + 1).astimezone().isoformat()
+                execution.update(claimed_at=stamp, started_at=stamp, finished_at=stamp)
+                if native_state == "run_claim":
+                    fx.cron.jobs[jid]["run_claim"] = "retained-native-worker"
+                fx.grants.decide(sid, "refresh", "revoke")
+                self.assertEqual(fx.refresh_grant(sid)["status"], "revoked")
+                self.assertFalse(fx.cron.jobs[jid]["enabled"])
+                if native_state == "absent":
+                    fx.schedules.decide_schedule(sid, "deny")
+                    self.assertNotIn(jid, fx.cron.jobs)
+                else:
+                    self.assertEqual(fx.cron.jobs[jid]["state"], "paused")
+                if native_state == "run_claim":
+                    with self.assertRaises(fx.core.SpacesError) as refused:
+                        fx.approve_refresh(sid)
+                    self.assertEqual(refused.exception.code, "blocked")
+                    self.assertEqual(fx.refresh_grant(sid)["status"], "revoked")
+                    self.assertFalse(fx.cron.jobs[jid]["enabled"])
+                    self.assertEqual(fx.cron.jobs[jid]["run_claim"], "retained-native-worker")
+                    fx.cron.jobs[jid].pop("run_claim")
+                for job in fx.cron.jobs.values():
+                    self.assertFalse(job["enabled"])
+                    self.assertIsNone(job.get("fire_claim"))
+                    self.assertIsNone(job.get("run_claim"))
+                jobs_before = copy.deepcopy(fx.cron.jobs)
+                native_before = copy.deepcopy(fx.cron.executions)
+                with self.subTest(boundary="quiescent unknown permits exact Refresh reapproval"):
+                    try:
+                        granted = fx.approve_refresh(sid)
+                    except fx.core.SpacesError as error:
+                        self.fail(f"Terminal unknown with no native claims must permit regrant: {error.to_dict()}")
+                    self.assertEqual(granted["status"], "granted")
+                    self.assertEqual(fx.refresh_grant(sid)["status"], "granted")
+                with self.subTest(boundary="reapproval does not admit native work"):
+                    self.assertTrue(set(fx.cron.jobs).issubset(jobs_before))
+                    self.assertFalse(any(job["enabled"] for job in fx.cron.jobs.values()))
+                    self.assertEqual(fx.cron.executions, native_before)
+                    for job_id, job in fx.cron.jobs.items():
+                        self.assertEqual(job.get("manual_run_at"), jobs_before[job_id].get("manual_run_at"))
+                    self.assertIsNone(fx.schedules.get_schedule(sid)["next_run_at"])
+
+    def test_r03_vanished_one_shot_without_ledger_fails_and_allows_new_refresh(self):
+        fx = self.fx
+        sid = fx.make()
+        run = fx.runs.start_refresh(sid, trigger="manual", actor="user")
+        self.assertEqual(run["status"], "queued")
+        jid = run["detail"]["cron_job_id"]
+        self.assertTrue(run["detail"]["one_shot"])
+        self.assertTrue(fx.cron.jobs[jid]["enabled"])
+        self.assertEqual(fx.cron.list_executions(job_id=jid), [])
+        self.assertEqual(fx.runs.start_refresh(sid, trigger="manual", actor="user")["id"], run["id"])
+        fx.cron.jobs.pop(jid)
+        self.assertEqual(fx.cron.list_executions(job_id=jid), [])
+        fx.runs.list_runs(sid)
+        visible = fx.runs.get_run(run["id"])
+        self.assertNotIn("cancel_reason", visible["detail"])
+        self.assertEqual(fx.refresh_grant(sid)["status"], "granted")
+        with self.subTest(boundary="missing native work is a failed terminal attempt"):
+            self.assertEqual(visible["status"], "failed")
+            self.assertIsNotNone(visible["ended_at"])
+        subsequent = fx.runs.start_refresh(sid, trigger="manual", actor="user")
+        with self.subTest(boundary="native disappearance does not block future refresh"):
+            self.assertNotEqual(subsequent["id"], run["id"])
+            self.assertEqual(subsequent["status"], "queued")
+            new_jid = subsequent["detail"]["cron_job_id"]
+            self.assertNotEqual(new_jid, jid)
+            self.assertTrue(fx.cron.jobs[new_jid]["enabled"])
+            self.assertTrue(fx.cron.jobs[new_jid]["prompt"].endswith("Upkeep task:\n" + AGENT_PROMPT))
+
 if __name__ == "__main__":
     unittest.main()
