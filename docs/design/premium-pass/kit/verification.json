@@ -1,0 +1,897 @@
+[
+  {
+    "kind": "material-width-scheme",
+    "look": "observatory",
+    "width": 1440,
+    "scheme": "dark",
+    "scrollWidth": 1440,
+    "height": 1181,
+    "title": "A window intothe week ahead.",
+    "headingFont": "Fraunces, Newsreader, Georgia, serif",
+    "panelBackground": "color(srgb 0.0980392 0.133333 0.290196 / 0.62)",
+    "bodyBackground": "rgb(11, 16, 38)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 16.4883628614511,
+      "muted": 9.326638750522028,
+      "action": 5.709169785956463,
+      "surfaceText": 13.444954603665957
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "observatory",
+    "width": 1440,
+    "scheme": "light",
+    "scrollWidth": 1440,
+    "height": 1181,
+    "title": "A window intothe week ahead.",
+    "headingFont": "Fraunces, Newsreader, Georgia, serif",
+    "panelBackground": "color(srgb 0.0980392 0.133333 0.290196 / 0.62)",
+    "bodyBackground": "rgb(11, 16, 38)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 16.4883628614511,
+      "muted": 9.326638750522028,
+      "action": 5.709169785956463,
+      "surfaceText": 13.444954603665957
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "observatory",
+    "width": 390,
+    "scheme": "dark",
+    "scrollWidth": 390,
+    "height": 1528,
+    "title": "A window intothe week ahead.",
+    "headingFont": "Fraunces, Newsreader, Georgia, serif",
+    "panelBackground": "color(srgb 0.0980392 0.133333 0.290196 / 0.62)",
+    "bodyBackground": "rgb(11, 16, 38)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 16.4883628614511,
+      "muted": 9.326638750522028,
+      "action": 5.709169785956463,
+      "surfaceText": 13.444954603665957
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "observatory",
+    "width": 390,
+    "scheme": "light",
+    "scrollWidth": 390,
+    "height": 1528,
+    "title": "A window intothe week ahead.",
+    "headingFont": "Fraunces, Newsreader, Georgia, serif",
+    "panelBackground": "color(srgb 0.0980392 0.133333 0.290196 / 0.62)",
+    "bodyBackground": "rgb(11, 16, 38)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 16.4883628614511,
+      "muted": 9.326638750522028,
+      "action": 5.709169785956463,
+      "surfaceText": 13.444954603665957
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "observatory",
+    "width": 320,
+    "scheme": "dark",
+    "scrollWidth": 320,
+    "height": 1609,
+    "title": "A window intothe week ahead.",
+    "headingFont": "Fraunces, Newsreader, Georgia, serif",
+    "panelBackground": "color(srgb 0.0980392 0.133333 0.290196 / 0.62)",
+    "bodyBackground": "rgb(11, 16, 38)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 16.4883628614511,
+      "muted": 9.326638750522028,
+      "action": 5.709169785956463,
+      "surfaceText": 13.444954603665957
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "observatory",
+    "width": 320,
+    "scheme": "light",
+    "scrollWidth": 320,
+    "height": 1609,
+    "title": "A window intothe week ahead.",
+    "headingFont": "Fraunces, Newsreader, Georgia, serif",
+    "panelBackground": "color(srgb 0.0980392 0.133333 0.290196 / 0.62)",
+    "bodyBackground": "rgb(11, 16, 38)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 16.4883628614511,
+      "muted": 9.326638750522028,
+      "action": 5.709169785956463,
+      "surfaceText": 13.444954603665957
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "letterpress",
+    "width": 1440,
+    "scheme": "dark",
+    "scrollWidth": 1440,
+    "height": 900,
+    "title": "The readingroom.",
+    "headingFont": "\"Bodoni Moda\", \"Playfair Display\", Didot, \"Times New Roman\", serif",
+    "panelBackground": "rgb(251, 245, 231)",
+    "bodyBackground": "rgb(243, 234, 216)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 13.603984914975516,
+      "muted": 6.036832579770067,
+      "action": 9.532877000645096,
+      "surfaceText": 15.6268634343289
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "letterpress",
+    "width": 1440,
+    "scheme": "light",
+    "scrollWidth": 1440,
+    "height": 900,
+    "title": "The readingroom.",
+    "headingFont": "\"Bodoni Moda\", \"Playfair Display\", Didot, \"Times New Roman\", serif",
+    "panelBackground": "rgb(251, 245, 231)",
+    "bodyBackground": "rgb(243, 234, 216)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 13.603984914975516,
+      "muted": 6.036832579770067,
+      "action": 9.532877000645096,
+      "surfaceText": 15.6268634343289
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "letterpress",
+    "width": 390,
+    "scheme": "dark",
+    "scrollWidth": 390,
+    "height": 1422,
+    "title": "The readingroom.",
+    "headingFont": "\"Bodoni Moda\", \"Playfair Display\", Didot, \"Times New Roman\", serif",
+    "panelBackground": "rgb(251, 245, 231)",
+    "bodyBackground": "rgb(243, 234, 216)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 13.603984914975516,
+      "muted": 6.036832579770067,
+      "action": 9.532877000645096,
+      "surfaceText": 15.6268634343289
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "letterpress",
+    "width": 390,
+    "scheme": "light",
+    "scrollWidth": 390,
+    "height": 1422,
+    "title": "The readingroom.",
+    "headingFont": "\"Bodoni Moda\", \"Playfair Display\", Didot, \"Times New Roman\", serif",
+    "panelBackground": "rgb(251, 245, 231)",
+    "bodyBackground": "rgb(243, 234, 216)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 13.603984914975516,
+      "muted": 6.036832579770067,
+      "action": 9.532877000645096,
+      "surfaceText": 15.6268634343289
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "letterpress",
+    "width": 320,
+    "scheme": "dark",
+    "scrollWidth": 320,
+    "height": 1514,
+    "title": "The readingroom.",
+    "headingFont": "\"Bodoni Moda\", \"Playfair Display\", Didot, \"Times New Roman\", serif",
+    "panelBackground": "rgb(251, 245, 231)",
+    "bodyBackground": "rgb(243, 234, 216)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 13.603984914975516,
+      "muted": 6.036832579770067,
+      "action": 9.532877000645096,
+      "surfaceText": 15.6268634343289
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "letterpress",
+    "width": 320,
+    "scheme": "light",
+    "scrollWidth": 320,
+    "height": 1514,
+    "title": "The readingroom.",
+    "headingFont": "\"Bodoni Moda\", \"Playfair Display\", Didot, \"Times New Roman\", serif",
+    "panelBackground": "rgb(251, 245, 231)",
+    "bodyBackground": "rgb(243, 234, 216)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 13.603984914975516,
+      "muted": 6.036832579770067,
+      "action": 9.532877000645096,
+      "surfaceText": 15.6268634343289
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "blueprint",
+    "width": 1440,
+    "scheme": "dark",
+    "scrollWidth": 1440,
+    "height": 900,
+    "title": "The readingroom.",
+    "headingFont": "\"IBM Plex Mono\", ui-monospace, \"SF Mono\", Menlo, monospace",
+    "panelBackground": "rgba(15, 49, 87, 0.6)",
+    "bodyBackground": "rgb(13, 42, 77)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 12.799248493368909,
+      "muted": 8.26248490619021,
+      "action": 4.949502877534964,
+      "surfaceText": 10.219879138827345
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "blueprint",
+    "width": 1440,
+    "scheme": "light",
+    "scrollWidth": 1440,
+    "height": 900,
+    "title": "The readingroom.",
+    "headingFont": "\"IBM Plex Mono\", ui-monospace, \"SF Mono\", Menlo, monospace",
+    "panelBackground": "rgba(15, 49, 87, 0.6)",
+    "bodyBackground": "rgb(13, 42, 77)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 12.799248493368909,
+      "muted": 8.26248490619021,
+      "action": 4.949502877534964,
+      "surfaceText": 10.219879138827345
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "blueprint",
+    "width": 390,
+    "scheme": "dark",
+    "scrollWidth": 390,
+    "height": 1485,
+    "title": "The readingroom.",
+    "headingFont": "\"IBM Plex Mono\", ui-monospace, \"SF Mono\", Menlo, monospace",
+    "panelBackground": "rgba(15, 49, 87, 0.6)",
+    "bodyBackground": "rgb(13, 42, 77)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 12.799248493368909,
+      "muted": 8.26248490619021,
+      "action": 4.949502877534964,
+      "surfaceText": 10.219879138827345
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "blueprint",
+    "width": 390,
+    "scheme": "light",
+    "scrollWidth": 390,
+    "height": 1485,
+    "title": "The readingroom.",
+    "headingFont": "\"IBM Plex Mono\", ui-monospace, \"SF Mono\", Menlo, monospace",
+    "panelBackground": "rgba(15, 49, 87, 0.6)",
+    "bodyBackground": "rgb(13, 42, 77)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 12.799248493368909,
+      "muted": 8.26248490619021,
+      "action": 4.949502877534964,
+      "surfaceText": 10.219879138827345
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "blueprint",
+    "width": 320,
+    "scheme": "dark",
+    "scrollWidth": 320,
+    "height": 1732,
+    "title": "The readingroom.",
+    "headingFont": "\"IBM Plex Mono\", ui-monospace, \"SF Mono\", Menlo, monospace",
+    "panelBackground": "rgba(15, 49, 87, 0.6)",
+    "bodyBackground": "rgb(13, 42, 77)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 12.799248493368909,
+      "muted": 8.26248490619021,
+      "action": 4.949502877534964,
+      "surfaceText": 10.219879138827345
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "blueprint",
+    "width": 320,
+    "scheme": "light",
+    "scrollWidth": 320,
+    "height": 1732,
+    "title": "The readingroom.",
+    "headingFont": "\"IBM Plex Mono\", ui-monospace, \"SF Mono\", Menlo, monospace",
+    "panelBackground": "rgba(15, 49, 87, 0.6)",
+    "bodyBackground": "rgb(13, 42, 77)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 12.799248493368909,
+      "muted": 8.26248490619021,
+      "action": 4.949502877534964,
+      "surfaceText": 10.219879138827345
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "felt",
+    "width": 1440,
+    "scheme": "dark",
+    "scrollWidth": 1440,
+    "height": 903,
+    "title": "Make alittle rhythm.",
+    "headingFont": "\"Alfa Slab One\", Rockwell, Georgia, serif",
+    "panelBackground": "rgba(11, 47, 35, 0.667)",
+    "bodyBackground": "rgb(15, 59, 44)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 10.96623828205624,
+      "muted": 7.827882039506619,
+      "action": 5.584840706454724,
+      "surfaceText": 6.843806519665977
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "felt",
+    "width": 1440,
+    "scheme": "light",
+    "scrollWidth": 1440,
+    "height": 903,
+    "title": "Make alittle rhythm.",
+    "headingFont": "\"Alfa Slab One\", Rockwell, Georgia, serif",
+    "panelBackground": "rgba(11, 47, 35, 0.667)",
+    "bodyBackground": "rgb(15, 59, 44)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 10.96623828205624,
+      "muted": 7.827882039506619,
+      "action": 5.584840706454724,
+      "surfaceText": 6.843806519665977
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "felt",
+    "width": 390,
+    "scheme": "dark",
+    "scrollWidth": 390,
+    "height": 1087,
+    "title": "Make alittle rhythm.",
+    "headingFont": "\"Alfa Slab One\", Rockwell, Georgia, serif",
+    "panelBackground": "rgba(11, 47, 35, 0.667)",
+    "bodyBackground": "rgb(15, 59, 44)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 10.96623828205624,
+      "muted": 7.827882039506619,
+      "action": 5.584840706454724,
+      "surfaceText": 6.843806519665977
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "felt",
+    "width": 390,
+    "scheme": "light",
+    "scrollWidth": 390,
+    "height": 1087,
+    "title": "Make alittle rhythm.",
+    "headingFont": "\"Alfa Slab One\", Rockwell, Georgia, serif",
+    "panelBackground": "rgba(11, 47, 35, 0.667)",
+    "bodyBackground": "rgb(15, 59, 44)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 10.96623828205624,
+      "muted": 7.827882039506619,
+      "action": 5.584840706454724,
+      "surfaceText": 6.843806519665977
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "felt",
+    "width": 320,
+    "scheme": "dark",
+    "scrollWidth": 320,
+    "height": 1108,
+    "title": "Make alittle rhythm.",
+    "headingFont": "\"Alfa Slab One\", Rockwell, Georgia, serif",
+    "panelBackground": "rgba(11, 47, 35, 0.667)",
+    "bodyBackground": "rgb(15, 59, 44)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 10.96623828205624,
+      "muted": 7.827882039506619,
+      "action": 5.584840706454724,
+      "surfaceText": 6.843806519665977
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "felt",
+    "width": 320,
+    "scheme": "light",
+    "scrollWidth": 320,
+    "height": 1108,
+    "title": "Make alittle rhythm.",
+    "headingFont": "\"Alfa Slab One\", Rockwell, Georgia, serif",
+    "panelBackground": "rgba(11, 47, 35, 0.667)",
+    "bodyBackground": "rgb(15, 59, 44)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 10.96623828205624,
+      "muted": 7.827882039506619,
+      "action": 5.584840706454724,
+      "surfaceText": 6.843806519665977
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "daybreak",
+    "width": 1440,
+    "scheme": "dark",
+    "scrollWidth": 1440,
+    "height": 1181,
+    "title": "A window intothe week ahead.",
+    "headingFont": "\"Bricolage Grotesque\", \"DM Sans\", system-ui, sans-serif",
+    "panelBackground": "rgba(255, 255, 255, 0.72)",
+    "bodyBackground": "rgb(255, 243, 230)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 12.901398727310642,
+      "muted": 6.111743615088291,
+      "action": 6.258163801588109,
+      "surfaceText": 14.099983938314876
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "daybreak",
+    "width": 1440,
+    "scheme": "light",
+    "scrollWidth": 1440,
+    "height": 1181,
+    "title": "A window intothe week ahead.",
+    "headingFont": "\"Bricolage Grotesque\", \"DM Sans\", system-ui, sans-serif",
+    "panelBackground": "rgba(255, 255, 255, 0.72)",
+    "bodyBackground": "rgb(255, 243, 230)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 12.901398727310642,
+      "muted": 6.111743615088291,
+      "action": 6.258163801588109,
+      "surfaceText": 14.099983938314876
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "daybreak",
+    "width": 390,
+    "scheme": "dark",
+    "scrollWidth": 390,
+    "height": 1528,
+    "title": "A window intothe week ahead.",
+    "headingFont": "\"Bricolage Grotesque\", \"DM Sans\", system-ui, sans-serif",
+    "panelBackground": "rgba(255, 255, 255, 0.72)",
+    "bodyBackground": "rgb(255, 243, 230)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 12.901398727310642,
+      "muted": 6.111743615088291,
+      "action": 6.258163801588109,
+      "surfaceText": 14.099983938314876
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "daybreak",
+    "width": 390,
+    "scheme": "light",
+    "scrollWidth": 390,
+    "height": 1528,
+    "title": "A window intothe week ahead.",
+    "headingFont": "\"Bricolage Grotesque\", \"DM Sans\", system-ui, sans-serif",
+    "panelBackground": "rgba(255, 255, 255, 0.72)",
+    "bodyBackground": "rgb(255, 243, 230)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 12.901398727310642,
+      "muted": 6.111743615088291,
+      "action": 6.258163801588109,
+      "surfaceText": 14.099983938314876
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "daybreak",
+    "width": 320,
+    "scheme": "dark",
+    "scrollWidth": 320,
+    "height": 1609,
+    "title": "A window intothe week ahead.",
+    "headingFont": "\"Bricolage Grotesque\", \"DM Sans\", system-ui, sans-serif",
+    "panelBackground": "rgba(255, 255, 255, 0.72)",
+    "bodyBackground": "rgb(255, 243, 230)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 12.901398727310642,
+      "muted": 6.111743615088291,
+      "action": 6.258163801588109,
+      "surfaceText": 14.099983938314876
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "daybreak",
+    "width": 320,
+    "scheme": "light",
+    "scrollWidth": 320,
+    "height": 1609,
+    "title": "A window intothe week ahead.",
+    "headingFont": "\"Bricolage Grotesque\", \"DM Sans\", system-ui, sans-serif",
+    "panelBackground": "rgba(255, 255, 255, 0.72)",
+    "bodyBackground": "rgb(255, 243, 230)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 12.901398727310642,
+      "muted": 6.111743615088291,
+      "action": 6.258163801588109,
+      "surfaceText": 14.099983938314876
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "enamel",
+    "width": 1440,
+    "scheme": "dark",
+    "scrollWidth": 1440,
+    "height": 903,
+    "title": "Make alittle rhythm.",
+    "headingFont": "\"Archivo Black\", \"Arial Black\", Impact, sans-serif",
+    "panelBackground": "rgb(255, 255, 255)",
+    "bodyBackground": "rgb(255, 225, 77)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 14.50331468800011,
+      "muted": 8.342851836543725,
+      "action": 14.50331468800011,
+      "surfaceText": 18.883060964594996
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "enamel",
+    "width": 1440,
+    "scheme": "light",
+    "scrollWidth": 1440,
+    "height": 903,
+    "title": "Make alittle rhythm.",
+    "headingFont": "\"Archivo Black\", \"Arial Black\", Impact, sans-serif",
+    "panelBackground": "rgb(255, 255, 255)",
+    "bodyBackground": "rgb(255, 225, 77)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 14.50331468800011,
+      "muted": 8.342851836543725,
+      "action": 14.50331468800011,
+      "surfaceText": 18.883060964594996
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "enamel",
+    "width": 390,
+    "scheme": "dark",
+    "scrollWidth": 390,
+    "height": 1087,
+    "title": "Make alittle rhythm.",
+    "headingFont": "\"Archivo Black\", \"Arial Black\", Impact, sans-serif",
+    "panelBackground": "rgb(255, 255, 255)",
+    "bodyBackground": "rgb(255, 225, 77)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 14.50331468800011,
+      "muted": 8.342851836543725,
+      "action": 14.50331468800011,
+      "surfaceText": 18.883060964594996
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "enamel",
+    "width": 390,
+    "scheme": "light",
+    "scrollWidth": 390,
+    "height": 1087,
+    "title": "Make alittle rhythm.",
+    "headingFont": "\"Archivo Black\", \"Arial Black\", Impact, sans-serif",
+    "panelBackground": "rgb(255, 255, 255)",
+    "bodyBackground": "rgb(255, 225, 77)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 14.50331468800011,
+      "muted": 8.342851836543725,
+      "action": 14.50331468800011,
+      "surfaceText": 18.883060964594996
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "enamel",
+    "width": 320,
+    "scheme": "dark",
+    "scrollWidth": 320,
+    "height": 1108,
+    "title": "Make alittle rhythm.",
+    "headingFont": "\"Archivo Black\", \"Arial Black\", Impact, sans-serif",
+    "panelBackground": "rgb(255, 255, 255)",
+    "bodyBackground": "rgb(255, 225, 77)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 14.50331468800011,
+      "muted": 8.342851836543725,
+      "action": 14.50331468800011,
+      "surfaceText": 18.883060964594996
+    },
+    "errors": []
+  },
+  {
+    "kind": "material-width-scheme",
+    "look": "enamel",
+    "width": 320,
+    "scheme": "light",
+    "scrollWidth": 320,
+    "height": 1108,
+    "title": "Make alittle rhythm.",
+    "headingFont": "\"Archivo Black\", \"Arial Black\", Impact, sans-serif",
+    "panelBackground": "rgb(255, 255, 255)",
+    "bodyBackground": "rgb(255, 225, 77)",
+    "animations": 0,
+    "minTarget": 44,
+    "contrast": {
+      "text": 14.50331468800011,
+      "muted": 8.342851836543725,
+      "action": 14.50331468800011,
+      "surfaceText": 18.883060964594996
+    },
+    "errors": []
+  },
+  {
+    "kind": "simulated-state",
+    "look": "observatory",
+    "state": "empty",
+    "text": "A clean canvas.Nothing here yet. Start with a city, a reading note or a first tile.Explore the specimen",
+    "overflow": false
+  },
+  {
+    "kind": "simulated-state",
+    "look": "observatory",
+    "state": "loading",
+    "text": "Bringing it into focus…Simulated loading. The previous content stays in place.Finish preview",
+    "overflow": false
+  },
+  {
+    "kind": "simulated-state",
+    "look": "observatory",
+    "state": "error",
+    "text": "The refresh did not finish.Simulated failure. The previous content is still here; nothing has been replaced.Retry preview",
+    "overflow": false
+  },
+  {
+    "kind": "keyboard-focus",
+    "look": "observatory",
+    "tag": "SUMMARY",
+    "outline": "solid"
+  },
+  {
+    "kind": "simulated-state",
+    "look": "letterpress",
+    "state": "empty",
+    "text": "A clean canvas.Nothing here yet. Start with a city, a reading note or a first tile.Explore the specimen",
+    "overflow": false
+  },
+  {
+    "kind": "simulated-state",
+    "look": "letterpress",
+    "state": "loading",
+    "text": "Bringing it into focus…Simulated loading. The previous content stays in place.Finish preview",
+    "overflow": false
+  },
+  {
+    "kind": "simulated-state",
+    "look": "letterpress",
+    "state": "error",
+    "text": "The refresh did not finish.Simulated failure. The previous content is still here; nothing has been replaced.Retry preview",
+    "overflow": false
+  },
+  {
+    "kind": "keyboard-focus",
+    "look": "letterpress",
+    "tag": "BUTTON",
+    "outline": "solid"
+  },
+  {
+    "kind": "simulated-state",
+    "look": "felt",
+    "state": "empty",
+    "text": "A clean canvas.Nothing here yet. Start with a city, a reading note or a first tile.Explore the specimen",
+    "overflow": false
+  },
+  {
+    "kind": "simulated-state",
+    "look": "felt",
+    "state": "loading",
+    "text": "Bringing it into focus…Simulated loading. The previous content stays in place.Finish preview",
+    "overflow": false
+  },
+  {
+    "kind": "simulated-state",
+    "look": "felt",
+    "state": "error",
+    "text": "The refresh did not finish.Simulated failure. The previous content is still here; nothing has been replaced.Retry preview",
+    "overflow": false
+  },
+  {
+    "kind": "keyboard-focus",
+    "look": "felt",
+    "tag": "BUTTON",
+    "outline": "solid"
+  },
+  {
+    "kind": "keyboard-tile-and-reset",
+    "passed": true
+  },
+  {
+    "kind": "keyboard-abstract",
+    "passed": true
+  },
+  {
+    "kind": "range-domain-and-keyboard-table",
+    "min": -2,
+    "max": 21,
+    "span": 23,
+    "rows": 7,
+    "widths": [
+      69.56521739130434,
+      52.17391304347826,
+      47.82608695652174,
+      47.82608695652174,
+      52.17391304347826,
+      47.82608695652174,
+      52.17391304347826
+    ]
+  },
+  {
+    "kind": "explicit-motion-opt-out",
+    "running": 0,
+    "drawOffset": "0px"
+  },
+  {
+    "kind": "css-200-percent-geometry-not-browser-zoom",
+    "look": "observatory",
+    "width": 1440,
+    "scroll": 1440
+  },
+  {
+    "kind": "css-200-percent-geometry-not-browser-zoom",
+    "look": "letterpress",
+    "width": 1440,
+    "scroll": 1440
+  },
+  {
+    "kind": "css-200-percent-geometry-not-browser-zoom",
+    "look": "felt",
+    "width": 1440,
+    "scroll": 1440
+  },
+  {
+    "kind": "theme-alias-and-inherited-override",
+    "before": "rgb(251, 245, 231)",
+    "card": "#fbf5e7",
+    "custom": "rgb(18, 52, 86)",
+    "font": "monospace"
+  },
+  {
+    "kind": "reduced-transparency",
+    "passed": true
+  }
+]

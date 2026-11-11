@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "t_c75659a7",
+  "gate": "WAIT for t_71cf754c's final updated skill/kit revision to be integrated and recorded by Forge. Then submit one prompt per existing Space through normal Hermes chat. Do not substitute showcase HTML, direct source writes or kit-reference screenshots for generated output.",
+  "prompts": [
+    {
+      "space": "Sky Window",
+      "prompt": "Give my Sky Window Space a fresh, polished design that you'd enjoy leaving open. Keep live Open-Meteo weather for Chicago, Lisbon and Tokyo, current conditions, today's range and a seven-day forecast, plus adding, removing and favouriting cities. Keep my saved cities and preferences. Make it work well on my phone too. You choose the visual direction."
+    },
+    {
+      "space": "Research Desk",
+      "prompt": "Give my Research Desk Space a fresh, polished design for keeping up with public AI research from arXiv cs.AI. Keep the overview, searchable library, reading queue and high-priority review, with notes, status and priority for each paper. Keep my saved papers and notes, including when new papers arrive. Make it comfortable to read and use on my phone. You choose the visual direction."
+    },
+    {
+      "space": "Pair Play",
+      "prompt": "Give my Pair Play Space a fresh, polished design for a memory game with six pairs of cards. Keep turns, current-round progress, completed-round history and personal best, and let me resume an unfinished round. Keep my saved rounds and settings. Make it satisfying to play on desktop and my phone. You choose the visual direction."
+    }
+  ]
+}

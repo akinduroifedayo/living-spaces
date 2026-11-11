@@ -1,5 +1,6 @@
-/* Living Spaces · dependency-free, sandbox-safe. Load before app styles.
-   Matches Hermes Desktop's Nous palette; media follows Electron nativeTheme.
+/* Living Spaces · optional visual toolbox, dependency-free and sandbox-safe.
+   Load only when chosen, before app styles. Base components are quiet; the
+   canvas layer offers six different materials, not a house style.
    Accent identifies a subject, never an outcome. Use semantic HTML and text. */
 :root {
   color-scheme: light;
@@ -324,9 +325,164 @@ pre { max-width: 100%; overflow: auto; background: var(--space-card); padding: v
   --space-background-image: radial-gradient(light-dark(#b8cbe5, #31456a) 1px, transparent 1px);
   --space-background-size: 20px 20px;
 }
+/* ---------------------------------------------------------------------------
+   Canvas layer (optional). Six art-directed looks with depth and texture, plus
+   composition utilities that are not cards. Each look fixes its own colour
+   scheme because the material decides light or dark. Set data-theme on body.
+   manifest theme.preset only accepts the seven presets above, so use the
+   attribute for these, or pass theme.tokens.
+   Extra tokens: --space-panel-bg/-border/-blur/-shadow, --space-hero-bg,
+   --space-hero-image, --space-display-font, --space-ink-2 (second accent),
+   --space-grain.
+   --------------------------------------------------------------------------- */
+:where(:root) {
+  /* Resolve aliases at use sites, not here: root aliases would freeze the base
+     palette, while body defaults would mask explicit inherited token overrides. */
+  --space-pad: clamp(16px, 3vw, 28px);
+}
+/* Observatory: night sky, glass panels, glow instead of borders. */
+[data-theme="observatory"] {
+  color-scheme: dark;
+  --space-bg: #0b1026; --space-card: #121a3a; --space-surface: #19224a; --space-text: #eaf0ff;
+  --space-muted: #a9b6dc; --space-line: #2c3a6e; --space-control-line: #7b8dc9; --space-link: #9fc0ff;
+  --space-focus: #ffd98a; --space-action: #3a5bd9; --space-on-action: #ffffff; --space-selected: #1f2d63;
+  --space-ink-2: #ffd98a;
+  --space-heading-font: 'Fraunces', 'Newsreader', Georgia, serif;
+  --space-radius: 10px; --space-radius-lg: 18px; --space-density: 1.1;
+  --space-panel-bg: color-mix(in srgb, #19224a 62%, transparent); --space-panel-border: #ffffff1f;
+  --space-panel-blur: 14px; --space-panel-shadow: 0 18px 50px #00000066, inset 0 1px 0 #ffffff14;
+  --space-hero-bg: radial-gradient(120% 90% at 80% 0%, #3a4ba8 0%, #1a2352 38%, #0b1026 75%);
+  --space-background-image: radial-gradient(1.2px 1.2px at 12% 18%, #ffffffaa 50%, transparent 51%), radial-gradient(1px 1px at 68% 32%, #ffffff88 50%, transparent 51%), radial-gradient(1.4px 1.4px at 38% 74%, #ffffff99 50%, transparent 51%), radial-gradient(100% 60% at 50% -10%, #26357f 0%, transparent 70%);
+  --space-background-size: 340px 340px, 280px 280px, 410px 410px, 100% 100%;
+}
+/* Letterpress: warm paper, oxblood ink, soft paper lift, printed grain. */
+[data-theme="letterpress"] {
+  color-scheme: light;
+  --space-bg: #f3ead8; --space-card: #fbf5e7; --space-surface: #fffaf0; --space-text: #2b1d18;
+  --space-muted: #6a5247; --space-line: #cdb99a; --space-control-line: #8c6f57; --space-link: #7a1f2b;
+  --space-focus: #7a1f2b; --space-action: #7a1f2b; --space-on-action: #fff6ea; --space-selected: #efdcc0;
+  --space-ink-2: #1f4d3a;
+  --space-heading-font: 'Bodoni Moda', 'Playfair Display', Didot, 'Times New Roman', serif;
+  --space-font: 'Newsreader', Georgia, serif; --space-radius: 2px; --space-radius-lg: 3px; --space-density: 1.15;
+  --space-panel-border: #2b1d18; --space-panel-shadow: 0 8px 20px #2b1d181a;
+  --space-hero-bg: linear-gradient(180deg, #e6d7ba 0%, #f3ead8 100%);
+  --space-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .2 0 0 0 0 .1 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  --space-background-image: var(--space-grain); --space-background-size: 160px 160px;
+}
+/* Blueprint: drafting grid, hairlines, monospaced labels. */
+[data-theme="blueprint"] {
+  color-scheme: dark;
+  --space-bg: #0d2a4d; --space-card: #0f3157; --space-surface: #123a66; --space-text: #e6f3ff;
+  --space-muted: #a6c8e6; --space-line: #3d6a9a; --space-control-line: #8fb7dc; --space-link: #ffffff;
+  --space-focus: #ffe27a; --space-action: #1f6fd0; --space-on-action: #ffffff; --space-selected: #174876;
+  --space-ink-2: #ffe27a;
+  --space-font: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace; --space-heading-font: var(--space-font);
+  --space-display-font: 'Space Grotesk', system-ui, sans-serif;
+  --space-radius: 0px; --space-radius-lg: 0px; --space-density: .85; --space-shadow: none;
+  --space-panel-bg: #0f315799; --space-panel-border: #8fb7dc66; --space-panel-shadow: none;
+  --space-hero-bg: linear-gradient(135deg, #0f3157, #0d2a4d);
+  --space-background-image: linear-gradient(#ffffff14 1px, transparent 1px), linear-gradient(90deg, #ffffff14 1px, transparent 1px), linear-gradient(#ffffff0a 1px, transparent 1px), linear-gradient(90deg, #ffffff0a 1px, transparent 1px);
+  --space-background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+}
+/* Felt: card-table green, chunky radii, soft vignette. Games and boards. */
+[data-theme="felt"] {
+  color-scheme: dark;
+  --space-bg: #0f3b2c; --space-card: #14503b; --space-surface: #1a5d45; --space-text: #f6f0df;
+  --space-muted: #b9d3c3; --space-line: #2f7a5c; --space-control-line: #86bfa3; --space-link: #ffe2a6;
+  --space-focus: #ffe2a6; --space-action: #b8322f; --space-on-action: #fff7ea; --space-selected: #1f6b50;
+  --space-ink-2: #ffe2a6;
+  --space-heading-font: 'Alfa Slab One', Rockwell, Georgia, serif;
+  --space-radius: 14px; --space-radius-lg: 24px; --space-density: 1.1;
+  --space-panel-bg: #0b2f23aa; --space-panel-border: #ffffff1f; --space-panel-shadow: 0 10px 24px #06190f55;
+  --space-hero-bg: radial-gradient(90% 90% at 50% 40%, #1f6b50, #0f3b2c 70%);
+  --space-background-image: radial-gradient(120% 100% at 50% 40%, transparent 55%, #00000066 100%);
+  --space-background-size: 100% 100%;
+}
+/* Daybreak: warm gradient light, soft depth, generous rounding. */
+[data-theme="daybreak"] {
+  color-scheme: light;
+  --space-bg: #fff3e6; --space-card: #ffffffcc; --space-surface: #ffffff; --space-text: #3a2438;
+  --space-muted: #6f5468; --space-line: #f0cfc0; --space-control-line: #a9788a; --space-link: #b3265e;
+  --space-focus: #b3265e; --space-action: #b3265e; --space-on-action: #ffffff; --space-selected: #ffe1d4;
+  --space-ink-2: #2f6f8f;
+  --space-heading-font: 'Bricolage Grotesque', 'DM Sans', system-ui, sans-serif;
+  --space-radius: 16px; --space-radius-lg: 28px; --space-density: 1.15;
+  --space-panel-bg: #ffffffb8; --space-panel-border: #ffffff; --space-panel-blur: 10px;
+  --space-panel-shadow: 0 20px 40px #b3265e1f, inset 0 2px 0 #ffffff;
+  --space-hero-bg: linear-gradient(135deg, #ffb18a 0%, #ff7ea8 50%, #8a7bff 100%);
+  --space-background-image: radial-gradient(60% 50% at 8% 0%, #ffd0a8aa, transparent 70%), radial-gradient(50% 50% at 100% 20%, #ffb3d1aa, transparent 70%), radial-gradient(60% 60% at 60% 100%, #c7b8ffaa, transparent 70%);
+  --space-background-size: 100% 100%;
+}
+/* Enamel: flat colour blocks, thick ink outlines, hard shadows. */
+[data-theme="enamel"] {
+  color-scheme: light;
+  --space-bg: #ffe14d; --space-card: #ffffff; --space-surface: #ffffff; --space-text: #111111;
+  --space-muted: #3d3d3d; --space-line: #111111; --space-control-line: #111111; --space-link: #0b3fd1;
+  --space-focus: #0b3fd1; --space-action: #111111; --space-on-action: #ffe14d; --space-selected: #bfe3ff;
+  --space-ink-2: #c4161c;
+  --space-heading-font: 'Archivo Black', 'Arial Black', Impact, sans-serif;
+  --space-font: 'Space Grotesk', system-ui, sans-serif; --space-radius: 6px; --space-radius-lg: 10px;
+  --space-panel-bg: #ffffff; --space-panel-border: #111111; --space-panel-shadow: 6px 6px 0 #111111;
+  --space-hero-bg: #e5393b;
+}
+[data-theme="observatory"], [data-theme="blueprint"], [data-theme="felt"] {
+  --space-alert: #ff9b96; --space-alert-bg: #3a1216; --space-success: #7fe0b0; --space-success-bg: #0f2c20;
+  --space-warning: #ffd27a; --space-warning-bg: #35260a;
+}
+[data-theme="letterpress"], [data-theme="daybreak"], [data-theme="enamel"] {
+  --space-alert: #a4202b; --space-alert-bg: #fdeaea; --space-success: #176b4e; --space-success-bg: #e3f4ea;
+  --space-warning: #7a4d00; --space-warning-bg: #fff1cc;
+}
+[data-theme="observatory"], [data-theme="blueprint"], [data-theme="felt"], [data-theme="daybreak"] { background-attachment: fixed; }
+/* Composition utilities. Use them to leave the card grid. */
+.space-panel { padding: calc(var(--space-5) * var(--space-density)); color: var(--space-text); background: var(--space-panel-bg, var(--space-card)); border: 1px solid var(--space-panel-border, var(--space-line)); border-radius: var(--space-radius-lg); box-shadow: var(--space-panel-shadow, var(--space-shadow)); backdrop-filter: blur(var(--space-panel-blur, 0px)); -webkit-backdrop-filter: blur(var(--space-panel-blur, 0px)); min-width: 0; overflow-wrap: anywhere; }
+.space-hero { position: relative; isolation: isolate; display: grid; align-content: end; gap: var(--space-3); min-height: clamp(260px, 46vh, 520px); margin: calc(var(--space-pad) * -1) calc(var(--space-pad) * -1) 0; padding: clamp(24px, 5vw, 64px); color: var(--space-text); background: var(--space-hero-image, none) center / cover no-repeat, var(--space-hero-bg, var(--space-card)); overflow: hidden; }
+.space-hero::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to top, var(--space-bg) 0%, transparent 60%); opacity: var(--space-hero-fade, .85); pointer-events: none; }
+.space-hero--scrim::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to right, color-mix(in srgb, var(--space-bg) 78%, transparent), transparent 70%); }
+.space-bleed { margin-inline: calc(var(--space-pad) * -1); padding-inline: var(--space-pad); }
+.space-display { font-family: var(--space-display-font, var(--space-heading-font)); font-size: clamp(3rem, 12vw, 9rem); line-height: .9; letter-spacing: -.04em; font-weight: 700; font-variant-numeric: tabular-nums; text-wrap: balance; margin: 0; }
+.space-display--xl { font-size: clamp(4.5rem, 20vw, 14rem); }
+.space-display--sm { font-size: clamp(2rem, 6vw, 4rem); }
+
+.space-asymmetric { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: clamp(16px, 3vw, 40px); align-items: start; }
+.space-ledger { list-style: none; margin: 0; padding: 0; display: grid; }
+.space-ledger > li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto); gap: var(--space-3); align-items: baseline; padding-block: var(--space-3); border-bottom: 1px dotted var(--space-control-line); overflow-wrap: anywhere; }
+.space-ledger b { font-variant-numeric: tabular-nums; font-weight: 600; }
+.space-rail { display: flex; gap: var(--space-3); overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: var(--space-2); }
+.space-rail > * { flex: 0 0 min(78%, 260px); scroll-snap-align: start; }
+
+.space-sparkline { display: block; width: 100%; height: 56px; overflow: visible; }
+.space-sparkline path { fill: none; stroke: var(--space-ink-2, var(--space-link)); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.space-sparkline path.is-area { fill: color-mix(in srgb, var(--space-ink-2, var(--space-link)) 20%, transparent); stroke: none; }
+.space-state { display: grid; justify-items: start; gap: var(--space-3); max-width: 46ch; padding-block: var(--space-5); }
+.space-state > svg, .space-state > img { width: min(100%, 220px); height: auto; }
+.space-state--center { justify-items: center; text-align: center; margin-inline: auto; }
+/* Motion is opt-in. Reveal staggers with --i; use space-skeleton--shimmer
+   explicitly. For space-draw set pathLength="1" and --len:1, or the measured
+   path length. Keep an already-visible end state when animation is disabled. */
+.space-reveal { animation: space-rise calc(420ms * var(--space-motion)) var(--space-ease) both; animation-delay: calc(var(--i, 0) * 60ms * var(--space-motion)); }
+@keyframes space-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.space-skeleton--shimmer { background: linear-gradient(90deg, var(--space-line) 0%, color-mix(in srgb, var(--space-line) 55%, var(--space-surface)) 50%, var(--space-line) 100%); background-size: 200% 100%; animation: space-shimmer 1.4s linear infinite; }
+@keyframes space-shimmer { to { background-position: -200% 0; } }
+.space-draw { stroke-dasharray: var(--len, 1000); stroke-dashoffset: 0; animation: space-draw calc(600ms * var(--space-motion)) var(--space-ease) both; }
+@keyframes space-draw { from { stroke-dashoffset: var(--len, 1000); } to { stroke-dashoffset: 0; } }
+@media (max-width: 680px) {
+  .space-asymmetric { grid-template-columns: 1fr; }
+  .space-hero { min-height: 220px; }
+  .space-panel { padding: var(--space-4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .space-reveal { animation: none; opacity: 1; transform: none; }
+  .space-draw { animation: none; stroke-dashoffset: 0; }
+  .space-skeleton { animation: none; }
+}
+@media (prefers-reduced-transparency: reduce) { .space-panel { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--space-surface); } }
 /* Explicit per-Space motion choice. Reduced-motion wins over every preset. */
 [data-motion="none"] { --space-motion: 0; --space-duration: 0s; }
 [data-motion="none"] .space-spinner { animation: none; border-style: dotted; }
+[data-motion="none"] .space-reveal, [data-motion="none"].space-reveal { animation: none; opacity: 1; transform: none; }
+[data-motion="none"] .space-draw, [data-motion="none"].space-draw { animation: none; stroke-dashoffset: 0; }
+[data-motion="none"] .space-skeleton, [data-motion="none"].space-skeleton { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   [data-theme] { --space-motion: 0; --space-duration: 0s; }
 }

@@ -1,0 +1,271 @@
+{
+  "design_revision": "6000b735cd7b73d08ae1ba0b9c75f23145370c95",
+  "receiving_base": "cd5a6ae463bbb3e5a3e66ceff3bb89319a8fdbfd",
+  "skill_prefix_unchanged_except_exact_optional_css_sentence": true,
+  "skill_suffix_unchanged": true,
+  "design_section_exact": true,
+  "files": [
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/CRITIQUE-AND-PROMPTS.md",
+      "target": "docs/design/premium-pass/CRITIQUE-AND-PROMPTS.md",
+      "sha256": "43dd5cab59df304cdb8f438be37de5439cd3a00e05f8d1aa48710a9d2c59ed45",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/regeneration-prompts.json",
+      "target": "docs/design/premium-pass/regeneration-prompts.json",
+      "sha256": "9851d70615c7c898782ebcda76e81c9049781cb594126c102c7da49db530deb6",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/baseline-manifest.json",
+      "target": "docs/design/premium-pass/baseline-manifest.json",
+      "sha256": "3ac7bba798de4ebede3e62e5d1b8f0ba174c4d467f4414c8f51144622956c9c5",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/assessment-a.md",
+      "target": "docs/design/premium-pass/assessment-a.md",
+      "sha256": "400a59c529db283c0278a099632349b229282f43eb7be78540c510e09d11b736",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/assessment-b.md",
+      "target": "docs/design/premium-pass/assessment-b.md",
+      "sha256": "a005d1a5fd2f890c91a1feb3d55e163ce57fbb664e648b53ff046154d5d6b27f",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/baseline/sky-opened.png",
+      "target": "docs/design/premium-pass/baseline/sky-opened.png",
+      "sha256": "2f2ecbf21a71cd85ac5b38dabc19d4c73e99be13ec8b53a113368d9c7697bf7c",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/baseline/sky-week.png",
+      "target": "docs/design/premium-pass/baseline/sky-week.png",
+      "sha256": "973e1b8d3f5b5bf3581bf12573659c6d463e9792e33ef5baaa7d65510566a0f7",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/baseline/sky-cities.png",
+      "target": "docs/design/premium-pass/baseline/sky-cities.png",
+      "sha256": "f888cef11b37f019a837f0d6e7e62f7074f09e083f6a3d2d3d9c8b47427671c8",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/baseline/research-overview.png",
+      "target": "docs/design/premium-pass/baseline/research-overview.png",
+      "sha256": "4bcd4ab734664d65018eab0a801dc5c166169ca48ee82097c2de28f6265b6fcf",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/baseline/research-queue.png",
+      "target": "docs/design/premium-pass/baseline/research-queue.png",
+      "sha256": "da0d613f94270810056b675fb33d7751a257982062deb29accd79dbe5272e759",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/baseline/research-review.png",
+      "target": "docs/design/premium-pass/baseline/research-review.png",
+      "sha256": "21e0a4def1d893778205148faf20f21388a30ff5c9e48f3bde52deb24917808b",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/baseline/research-saved.png",
+      "target": "docs/design/premium-pass/baseline/research-saved.png",
+      "sha256": "8cdc05fa91faab6a6f472025d4906c99825916c39aad3a2076394c8f02011b92",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/baseline/research-reopened.png",
+      "target": "docs/design/premium-pass/baseline/research-reopened.png",
+      "sha256": "2b1d141bd5e534509374304a40f7f9f5bc236c80226bcb0f20d7bbda76b75c90",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/baseline/pair-play.png",
+      "target": "docs/design/premium-pass/baseline/pair-play.png",
+      "sha256": "dd8cd0c8e6dbfae84ab9d711a7da1428679c2d2619923c8c7f6a36931dbcc1fd",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/baseline/pair-progress.png",
+      "target": "docs/design/premium-pass/baseline/pair-progress.png",
+      "sha256": "8b106a9251d649a6bf15315a55445b29af4375ffb2bb3f011588501b34e82fa6",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/baseline/research-before-fixture.png",
+      "target": "docs/design/premium-pass/baseline/research-before-fixture.png",
+      "sha256": "e6eeca1557f2f6a3c916360d24330ed15f6d519fad75ae20ac811a1e50f60688",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/baseline/reference-weather-off.png",
+      "target": "docs/design/premium-pass/baseline/reference-weather-off.png",
+      "sha256": "9f4c88b007cbcd2a1e9dd6d675f057da8296ef0502b15cf442d1779246e0d5c4",
+      "class": "historical baseline, not current qualification"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/KIT-VERIFICATION.md",
+      "target": "docs/design/premium-pass/kit/KIT-VERIFICATION.md",
+      "sha256": "99db11d2fa85d8cc83c0ee5cc7a0505d71afe03607e4891f8d4cc2fd673e20c8",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/verification.json",
+      "target": "docs/design/premium-pass/kit/verification.json",
+      "sha256": "d14253d4817d17f1e2e15de6186668f8b4098a2ce3da250c674bbdb9087bc696",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/summary.json",
+      "target": "docs/design/premium-pass/kit/summary.json",
+      "sha256": "b21694d277d21d5f1f187c0334bd46f85dc4743dd091ad85993d2139623e11c9",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/after-blueprint-1440.png",
+      "target": "docs/design/premium-pass/kit/after-blueprint-1440.png",
+      "sha256": "deafb7f5d9ec48d0092bc61e5d8430aeb03a5f15d49c88b6635dd44d189e1dd9",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/after-daybreak-1440.png",
+      "target": "docs/design/premium-pass/kit/after-daybreak-1440.png",
+      "sha256": "128182ef7c4b92f069024967650f3e0f57f912c569bb5f077fec03ceb67d5bc8",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/after-enamel-1440.png",
+      "target": "docs/design/premium-pass/kit/after-enamel-1440.png",
+      "sha256": "5ff403ec7f50c1e12d4b2426266190c0d50bcb14049dd890190ede98b0f52b30",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/after-felt-1440.png",
+      "target": "docs/design/premium-pass/kit/after-felt-1440.png",
+      "sha256": "97fdce137f3bd85bb3c1f14d58b37b3e93d363e7d738f84a723c3676ac92197d",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/after-felt-390.png",
+      "target": "docs/design/premium-pass/kit/after-felt-390.png",
+      "sha256": "dcca1f102fa303a7a483250a9d5402ba726d76de2049acce597bfa41660c4f32",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/after-letterpress-1440.png",
+      "target": "docs/design/premium-pass/kit/after-letterpress-1440.png",
+      "sha256": "d21900121b94b1a292e9ecd97b24d958cd9925ff7e5d81679f3fd037acaad8b8",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/after-letterpress-390.png",
+      "target": "docs/design/premium-pass/kit/after-letterpress-390.png",
+      "sha256": "6dd34f95fb72ba8056c8bd70e3e8275b45cf657f1e8f04a4718c412a468be774",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/after-observatory-1440.png",
+      "target": "docs/design/premium-pass/kit/after-observatory-1440.png",
+      "sha256": "8d32ef2cf4da6664e293f575385768428b27d8aaaf68ff961c6bfb5f192880df",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/after-observatory-390.png",
+      "target": "docs/design/premium-pass/kit/after-observatory-390.png",
+      "sha256": "02feb580e92849e4b79c295cc977c88d9b7114e1bdcb6f73d9a497af73b1a784",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/before-letterpress-1440.png",
+      "target": "docs/design/premium-pass/kit/before-letterpress-1440.png",
+      "sha256": "279a93734671b6d7d34ad5c638f0f9d396549c723358407ae4db2aa64c575d91",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/before-observatory-1440.png",
+      "target": "docs/design/premium-pass/kit/before-observatory-1440.png",
+      "sha256": "348dfc8bfd188992e32cf4c87a6861618f9d2cc207b71d35e7e56c72ffe8e80a",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/state-felt-empty.png",
+      "target": "docs/design/premium-pass/kit/state-felt-empty.png",
+      "sha256": "846242cb55364f7843155e07102b50d81c8b491c5d8387b7cccb3cb94fe9dbc2",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/state-felt-error.png",
+      "target": "docs/design/premium-pass/kit/state-felt-error.png",
+      "sha256": "adf7d5c34be5034bfdfd06552e9131ad1b6a1d4ba7571e60be5c0bda44a4e5ef",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/state-felt-loading.png",
+      "target": "docs/design/premium-pass/kit/state-felt-loading.png",
+      "sha256": "888597454b14acdd916a8d442fcf1c5dccdbacfaae5a25d38f13ee8af37ef65a",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/state-letterpress-empty.png",
+      "target": "docs/design/premium-pass/kit/state-letterpress-empty.png",
+      "sha256": "fb57129b2fe85fdecabe9c2fe586ffd04a0a46986ff920519707f894802479dd",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/state-letterpress-error.png",
+      "target": "docs/design/premium-pass/kit/state-letterpress-error.png",
+      "sha256": "6941b97038d6319c05b5f588e14b6a15fafffeaa31dbf4ed7679eca272a50ea4",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/state-letterpress-loading.png",
+      "target": "docs/design/premium-pass/kit/state-letterpress-loading.png",
+      "sha256": "47bf12463b9efd3d1bd5a8463420379d892a2cccc087b7c68c445b36d3bf9dda",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/state-observatory-empty.png",
+      "target": "docs/design/premium-pass/kit/state-observatory-empty.png",
+      "sha256": "69951749d24d383c44b49ce785ec080a1bb5be3e812d22810a1d1f278a4e55d7",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/state-observatory-error.png",
+      "target": "docs/design/premium-pass/kit/state-observatory-error.png",
+      "sha256": "041dafc1235c95e0b8ca4f0010ca8438791e6f58ead4fc3127d4479c7f3f1474",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-kit/state-observatory-loading.png",
+      "target": "docs/design/premium-pass/kit/state-observatory-loading.png",
+      "sha256": "9ae814c2bbb961c207b3e87d3674a6cec678725a6df8e87f2760d8e6c599d7bc",
+      "class": "synthetic kit specimen, not chat-generated output"
+    },
+    {
+      "source_revision": "6000b735cd7b73d08ae1ba0b9c75f23145370c95",
+      "target": "src/living-spaces/runtime/kit/spaces-kit.css",
+      "sha256": "982ff5e4a90c6b91f4f514882c57f735efbc6272f9f56951928c71b55fc37ecd"
+    },
+    {
+      "source_revision": "6000b735cd7b73d08ae1ba0b9c75f23145370c95",
+      "target": "src/living-spaces/runtime/kit/canvas-gallery.html",
+      "sha256": "7b2a708139ca787659db0ab87a218be1e5040d668063b446142af08ed0a6cde3"
+    },
+    {
+      "source_revision": "6000b735cd7b73d08ae1ba0b9c75f23145370c95",
+      "target": "src/living-spaces/runtime/kit/README.md",
+      "sha256": "a678bc4ab9522538f9a35048f452886960c5a26b8d29bae3c31f7b705e1d9ac6"
+    },
+    {
+      "source_revision": "6000b735cd7b73d08ae1ba0b9c75f23145370c95",
+      "target": "src/living-spaces/runtime/kit/verify-canvas.mjs",
+      "sha256": "ad47929fa218e8312c9ff37623fddcaca95cfcb4e6e82b4a97818ba037b3af41"
+    }
+  ],
+  "normal_chat_regeneration": "not run; requires candidate loaded with this revision",
+  "supersedes": "02-critique-and-prompts.md is superseded by CRITIQUE-AND-PROMPTS.md; retained for historical trace only"
+}

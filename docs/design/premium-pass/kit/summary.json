@@ -1,0 +1,53 @@
+{
+  "paths": [
+    "src/living-spaces/runtime/kit/canvas-gallery.html",
+    "src/living-spaces/runtime/kit/spaces-kit.css",
+    "src/living-spaces/skills/build-space/SKILL.md",
+    "src/living-spaces/runtime/kit/README.md",
+    "src/living-spaces/runtime/kit/verify-canvas.mjs"
+  ],
+  "scope": "Only design section plus runtime/kit/**",
+  "scopeCheck": true,
+  "inlineScriptSyntax": true,
+  "checks": 57,
+  "byKind": {
+    "material-width-scheme": 36,
+    "simulated-state": 9,
+    "keyboard-focus": 3,
+    "keyboard-tile-and-reset": 1,
+    "keyboard-abstract": 1,
+    "range-domain-and-keyboard-table": 1,
+    "explicit-motion-opt-out": 1,
+    "css-200-percent-geometry-not-browser-zoom": 3,
+    "theme-alias-and-inherited-override": 1,
+    "reduced-transparency": 1
+  },
+  "viewportChecks": 36,
+  "minTarget": 44,
+  "minTokenContrast": 4.949502877534964,
+  "maxOverflow": 0,
+  "consoleErrors": 0,
+  "screens": [
+    "after-blueprint-1440.png",
+    "after-daybreak-1440.png",
+    "after-enamel-1440.png",
+    "after-felt-1440.png",
+    "after-felt-390.png",
+    "after-letterpress-1440.png",
+    "after-letterpress-390.png",
+    "after-observatory-1440.png",
+    "after-observatory-390.png",
+    "before-letterpress-1440.png",
+    "before-observatory-1440.png",
+    "state-felt-empty.png",
+    "state-felt-error.png",
+    "state-felt-loading.png",
+    "state-letterpress-empty.png",
+    "state-letterpress-error.png",
+    "state-letterpress-loading.png",
+    "state-observatory-empty.png",
+    "state-observatory-error.png",
+    "state-observatory-loading.png"
+  ],
+  "screenshotCount": 20
+}

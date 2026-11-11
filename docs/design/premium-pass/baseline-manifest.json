@@ -1,0 +1,336 @@
+{
+  "task": "t_c75659a7",
+  "created_at": "2026-11-11T11:48:21.785296+00:00",
+  "purpose": "Historical baseline for Forge to copy under docs/design/premium-pass/baseline; NOT regeneration or current qualification",
+  "privacy": "Host+canvas crops exclude Hermes sidebar/account footer. Source-byte hashes retained; no synthesized pixels, resizing or masking. Original captures remain at source pointers.",
+  "repository_read_only": true,
+  "capture_count": 12,
+  "captures": [
+    {
+      "file": "baseline/sky-opened.png",
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces/docs/evidence/runs/sky-same-session-repair/opened.png",
+      "source_sha256": "3523aab7c8c7c104445620c34222545752e11a32ea0bbc5d0d1d7684b47f227d",
+      "source_pixels": [
+        1690,
+        858
+      ],
+      "crop_xywh": [
+        260,
+        34,
+        1430,
+        784
+      ],
+      "staged_sha256": "2f2ecbf21a71cd85ac5b38dabc19d4c73e99be13ec8b53a113368d9c7697bf7c",
+      "staged_pixels": [
+        1430,
+        784
+      ],
+      "evidence_class": "actual isolated Desktop historical capture",
+      "state": "Today, three cities reported live; Tokyo below fold",
+      "revision_binding": "receipt establishes code 3\u21924; capture correspondence contextual"
+    },
+    {
+      "file": "baseline/sky-week.png",
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces/docs/evidence/runs/sky-same-session-repair/week.png",
+      "source_sha256": "4e91428f252492fa47b89ffb72a9b0f000c09fd36916cfa49844756a61af89f0",
+      "source_pixels": [
+        1690,
+        858
+      ],
+      "crop_xywh": [
+        260,
+        34,
+        1430,
+        784
+      ],
+      "staged_sha256": "973e1b8d3f5b5bf3581bf12573659c6d463e9792e33ef5baaa7d65510566a0f7",
+      "staged_pixels": [
+        1430,
+        784
+      ],
+      "evidence_class": "actual isolated Desktop historical capture",
+      "state": "Week, Chicago, seven days",
+      "revision_binding": "receipt establishes code 3\u21924; capture correspondence contextual"
+    },
+    {
+      "file": "baseline/sky-cities.png",
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces/docs/evidence/runs/sky-same-session-repair/cities.png",
+      "source_sha256": "0a4dc1232bc07be7dbad345c2d5b5f4daa02047cc49f20cf21c5d5e9ce78d29e",
+      "source_pixels": [
+        1690,
+        858
+      ],
+      "crop_xywh": [
+        260,
+        34,
+        1430,
+        784
+      ],
+      "staged_sha256": "f888cef11b37f019a837f0d6e7e62f7074f09e083f6a3d2d3d9c8b47427671c8",
+      "staged_pixels": [
+        1430,
+        784
+      ],
+      "evidence_class": "actual isolated Desktop historical capture",
+      "state": "Cities, three saved; no favourite",
+      "revision_binding": "receipt establishes code 3\u21924; capture correspondence contextual"
+    },
+    {
+      "file": "baseline/research-overview.png",
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/research-kit-interaction-20261111-032116/overview.png",
+      "source_sha256": "1f65cf5eb7843a6059a6671aef20ca8edf13a9af1424895f90d0cac9927ccf45",
+      "source_pixels": [
+        1690,
+        858
+      ],
+      "crop_xywh": [
+        260,
+        34,
+        1430,
+        784
+      ],
+      "staged_sha256": "4bcd4ab734664d65018eab0a801dc5c166169ca48ee82097c2de28f6265b6fcf",
+      "staged_pixels": [
+        1430,
+        784
+      ],
+      "evidence_class": "actual isolated Desktop historical capture",
+      "state": "27 papers; queued 22, reading 1, completed 4",
+      "revision_binding": "follow-up to rev8 chat update; no per-PNG revision digest binding"
+    },
+    {
+      "file": "baseline/research-queue.png",
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/research-kit-interaction-20261111-032116/queue.png",
+      "source_sha256": "3b603db4b37816d5aac8ba9bfebac0d6cd296620a5b1d2d14ea3416852b266ea",
+      "source_pixels": [
+        1690,
+        858
+      ],
+      "crop_xywh": [
+        260,
+        34,
+        1430,
+        784
+      ],
+      "staged_sha256": "da0d613f94270810056b675fb33d7751a257982062deb29accd79dbe5272e759",
+      "staged_pixels": [
+        1430,
+        784
+      ],
+      "evidence_class": "actual isolated Desktop historical capture",
+      "state": "23 unfinished papers; priority filter",
+      "revision_binding": "follow-up to rev8 chat update; no per-PNG revision digest binding"
+    },
+    {
+      "file": "baseline/research-review.png",
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/research-kit-interaction-20261111-032116/review.png",
+      "source_sha256": "090b6219caa24325f069f324a86598323a512df31c41d0543463aa858e140afa",
+      "source_pixels": [
+        1690,
+        858
+      ],
+      "crop_xywh": [
+        260,
+        34,
+        1430,
+        784
+      ],
+      "staged_sha256": "21e0a4def1d893778205148faf20f21388a30ff5c9e48f3bde52deb24917808b",
+      "staged_pixels": [
+        1430,
+        784
+      ],
+      "evidence_class": "actual isolated Desktop historical capture",
+      "state": "one high-priority public fixture; saved note",
+      "revision_binding": "follow-up to rev8 chat update; no per-PNG revision digest binding"
+    },
+    {
+      "file": "baseline/research-saved.png",
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/research-kit-interaction-20261111-032116/saved.png",
+      "source_sha256": "1154d80d385aaa458aa1822087be72f0f1ab9e371f2bfc2f54b369381628927a",
+      "source_pixels": [
+        1690,
+        858
+      ],
+      "crop_xywh": [
+        260,
+        34,
+        1430,
+        784
+      ],
+      "staged_sha256": "8cdc05fa91faab6a6f472025d4906c99825916c39aad3a2076394c8f02011b92",
+      "staged_pixels": [
+        1430,
+        784
+      ],
+      "evidence_class": "actual isolated Desktop historical capture",
+      "state": "fixture editor with Reading, High and Saved",
+      "revision_binding": "follow-up to rev8 chat update; no per-PNG revision digest binding"
+    },
+    {
+      "file": "baseline/research-reopened.png",
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/research-kit-interaction-20261111-032116/reopened.png",
+      "source_sha256": "ae4c37bab7c25c1e15fe06e8f609afaf04b8b756a4727b19fb526bdc0ecce799",
+      "source_pixels": [
+        1690,
+        858
+      ],
+      "crop_xywh": [
+        260,
+        34,
+        1430,
+        784
+      ],
+      "staged_sha256": "2b1d141bd5e534509374304a40f7f9f5bc236c80226bcb0f20d7bbda76b75c90",
+      "staged_pixels": [
+        1430,
+        784
+      ],
+      "evidence_class": "actual isolated Desktop historical capture",
+      "state": "reopened library with fixture Reading/High badges",
+      "revision_binding": "follow-up to rev8 chat update; no per-PNG revision digest binding"
+    },
+    {
+      "file": "baseline/pair-play.png",
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/postpackage-pair-play-open.png",
+      "source_sha256": "b0780aaca0b2ac5a972356d92783405e7d4310eb1c8eed2f4a246ce4d3738114",
+      "source_pixels": [
+        1690,
+        858
+      ],
+      "crop_xywh": [
+        260,
+        34,
+        1430,
+        784
+      ],
+      "staged_sha256": "dd8cd0c8e6dbfae84ab9d711a7da1428679c2d2619923c8c7f6a36931dbcc1fd",
+      "staged_pixels": [
+        1430,
+        784
+      ],
+      "evidence_class": "actual isolated Desktop historical capture",
+      "state": "Play: twelve cards, two turns, one of six pairs found",
+      "revision_binding": "postpackage receipt; code rev4 contextual, not hash-bound"
+    },
+    {
+      "file": "baseline/pair-progress.png",
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces/docs/evidence/runs/r1-09-repair/02-progress-repaired.png",
+      "source_sha256": "96c6f1fd99a0e0df7375767ae5da2203f79e54278e9b0265e7ae7a690d5985c5",
+      "source_pixels": [
+        1690,
+        858
+      ],
+      "crop_xywh": [
+        260,
+        34,
+        1430,
+        784
+      ],
+      "staged_sha256": "8b106a9251d649a6bf15315a55445b29af4375ffb2bb3f011588501b34e82fa6",
+      "staged_pixels": [
+        1430,
+        784
+      ],
+      "evidence_class": "actual isolated Desktop historical capture",
+      "state": "Progress: six-pair collection, not playable board; no completed rounds",
+      "revision_binding": "repair receipt establishes good2\u2192fault3\u2192repaired4"
+    },
+    {
+      "file": "baseline/research-before-fixture.png",
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/regenerate-research-desk-20261111-025333/opened.png",
+      "source_sha256": "a976a81104ec5012d7f736f1cd4320d98fe90174bc2148273856553a0423c4ea",
+      "source_pixels": [
+        1690,
+        858
+      ],
+      "crop_xywh": [
+        260,
+        34,
+        1430,
+        784
+      ],
+      "staged_sha256": "e6eeca1557f2f6a3c916360d24330ed15f6d519fad75ae20ac811a1e50f60688",
+      "staged_pixels": [
+        1430,
+        784
+      ],
+      "evidence_class": "actual isolated Desktop historical capture",
+      "state": "26 papers before follow-up fixture",
+      "revision_binding": "chat generation receipt establishes 7\u21928"
+    },
+    {
+      "file": "baseline/reference-weather-off.png",
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces/docs/design/space-kit/passes/assessment-b-weather-desktop.png",
+      "source_sha256": "9f4c88b007cbcd2a1e9dd6d675f057da8296ef0502b15cf442d1779246e0d5c4",
+      "source_pixels": [
+        1280,
+        900
+      ],
+      "crop_xywh": [
+        0,
+        0,
+        1280,
+        900
+      ],
+      "staged_sha256": "9f4c88b007cbcd2a1e9dd6d675f057da8296ef0502b15cf442d1779246e0d5c4",
+      "staged_pixels": [
+        1280,
+        900
+      ],
+      "evidence_class": "REFERENCE ONLY: simulated host, Internet Off, not chat-built",
+      "state": "no forecast loaded; sample action available",
+      "revision_binding": "reference code; not app code"
+    }
+  ],
+  "receipts": [
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces/docs/evidence/runs/sky-same-session-repair/receipt.json",
+      "sha256": "cc5df68d21641bdc6227784100946a07c8193f37a2953038620426f24955d071"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces/docs/evidence/runs/sky-same-session-repair/request.json",
+      "sha256": "a3609d6bbdbfd15d2d9ad43222514ae03a1a0ea1f410e5f7cd5aa0060ba7c7f6"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces/docs/evidence/runs/sky-same-session-repair/views.json",
+      "sha256": "56d6c062e8f0b4602dfcf4c69a6a5f47ab26a031ad06289d9086703ef129ac45"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/regenerate-research-desk-20261111-025333/receipt.json",
+      "sha256": "e802a75d31562957cd60854b402dbf38b81e38ad808cfec8e5b5c911d87c47a3"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/regenerate-research-desk-20261111-025333/request.json",
+      "sha256": "f09caba8de08ee1a1c4ae8ffd7c4febe72a732934d43cb8bf5e06b948a375f4c"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/regenerate-research-desk-20261111-025333/trace.json",
+      "sha256": "1c3c5448a4bd7b62429d9ac9474f1af24bd216290430943d6bcbef4def891245"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/research-kit-interaction-20261111-032116/receipt.json",
+      "sha256": "95306c04702af0707a178035106c7c19e170634f567751e50c00e8bc087a383e"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/postpackage-pair-play.json",
+      "sha256": "9acb4792ca4a728ddf1ac4352ec735e6a51c9c455dd079f48c097bd9f3cdcb8d"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/pair-play-01-reopen.json",
+      "sha256": "510636615781c0a28cf0f192501df22747e52f4de9d07c4bd73c105b9bf48f56"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/pair-play-01-interaction.json",
+      "sha256": "2acf719c34954d68564efd62e7a6a74c164b36ee38b63fe0f72acb8a40638e69"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Build/living-spaces-r1/evidence/pair-play-01-interaction.attempt-2.json",
+      "sha256": "2acf719c34954d68564efd62e7a6a74c164b36ee38b63fe0f72acb8a40638e69"
+    },
+    {
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces/docs/evidence/runs/r1-09-repair/repair.json",
+      "sha256": "4f541ad5d44a78267f485d8d1c8f58ea07aa338e648e63e8676a5ccebf71dded"
+    }
+  ]
+}

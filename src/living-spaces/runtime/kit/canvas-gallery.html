@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Living Spaces · canvas materials</title>
+<link rel="stylesheet" href="spaces-kit.css">
+<style>
+/* Specimen-only compositions, not mandatory app templates. No external assets. */
+body { padding: var(--space-pad); font-size: 16px; }
+.wrap { max-width: 1120px; margin-inline: auto; display: grid; gap: 32px; }
+.specimen-tools { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 12px 24px; padding-bottom: 20px; border-bottom: 1px solid var(--space-line); }
+.looks { display: flex; flex-wrap: wrap; gap: 4px; }
+.looks a { padding: 8px 12px; border: 1px solid transparent; border-radius: var(--space-radius); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+.looks a[aria-current="page"] { background: var(--space-action); color: var(--space-on-action); }
+.specimen-tools label { margin: 0; font-weight: 400; font-size: 14px; }
+.specimen-tools select { min-height: 44px; }
+.provenance { font-size: 13px; color: var(--space-muted); border-top: 1px solid var(--space-line); padding-top: 16px; }
+button { min-height: 44px; }
+.scene { display: grid; gap: 32px; }
+.scene h1 { font-size: clamp(2.6rem, 6vw, 5.4rem); line-height: 1.04; letter-spacing: -.035em; max-width: 14ch; }
+.scene p { max-width: 60ch; }
+.scene figure { margin-inline: 0; }
+.sky-hero { display: grid; grid-template-columns: 1fr 1.1fr; align-items: center; min-height: 340px; gap: 20px; padding: clamp(24px,4vw,56px); margin: 0; border-radius: var(--space-radius-lg); }
+.sky-hero .copy { display: grid; gap: 16px; }
+.sky-hero h1 { font-size: clamp(2rem,4vw,3.7rem); }
+.sky-hero .temperature { font: 500 clamp(4rem,9vw,7rem)/1 var(--space-display-font, var(--space-heading-font)); letter-spacing: -.04em; }
+.temperature small { font-size: .35em; color: inherit; }
+.sky-art { width: 100%; height: auto; color: var(--space-ink-2); }
+.section-heading { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px 24px; margin-bottom: 16px; }
+.section-heading h2 { font-size: 1.4rem; }
+.ranges { display: grid; gap: 17px; }
+.range-row { display: grid; grid-template-columns: 40px 1fr 60px; align-items: center; gap: 14px; font-size: 14px; }
+.range-row .track { height: 10px; background: color-mix(in srgb,var(--space-ink-2) 12%,var(--space-bg)); position: relative; border-radius: 20px; }
+.range-row .interval { position: absolute; height: 10px; border-radius: 20px; background: var(--space-ink-2); inset-inline-start: var(--start); width: var(--width); }
+.range-row .values { font-variant-numeric: tabular-nums; text-align: end; white-space: nowrap; }
+.range-axis { display: flex; justify-content: space-between; margin: 12px 74px 0 54px; font-size: 12px; color: var(--space-muted); }
+.chart-note { color: var(--space-muted); font-size: 13px; margin-top: 16px; }
+details { margin-top: 20px; }
+summary { cursor: pointer; min-height: 44px; padding-block: 12px; color: var(--space-link); }
+.space-ledger { font-size: 15px; }
+.space-ledger > li { padding-block: 14px; }
+.reading-top { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; align-items: center; border-bottom: 2px solid var(--space-text); padding-bottom: 32px; }
+.reading-top .copy { display: grid; gap: 24px; }
+.book-art { width: 100%; height: auto; max-height: 280px; color: var(--space-link); }
+.reading-list { list-style: none; padding: 0; margin: 0; }
+.reading-list > li { display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; padding: 24px 0; border-top: 1px solid var(--space-line); align-items: center; }
+.reading-list h3 { font-size: 1.6rem; font-family: var(--space-heading-font); line-height: 1.2; }
+.reading-list p { color: var(--space-muted); margin-top: 8px; }
+.reading-list .abstract { grid-column: 1/-1; color: var(--space-text); max-width: 65ch; padding: 16px 0 0; }
+.reading-aside { align-self: start; border-block: 1px solid var(--space-text); padding-block: 24px; display: grid; gap: 16px; }
+.studio { display: grid; grid-template-columns: 1fr 1.15fr; gap: clamp(24px,5vw,64px); align-items: center; min-height: 520px; }
+.studio .copy { display: grid; gap: 24px; align-content: center; }
+.studio-board { padding: clamp(16px,3vw,32px); background: var(--space-hero-bg); border: 1px solid var(--space-panel-border); border-radius: var(--space-radius-lg); box-shadow: var(--space-panel-shadow); }
+.studio-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+.studio-tile { aspect-ratio: 1; width: 100%; min-width: 0; padding: 12%; background: var(--space-surface); border: 1px solid var(--space-control-line); color: var(--space-muted); transition: transform var(--space-duration) var(--space-ease), background-color var(--space-duration) var(--space-ease); }
+.studio-tile svg { width: 100%; height: 100%; }
+.studio-tile[aria-pressed="true"] { background: var(--space-action); color: var(--space-on-action); border-color: var(--space-action); transform: rotate(-3deg); }
+.studio-board p { margin-top: 20px; color: var(--space-text); }
+.state-message { max-width: none; padding: 24px; gap: 16px; }
+.state-message h2 { font-size: 1.5rem; }
+.state-message svg { width: 96px; }
+.state-message .space-skeleton { max-width: 400px; }
+[data-state="empty"] .ready-content { display: none; }
+
+[data-state="ready"] #state-message { display: none; }
+@media(max-width:680px) {
+ .wrap { gap: 24px; }
+ .sky-hero,.reading-top,.studio { grid-template-columns: 1fr; }
+ .sky-hero { padding: 24px; gap: 0; }
+ .sky-art { max-height: 200px; }
+ .reading-top { gap: 16px; }
+ .book-art { max-height: 200px; }
+ .reading-list > li { grid-template-columns: 1fr; gap: 12px; }
+ .reading-list button { justify-self: start; }
+ .studio-grid { gap: 8px; }
+ .studio { min-height: 0; }
+ .studio .copy h1 { max-width: 12ch; }
+ .looks a { font-size: 14px; }
+}
+@media(prefers-reduced-motion:reduce) { .studio-tile { transition: none; } }
+</style>
+</head>
+<body data-state="ready">
+<div class="wrap">
+ <div class="specimen-tools">
+  <nav class="looks" id="looks" aria-label="Canvas material"></nav>
+  <label for="state">Preview a state<select id="state"><option value="ready">Ready</option><option value="empty">Empty</option><option value="loading">Loading</option><option value="error">Failed refresh</option></select></label>
+ </div>
+ <section id="state-message" class="space-state space-panel state-message" aria-live="polite"></section>
+ <main class="scene" id="scene"></main>
+ <footer class="provenance">Synthetic kit specimen · authored SVG, no network or image-generation calls · local UI only, no saved records. States are simulations, not host or chat-generation evidence. Fonts use deliberate offline fallbacks.</footer>
+</div>
+<script>
+const looks = ['observatory','letterpress','blueprint','felt','daybreak','enamel'];
+const requested = new URL(location.href).searchParams.get('look');
+const look = looks.includes(requested) ? requested : 'observatory';
+document.body.dataset.theme = look;
+document.getElementById('looks').innerHTML = looks.map(l => `<a href="?look=${l}" ${l===look?'aria-current="page"':''}>${l[0].toUpperCase()+l.slice(1)}</a>`).join('');
+const scene = document.getElementById('scene');
+const family = ['observatory','daybreak'].includes(look) ? 'weather' : ['letterpress','blueprint'].includes(look) ? 'reading' : 'studio';
+// Prototype domain calculation: one shared °C scale from every synthetic low/high.
+// Neither this fixture nor the chart is a fetched weather forecast.
+const days = [{day:'Mon',low:-2,high:14},{day:'Tue',low:4,high:16},{day:'Wed',low:7,high:18},{day:'Thu',low:6,high:17},{day:'Fri',low:9,high:21},{day:'Sat',low:8,high:19},{day:'Sun',low:3,high:15}];
+const min = Math.min(0,...days.map(d=>d.low));
+const max = Math.max(...days.map(d=>d.high));
+const span = max-min || 1;
+const rangeRows = days.map(d=>`<div class="range-row"><span>${d.day}</span><div class="track" aria-hidden="true"><i class="interval" style="--start:${(d.low-min)/span*100}%;--width:${(d.high-d.low)/span*100}%"></i></div><span class="values">${d.low} / ${d.high}</span></div>`).join('');
+const table = `<details><summary>Exact daily values</summary><table><caption>Synthetic daily low and high, °C</caption><thead><tr><th scope="col">Day</th><th class="space-numeric" scope="col">Low</th><th class="space-numeric" scope="col">High</th></tr></thead><tbody>${days.map(d=>`<tr><th scope="row">${d.day}</th><td class="space-numeric">${d.low}</td><td class="space-numeric">${d.high}</td></tr>`).join('')}</tbody></table></details>`;
+if(family==='weather') scene.innerHTML = `
+ <header class="space-hero sky-hero ready-content">
+  <div class="copy"><h1>A window into<br>the week ahead.</h1><p class="temperature">18<small> °C</small></p><p>Clear skies, room to wander.<br>Illustrative conditions, not a live forecast.</p></div>
+  <svg class="sky-art" viewBox="0 0 440 290" role="img" aria-label="Authored illustration of a sun above layered hills, not observed weather">
+   <path d="M40 235A180 180 0 0 1 400 235" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 8" opacity=".6"/>
+   <circle cx="286" cy="74" r="39" fill="currentColor"/>
+   <path d="M0 248Q110 100 227 215T440 200V290H0Z" fill="currentColor" opacity=".14"/>
+   <path d="M0 268Q100 183 208 245T440 240V290H0Z" fill="currentColor" opacity=".3"/>
+   <path class="space-draw" pathLength="1" style="--len:1" d="M35 256H405" fill="none" stroke="currentColor" stroke-width="2"/>
+  </svg>
+ </header>
+ <div class="space-asymmetric ready-content">
+  <figure><div class="section-heading"><h2>Daily low–high · °C</h2><span class="space-muted">Synthetic week</span></div><div class="ranges" role="img" aria-label="Seven daily temperature ranges, exact values in the table below. Monday includes a negative low of minus two degrees Celsius.">${rangeRows}</div><div class="range-axis" aria-hidden="true"><span>${min} °C</span><span>${max} °C</span></div><p class="chart-note">One shared scale; each interval runs from that day's low to its high.</p>${table}</figure>
+  <aside class="space-panel"><h2>Today's details</h2><ul class="space-ledger"><li><span>Wind · km/h</span><b>12</b></li><li><span>Rain chance · today</span><b>20%</b></li><li><span>Source</span><b>Synthetic</b></li></ul></aside>
+ </div>`;
+if(family==='reading') scene.innerHTML = `
+ <header class="reading-top ready-content"><div class="copy"><h1>The reading<br>room.</h1><p>A considered place for ideas worth returning to. Start with a question, follow a thread, keep your own notes.</p></div>
+ <svg class="book-art" viewBox="0 0 400 280" role="img" aria-label="Authored two-ink illustration of open books and a reading lamp"><path d="M55 221H355M313 210V116M272 116H353L326 53H300ZM277 210H346" fill="none" stroke="currentColor" stroke-width="4"/><path d="M53 213V91L142 119V242ZM142 119L231 91V213L142 242" fill="var(--space-card)" stroke="currentColor" stroke-width="3"/><path d="M72 124L124 141M72 145L124 162M72 166L124 183M160 141L213 124M160 162L213 145M160 183L213 166" stroke="currentColor" stroke-width="2"/><circle cx="80" cy="57" r="19" fill="var(--space-ink-2)" opacity=".8"/></svg></header>
+ <div class="space-asymmetric ready-content"><section><div class="section-heading"><h2>On the desk</h2><span class="space-muted">2 synthetic entries</span></div><ul class="reading-list">
+ ${[{title:'How a city stays cool',type:'Urban ecology · sample reading note',text:'This synthetic abstract explores shade, water and the places people pause. It is placeholder content for layout testing, not a published paper.'},{title:'The hidden life of a seed',type:'Field notes · sample reading note',text:'This synthetic abstract follows a seed through a season. Replace it with sourced content in a real Space; keep user notes separate from source fields.'}].map((p,i)=>`<li><div><h3>${p.title}</h3><p>${p.type}</p></div><button type="button" data-abstract="abstract-${i}" aria-expanded="false" aria-controls="abstract-${i}">Read abstract</button><p class="abstract" id="abstract-${i}" hidden>${p.text}</p></li>`).join('')}
+ </ul></section><aside class="reading-aside"><h2>Follow a thread</h2><p>Let a reading list look like reading, not a dashboard with papers in boxes.</p><p class="space-muted">In a real Space, search and notes belong beside the work. This specimen only expands abstracts.</p></aside></div>`;
+const glyph = i => i%3===0 ? '<path d="M12 25a13 13 0 0 1 26 0v13H12Z" fill="currentColor"/>' : i%3===1 ? '<path d="M12 38V12c18 0 26 8 26 26-18 0-26-8-26-26M12 38l22-22" fill="none" stroke="currentColor" stroke-width="3"/>' : '<circle cx="25" cy="25" r="12" fill="none" stroke="currentColor" stroke-width="3"/><path d="M25 3v5M25 42v5M3 25h5M42 25h5" stroke="currentColor" stroke-width="3"/>';
+if(family==='studio') scene.innerHTML = `
+ <div class="studio ready-content"><header class="copy"><h1>Make a<br>little rhythm.</h1><p>Pick a few tiles. Find a pattern.<br>A small canvas for a moment of play.</p><div class="space-actions"><button id="reset" type="button" class="space-button--primary">Clear the pattern</button></div><p id="tile-count" role="status">0 of 16 tiles selected · not saved</p></header>
+ <section class="studio-board" aria-label="Pattern workbench"><div class="studio-grid">${Array.from({length:16},(_,i)=>`<button class="studio-tile" type="button" aria-label="${['Arch','Leaf','Sun'][i%3]} tile ${i+1}" aria-pressed="false"><svg viewBox="0 0 50 50" aria-hidden="true">${glyph(i)}</svg></button>`).join('')}</div><p class="space-muted">Select with click, Enter or Space. This is a pattern specimen, not a scored game.</p></section></div>`;
+const stateSelect = document.getElementById('state');
+const message = document.getElementById('state-message');
+function setState(state) {
+ document.body.dataset.state = state;
+ stateSelect.value = state;
+ const copy = state==='empty' ? ['A clean canvas.', 'Nothing here yet. Start with a city, a reading note or a first tile.'] : state==='loading' ? ['Bringing it into focus…', 'Simulated loading. The previous content stays in place.'] : ['The refresh did not finish.', 'Simulated failure. The previous content is still here; nothing has been replaced.'];
+ message.innerHTML = `<svg viewBox="0 0 100 70" aria-hidden="true"><path d="M15 56V20h52v36ZM27 44l12-12 12 12 12-6M69 13h15v36" fill="none" stroke="var(--space-ink-2)" stroke-width="2"/></svg><h2>${copy[0]}</h2><p>${copy[1]}</p>${state==='loading'?'<span class="space-skeleton space-skeleton--shimmer" aria-hidden="true"></span>':''}<button type="button" id="recover" class="space-button--primary">${state==='empty'?'Explore the specimen':state==='loading'?'Finish preview':'Retry preview'}</button>`;
+ message.querySelector('button').onclick = () => { setState('ready'); stateSelect.focus(); };
+ scene.setAttribute('aria-busy',state==='loading'?'true':'false');
+}
+stateSelect.onchange = () => setState(stateSelect.value);
+scene.addEventListener('click', event => {
+ const abstract = event.target.closest('[data-abstract]');
+ if(abstract){const open=abstract.getAttribute('aria-expanded')==='true';abstract.setAttribute('aria-expanded',String(!open));abstract.textContent=open?'Read abstract':'Close abstract';document.getElementById(abstract.dataset.abstract).hidden=open;}
+ const tile = event.target.closest('.studio-tile');
+ if(tile) tile.setAttribute('aria-pressed',String(tile.getAttribute('aria-pressed')!=='true'));
+ if(event.target.closest('#reset')) document.querySelectorAll('.studio-tile').forEach(t=>t.setAttribute('aria-pressed','false'));
+ if(family==='studio') document.getElementById('tile-count').textContent=`${document.querySelectorAll('.studio-tile[aria-pressed="true"]').length} of 16 tiles selected · not saved`;
+});
+</script>
+</body>
+</html>
