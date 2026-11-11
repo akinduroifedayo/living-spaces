@@ -183,9 +183,14 @@ async def schedule_get(space_id: str):
 @router.post("/spaces/{space_id}/schedule")
 async def schedule_update(space_id: str, body=Body(default=None)):
     def action(core):
-        _body(core, body, ("decision", "paused"))
-        if set(body) == {"decision"} and body["decision"] in ("approve", "deny"):
-            return core.decide_schedule(space_id, body["decision"], actor="user")
+        _body(core, body, ("decision", "paused", "requested_upkeep"))
+        if "decision" in body and set(body) <= {"decision", "requested_upkeep"} and body["decision"] in ("approve", "deny"):
+            kwargs = {}
+            if "requested_upkeep" in body:
+                if not isinstance(body["requested_upkeep"], dict):
+                    _invalid(core, "requested_upkeep must be an object")
+                kwargs["requested_upkeep"] = body["requested_upkeep"]
+            return core.decide_schedule(space_id, body["decision"], actor="user", **kwargs)
         if set(body) == {"paused"} and isinstance(body["paused"], bool):
             return core.pause_schedule(space_id, body["paused"], actor="user")
         _invalid(core, "Supply decision approve/deny or a boolean paused.")

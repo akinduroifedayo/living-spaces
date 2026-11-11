@@ -18,6 +18,54 @@ def _cron():
     return importlib.import_module("cron.jobs")
 
 
+def validate_upkeep(upkeep):
+    if not isinstance(upkeep, dict) or upkeep.get("handler") not in ("feed", "agent"):
+        raise SpacesError("invalid", "upkeep.handler must be feed or agent")
+    if upkeep["handler"] == "agent":
+        prompt = upkeep.get("prompt")
+        if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 4000:
+            raise SpacesError("invalid", "Agent upkeep requires a nonempty prompt of at most 4000 characters")
+
+
+def _require_current_upkeep(conn, sid, upkeep):
+    row = conn.execute("SELECT r.manifest FROM revisions r JOIN spaces s ON s.id=r.space AND s.head_rev=r.rev WHERE s.id=?", (sid,)).fetchone()
+    if row and json.loads(row["manifest"]).get("upkeep") != upkeep:
+        raise SpacesError("conflict", "Upkeep changed; review the current prompt before continuing")
+
+
+def agent_prompt(sid, upkeep):
+    validate_upkeep(upkeep)
+    return (
+        f"Maintain only the Living Space with id {sid}. Use spaces_* tools for all Space reads and writes. "
+        "Do not change any other Space or write the Space database/files directly. "
+        "First use spaces_get to check that this Space is not archived and its refresh grant is granted; "
+        "stop without writes if either check fails. Use the tools available in your Hermes configuration "
+        "to complete the task, respecting their permissions. Do not call spaces_refresh or change schedules. "
+        "Preserve user notes, statuses and other user-owned fields. For retrieved/generated records, use "
+        "spaces_write_records with source_owned=true and source metadata; never put upkeep results in user data. "
+        "If source-owned writes are unavailable, report that limitation without overwriting user fields.\n\n"
+        "Upkeep task:\n" + upkeep["prompt"]
+    )
+
+
+def on_manifest_change(conn, sid, old, new, *, actor):
+    before, after = old.get("upkeep") or {}, new.get("upkeep") or {}
+    if (before.get("handler"), before.get("prompt")) == (after.get("handler"), after.get("prompt")):
+        return
+    row = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
+    if row is None:
+        return
+    if row["cron_job_id"]:
+        try:
+            _cron().pause_job(row["cron_job_id"], reason="Upkeep handler or prompt changed; approval required")
+        except ImportError as exc:
+            raise SpacesError("blocked", "Cannot pause the existing native cron job", reason=str(exc)) from exc
+    conn.execute("UPDATE schedules SET status='requested',requested_at=?,decided_at=NULL,next_run_at=NULL WHERE space=?", (db.now(), sid))
+    conn.execute("INSERT INTO audit(space,at,actor,action,outcome,detail) VALUES(?,?,?,?,?,?)", (
+        sid, db.now(), actor, "schedule.requested", "requested", json.dumps({"reason": "Upkeep handler or prompt changed"}),
+    ))
+
+
 def _space(conn, sid):
     if not isinstance(sid, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,47}", sid):
         raise SpacesError("invalid", "Invalid Space id")
@@ -135,14 +183,22 @@ def request_schedule(sid, *, cadence, timezone, purpose, actor):
     return _schedule_row(sid)
 
 
-def decide_schedule(sid, decision, *, actor="user"):
+def decide_schedule(sid, decision, *, actor="user", requested_upkeep=None):
     if decision not in ("approve", "deny"):
         raise SpacesError("invalid", "Schedule decision must be approve or deny")
     if decision == "approve":
-        from . import grants
+        from . import grants, projects
         grants.check(sid, "refresh")
+        upkeep = projects.bundle(sid)["manifest"].get("upkeep")
+        validate_upkeep(upkeep)
+        if requested_upkeep is not None and requested_upkeep != upkeep:
+            raise SpacesError("conflict", "Upkeep request changed. Review the current prompt before approving.")
     with db.write() as conn:
         space = _space(conn, sid)
+        if decision == "approve":
+            _require_current_upkeep(conn, sid, upkeep)
+            if upkeep["handler"] == "agent" and not grants._check(conn, sid, "refresh"):
+                raise SpacesError("not_granted", "Refresh is not granted", capability="refresh")
         row = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
         if row is None:
             raise SpacesError("not_found", "Schedule not found")
@@ -165,13 +221,18 @@ def decide_schedule(sid, decision, *, actor="user"):
             else:
                 job = None
                 try:
-                    template = (PACKAGE / "scripts" / "refresh_space.py").read_text()
-                    script = template.replace("__LIVING_SPACES_PACKAGE__", repr(str(PACKAGE))).replace("__LIVING_SPACES_SID__", repr(sid))
-                    shim.parent.mkdir(parents=True, exist_ok=True)
-                    shim.write_text(script)
+                    if upkeep["handler"] == "agent":
+                        shim.unlink(missing_ok=True)
+                        mode = {"prompt": agent_prompt(sid, upkeep), "no_agent": False}
+                    else:
+                        template = (PACKAGE / "scripts" / "refresh_space.py").read_text()
+                        script = template.replace("__LIVING_SPACES_PACKAGE__", repr(str(PACKAGE))).replace("__LIVING_SPACES_SID__", repr(sid))
+                        shim.parent.mkdir(parents=True, exist_ok=True)
+                        shim.write_text(script)
+                        mode = {"prompt": None, "script": shim.name, "no_agent": True}
                     job = jobs.create_job(
-                        prompt=None, schedule=row["cadence"], name=f"living-spaces:{sid}",
-                        script=shim.name, no_agent=True, deliver="local", catch_up=True, timezone=row["timezone"],
+                        **mode, schedule=row["cadence"], name=f"living-spaces:{sid}",
+                        deliver="local", catch_up=True, timezone=row["timezone"],
                     )
                     conn.execute("UPDATE schedules SET status='active',cron_job_id=?,decided_at=?,next_run_at=? WHERE space=?", (
                         job["id"], db.now(), _next(job), sid,

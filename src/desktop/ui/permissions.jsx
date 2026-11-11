@@ -2,6 +2,7 @@ import { Badge, ErrorState, Skeleton, useQuery } from '@hermes/plugin-sdk'
 import { useRef, useState } from 'react'
 import { Action, Banner, DecisionDialog, Drawer, Icon, OwnerChip, StatusPill, Time } from './components.jsx'
 import { CATCH_UP, errorText, spacePath } from './model.mjs'
+import { UpkeepCost } from './schedule.jsx'
 
 const NET_DESCRIPTION = "This Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces."
 const NET_OFF_DESCRIPTION = "This Space can't load content from or send data to the internet through Internet access."
@@ -42,7 +43,7 @@ export function PermissionsContent({ space, grants, audit = [], schedule, onDeci
     {net && <InternetAccess grant={net} onDecide={onDecide} busy={busy} />}
     <section className="ls-section"><h2 className="ls-section-title">Granted to {space.name}</h2>{settled.map(g => <GrantCard key={g.capability} grant={g} onDecide={onDecide} busy={busy} />)}{!settled.length && <p>No grants approved yet.</p>}</section>
     <section className="ls-section"><h2 className="ls-section-title">Waiting for your decision</h2>{pending.map(g => <GrantCard key={g.capability} grant={g} onDecide={onDecide} busy={busy} />)}
-      {schedule?.status === 'requested' && <article className="ls-grant ls-pending"><div className="ls-row-top"><strong><Icon name="watch" />Scheduled upkeep</strong><StatusPill status="requested" /></div><dl className="ls-facts"><div><dt>Cadence</dt><dd>{schedule.cadence}</dd></div><div><dt>Timezone</dt><dd>{schedule.timezone}</dd></div><div><dt>Purpose</dt><dd>{schedule.purpose}</dd></div><div><dt>Owner</dt><dd>{space.owner}</dd></div><div><dt>Cost</dt><dd>No model calls</dd></div></dl><p>{CATCH_UP}</p><div className="ls-actions"><Action primary disabled={busy} onClick={() => onSchedule('approve')}>Approve</Action><Action disabled={busy} onClick={() => onSchedule('deny')}>Deny</Action></div></article>}
+      {schedule?.status === 'requested' && <article className="ls-grant ls-pending"><div className="ls-row-top"><strong><Icon name="watch" />Scheduled upkeep</strong><StatusPill status="requested" /></div><dl className="ls-facts"><div><dt>Cadence</dt><dd>{schedule.cadence}</dd></div><div><dt>Timezone</dt><dd>{schedule.timezone}</dd></div><div><dt>Purpose</dt><dd>{schedule.purpose}</dd></div><div><dt>Owner</dt><dd>{space.owner}</dd></div><div><dt>Cost</dt><dd><UpkeepCost space={space} /></dd></div></dl><p>{CATCH_UP}</p><div className="ls-actions"><Action primary disabled={busy} onClick={() => onSchedule('approve')}>Approve</Action><Action disabled={busy} onClick={() => onSchedule('deny')}>Deny</Action></div></article>}
       {!pending.length && schedule?.status !== 'requested' && <p className="ls-secondary">Nothing waiting for your decision.</p>}
     </section>
     <section className="ls-section" data-testid="release-two"><h2 className="ls-section-title">Coming in release 2 — not available yet</h2>{FUTURE.map(name => <div className="ls-grant ls-future" key={name}><div className="ls-row-top"><strong>{name}</strong><Badge variant="outline">Not available yet</Badge></div></div>)}<p className="ls-secondary">Camera, microphone and location will start off and also follow Hermes and macOS permission prompts. Release 2 will revisit what Spaces can read before tool and file access is offered.</p></section>
@@ -70,12 +71,12 @@ export function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }
       if ((e?.error || e?.body?.error || e)?.code === 'conflict') {
         setError('Permission request changed. Review the new request before approving.')
       } else setError(`${errorText(e)} Review the current request before trying again.`)
-      await Promise.all([query.refetch(), schedule.refetch()])
+      await Promise.all([query.refetch(), schedule.refetch(), onChanged()])
     }
     finally { lock.current = false; setBusy(false) }
   }
   return <><Drawer title={`Permissions · ${space.name}`} description="Review this Space's access and schedule requests." onClose={onClose} returnFocus={returnFocus}>
     {error && <Banner kind="failed" title={error} />}
-    {query.error || schedule.error ? <ErrorState title="Permissions could not be loaded" description={errorText(query.error || schedule.error)}><Action onClick={() => { query.refetch(); schedule.refetch() }}>Try again</Action></ErrorState> : query.isLoading ? <Skeleton style={{ height: 180 }} /> : <PermissionsContent space={space} grants={query.data?.grants || []} audit={query.data?.audit || []} schedule={schedule.data} onDecide={decide} onSchedule={decision => change(`${base}/schedule`, { decision })} busy={busy} />}
+    {query.error || schedule.error ? <ErrorState title="Permissions could not be loaded" description={errorText(query.error || schedule.error)}><Action onClick={() => { query.refetch(); schedule.refetch() }}>Try again</Action></ErrorState> : query.isLoading ? <Skeleton style={{ height: 180 }} /> : <PermissionsContent space={space} grants={query.data?.grants || []} audit={query.data?.audit || []} schedule={schedule.data} onDecide={decide} onSchedule={decision => change(`${base}/schedule`, { decision, ...(decision === 'approve' ? { requested_upkeep: space.manifest?.upkeep } : {}) })} busy={busy} />}
   </Drawer>{revoke && <DecisionDialog danger title={`Revoke ${CAPABILITIES[revoke.capability].name} for ${space.name}?`} description={revoke.capability === 'refresh' ? "Scheduled upkeep pauses and manual refreshes stop. Approve Refresh in Permissions, then resume upkeep to restart scheduled refreshes. Data already delivered to the Space can't be recalled, and completed requests can't be undone." : `The Space loses ${CAPABILITIES[revoke.capability].name.toLowerCase()} access. Data already delivered to the Space can't be recalled, and completed requests can't be undone.`} cancelLabel="Keep access" confirmLabel="Revoke" onClose={() => setRevoke(null)} onConfirm={async () => { await ctx.rest(`${base}/grants/${revoke.capability}`, { method: 'POST', body: { decision: 'revoke' } }); await query.refetch(); await onChanged() }} />}</>
 }

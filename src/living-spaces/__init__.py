@@ -281,6 +281,26 @@ def spaces_write_records(core, args, owner):
     ops = _json_arg(core, args, "ops", list)
     if not ops:
         raise _invalid(core, "ops must contain at least one operation")
+    source_owned = args.get("source_owned", False)
+    if not isinstance(source_owned, bool):
+        raise _invalid(core, "source_owned must be a boolean")
+    if source_owned:
+        core.limits.check(len(ops), core.limits.BATCH_OPS, "source operations")
+        counts = {"added": 0, "updated": 0, "unchanged": 0}
+        with core.db.write() as conn:
+            core.db.space(conn, sid, writable=True)
+            if not core.grants._check(conn, sid, "refresh"):
+                raise core.SpacesError("not_granted", "Refresh is not granted", capability="refresh")
+            for op in ops:
+                if not isinstance(op, dict) or op.get("op") != "put" or "data" in op:
+                    raise _invalid(core, "Source-owned operations must put source fields, without data")
+                metadata = op.get("source_meta", {})
+                core.limits.object_json(metadata, core.limits.SOURCE_BYTES, "source metadata")
+                metadata = {**metadata, "handler": "agent", "fetched_at": core.db.now()}
+                result = core.records._upsert_source(conn, sid, op.get("collection"), op.get("id"),
+                                                     op.get("source"), metadata, actor=f"upkeep:{owner}")
+                counts[result] += 1
+        return counts
     return core.batch(sid, ops, actor=f"agent:{owner}")
 
 
@@ -387,13 +407,17 @@ TOOLS = [
         "\"collection\", \"id\", \"base_rev\"}. To update an existing record pass base_rev = its current rev from "
         "spaces_query; omit base_rev (or 0) only to create a new record. A stale base_rev fails the whole batch with "
         "code conflict and the record's current value: re-read and retry, never overwrite blindly. Only write the "
-        "user's own fields (data); refresh owns source fields." + REF_NOTE,
+        "user's own fields (data) by default. For upkeep, set source_owned=true and use put operations with "
+        "source and optional source_meta instead of data. This requires Refresh and preserves user data; "
+        "source-owned deletes are not supported." + REF_NOTE,
         {"space": SPACE_ARG,
+         "source_owned": {"type": "boolean", "description": "Upkeep writes source fields only; preserves user notes. Default false."},
          "ops": {"type": "array", "description": "Up to 500 operations applied together.",
                  "items": {"type": "object", "properties": {
                      "op": {"type": "string", "enum": ["put", "delete"]},
                      "collection": {"type": "string"}, "id": {"type": "string"},
-                     "data": {"type": "object"}, "base_rev": {"type": "integer"},
+                     "data": {"type": "object"}, "source": {"type": "object"}, "source_meta": {"type": "object"},
+                     "base_rev": {"type": "integer"},
                      "merge": {"type": "boolean", "description": "false replaces data instead of merging."}},
                      "required": ["op", "collection"]}}},
         ["space", "ops"])),
