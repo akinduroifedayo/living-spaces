@@ -1,0 +1,2 @@
+cwd: /Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df
+IMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/spaces-kit.mjs

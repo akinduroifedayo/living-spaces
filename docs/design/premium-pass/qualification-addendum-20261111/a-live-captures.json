@@ -1,0 +1,740 @@
+[
+  {
+    "route": "#/spaces?space=research-desk",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [
+      {
+        "title": "Space: Research Desk",
+        "rect": {
+          "x": 273,
+          "y": 114.5,
+          "width": 1404,
+          "height": 710.5,
+          "top": 114.5,
+          "right": 1677,
+          "bottom": 825,
+          "left": 273
+        }
+      }
+    ],
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 49 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "#/library",
+      "w": 1404,
+      "h": 711,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence\nPUBLIC RESEARCH \u00b7 cs.AI\nRefresh\nOverview\nLibrary\nReading queue\nPriority review\nLibrary\nAdd a paper\nSearch papers\n(title, summary, authors, notes)\n\n2 of 47 papers match your search\n\nLogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQueued\nNormal priority\nAttention Is All You Need\nCompleted\nHigh priority\nDemo\n\nSelect a paper to read its summary and edit your notes.\n\nRESEARCH DESK / arXiv cs.AI\nPublic sources. Your own perspective.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        },
+        {
+          "text": "",
+          "label": null
+        },
+        {
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQueued\nNormal priority",
+          "label": null
+        },
+        {
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-research-desktop-library.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  },
+  {
+    "route": "#/spaces?space=research-desk",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [
+      {
+        "title": "Space: Research Desk",
+        "rect": {
+          "x": 273,
+          "y": 114.5,
+          "width": 1404,
+          "height": 710.5,
+          "top": 114.5,
+          "right": 1677,
+          "bottom": 825,
+          "left": 273
+        }
+      }
+    ],
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 49 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "#/overview",
+      "w": 1404,
+      "h": 711,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence\nPUBLIC RESEARCH \u00b7 cs.AI\nRefresh\nOverview\nLibrary\nReading queue\nPriority review\n\n01 / THE OVERVIEW\n\nA little clarity.\nAhead of the curve.\n\nFollow the research.\nKeep what matters.\nMake room to think.\n\nFrom the research frontier\narXiv \u00b7 cs.AI\n01\n\nNov 10, 2026, 12:59 PM\n\nMedical Image Segmentation: Foundation Model Adaptation versus Task-Specific Training\n\nFoundation models pretrained on large natural-image collections are increasingly adapted for medical image segmentation, in the expectation that they will replace models trained for each task. Most comparisons, however, use data from the training distribution and a single task-specific baseline whose configuration is rarely justified, and therefore provide limited evidence of performance at new clinical sites. It also remains unclear how much of a foundation model must be adapted, and what determines this. We adapted a foundation model, DINOv2, with strategies ranging from tuning only its bias terms to full fine-tuning, and compared it with U-Nets and ResU-Nets trained from scratch. Experiments covered colonoscopy, breast ultrasound and dermoscopy, with testing on held-out data from the training source and on independent datasets from other institutions. The adapted foundation model generalised better on every external dataset. Within the training distribution, the task-specific models remained competitive when training data were abundant, and delineated boundaries more precisely, while the foundation model more often missed small lesions. Only a small fraction of the foundation model required adaptation, and the capacity needed was determined by the imaging domain rather than by the adaptation method. A widely used polyp test set was also found to duplicate images from another benchmark. Foundation-model adaptation is therefore warranted where models must work across sites, with capacity selected on the target domain.\n\nQueued\n02\n\nNov 10, 2026, 12:59 PM\n\nToward Foundation Detection Models via Example-Based Grounding in EM-DETR\n\nDeepLearning (DL)-based Computer-Aided Diagnostic (CAD) systems have shown great promise in supporting clinicians, but their performance heavily depends on the availability of large, well-annotated datasets. In medical lesion detection, the scarcity of comprehensive, stan dardized annotations and the heterogeneity of existing datasets limit the development of robust foundation models. In this work, we introduce a novel approach to building a multi-domain foundation model for le sion detection by integrating diverse medical image datasets annotated for both anatomical structures and abnormalities. We first propose a student-teacher training strategy to effectively combine datasets with heterogeneous label spaces, mitigating catastrophic forgetting, and im proving feature learning. In addition, building on our previously pro posed example-based EM-DETR framework, we adapt it to jointly learn from multiple domain-specific datasets, enabling fine-grained, example driven detection across modalities. Our model achieves state-of-the-art (SOTA) results, with image-level AUC scores exceeding previous SOTA by 1% point on four key findings in CXRs. We achieve a leading mAP50 in CXRs and mammography, surpassing EM-DETR trained on a single dataset by 2-3% points. This approach paves the way for scalable foundation models in medical imaging that leverage heterogeneous data while maintaining robust and generalizable performance.\n\nQueued\n03\n\nNov 10, 2026, 12:58 PM\n\nContrastive Discovery: Open-Ended Scientific Discovery over Competing Explanations\n\nLLM agents are increasingly used for open-ended, data-driven scientific discovery, yet most of them evaluate hypotheses pointwise, testing an empirical claim $h$ only against its complement $\\neg h$. When evidence rejects $h$, the agent learns that one explanation is unlikely but not which alternative the evidence supports. To recover that alternative, we introduce Contrastive Discovery, which replaces the single hypothesis with a contrast set, a scientific question paired with mutually exclusive and collectively exhaustive competing explanations. Each experiment is scored by how its evidence redistributes belief across the set, and the question is resolved when belief concentrates on one explanation. Because contrast sets change only the unit an agent proposes and scores, an existing agent can use them to re-evaluate evidence it has already collected or to guide its search. Across six domains, $89\\%$ of the pointwise candidates with the largest belief shifts are rejections. On the same evidence, contrast sets resolve $73\\%$ of these candidates to a specific alternative. When contrast sets guide search, the agent resolves $67\\%$ more questions than pointwise surprisal under the same experiment budget. In a blinded study, $38$ human experts chose the same explanation on $78\\%$ of resolved questions and on $82\\%$ of questions where the pointwise agent rejected its hypothesis and stopped. Together, these results support explicit competing explanations as a way for discovery agents to resolve more scientific questions from the same evidence and validation budget.\n\nQueued\n04\n\nNov 10, 2026, 12:50 PM\n\nComparative Analysis of Agent Evaluation Frameworks: Stability, Detection, and Discovery in Enterprise Analytics Agents\n\nDeploying LLM-based analytics agents in enterprise settings requires evaluation frameworks that can reliably detect failures across complex, multi-tool workflows. We present a three-phase comparative study of three evaluation frameworks, each representing a distinct evaluation paradigm (trace-based LLM judging, text-only LLM judging with red-teaming, and deterministic heuristics), applied to two analytics agents in a controlled research setting using frozen execution traces. Phase 1 quantifies evaluation harness stability through repeated measurements, finding that 97% of configurations meet the stability threshold and that stability patterns are agent-independent. Phase 2 measures known risk detection on 72 ground-truth test cases, where the trace-based framework achieves the best precision-recall balance (F1=0.90) while text-only evaluation matches on recall but generates 5x more false alarms. Phase 3 evaluates unknown risk discovery, uncovering 24 novel failures with zero overlap between functional testing and security red-teaming. Our results demonstrate that (1) the information available to the evaluation harness determines evaluation quality, (2) functional and security evaluation are complementary, and (3) LLM-based evaluation harnesses surface subtle errors that human reviewers miss. We recommend a two-framework strategy: trace-based evaluation for functional assessment and adversarial red-teaming for security validation.\n\nQueued\nExplore the library\n\u2197\n\nTHE SHORTLIST\n\n1\npaper deserves a closer look.\n\nHigh priority. Not yet completed.\n\nOpen priority review\n\u2197\nYour reading ledger\n47 total\nIn the queue\n42\nReading now\n1\nCompleted\n4\n\nEvery paper stays in your library, including completed work.\n\nSOURCE NOTE\n\nFresh research, lasting notes.\n\nFeed updates change public paper details\u2014not your saved notes, status or priority.\n\nLast attempt\nNov 11, 2026, 8:26 AM \u00b7 succeeded\nLast successful refresh\nNov 11, 2026, 8:26 AM\nSource as of\nNov 10, 2026, 12:59 PM\n\nFreshness is based on recent run history; these timestamps describe different events.\n\nRESEARCH DESK / arXiv cs.AI\nPublic sources. Your own ",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-research-desk-desktop.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  },
+  {
+    "route": "#/spaces?space=research-desk",
+    "w": 390,
+    "h": 844,
+    "dpr": 1,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "frames": [
+      {
+        "title": "Space: Research Desk",
+        "rect": {
+          "x": 101.640625,
+          "y": 174.5,
+          "width": 275.34375,
+          "height": 636.5,
+          "top": 174.5,
+          "right": 376.984375,
+          "bottom": 811,
+          "left": 101.640625
+        }
+      }
+    ],
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 49 min. ago \u00b7 Source data from 20 hr. ago\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "#/overview",
+      "w": 275,
+      "h": 637,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence\nRefresh\nOverview\nLibrary\nReading queue\nPriority review\n\n01 / THE OVERVIEW\n\nA little clarity.\nAhead of the curve.\nFrom the research frontier\narXiv \u00b7 cs.AI\n01\n\nNov 10, 2026, 12:59 PM\n\nMedical Image Segmentation: Foundation Model Adaptation versus Task-Specific Training\n\nFoundation models pretrained on large natural-image collections are increasingly adapted for medical image segmentation, in the expectation that they will replace models trained for each task. Most comparisons, however, use data from the training distribution and a single task-specific baseline whose configuration is rarely justified, and therefore provide limited evidence of performance at new clinical sites. It also remains unclear how much of a foundation model must be adapted, and what determines this. We adapted a foundation model, DINOv2, with strategies ranging from tuning only its bias terms to full fine-tuning, and compared it with U-Nets and ResU-Nets trained from scratch. Experiments covered colonoscopy, breast ultrasound and dermoscopy, with testing on held-out data from the training source and on independent datasets from other institutions. The adapted foundation model generalised better on every external dataset. Within the training distribution, the task-specific models remained competitive when training data were abundant, and delineated boundaries more precisely, while the foundation model more often missed small lesions. Only a small fraction of the foundation model required adaptation, and the capacity needed was determined by the imaging domain rather than by the adaptation method. A widely used polyp test set was also found to duplicate images from another benchmark. Foundation-model adaptation is therefore warranted where models must work across sites, with capacity selected on the target domain.\n\nQueued\n02\n\nNov 10, 2026, 12:59 PM\n\nToward Foundation Detection Models via Example-Based Grounding in EM-DETR\n\nDeepLearning (DL)-based Computer-Aided Diagnostic (CAD) systems have shown great promise in supporting clinicians, but their performance heavily depends on the availability of large, well-annotated datasets. In medical lesion detection, the scarcity of comprehensive, stan dardized annotations and the heterogeneity of existing datasets limit the development of robust foundation models. In this work, we introduce a novel approach to building a multi-domain foundation model for le sion detection by integrating diverse medical image datasets annotated for both anatomical structures and abnormalities. We first propose a student-teacher training strategy to effectively combine datasets with heterogeneous label spaces, mitigating catastrophic forgetting, and im proving feature learning. In addition, building on our previously pro posed example-based EM-DETR framework, we adapt it to jointly learn from multiple domain-specific datasets, enabling fine-grained, example driven detection across modalities. Our model achieves state-of-the-art (SOTA) results, with image-level AUC scores exceeding previous SOTA by 1% point on four key findings in CXRs. We achieve a leading mAP50 in CXRs and mammography, surpassing EM-DETR trained on a single dataset by 2-3% points. This approach paves the way for scalable foundation models in medical imaging that leverage heterogeneous data while maintaining robust and generalizable performance.\n\nQueued\n03\n\nNov 10, 2026, 12:58 PM\n\nContrastive Discovery: Open-Ended Scientific Discovery over Competing Explanations\n\nLLM agents are increasingly used for open-ended, data-driven scientific discovery, yet most of them evaluate hypotheses pointwise, testing an empirical claim $h$ only against its complement $\\neg h$. When evidence rejects $h$, the agent learns that one explanation is unlikely but not which alternative the evidence supports. To recover that alternative, we introduce Contrastive Discovery, which replaces the single hypothesis with a contrast set, a scientific question paired with mutually exclusive and collectively exhaustive competing explanations. Each experiment is scored by how its evidence redistributes belief across the set, and the question is resolved when belief concentrates on one explanation. Because contrast sets change only the unit an agent proposes and scores, an existing agent can use them to re-evaluate evidence it has already collected or to guide its search. Across six domains, $89\\%$ of the pointwise candidates with the largest belief shifts are rejections. On the same evidence, contrast sets resolve $73\\%$ of these candidates to a specific alternative. When contrast sets guide search, the agent resolves $67\\%$ more questions than pointwise surprisal under the same experiment budget. In a blinded study, $38$ human experts chose the same explanation on $78\\%$ of resolved questions and on $82\\%$ of questions where the pointwise agent rejected its hypothesis and stopped. Together, these results support explicit competing explanations as a way for discovery agents to resolve more scientific questions from the same evidence and validation budget.\n\nQueued\n04\n\nNov 10, 2026, 12:50 PM\n\nComparative Analysis of Agent Evaluation Frameworks: Stability, Detection, and Discovery in Enterprise Analytics Agents\n\nDeploying LLM-based analytics agents in enterprise settings requires evaluation frameworks that can reliably detect failures across complex, multi-tool workflows. We present a three-phase comparative study of three evaluation frameworks, each representing a distinct evaluation paradigm (trace-based LLM judging, text-only LLM judging with red-teaming, and deterministic heuristics), applied to two analytics agents in a controlled research setting using frozen execution traces. Phase 1 quantifies evaluation harness stability through repeated measurements, finding that 97% of configurations meet the stability threshold and that stability patterns are agent-independent. Phase 2 measures known risk detection on 72 ground-truth test cases, where the trace-based framework achieves the best precision-recall balance (F1=0.90) while text-only evaluation matches on recall but generates 5x more false alarms. Phase 3 evaluates unknown risk discovery, uncovering 24 novel failures with zero overlap between functional testing and security red-teaming. Our results demonstrate that (1) the information available to the evaluation harness determines evaluation quality, (2) functional and security evaluation are complementary, and (3) LLM-based evaluation harnesses surface subtle errors that human reviewers miss. We recommend a two-framework strategy: trace-based evaluation for functional assessment and adversarial red-teaming for security validation.\n\nQueued\nExplore the library\n\u2197\n\nTHE SHORTLIST\n\n1\npaper deserves a closer look.\n\nHigh priority. Not yet completed.\n\nOpen priority review\n\u2197\n\nSOURCE NOTE\n\nFresh research, lasting notes.\n\nFeed updates change public paper details\u2014not your saved notes, status or priority.\n\nLast attempt\nNov 11, 2026, 8:26 AM \u00b7 succeeded\nLast successful refresh\nNov 11, 2026, 8:26 AM\nSource as of\nNov 10, 2026, 12:59 PM\n\nFreshness is based on recent run history; these timestamps describe different events.\n\nRESEARCH DESK / arXiv cs.AI\nPublic sources. Your own perspective.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-research-desk-390.png",
+    "crop": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 778
+    }
+  },
+  {
+    "route": "#/spaces?space=research-desk",
+    "w": 320,
+    "h": 844,
+    "dpr": 1,
+    "root": {
+      "x": 72.71875,
+      "y": 34,
+      "width": 247.265625,
+      "height": 790,
+      "top": 34,
+      "right": 319.984375,
+      "bottom": 824,
+      "left": 72.71875
+    },
+    "frames": [
+      {
+        "title": "Space: Research Desk",
+        "rect": {
+          "x": 85.71875,
+          "y": 212.5,
+          "width": 221.265625,
+          "height": 598.5,
+          "top": 212.5,
+          "right": 306.984375,
+          "bottom": 811,
+          "left": 85.71875
+        }
+      }
+    ],
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 49 min. ago \u00b7 Source data from 20 hr. ago\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "#/overview",
+      "w": 221,
+      "h": 599,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence\nRefresh\nOverview\nLibrary\nReading queue\nPriority review\n\n01 / THE OVERVIEW\n\nA little clarity.\nAhead of the curve.\nFrom the research frontier\narXiv \u00b7 cs.AI\n01\n\nNov 10, 2026, 12:59 PM\n\nMedical Image Segmentation: Foundation Model Adaptation versus Task-Specific Training\n\nFoundation models pretrained on large natural-image collections are increasingly adapted for medical image segmentation, in the expectation that they will replace models trained for each task. Most comparisons, however, use data from the training distribution and a single task-specific baseline whose configuration is rarely justified, and therefore provide limited evidence of performance at new clinical sites. It also remains unclear how much of a foundation model must be adapted, and what determines this. We adapted a foundation model, DINOv2, with strategies ranging from tuning only its bias terms to full fine-tuning, and compared it with U-Nets and ResU-Nets trained from scratch. Experiments covered colonoscopy, breast ultrasound and dermoscopy, with testing on held-out data from the training source and on independent datasets from other institutions. The adapted foundation model generalised better on every external dataset. Within the training distribution, the task-specific models remained competitive when training data were abundant, and delineated boundaries more precisely, while the foundation model more often missed small lesions. Only a small fraction of the foundation model required adaptation, and the capacity needed was determined by the imaging domain rather than by the adaptation method. A widely used polyp test set was also found to duplicate images from another benchmark. Foundation-model adaptation is therefore warranted where models must work across sites, with capacity selected on the target domain.\n\nQueued\n02\n\nNov 10, 2026, 12:59 PM\n\nToward Foundation Detection Models via Example-Based Grounding in EM-DETR\n\nDeepLearning (DL)-based Computer-Aided Diagnostic (CAD) systems have shown great promise in supporting clinicians, but their performance heavily depends on the availability of large, well-annotated datasets. In medical lesion detection, the scarcity of comprehensive, stan dardized annotations and the heterogeneity of existing datasets limit the development of robust foundation models. In this work, we introduce a novel approach to building a multi-domain foundation model for le sion detection by integrating diverse medical image datasets annotated for both anatomical structures and abnormalities. We first propose a student-teacher training strategy to effectively combine datasets with heterogeneous label spaces, mitigating catastrophic forgetting, and im proving feature learning. In addition, building on our previously pro posed example-based EM-DETR framework, we adapt it to jointly learn from multiple domain-specific datasets, enabling fine-grained, example driven detection across modalities. Our model achieves state-of-the-art (SOTA) results, with image-level AUC scores exceeding previous SOTA by 1% point on four key findings in CXRs. We achieve a leading mAP50 in CXRs and mammography, surpassing EM-DETR trained on a single dataset by 2-3% points. This approach paves the way for scalable foundation models in medical imaging that leverage heterogeneous data while maintaining robust and generalizable performance.\n\nQueued\n03\n\nNov 10, 2026, 12:58 PM\n\nContrastive Discovery: Open-Ended Scientific Discovery over Competing Explanations\n\nLLM agents are increasingly used for open-ended, data-driven scientific discovery, yet most of them evaluate hypotheses pointwise, testing an empirical claim $h$ only against its complement $\\neg h$. When evidence rejects $h$, the agent learns that one explanation is unlikely but not which alternative the evidence supports. To recover that alternative, we introduce Contrastive Discovery, which replaces the single hypothesis with a contrast set, a scientific question paired with mutually exclusive and collectively exhaustive competing explanations. Each experiment is scored by how its evidence redistributes belief across the set, and the question is resolved when belief concentrates on one explanation. Because contrast sets change only the unit an agent proposes and scores, an existing agent can use them to re-evaluate evidence it has already collected or to guide its search. Across six domains, $89\\%$ of the pointwise candidates with the largest belief shifts are rejections. On the same evidence, contrast sets resolve $73\\%$ of these candidates to a specific alternative. When contrast sets guide search, the agent resolves $67\\%$ more questions than pointwise surprisal under the same experiment budget. In a blinded study, $38$ human experts chose the same explanation on $78\\%$ of resolved questions and on $82\\%$ of questions where the pointwise agent rejected its hypothesis and stopped. Together, these results support explicit competing explanations as a way for discovery agents to resolve more scientific questions from the same evidence and validation budget.\n\nQueued\n04\n\nNov 10, 2026, 12:50 PM\n\nComparative Analysis of Agent Evaluation Frameworks: Stability, Detection, and Discovery in Enterprise Analytics Agents\n\nDeploying LLM-based analytics agents in enterprise settings requires evaluation frameworks that can reliably detect failures across complex, multi-tool workflows. We present a three-phase comparative study of three evaluation frameworks, each representing a distinct evaluation paradigm (trace-based LLM judging, text-only LLM judging with red-teaming, and deterministic heuristics), applied to two analytics agents in a controlled research setting using frozen execution traces. Phase 1 quantifies evaluation harness stability through repeated measurements, finding that 97% of configurations meet the stability threshold and that stability patterns are agent-independent. Phase 2 measures known risk detection on 72 ground-truth test cases, where the trace-based framework achieves the best precision-recall balance (F1=0.90) while text-only evaluation matches on recall but generates 5x more false alarms. Phase 3 evaluates unknown risk discovery, uncovering 24 novel failures with zero overlap between functional testing and security red-teaming. Our results demonstrate that (1) the information available to the evaluation harness determines evaluation quality, (2) functional and security evaluation are complementary, and (3) LLM-based evaluation harnesses surface subtle errors that human reviewers miss. We recommend a two-framework strategy: trace-based evaluation for functional assessment and adversarial red-teaming for security validation.\n\nQueued\nExplore the library\n\u2197\n\nTHE SHORTLIST\n\n1\npaper deserves a closer look.\n\nHigh priority. Not yet completed.\n\nOpen priority review\n\u2197\n\nSOURCE NOTE\n\nFresh research, lasting notes.\n\nFeed updates change public paper details\u2014not your saved notes, status or priority.\n\nLast attempt\nNov 11, 2026, 8:26 AM \u00b7 succeeded\nLast successful refresh\nNov 11, 2026, 8:26 AM\nSource as of\nNov 10, 2026, 12:59 PM\n\nFreshness is based on recent run history; these timestamps describe different events.\n\nRESEARCH DESK / arXiv cs.AI\nPublic sources. Your own perspective.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-research-desk-320.png",
+    "crop": {
+      "x": 72.71875,
+      "y": 34,
+      "width": 247.265625,
+      "height": 778
+    }
+  },
+  {
+    "route": "#/spaces?space=sky-window",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [
+      {
+        "title": "Space: Sky Window",
+        "rect": {
+          "x": 273,
+          "y": 114.5,
+          "width": 1404,
+          "height": 710.5,
+          "top": 114.5,
+          "right": 1677,
+          "bottom": 825,
+          "left": 273
+        }
+      }
+    ],
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": null,
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-window-desktop.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  },
+  {
+    "route": "#/spaces?space=sky-window",
+    "w": 390,
+    "h": 844,
+    "dpr": 1,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "frames": [
+      {
+        "title": "Space: Sky Window",
+        "rect": {
+          "x": 101.640625,
+          "y": 174.5,
+          "width": 275.34375,
+          "height": 636.5,
+          "top": 174.5,
+          "right": 376.984375,
+          "bottom": 811,
+          "left": 101.640625
+        }
+      }
+    ],
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": null,
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-window-390.png",
+    "crop": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 778
+    }
+  },
+  {
+    "route": "#/spaces?space=sky-window",
+    "w": 320,
+    "h": 844,
+    "dpr": 1,
+    "root": {
+      "x": 72.71875,
+      "y": 34,
+      "width": 247.265625,
+      "height": 790,
+      "top": 34,
+      "right": 319.984375,
+      "bottom": 824,
+      "left": 72.71875
+    },
+    "frames": [
+      {
+        "title": "Space: Sky Window",
+        "rect": {
+          "x": 85.71875,
+          "y": 212.5,
+          "width": 221.265625,
+          "height": 598.5,
+          "top": 212.5,
+          "right": 306.984375,
+          "bottom": 811,
+          "left": 85.71875
+        }
+      }
+    ],
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "",
+      "w": 221,
+      "h": 599,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "Sky Window\nToday\nWeek\nCities\nNo cities saved\nRefresh\n\nLoading saved cities\u2026\n\nWeather by Open-Meteo \u00b7 Local dates for every city.\n\u00b0C \u00b7 km/h \u00b7 mm \u00b7 Updates every 15 minutes while open.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-window-320.png",
+    "crop": {
+      "x": 72.71875,
+      "y": 34,
+      "width": 247.265625,
+      "height": 778
+    }
+  },
+  {
+    "route": "#/spaces?space=pair-play",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [
+      {
+        "title": "Space: Pair Play",
+        "rect": {
+          "x": 273,
+          "y": 114.5,
+          "width": 1404,
+          "height": 710.5,
+          "top": 114.5,
+          "right": 1677,
+          "bottom": 825,
+          "left": 273
+        }
+      }
+    ],
+    "header": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "",
+      "w": 1404,
+      "h": 711,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "\u2733\nPair Play\nA LITTLE MOMENT OF FOCUS\nPlay\nProgress\nHistory\n\nTHE ORCHARD COLLECTION \u00b7 01\n\nGood things\ncome in pairs.\n6\n\nPAIRS\nRound in progress\n1 turn \u00b7 0/6 pairs\n01\n\u2605\nPAIR PLAY\n\ud83c\udf4a\nOrange\n02\n\u2605\nPAIR PLAY\n\ud83c\udf53\nStrawberry\n03\n\u2605\nPAIR PLAY\n\ud83c\udf49\nWatermelon\n04\n\u2605\nPAIR PLAY\n\ud83c\udf53\nStrawberry\n05\n\u2605\nPAIR PLAY\n\ud83c\udf47\nGrapes\n06\n\u2605\nPAIR PLAY\n\ud83c\udf4e\nApple\n07\n\u2605\nPAIR PLAY\n\ud83c\udf49\nWatermelon\n08\n\u2605\nPAIR PLAY\n\ud83c\udf4a\nOrange\n09\n\u2605\nPAIR PLAY\n\ud83c\udf4e\nApple\n10\n\u2605\nPAIR PLAY\n\ud83c\udf4c\nBanana\n11\n\u2605\nPAIR PLAY\n\ud83c\udf47\nGrapes\n12\n\u2605\nPAIR PLAY\n\ud83c\udf4c\nBanana\n\nA fresh look. A familiar pair.\nFlip two cards. Match the fruit. Find all six pairs.\n\n\u25cb\nSaved round loaded\nYour next visit starts here.\n\nYOUR ROUND\n\n1\nturn\nEvery two flips count as one.\nLittle by little\n0 / 6\n\n6 more pairs waiting to be found.\n\n\u00b7\n\u00b7\n\u00b7\n\u00b7\n\u00b7\n\u00b7\n\u2667\nPERSONAL BEST\nYours to set\n\nFinish a round to make your mark.\n\nYour completed rounds\n\u2197\n\u21bb New round\nMake it yours\n\uff0b\n\u2733\n\nNo clock. No rush.\nJust a little room to focus.\n\nTWELVE CARDS. SIX CONNECTIONS.\nTake your time. Find your rhythm.",
+      "buttons": [
+        {
+          "text": "01\n\u2605\nPAIR PLAY\n\ud83c\udf4a\nOrange",
+          "label": "Card 1, face down"
+        },
+        {
+          "text": "02\n\u2605\nPAIR PLAY\n\ud83c\udf53\nStrawberry",
+          "label": "Card 2, face down"
+        },
+        {
+          "text": "03\n\u2605\nPAIR PLAY\n\ud83c\udf49\nWatermelon",
+          "label": "Card 3, face down"
+        },
+        {
+          "text": "04\n\u2605\nPAIR PLAY\n\ud83c\udf53\nStrawberry",
+          "label": "Card 4, face down"
+        },
+        {
+          "text": "05\n\u2605\nPAIR PLAY\n\ud83c\udf47\nGrapes",
+          "label": "Card 5, face down"
+        },
+        {
+          "text": "06\n\u2605\nPAIR PLAY\n\ud83c\udf4e\nApple",
+          "label": "Card 6, face down"
+        },
+        {
+          "text": "07\n\u2605\nPAIR PLAY\n\ud83c\udf49\nWatermelon",
+          "label": "Card 7, face down"
+        },
+        {
+          "text": "08\n\u2605\nPAIR PLAY\n\ud83c\udf4a\nOrange",
+          "label": "Card 8, face down"
+        },
+        {
+          "text": "09\n\u2605\nPAIR PLAY\n\ud83c\udf4e\nApple",
+          "label": "Card 9, face down"
+        },
+        {
+          "text": "10\n\u2605\nPAIR PLAY\n\ud83c\udf4c\nBanana",
+          "label": "Card 10, face down"
+        },
+        {
+          "text": "11\n\u2605\nPAIR PLAY\n\ud83c\udf47\nGrapes",
+          "label": "Card 11, face down"
+        },
+        {
+          "text": "12\n\u2605\nPAIR PLAY\n\ud83c\udf4c\nBanana",
+          "label": "Card 12, face down"
+        },
+        {
+          "text": "\u21bb New round",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-pair-play-desktop.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  },
+  {
+    "route": "#/spaces?space=pair-play",
+    "w": 390,
+    "h": 844,
+    "dpr": 1,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "frames": [
+      {
+        "title": "Space: Pair Play",
+        "rect": {
+          "x": 101.640625,
+          "y": 174.5,
+          "width": 275.34375,
+          "height": 636.5,
+          "top": 174.5,
+          "right": 376.984375,
+          "bottom": 811,
+          "left": 101.640625
+        }
+      }
+    ],
+    "header": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "",
+      "w": 275,
+      "h": 637,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "\u2733\nPair Play\nPlay\nProgress\nHistory\nGood things\ncome in pairs.\nRound in progress\n1 turn \u00b7 0/6 pairs\n01\n\u2605\n\ud83c\udf4a\nOrange\n02\n\u2605\n\ud83c\udf53\nStrawberry\n03\n\u2605\n\ud83c\udf49\nWatermelon\n04\n\u2605\n\ud83c\udf53\nStrawberry\n05\n\u2605\n\ud83c\udf47\nGrapes\n06\n\u2605\n\ud83c\udf4e\nApple\n07\n\u2605\n\ud83c\udf49\nWatermelon\n08\n\u2605\n\ud83c\udf4a\nOrange\n09\n\u2605\n\ud83c\udf4e\nApple\n10\n\u2605\n\ud83c\udf4c\nBanana\n11\n\u2605\n\ud83c\udf47\nGrapes\n12\n\u2605\n\ud83c\udf4c\nBanana\n\nA fresh look. A familiar pair.\nFlip two cards. Match the fruit. Find all six pairs.\n\n\u25cb\nSaved round loaded\nYour next visit starts here.\n\nYOUR ROUND\n\n1\nturn\nEvery two flips count as one.\nLittle by little\n0 / 6\n\n6 more pairs waiting to be found.\n\n\u00b7\n\u00b7\n\u00b7\n\u00b7\n\u00b7\n\u00b7\n\u2667\nPERSONAL BEST\nYours to set\n\nFinish a round to make your mark.\n\nYour completed rounds\n\u2197\n\u21bb New round\nMake it yours\n\uff0b\n\u2733\n\nNo clock. No rush.\nJust a little room to focus.\n\nTWELVE CARDS. SIX CONNECTIONS.\nTake your time. Find your rhythm.",
+      "buttons": [
+        {
+          "text": "01\n\u2605\n\ud83c\udf4a\nOrange",
+          "label": "Card 1, face down"
+        },
+        {
+          "text": "02\n\u2605\n\ud83c\udf53\nStrawberry",
+          "label": "Card 2, face down"
+        },
+        {
+          "text": "03\n\u2605\n\ud83c\udf49\nWatermelon",
+          "label": "Card 3, face down"
+        },
+        {
+          "text": "04\n\u2605\n\ud83c\udf53\nStrawberry",
+          "label": "Card 4, face down"
+        },
+        {
+          "text": "05\n\u2605\n\ud83c\udf47\nGrapes",
+          "label": "Card 5, face down"
+        },
+        {
+          "text": "06\n\u2605\n\ud83c\udf4e\nApple",
+          "label": "Card 6, face down"
+        },
+        {
+          "text": "07\n\u2605\n\ud83c\udf49\nWatermelon",
+          "label": "Card 7, face down"
+        },
+        {
+          "text": "08\n\u2605\n\ud83c\udf4a\nOrange",
+          "label": "Card 8, face down"
+        },
+        {
+          "text": "09\n\u2605\n\ud83c\udf4e\nApple",
+          "label": "Card 9, face down"
+        },
+        {
+          "text": "10\n\u2605\n\ud83c\udf4c\nBanana",
+          "label": "Card 10, face down"
+        },
+        {
+          "text": "11\n\u2605\n\ud83c\udf47\nGrapes",
+          "label": "Card 11, face down"
+        },
+        {
+          "text": "12\n\u2605\n\ud83c\udf4c\nBanana",
+          "label": "Card 12, face down"
+        },
+        {
+          "text": "\u21bb New round",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-pair-play-390.png",
+    "crop": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 778
+    }
+  },
+  {
+    "route": "#/spaces?space=pair-play",
+    "w": 320,
+    "h": 844,
+    "dpr": 1,
+    "root": {
+      "x": 72.71875,
+      "y": 34,
+      "width": 247.265625,
+      "height": 790,
+      "top": 34,
+      "right": 319.984375,
+      "bottom": 824,
+      "left": 72.71875
+    },
+    "frames": [
+      {
+        "title": "Space: Pair Play",
+        "rect": {
+          "x": 85.71875,
+          "y": 212.5,
+          "width": 221.265625,
+          "height": 598.5,
+          "top": 212.5,
+          "right": 306.984375,
+          "bottom": 811,
+          "left": 85.71875
+        }
+      }
+    ],
+    "header": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "",
+      "w": 221,
+      "h": 599,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "\u2733\nPair Play\nPlay\nProgress\nHistory\nGood things\ncome in pairs.\nRound in progress\n1 turn \u00b7 0/6 pairs\n01\n\u2605\n\ud83c\udf4a\nOrange\n02\n\u2605\n\ud83c\udf53\nStrawberry\n03\n\u2605\n\ud83c\udf49\nWatermelon\n04\n\u2605\n\ud83c\udf53\nStrawberry\n05\n\u2605\n\ud83c\udf47\nGrapes\n06\n\u2605\n\ud83c\udf4e\nApple\n07\n\u2605\n\ud83c\udf49\nWatermelon\n08\n\u2605\n\ud83c\udf4a\nOrange\n09\n\u2605\n\ud83c\udf4e\nApple\n10\n\u2605\n\ud83c\udf4c\nBanana\n11\n\u2605\n\ud83c\udf47\nGrapes\n12\n\u2605\n\ud83c\udf4c\nBanana\n\nA fresh look. A familiar pair.\nFlip two cards. Match the fruit. Find all six pairs.\n\n\u25cb\nSaved round loaded\nYour next visit starts here.\n\nYOUR ROUND\n\n1\nturn\nEvery two flips count as one.\nLittle by little\n0 / 6\n\n6 more pairs waiting to be found.\n\n\u00b7\n\u00b7\n\u00b7\n\u00b7\n\u00b7\n\u00b7\n\u2667\nPERSONAL BEST\nYours to set\n\nFinish a round to make your mark.\n\nYour completed rounds\n\u2197\n\u21bb New round\nMake it yours\n\uff0b\n\u2733\n\nNo clock. No rush.\nJust a little room to focus.\n\nTWELVE CARDS. SIX CONNECTIONS.\nTake your time. Find your rhythm.",
+      "buttons": [
+        {
+          "text": "01\n\u2605\n\ud83c\udf4a\nOrange",
+          "label": "Card 1, face down"
+        },
+        {
+          "text": "02\n\u2605\n\ud83c\udf53\nStrawberry",
+          "label": "Card 2, face down"
+        },
+        {
+          "text": "03\n\u2605\n\ud83c\udf49\nWatermelon",
+          "label": "Card 3, face down"
+        },
+        {
+          "text": "04\n\u2605\n\ud83c\udf53\nStrawberry",
+          "label": "Card 4, face down"
+        },
+        {
+          "text": "05\n\u2605\n\ud83c\udf47\nGrapes",
+          "label": "Card 5, face down"
+        },
+        {
+          "text": "06\n\u2605\n\ud83c\udf4e\nApple",
+          "label": "Card 6, face down"
+        },
+        {
+          "text": "07\n\u2605\n\ud83c\udf49\nWatermelon",
+          "label": "Card 7, face down"
+        },
+        {
+          "text": "08\n\u2605\n\ud83c\udf4a\nOrange",
+          "label": "Card 8, face down"
+        },
+        {
+          "text": "09\n\u2605\n\ud83c\udf4e\nApple",
+          "label": "Card 9, face down"
+        },
+        {
+          "text": "10\n\u2605\n\ud83c\udf4c\nBanana",
+          "label": "Card 10, face down"
+        },
+        {
+          "text": "11\n\u2605\n\ud83c\udf47\nGrapes",
+          "label": "Card 11, face down"
+        },
+        {
+          "text": "12\n\u2605\n\ud83c\udf4c\nBanana",
+          "label": "Card 12, face down"
+        },
+        {
+          "text": "\u21bb New round",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-pair-play-320.png",
+    "crop": {
+      "x": 72.71875,
+      "y": 34,
+      "width": 247.265625,
+      "height": 778
+    }
+  },
+  {
+    "route": "#/spaces",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [],
+    "panels": [],
+    "guest": null,
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-index-desktop.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  },
+  {
+    "route": "#/spaces",
+    "w": 390,
+    "h": 844,
+    "dpr": 1,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "frames": [],
+    "panels": [],
+    "guest": null,
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-index-390.png",
+    "crop": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 778
+    }
+  }
+]

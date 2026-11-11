@@ -1,0 +1,54 @@
+{
+  "engine": "/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable",
+  "engine_sha256": "5c00c3130b961f3aa1066f04ed0e1f58e87808ad153efa00f1c44184800084f2",
+  "results": [
+    {
+      "target": "desktop/plugin.js",
+      "command": "IMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/desktop/plugin.js",
+      "cwd": "/Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df",
+      "exit": 0,
+      "stdout_file": "b-scan-host.stdout",
+      "stderr_file": "b-scan-host.stderr"
+    },
+    {
+      "target": "guest/space-host.html",
+      "command": "IMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/guest/space-host.html",
+      "cwd": "/Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df",
+      "exit": 0,
+      "stdout_file": "b-scan-guest.stdout",
+      "stderr_file": "b-scan-guest.stderr"
+    },
+    {
+      "target": "runtime/kit/showcase/sky-window",
+      "command": "IMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/showcase/sky-window",
+      "cwd": "/Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df",
+      "exit": 2,
+      "stdout_file": "b-scan-sky.stdout",
+      "stderr_file": "b-scan-sky.stderr"
+    },
+    {
+      "target": "runtime/kit/showcase/pair-play",
+      "command": "IMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/showcase/pair-play",
+      "cwd": "/Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df",
+      "exit": 0,
+      "stdout_file": "b-scan-pair.stdout",
+      "stderr_file": "b-scan-pair.stderr"
+    },
+    {
+      "target": "skills/build-space/references/research-desk",
+      "command": "IMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/skills/build-space/references/research-desk",
+      "cwd": "/Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df",
+      "exit": 0,
+      "stdout_file": "b-scan-research.stdout",
+      "stderr_file": "b-scan-research.stderr"
+    },
+    {
+      "target": "runtime/kit/spaces-kit.mjs",
+      "command": "IMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/spaces-kit.mjs",
+      "cwd": "/Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df",
+      "exit": 0,
+      "stdout_file": "b-scan-kit.stdout",
+      "stderr_file": "b-scan-kit.stderr"
+    }
+  ]
+}

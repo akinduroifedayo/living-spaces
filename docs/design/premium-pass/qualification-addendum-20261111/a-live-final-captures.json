@@ -1,0 +1,222 @@
+[
+  {
+    "route": "#/spaces?space=sky-window",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [
+      {
+        "title": "Space: Sky Window",
+        "rect": {
+          "x": 273,
+          "y": 114.5,
+          "width": 1404,
+          "height": 710.5,
+          "top": 114.5,
+          "right": 1677,
+          "bottom": 825,
+          "left": 273
+        }
+      }
+    ],
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "#/week",
+      "w": 1404,
+      "h": 711,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "Sky Window\n\nPUBLIC WEATHER, SEVEN DAYS AHEAD\n\nToday\nWeek\nCities\n3 of 3 live \u00b7 retrieved 09:19 AM\nRefresh\nA LONGER LOOK\nMake room for the weather.\nChicago\nLisbon\nTokyo\nTHE DAYS AHEAD\nA week in Chicago\nDaily range \u00b7 \u00b0C\nToday\nNov 11\nRain\n4\u00b0\n11\u00b0\n74%\n\u00b7 7.1 mm\nThu\nNov 12\nSnow\n0\u00b0\n7\u00b0\n60%\n\u00b7 24.2 mm\nFri\nNov 13\nOvercast\n0\u00b0\n6\u00b0\n60%\n\u00b7 0.0 mm\nSat\nNov 14\nOvercast\n1\u00b0\n6\u00b0\n21%\n\u00b7 0.0 mm\nSun\nNov 15\nDrizzle\n4\u00b0\n8\u00b0\n3%\n\u00b7 0.2 mm\nMon\nNov 16\nOvercast\n6\u00b0\n9\u00b0\n2%\n\u00b7 0.0 mm\nTue\nNov 17\nClear sky\n4\u00b0\n11\u00b0\n0%\n\u00b7 0.0 mm\n\nLow to high, on a shared temperature scale. Rain chance and daily total below.\n\nConditions and dates are local to Chicago.\n\nWeather by Open-Meteo \u00b7 Local dates for every city.\n\u00b0C \u00b7 km/h \u00b7 mm \u00b7 Updates every 15 minutes while open.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        },
+        {
+          "text": "Chicago",
+          "label": null
+        },
+        {
+          "text": "Lisbon",
+          "label": null
+        },
+        {
+          "text": "Tokyo",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-week-desktop.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  },
+  {
+    "route": "#/spaces?space=sky-window",
+    "w": 390,
+    "h": 844,
+    "dpr": 1,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "frames": [
+      {
+        "title": "Space: Sky Window",
+        "rect": {
+          "x": 101.640625,
+          "y": 174.5,
+          "width": 275.34375,
+          "height": 636.5,
+          "top": 174.5,
+          "right": 376.984375,
+          "bottom": 811,
+          "left": 101.640625
+        }
+      }
+    ],
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "#/week",
+      "w": 275,
+      "h": 637,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "Sky Window\nToday\nWeek\nCities\n3 of 3 live \u00b7 retrieved 09:19 AM\nRefresh\nA LONGER LOOK\nMake room for the weather.\nChicago\nLisbon\nTokyo\nTHE DAYS AHEAD\nA week in Chicago\nDaily range \u00b7 \u00b0C\nToday\nNov 11\nRain\n4\u00b0\n11\u00b0\n74%\n\u00b7 7.1 mm\nThu\nNov 12\nSnow\n0\u00b0\n7\u00b0\n60%\n\u00b7 24.2 mm\nFri\nNov 13\nOvercast\n0\u00b0\n6\u00b0\n60%\n\u00b7 0.0 mm\nSat\nNov 14\nOvercast\n1\u00b0\n6\u00b0\n21%\n\u00b7 0.0 mm\nSun\nNov 15\nDrizzle\n4\u00b0\n8\u00b0\n3%\n\u00b7 0.2 mm\nMon\nNov 16\nOvercast\n6\u00b0\n9\u00b0\n2%\n\u00b7 0.0 mm\nTue\nNov 17\nClear sky\n4\u00b0\n11\u00b0\n0%\n\u00b7 0.0 mm\n\nLow to high, on a shared temperature scale. Rain chance and daily total below.\n\nConditions and dates are local to Chicago.\n\nWeather by Open-Meteo \u00b7 Local dates for every city.\n\u00b0C \u00b7 km/h \u00b7 mm \u00b7 Updates every 15 minutes while open.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        },
+        {
+          "text": "Chicago",
+          "label": null
+        },
+        {
+          "text": "Lisbon",
+          "label": null
+        },
+        {
+          "text": "Tokyo",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-week-390.png",
+    "crop": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 778
+    }
+  },
+  {
+    "route": "#/spaces?space=sky-window",
+    "w": 390,
+    "h": 844,
+    "dpr": 1,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "frames": [
+      {
+        "title": "Space: Sky Window",
+        "rect": {
+          "x": 101.640625,
+          "y": 174.5,
+          "width": 275.34375,
+          "height": 636.5,
+          "top": 174.5,
+          "right": 376.984375,
+          "bottom": 811,
+          "left": 101.640625
+        }
+      }
+    ],
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "#/cities",
+      "w": 275,
+      "h": 637,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "Sky Window\nToday\nWeek\nCities\n3 of 3 live \u00b7 retrieved 09:19 AM\nRefresh\nCities\n\n3 saved \u00b7 No favourite yet. Changes are saved as soon as you confirm them.\n\nAdd a city\nCity name\nLatitude\nLongitude\n\nDecimal degrees. South and west are negative.\n\nAdd city\n\u25cb Nothing pending\nChicago\n41.8781\u00b0, -87.6298\u00b0\nMake favourite\nRemove\nLisbon\n38.7223\u00b0, -9.1393\u00b0\nMake favourite\nRemove\nTokyo\n35.6762\u00b0, 139.6503\u00b0\nMake favourite\nRemove\nWeather by Open-Meteo \u00b7 Local dates for every city.\n\u00b0C \u00b7 km/h \u00b7 mm \u00b7 Updates every 15 minutes while open.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        },
+        {
+          "text": "Add city",
+          "label": null
+        },
+        {
+          "text": "Make favourite",
+          "label": "Make Chicago my favourite"
+        },
+        {
+          "text": "Remove",
+          "label": "Remove Chicago"
+        },
+        {
+          "text": "Make favourite",
+          "label": "Make Lisbon my favourite"
+        },
+        {
+          "text": "Remove",
+          "label": "Remove Lisbon"
+        },
+        {
+          "text": "Make favourite",
+          "label": "Make Tokyo my favourite"
+        },
+        {
+          "text": "Remove",
+          "label": "Remove Tokyo"
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-cities-390.png",
+    "crop": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 778
+    }
+  }
+]

@@ -1,0 +1,188 @@
+{
+  "source_commit": "2b93cf8dd12b177ba73e0150afac252afaf25d5c",
+  "scan_files_verified": 25,
+  "checks": [
+    {
+      "path": "desktop/plugin.js",
+      "git_sha256": "49417b80899191902cc4f6c0242a4545c77835238863104276d14562c26209b8",
+      "scan_sha256": "49417b80899191902cc4f6c0242a4545c77835238863104276d14562c26209b8",
+      "snapshot_sha256": "49417b80899191902cc4f6c0242a4545c77835238863104276d14562c26209b8",
+      "match": true
+    },
+    {
+      "path": "guest/space-host.html",
+      "git_sha256": "d92da05c0ac8d88a5c19a8f592b6060b279a1fffef26815c9cc5dc72c98a4234",
+      "scan_sha256": "d92da05c0ac8d88a5c19a8f592b6060b279a1fffef26815c9cc5dc72c98a4234",
+      "snapshot_sha256": "d92da05c0ac8d88a5c19a8f592b6060b279a1fffef26815c9cc5dc72c98a4234",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/sky-window/app.js",
+      "git_sha256": "8461d3243cae9f4d7fd2d3a056a9600cbd30df411be61ff6b7f5079310d333f8",
+      "scan_sha256": "8461d3243cae9f4d7fd2d3a056a9600cbd30df411be61ff6b7f5079310d333f8",
+      "snapshot_sha256": "8461d3243cae9f4d7fd2d3a056a9600cbd30df411be61ff6b7f5079310d333f8",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/sky-window/art/chicago-skyline.webp",
+      "git_sha256": "3266ccb004d641b9623bd4c8b6cde93beb76fc09ea120655dc47767c2f35fa84",
+      "scan_sha256": "3266ccb004d641b9623bd4c8b6cde93beb76fc09ea120655dc47767c2f35fa84",
+      "snapshot_sha256": "3266ccb004d641b9623bd4c8b6cde93beb76fc09ea120655dc47767c2f35fa84",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/sky-window/art/lisbon-skyline.webp",
+      "git_sha256": "47ac4a39b661359db03a7524fee379ca7f192d5c353dc298be2298d78a1acabe",
+      "scan_sha256": "47ac4a39b661359db03a7524fee379ca7f192d5c353dc298be2298d78a1acabe",
+      "snapshot_sha256": "47ac4a39b661359db03a7524fee379ca7f192d5c353dc298be2298d78a1acabe",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/sky-window/art/tokyo-skyline.webp",
+      "git_sha256": "a80905b7c554ec5a901c50235fdc54de810955606ec442c499a4ccc9353e70f2",
+      "scan_sha256": "a80905b7c554ec5a901c50235fdc54de810955606ec442c499a4ccc9353e70f2",
+      "snapshot_sha256": "a80905b7c554ec5a901c50235fdc54de810955606ec442c499a4ccc9353e70f2",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/sky-window/index.html",
+      "git_sha256": "f6da6d4d78ebe93cac5a8e6517766827c557bcb5e99f0d23339d096dbf95b969",
+      "scan_sha256": "f6da6d4d78ebe93cac5a8e6517766827c557bcb5e99f0d23339d096dbf95b969",
+      "snapshot_sha256": "f6da6d4d78ebe93cac5a8e6517766827c557bcb5e99f0d23339d096dbf95b969",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/sky-window/space.json",
+      "git_sha256": "1d61984102cb066b815e007dfe20af20f495e421ee59b18bc86367d7727a5623",
+      "scan_sha256": "1d61984102cb066b815e007dfe20af20f495e421ee59b18bc86367d7727a5623",
+      "snapshot_sha256": "1d61984102cb066b815e007dfe20af20f495e421ee59b18bc86367d7727a5623",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/sky-window/styles.css",
+      "git_sha256": "59b7fc545e6842d98521bf2956535d4ca2c21dc82011cf45ec47bd4ce8c66eb0",
+      "scan_sha256": "59b7fc545e6842d98521bf2956535d4ca2c21dc82011cf45ec47bd4ce8c66eb0",
+      "snapshot_sha256": "59b7fc545e6842d98521bf2956535d4ca2c21dc82011cf45ec47bd4ce8c66eb0",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/pair-play/app.js",
+      "git_sha256": "ad9b48e9cf28df36a81b427cd8dafbfdc13f978009cf0d948fad5b4be63a8866",
+      "scan_sha256": "ad9b48e9cf28df36a81b427cd8dafbfdc13f978009cf0d948fad5b4be63a8866",
+      "snapshot_sha256": "ad9b48e9cf28df36a81b427cd8dafbfdc13f978009cf0d948fad5b4be63a8866",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/pair-play/art/card-back.webp",
+      "git_sha256": "017b257218ab4936c18f6bb62c6069ae23bc1b12d7c2112583c03a662918f3fc",
+      "scan_sha256": "017b257218ab4936c18f6bb62c6069ae23bc1b12d7c2112583c03a662918f3fc",
+      "snapshot_sha256": "017b257218ab4936c18f6bb62c6069ae23bc1b12d7c2112583c03a662918f3fc",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/pair-play/fixtures/history.json",
+      "git_sha256": "ab8fee82213501eb2bc914d9da4493b1cc17d91e86116a61a0c3b16ce2c780a3",
+      "scan_sha256": "ab8fee82213501eb2bc914d9da4493b1cc17d91e86116a61a0c3b16ce2c780a3",
+      "snapshot_sha256": "ab8fee82213501eb2bc914d9da4493b1cc17d91e86116a61a0c3b16ce2c780a3",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/pair-play/index.html",
+      "git_sha256": "8c9737bf67e102e65c8cb42316164d5ecfb68d31385bd5a555e20da1053bf5ff",
+      "scan_sha256": "8c9737bf67e102e65c8cb42316164d5ecfb68d31385bd5a555e20da1053bf5ff",
+      "snapshot_sha256": "8c9737bf67e102e65c8cb42316164d5ecfb68d31385bd5a555e20da1053bf5ff",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/pair-play/rounds.js",
+      "git_sha256": "1275f77366aef786c7bb032526b1f2d2d334fa1743b289d002a2133e2490cfc9",
+      "scan_sha256": "1275f77366aef786c7bb032526b1f2d2d334fa1743b289d002a2133e2490cfc9",
+      "snapshot_sha256": "1275f77366aef786c7bb032526b1f2d2d334fa1743b289d002a2133e2490cfc9",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/pair-play/space.json",
+      "git_sha256": "707155956130055c8afd41fdeb748f9669272bfad36fd2151183199d8da4af67",
+      "scan_sha256": "707155956130055c8afd41fdeb748f9669272bfad36fd2151183199d8da4af67",
+      "snapshot_sha256": "707155956130055c8afd41fdeb748f9669272bfad36fd2151183199d8da4af67",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/showcase/pair-play/styles.css",
+      "git_sha256": "2548c915d4aeb5d12e3cd42c003c9a8f83aab46941a4f074bd6e299eac8ba8df",
+      "scan_sha256": "2548c915d4aeb5d12e3cd42c003c9a8f83aab46941a4f074bd6e299eac8ba8df",
+      "snapshot_sha256": "2548c915d4aeb5d12e3cd42c003c9a8f83aab46941a4f074bd6e299eac8ba8df",
+      "match": true
+    },
+    {
+      "path": "skills/build-space/references/research-desk/app.js",
+      "git_sha256": "900411dfdd24936c2740888f9bf894567317405898c75a788504a46f2e27de37",
+      "scan_sha256": "900411dfdd24936c2740888f9bf894567317405898c75a788504a46f2e27de37",
+      "snapshot_sha256": "900411dfdd24936c2740888f9bf894567317405898c75a788504a46f2e27de37",
+      "match": true
+    },
+    {
+      "path": "skills/build-space/references/research-desk/index.html",
+      "git_sha256": "fca51e18338cc311d5a4e33e0e38a5a54faf13b4998bfdd6e4eec57dcb9b8899",
+      "scan_sha256": "fca51e18338cc311d5a4e33e0e38a5a54faf13b4998bfdd6e4eec57dcb9b8899",
+      "snapshot_sha256": "fca51e18338cc311d5a4e33e0e38a5a54faf13b4998bfdd6e4eec57dcb9b8899",
+      "match": true
+    },
+    {
+      "path": "skills/build-space/references/research-desk/space.json",
+      "git_sha256": "47da105ab42f97667465ffb447ed4e4759673a2e489885a568772c0412ed21fb",
+      "scan_sha256": "47da105ab42f97667465ffb447ed4e4759673a2e489885a568772c0412ed21fb",
+      "snapshot_sha256": "47da105ab42f97667465ffb447ed4e4759673a2e489885a568772c0412ed21fb",
+      "match": true
+    },
+    {
+      "path": "skills/build-space/references/research-desk/styles.css",
+      "git_sha256": "23e6f6f9aaac24adb3dc67d2d664113c84a5261d36b43940a7537bb731d72eeb",
+      "scan_sha256": "23e6f6f9aaac24adb3dc67d2d664113c84a5261d36b43940a7537bb731d72eeb",
+      "snapshot_sha256": "23e6f6f9aaac24adb3dc67d2d664113c84a5261d36b43940a7537bb731d72eeb",
+      "match": true
+    },
+    {
+      "path": "skills/build-space/references/research-desk/views/editor.js",
+      "git_sha256": "22a56f8a70469ec01e8ec403c98caf8cca2dc6c5734de2e2fa135545d61eb602",
+      "scan_sha256": "22a56f8a70469ec01e8ec403c98caf8cca2dc6c5734de2e2fa135545d61eb602",
+      "snapshot_sha256": "22a56f8a70469ec01e8ec403c98caf8cca2dc6c5734de2e2fa135545d61eb602",
+      "match": true
+    },
+    {
+      "path": "skills/build-space/references/research-desk/views/library.js",
+      "git_sha256": "7c2e28e57bb1e7c5ecfe46f1cddba7f79f79ed92615211275372974f3c065b63",
+      "scan_sha256": "7c2e28e57bb1e7c5ecfe46f1cddba7f79f79ed92615211275372974f3c065b63",
+      "snapshot_sha256": "7c2e28e57bb1e7c5ecfe46f1cddba7f79f79ed92615211275372974f3c065b63",
+      "match": true
+    },
+    {
+      "path": "skills/build-space/references/research-desk/views/overview.js",
+      "git_sha256": "10f121e1c3ffe3512d08e3917d8de38e9b6a5c379675421a2a99fd5eae2f90ea",
+      "scan_sha256": "10f121e1c3ffe3512d08e3917d8de38e9b6a5c379675421a2a99fd5eae2f90ea",
+      "snapshot_sha256": "10f121e1c3ffe3512d08e3917d8de38e9b6a5c379675421a2a99fd5eae2f90ea",
+      "match": true
+    },
+    {
+      "path": "skills/build-space/references/research-desk/views/queue.js",
+      "git_sha256": "6e39a816deebd3c3f94a146108d19464d3f6dde98c1a6e5cf9e7d7bc35ea4d3e",
+      "scan_sha256": "6e39a816deebd3c3f94a146108d19464d3f6dde98c1a6e5cf9e7d7bc35ea4d3e",
+      "snapshot_sha256": "6e39a816deebd3c3f94a146108d19464d3f6dde98c1a6e5cf9e7d7bc35ea4d3e",
+      "match": true
+    },
+    {
+      "path": "runtime/kit/spaces-kit.mjs",
+      "git_sha256": "8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc",
+      "scan_sha256": "8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc",
+      "snapshot_sha256": "8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc",
+      "match": true
+    }
+  ],
+  "styles_blob": {
+    "72b626aba71067166e737feb95e9585df5262816": "f12333702bd9554a1423e71bad5b9d076a7996a2",
+    "2b93cf8dd12b177ba73e0150afac252afaf25d5c": "f12333702bd9554a1423e71bad5b9d076a7996a2"
+  },
+  "styles_unchanged": true,
+  "candidate_ran": false,
+  "live_installed_commit": "b5bcfdabdf35df9781686e52282abf2ca2b93f3c"
+}

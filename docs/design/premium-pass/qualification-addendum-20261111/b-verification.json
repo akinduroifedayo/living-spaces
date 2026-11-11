@@ -1,0 +1,159 @@
+{
+  "mode": "offline-source-only; no app execution or live/store access",
+  "integration_commit_supplied_not_git_resolved": "2b93cf8dd12b177ba73e0150afac252afaf25d5c",
+  "scan_count": 7,
+  "scans": [
+    {
+      "label": "host",
+      "exit": 0,
+      "finding_count": 0,
+      "stderr": "",
+      "stdout_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "command": "cwd: /Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df\nIMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/desktop/plugin.js\n"
+    },
+    {
+      "label": "guest",
+      "exit": 0,
+      "finding_count": 0,
+      "stderr": "",
+      "stdout_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "command": "cwd: /Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df\nIMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/guest/space-host.html\n"
+    },
+    {
+      "label": "sky",
+      "exit": 2,
+      "finding_count": 3,
+      "stderr": "",
+      "stdout_sha256": "22ded830763d99cf0f556223df7d1d15828f391578b7b61fd2d92436b220727d",
+      "command": "cwd: /Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df\nIMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/showcase/sky-window\n"
+    },
+    {
+      "label": "pair",
+      "exit": 0,
+      "finding_count": 0,
+      "stderr": "",
+      "stdout_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "command": "cwd: /Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df\nIMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/showcase/pair-play\n"
+    },
+    {
+      "label": "research",
+      "exit": 0,
+      "finding_count": 0,
+      "stderr": "impeccable detect: could not read linked stylesheet ./kit/spaces-kit.css (resolved to /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/skills/build-space/references/research-desk/kit/spaces-kit.css); color and custom-property rules will be incomplete\n",
+      "stdout_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "command": "cwd: /Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df\nIMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/skills/build-space/references/research-desk\n"
+    },
+    {
+      "label": "kit",
+      "exit": 0,
+      "finding_count": 0,
+      "stderr": "",
+      "stdout_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "command": "cwd: /Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df\nIMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/spaces-kit.mjs\n"
+    },
+    {
+      "label": "kit-markup",
+      "exit": 0,
+      "finding_count": 1,
+      "stderr": "",
+      "stdout_sha256": "015b2919efff2c9830342361d9bcf3034b957c1e5bd4c2d8ba8e8f25acea28c1",
+      "command": "cwd: /Users/ifedayoakinduro/.hermes/kanban/workspaces/t_b3b306df\nIMPECCABLE_BIN=/Users/ifedayoakinduro/.impeccable/bin/0.1.16/impeccable IMPECCABLE_LAUNCHER_PROBE=1 /Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable detect --json /Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/canvas-gallery.html\n"
+    }
+  ],
+  "finding_count": 4,
+  "severity_counts": {
+    "warning": 2,
+    "advisory": 2
+  },
+  "rule_counts": {
+    "dark-glow": 1,
+    "radial-halo": 1,
+    "repeating-stripes-gradient": 1,
+    "codex-grid-background": 1
+  },
+  "raw_findings": [
+    {
+      "receipt": "b-scan-sky",
+      "antipattern": "dark-glow",
+      "name": "Glowing shadow accents",
+      "description": "Colored glow shadows \u2014 a zero-offset chromatic halo (box- or text-shadow) on any background, or any colored blurred shadow on a dark background \u2014 are the default \"cool\" look of AI-generated UIs. Use neutral elevation shadows and subtle, purposeful lighting instead.",
+      "severity": "warning",
+      "category": "slop",
+      "file": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/showcase/sky-window/index.html",
+      "line": 0,
+      "snippet": "Zero-offset box-shadow glow (#ffc86e)"
+    },
+    {
+      "receipt": "b-scan-sky",
+      "antipattern": "radial-halo",
+      "name": "Radial-gradient background halo",
+      "description": "A chromatic radial-gradient wash \u2014 saturated at the center, fading to transparent \u2014 used as a decorative background glow on a dark page. Same tell as glowing shadows, drawn with a gradient instead of a shadow. Ground the surface with a solid or subtly shifted background instead.",
+      "severity": "warning",
+      "category": "slop",
+      "file": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/showcase/sky-window/index.html",
+      "line": 0,
+      "snippet": "radial-gradient halo (#18214a \u2192 transparent) on dark page"
+    },
+    {
+      "receipt": "b-scan-sky",
+      "antipattern": "repeating-stripes-gradient",
+      "name": "Repeating-gradient stripes",
+      "description": "Repeating-gradient stripes used as surface decoration are a recurring generated-UI signature. Reach for a deliberate texture or leave the surface plain.",
+      "severity": "advisory",
+      "category": "slop",
+      "file": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/showcase/sky-window/index.html",
+      "line": 0,
+      "snippet": "repeating-gradient decorative stripes",
+      "advisory": true
+    },
+    {
+      "receipt": "b-scan-kit-markup",
+      "antipattern": "codex-grid-background",
+      "name": "Decorative grid-line background",
+      "description": "A decorative grid or line-field background drawn with hairline linear-gradient layers tiled by a fixed pixel cell is a recurring generated-UI signature. Reserve grid overlays for actual canvas, map, blueprint, or measurement surfaces; elsewhere use product structure or a plain surface.",
+      "severity": "advisory",
+      "category": "slop",
+      "file": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/canvas-gallery.html",
+      "line": 0,
+      "snippet": "two-axis grid-line gradient background",
+      "advisory": true
+    }
+  ],
+  "source_manifest_file_count": 25,
+  "changed_sources_since_scan": [],
+  "supplemental_source_sha256_post_review": {
+    "runtime/kit/canvas-gallery.html": "7b2a708139ca787659db0ab87a218be1e5040d668063b446142af08ed0a6cde3",
+    "runtime/kit/spaces-kit.css": "cde2653ae11005b6b4cf98856bf2cba72cde83d1f5c1f2e2e7a36b26a1b90261",
+    "living_spaces_core/records.py": "198f4c260905223d6ba1bbe5777b220d4324f1d8b37175115c706361dff8f813",
+    "living_spaces_core/bridge.py": "750c8c7aa1aca3fa361aaf4b20340029646430b6b962c0994564bf621ce0a2d7",
+    "living_spaces_core/projects.py": "48b31656c18f5f5e08e63583097058cd2f1013d9065b1082922372bddcbfee60"
+  },
+  "manual_priorities": [
+    {
+      "id": "B-01",
+      "severity": "P1",
+      "title": "Research directs people to a nonexistent Refresh permission"
+    },
+    {
+      "id": "B-02",
+      "severity": "P1",
+      "title": "Sky accepts an empty sunset array, then dereferences it"
+    },
+    {
+      "id": "B-03",
+      "severity": "P2",
+      "title": "Pair's \u201cBest round\u201d and recent history are computed from an undisclosed first page"
+    },
+    {
+      "id": "B-04",
+      "severity": "P2",
+      "title": "Sky precipitation uses an indefinitely animated paint property"
+    }
+  ],
+  "manual_priority_counts": {
+    "P1": 2,
+    "P2": 2
+  },
+  "report_sha256": "7d121faf03e8b6a169e3f8ef2881afcc9809cbef73a68188594dbec87680cfe0",
+  "runtime_tests_executed": 0
+}

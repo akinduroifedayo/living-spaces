@@ -1,0 +1,33 @@
+[
+  {
+    "antipattern": "dark-glow",
+    "name": "Glowing shadow accents",
+    "description": "Colored glow shadows — a zero-offset chromatic halo (box- or text-shadow) on any background, or any colored blurred shadow on a dark background — are the default \"cool\" look of AI-generated UIs. Use neutral elevation shadows and subtle, purposeful lighting instead.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/showcase/sky-window/index.html",
+    "line": 0,
+    "snippet": "Zero-offset box-shadow glow (#ffc86e)"
+  },
+  {
+    "antipattern": "radial-halo",
+    "name": "Radial-gradient background halo",
+    "description": "A chromatic radial-gradient wash — saturated at the center, fading to transparent — used as a decorative background glow on a dark page. Same tell as glowing shadows, drawn with a gradient instead of a shadow. Ground the surface with a solid or subtly shifted background instead.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/showcase/sky-window/index.html",
+    "line": 0,
+    "snippet": "radial-gradient halo (#18214a → transparent) on dark page"
+  },
+  {
+    "antipattern": "repeating-stripes-gradient",
+    "name": "Repeating-gradient stripes",
+    "description": "Repeating-gradient stripes used as surface decoration are a recurring generated-UI signature. Reach for a deliberate texture or leave the surface plain.",
+    "severity": "advisory",
+    "category": "slop",
+    "file": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/snapshot/src/living-spaces/runtime/kit/showcase/sky-window/index.html",
+    "line": 0,
+    "snippet": "repeating-gradient decorative stripes",
+    "advisory": true
+  }
+]
