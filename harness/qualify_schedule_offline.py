@@ -178,12 +178,17 @@ class Qualification:
         self.save()
         sid = self.state["sid"]
         self.core.decide(sid, "refresh", "grant", actor="harness-fixture")
-        for collection in sorted({source["collection"] for source in upkeep["sources"]}):
-            source_records = self.core.query(self.args.source_space, collection)["records"]
-            record = next((row for row in source_records if row.get("source") and row["source"].get("title")), None)
-            self.check("Source fixture has a persisted public record in " + collection, record is not None)
-            stale = dict(record["source"], title="Offline fixture title awaiting catch-up")
-            self.core.records.upsert_sources(sid, collection, [(record["id"], stale, record["source_meta"])], actor="harness-fixture")
+        for source in upkeep["sources"]:
+            collection = source["collection"]
+            # Seed from the live feed: a stored record can age out of the feed and would then be added, never updated.
+            feeds = importlib.import_module(self.core.__name__ + ".feeds")
+            live = feeds.parse(feeds.fetch(sid, source["url"]))
+            self.check("Live public feed has an entry for " + collection, bool(live))
+            rid, fields = live[0]
+            stale = dict(fields, title="Offline fixture title awaiting catch-up")
+            meta = {"handler": "feed", "source_id": source["id"], "url": source["url"], "fetched_at": 0, "source_updated": fields["updated"]}
+            self.core.records.upsert_sources(sid, collection, [(rid, stale, meta)], actor="harness-fixture")
+            record = {"id": rid}
             current = self.core.records.get(sid, collection, record["id"])
             user = {"note": "Keep this public demo note across offline catch-up", "status": "reading"}
             self.core.records.put(sid, collection, record["id"], user, actor="user", base_rev=current["rev"])
