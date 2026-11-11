@@ -508,7 +508,7 @@ class AuthorityTests(CoreCase):
             self.error("invalid", projects.delete_space, self.sid, actor="user", confirm="no")
             result = projects.delete_space(self.sid, actor="user", confirm=self.sid)
         self.assertEqual(result["removed"]["records"], 1)
-        self.assertLess(calls.index(("delete", self.sid)), calls.index(("cancel", "deleted")))
+        self.assertLess(calls.index(("cancel", "deleted")), calls.index(("delete", self.sid)))
         self.assertIn(("archive", self.sid), calls)
         self.assertEqual(len(calls), 4)
         self.error("not_found", projects.get_space, self.sid)
