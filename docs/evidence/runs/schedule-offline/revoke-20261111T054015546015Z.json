@@ -1,0 +1,259 @@
+{
+  "step": "revoke",
+  "evidence_class": "real Desktop, native input, isolated gateway ticker, SQLite and cron store",
+  "paused_schedule": {
+    "space": "offline-catchup-probe",
+    "status": "paused",
+    "cadence": "5 6 * * *",
+    "timezone": "UTC",
+    "purpose": "Public demo offline catch-up qualification",
+    "cron_job_id": "11a8c5f0fcce",
+    "catch_up": "one",
+    "requested_at": 1794375334.032953,
+    "decided_at": 1794375334.08898,
+    "next_run_at": null,
+    "reason": "Refresh permission revoked; approve Refresh and resume upkeep to restart.",
+    "last_dispatch": {
+      "scheduled_at": "2026-11-08T06:05:00+00:00",
+      "dispatched_at": "2026-11-10T23:35:41.000333-06:00",
+      "lateness_seconds": 257441.0,
+      "kind": "catch_up"
+    }
+  },
+  "ticker_completions": [
+    "2026-11-10T23:38:41.117820-06:00",
+    "2026-11-10T23:39:41.088196-06:00"
+  ],
+  "observation_seconds": 132.9,
+  "schedule_text": "Schedule \u00b7 Offline Catchup Probe\nClose\n\nSchedule, cost and missed-run policy\n\nPaused\nCadence\n5 6 * * *\nTimezone\nUTC\nPurpose\nPublic demo offline catch-up qualification\nNext run\nNot scheduled while upkeep is inactive\nLast attempt\nNov 10, 2026, 11:35 PM CST \u00b7 succeeded\nReason\nRefresh permission revoked. Approve Refresh in Permissions, then resume upkeep.\nLast dispatch\nCatch-up refresh. Missed scheduled time Nov 8, 2026, 12:05 AM CST. Actual dispatch Nov 10, 2026, 11:35 PM CST. Delayed by 257441 s. Missed intervals were not replayed.\nCost\n\nNo model calls. Refreshes use the declared public-source handler and approved hosts.\n\nFeed limit 3 MB \u00b7 200 entries per source \u00b7 20 s request timeout.\n\nIf Hermes is asleep\n\nRuns one current refresh when Hermes wakes. Missed intervals aren't replayed.\n\nBackground execution depends on Hermes being available.\n\nResume upkeep\nharness, change the upkeep schedule for Offline Catchup Probe. Please confirm the cadence, timezone and purpose before requesting approval.\nChange schedule in chat",
+  "checks": [
+    {
+      "name": "Catch-up was observed in canonical history",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Schedule explains revoked permission",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Host revoke pauses native cron",
+      "passed": true,
+      "observed": [
+        "paused",
+        false
+      ],
+      "expected": [
+        "paused",
+        false
+      ]
+    },
+    {
+      "name": "Paused schedule has no eligible run",
+      "passed": true,
+      "observed": null,
+      "expected": null
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Isolated gateway remains live",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Revoked schedule creates no runs across two live ticker intervals",
+      "passed": true,
+      "observed": [
+        "run_2d2f7ef49e61466d"
+      ],
+      "expected": [
+        "run_2d2f7ef49e61466d"
+      ]
+    },
+    {
+      "name": "User data preserved for src_194a6a08c4523e84",
+      "passed": true,
+      "observed": {
+        "note": "Keep this public demo note across offline catch-up",
+        "status": "reading"
+      },
+      "expected": {
+        "note": "Keep this public demo note across offline catch-up",
+        "status": "reading"
+      }
+    },
+    {
+      "name": "Host schedule says why upkeep stopped",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Host explains deliberate recovery",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    }
+  ],
+  "passed": 35,
+  "total": 35
+}

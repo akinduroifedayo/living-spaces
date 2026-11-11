@@ -1,0 +1,85 @@
+{
+  "step": "prepare-offline",
+  "evidence_class": "real Desktop, native input, isolated gateway ticker, SQLite and cron store",
+  "fixture": {
+    "sid": "offline-catchup-probe",
+    "name": "Offline Catchup Probe",
+    "records": [
+      {
+        "collection": "papers",
+        "id": "src_194a6a08c4523e84",
+        "data": {
+          "note": "Keep this public demo note across offline catch-up",
+          "status": "reading"
+        }
+      }
+    ],
+    "job_ids": [
+      "11a8c5f0fcce",
+      "0fd2052874e3"
+    ],
+    "shims": [
+      "living-spaces-refresh-offline-catchup-probe.py",
+      "living-spaces-ticker-offline-catchup-probe.py"
+    ],
+    "cleaned": false,
+    "job_id": "11a8c5f0fcce",
+    "scheduled_at": "2026-11-08T06:05:00+00:00",
+    "before_runs": [],
+    "witness_name": "living-spaces:offline-catchup-probe:ticker",
+    "witness_id": "0fd2052874e3",
+    "prepared": true
+  },
+  "checks": [
+    {
+      "name": "Forge stopped the isolated gateway",
+      "passed": true,
+      "observed": null,
+      "expected": null
+    },
+    {
+      "name": "Isolated gateway runtime lock is released",
+      "passed": true,
+      "observed": false,
+      "expected": false
+    },
+    {
+      "name": "Previous harness resources were cleaned",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Public feed fixture has sources",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Live public feed has an entry for papers",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "Fixture creates an active native schedule",
+      "passed": true,
+      "observed": "active",
+      "expected": "active"
+    },
+    {
+      "name": "Past slot is beyond the explicit grace window",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "One-refresh catch-up is enabled",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    }
+  ],
+  "passed": 8,
+  "total": 8
+}

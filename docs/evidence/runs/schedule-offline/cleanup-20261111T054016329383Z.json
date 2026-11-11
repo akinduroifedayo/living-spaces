@@ -1,0 +1,41 @@
+{
+  "step": "cleanup",
+  "evidence_class": "real Desktop, native input, isolated gateway ticker, SQLite and cron store",
+  "remaining_living_spaces_jobs": [
+    "79a3a3af14ed"
+  ],
+  "checks": [
+    {
+      "name": "No created living-spaces job remains in cron/jobs.json",
+      "passed": true,
+      "observed": [],
+      "expected": []
+    },
+    {
+      "name": "Every created shim is deleted",
+      "passed": true,
+      "observed": [],
+      "expected": []
+    },
+    {
+      "name": "Fixture schedule removed",
+      "passed": true,
+      "observed": null,
+      "expected": null
+    },
+    {
+      "name": "User data preserved for src_194a6a08c4523e84",
+      "passed": true,
+      "observed": {
+        "note": "Keep this public demo note across offline catch-up",
+        "status": "reading"
+      },
+      "expected": {
+        "note": "Keep this public demo note across offline catch-up",
+        "status": "reading"
+      }
+    }
+  ],
+  "passed": 4,
+  "total": 4
+}

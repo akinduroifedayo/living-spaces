@@ -1,0 +1,32 @@
+{
+  "sid": "offline-catchup-probe",
+  "name": "Offline Catchup Probe",
+  "records": [
+    {
+      "collection": "papers",
+      "id": "src_194a6a08c4523e84",
+      "data": {
+        "note": "Keep this public demo note across offline catch-up",
+        "status": "reading"
+      }
+    }
+  ],
+  "job_ids": [
+    "11a8c5f0fcce",
+    "0fd2052874e3"
+  ],
+  "shims": [
+    "living-spaces-refresh-offline-catchup-probe.py",
+    "living-spaces-ticker-offline-catchup-probe.py"
+  ],
+  "cleaned": true,
+  "job_id": "11a8c5f0fcce",
+  "scheduled_at": "2026-11-08T06:05:00+00:00",
+  "before_runs": [],
+  "witness_name": "living-spaces:offline-catchup-probe:ticker",
+  "witness_id": "0fd2052874e3",
+  "prepared": true,
+  "catchup_run_id": "run_2d2f7ef49e61466d",
+  "catchup_verified": true,
+  "revoke_verified": true
+}
