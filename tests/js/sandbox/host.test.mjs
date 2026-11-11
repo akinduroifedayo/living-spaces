@@ -376,7 +376,7 @@ function consoleFixture() {
   const element = () => ({ style: {}, setAttribute() {}, append() {}, replaceChildren() {} })
   const document = { head: element(), body: element(), createElement: element, addEventListener() {} }
   const window = { parent, addEventListener: (name, fn) => events.set(name, fn), removeEventListener: name => events.delete(name) }
-  const port = { postMessage: message => messages.push(structuredClone(message)) }
+  const port = { postMessage: message => messages.push(structuredClone(message)), close() {} }
   const context = vm.createContext({
     window, document, console: { log() {} },
     setInterval(fn) { timers.push(fn) }, clearInterval() {}

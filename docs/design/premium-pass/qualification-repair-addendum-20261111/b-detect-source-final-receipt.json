@@ -1,0 +1,10 @@
+{
+  "command": [
+    "/Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable",
+    "detect",
+    "--json",
+    "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/qualification-repair-addendum-20261111/b-frozen-source"
+  ],
+  "cwd": "/Volumes/Expansion/Development/Projects/living-spaces",
+  "exit": 2
+}

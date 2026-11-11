@@ -1,0 +1,29 @@
+[
+  {
+    "name": "live",
+    "command": [
+      "/Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable",
+      "detect",
+      "--cdp",
+      "9341",
+      "--target",
+      "dist/index.html",
+      "--json"
+    ],
+    "cwd": "/Volumes/Expansion/Development/Projects/living-spaces",
+    "exit": 2,
+    "time": "2026-11-11T10:55:26.378592-06:00"
+  },
+  {
+    "name": "source",
+    "command": [
+      "/Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable",
+      "detect",
+      "--json",
+      "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/qualification-repair-addendum-20261111/b-frozen-source"
+    ],
+    "cwd": "/Volumes/Expansion/Development/Projects/living-spaces",
+    "exit": 2,
+    "time": "2026-11-11T10:55:26.489966-06:00"
+  }
+]

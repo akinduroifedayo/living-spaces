@@ -1,6 +1,6 @@
 # Add living-spaces to the plugin catalog
 
-Draft only. No PR is open. The repository remains private. The candidate pin, final validation, screenshots and publication approval are pending.
+Draft only. No PR is open. The repository is public. Commit `8134be424b5a5756a89278e729ab537475f45155` passed the exact validator with `--install-deps`; it is not final product acceptance. A later final pin, live evidence, and publication approval remain pending.
 
 ## Why
 
@@ -14,13 +14,23 @@ Add only `plugin-catalog/living-spaces.yaml`, from [the catalog draft](catalog-e
 
 - Both the profile plugin switch and Desktop Capabilities switch must enable Living Spaces. The package registers tools, a skill, a dashboard API and Desktop contributions. It registers no hooks, middleware or startup schedule and declares no environment requirements or host capabilities.
 - The trusted Desktop extension has renderer authority. Generated apps run in opaque-origin sandboxed frames. Their bridge binds records, logs and allowed operations to one Space and session.
-- Internet access is on by default per Space. `space.net.fetch` mediates public HTTPS requests and redirects, blocks local/private destinations and Hermes backends, and can send data readable by the Space. At this commit direct frame networking, CDN imports and remote embeds stay blocked; open internet in the frame, file-by-reference and a canvas-to-bot control are in progress, not qualified, and not claimed here. Internet access is independently revocable.
+- Internet access is on by default per Space. `space.net.fetch` mediates public HTTPS requests and redirects, blocks local/private destinations and Hermes backends, and can send data readable by the Space. Direct frame networking, live embeds, streams, WebSockets and runtime CDN libraries are deferred to the next release. Images use mediated Blob retrieval. File-by-reference and canvas-to-bot qualification remain separately recorded in the acceptance ledger. Internet access is independently revocable.
 - Revocation is not a complete outbound block. WebRTC can still send data the Space can read. It does not grant access to Hermes, credentials, unapproved files or other Spaces. Already delivered data cannot be recalled.
-- Records and project files persist in the active profile's `plugin-data/living-spaces/spaces.db`. Refresh preserves user fields. Stale writes conflict. Restore does not rewind saved records. Chat can place Space data in the configured model's context. The plugin sends no telemetry and stores no credentials.
+- Records and project files persist in the active profile's `plugin-data/living-spaces/spaces.db`. Refresh preserves user fields. Stale writes conflict. Restore does not rewind saved records. Chat can place Space data in the configured model's context. The plugin sends no telemetry. A user-provided API key saved by a Space is stored as Space data, as disclosed below; the plugin does not read Hermes credential stores.
 - Upkeep is an ordinary Hermes cron job. The user asks in chat and the agent creates it; that request is the consent, and the native job is the only schedule record (the plugin stores a link). Each Space's Upkeep panel reads the job live, shows exactly what runs, and offers Pause, Resume, Run now and Remove. Amendment A-03 records the decision.
 - Feed upkeep fetches public sources without a model call. Agent upkeep uses the active Hermes profile's model subscription and enabled tools, with their existing permissions. It is not a newly restricted agent sandbox and can consume quota; the panel says "Uses model calls". Space code can trigger only the no-model feed refresh, not agent upkeep.
 - Native cron jobs run only while Hermes runs. Catch-up performs one current refresh, not every missed interval. Feed upkeep writes a generated script under `<HERMES_HOME>/scripts`; native cron owns execution. Archive pauses the job and unarchive does not resume it. The plugin starts no independent service.
 - Optional libraries and fonts are copied from the pinned offline shelf, not installed from arbitrary packages. [README](../../README.md) and [THIRD-PARTY.md](../../src/living-spaces/THIRD-PARTY.md) list shipped items and provenance limits.
+
+## Network, credentials, and background work
+
+Spaces can request any public HTTPS host through mediated fetch, subject to destination checks, redirects, and response limits. This includes keyed APIs and image URLs. Requests can send data readable by that Space to the selected third party. Feed upkeep contacts its configured public sources. The plugin sends no telemetry.
+
+A user-provided API key is Space data, not a Hermes credential. If generated code keeps it only in memory, Living Spaces does not automatically save it. If the Space saves it in records or project files, it is stored in the profile's `plugin-data/living-spaces/spaces.db`, together with revisions and file blobs. The plugin adds no encryption or secret-vault protection. Saved values can remain in revisions or backups, and a bot reading those records or files can include them in model context. Choose what you save accordingly.
+
+The mediated path forwards only credentials supplied by the Space in its own request, including `Authorization` and `Cookie`. It does not read Hermes credential stores or attach Hermes's credentials. Cross-origin redirects remove the Space's authorization and cookie headers. This is not a shared browser login or cookie jar.
+
+Native Hermes cron provides background upkeep while Hermes runs. Agent jobs use model calls and enabled tools under native Hermes policy; feed jobs do not use a model. The Upkeep panel exposes the linked job and its controls. Remove upkeep before uninstalling the plugin, because native jobs can outlive plugin removal. There is no separate plugin daemon.
 
 ## Qualification and compatibility holds
 

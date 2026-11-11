@@ -1,0 +1,734 @@
+{
+  "host": [
+    {
+      "text": "Spaces",
+      "ratio": 5.40896667014046,
+      "size": "13px",
+      "bgRGB": [
+        69,
+        90,
+        130
+      ]
+    },
+    {
+      "text": "Research Desk",
+      "ratio": 6.1435091446846615,
+      "size": "16px",
+      "bgRGB": [
+        62,
+        81,
+        119
+      ]
+    },
+    {
+      "text": "H\nHermes\n \u00b7 Updated 3 hr. ago \u00b7 Source data from 22 hr. ago",
+      "ratio": 4.511663910188125,
+      "size": "12px",
+      "bgRGB": [
+        62,
+        81,
+        119
+      ]
+    },
+    {
+      "text": "H\nHermes",
+      "ratio": 4.511663910188125,
+      "size": "12px",
+      "bgRGB": [
+        62,
+        81,
+        119
+      ]
+    },
+    {
+      "text": "H",
+      "ratio": 5.40896667014046,
+      "size": "10px",
+      "bgRGB": [
+        69,
+        90,
+        130
+      ]
+    },
+    {
+      "text": "Hermes",
+      "ratio": 4.511663910188125,
+      "size": "12px",
+      "bgRGB": [
+        62,
+        81,
+        119
+      ]
+    },
+    {
+      "text": " \u00b7 Updated 3 hr. ago \u00b7 Source data from 22 hr. ago",
+      "ratio": 4.511663910188125,
+      "size": "12px",
+      "bgRGB": [
+        62,
+        81,
+        119
+      ]
+    },
+    {
+      "text": "Updated 3 hr. ago",
+      "ratio": 4.511663910188125,
+      "size": "12px",
+      "bgRGB": [
+        62,
+        81,
+        119
+      ]
+    },
+    {
+      "text": " \u00b7 Source data from 22 hr. ago",
+      "ratio": 4.511663910188125,
+      "size": "12px",
+      "bgRGB": [
+        62,
+        81,
+        119
+      ]
+    },
+    {
+      "text": "Upkeep: paused",
+      "ratio": 5.40896667014046,
+      "size": "13px",
+      "bgRGB": [
+        69,
+        90,
+        130
+      ]
+    },
+    {
+      "text": "History",
+      "ratio": 5.40896667014046,
+      "size": "13px",
+      "bgRGB": [
+        69,
+        90,
+        130
+      ]
+    },
+    {
+      "text": "Internet on",
+      "ratio": 5.40896667014046,
+      "size": "13px",
+      "bgRGB": [
+        69,
+        90,
+        130
+      ]
+    },
+    {
+      "text": "Permissions",
+      "ratio": 5.40896667014046,
+      "size": "13px",
+      "bgRGB": [
+        69,
+        90,
+        130
+      ]
+    },
+    {
+      "text": "Refresh now",
+      "ratio": 5.19001622508097,
+      "size": "13px",
+      "bgRGB": [
+        74,
+        132,
+        254
+      ]
+    },
+    {
+      "text": "",
+      "ratio": 5.40896667014046,
+      "size": "13px",
+      "bgRGB": [
+        69,
+        90,
+        130
+      ]
+    },
+    {
+      "text": "Bot request: offline",
+      "ratio": 9.379990563762854,
+      "size": "13px",
+      "bgRGB": [
+        41,
+        53,
+        77
+      ]
+    }
+  ],
+  "guest": [
+    {
+      "space": "guest-style-research-desk",
+      "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+      "ratio": 13.271494046943982,
+      "fontSize": "16px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "A field journal for artificial intelligence",
+      "ratio": 5.259940941899211,
+      "fontSize": "12.48px",
+      "tag": "SMALL"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Refresh",
+      "ratio": 14.596026789923293,
+      "fontSize": "14.08px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Overview",
+      "ratio": 5.259940941899211,
+      "fontSize": "14.08px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Library",
+      "ratio": 5.259940941899211,
+      "fontSize": "14.08px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Reading queue",
+      "ratio": 5.259940941899211,
+      "fontSize": "14.08px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Priority review",
+      "ratio": 5.259940941899211,
+      "fontSize": "14.08px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "01 / THE OVERVIEW",
+      "ratio": 6.126671651336183,
+      "fontSize": "10.88px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "A little clarity.\nAhead of the curve.",
+      "ratio": 13.271494046943982,
+      "fontSize": "57.564px",
+      "tag": "H2"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Follow the research.\nKeep what matters.\nMake room to think.",
+      "ratio": 5.259940941899211,
+      "fontSize": "17.6px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Nov 10, 2026, 12:59 PM",
+      "ratio": 5.259940941899211,
+      "fontSize": "12px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Medical Image Segmentation: Foundation Model Adaptation versus Task-Specific Tra",
+      "ratio": 13.271494046943982,
+      "fontSize": "21.92px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Foundation models pretrained on large natural-image collections are increasingly",
+      "ratio": 5.259940941899211,
+      "fontSize": "14.08px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Nov 10, 2026, 12:59 PM",
+      "ratio": 5.259940941899211,
+      "fontSize": "12px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Toward Foundation Detection Models via Example-Based Grounding in EM-DETR",
+      "ratio": 13.271494046943982,
+      "fontSize": "21.92px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "DeepLearning (DL)-based Computer-Aided Diagnostic (CAD) systems have shown great",
+      "ratio": 5.259940941899211,
+      "fontSize": "14.08px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Nov 10, 2026, 12:58 PM",
+      "ratio": 5.259940941899211,
+      "fontSize": "12px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Contrastive Discovery: Open-Ended Scientific Discovery over Competing Explanatio",
+      "ratio": 13.271494046943982,
+      "fontSize": "21.92px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "LLM agents are increasingly used for open-ended, data-driven scientific discover",
+      "ratio": 5.259940941899211,
+      "fontSize": "14.08px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Nov 10, 2026, 12:50 PM",
+      "ratio": 5.259940941899211,
+      "fontSize": "12px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Comparative Analysis of Agent Evaluation Frameworks: Stability, Detection, and D",
+      "ratio": 13.271494046943982,
+      "fontSize": "21.92px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Deploying LLM-based analytics agents in enterprise settings requires evaluation ",
+      "ratio": 5.259940941899211,
+      "fontSize": "14.08px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Explore the library\n\u2197",
+      "ratio": 6.126671651336183,
+      "fontSize": "14.08px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "THE SHORTLIST",
+      "ratio": 9.261550197447907,
+      "fontSize": "10.88px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "High priority. Not yet completed.",
+      "ratio": 7.3565259461185555,
+      "fontSize": "13.12px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Open priority review\n\u2197",
+      "ratio": 9.261550197447907,
+      "fontSize": "14.08px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "In the queue\n42",
+      "ratio": 13.271494046943982,
+      "fontSize": "14.08px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Reading now\n1",
+      "ratio": 13.271494046943982,
+      "fontSize": "14.08px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Completed\n4",
+      "ratio": 13.271494046943982,
+      "fontSize": "14.08px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Every paper stays in your library, including completed work.",
+      "ratio": 5.259940941899211,
+      "fontSize": "12px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "SOURCE NOTE",
+      "ratio": 4.759592411185823,
+      "fontSize": "13.6px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Feed updates change public paper details\u2014not your saved notes, status or priorit",
+      "ratio": 4.759592411185823,
+      "fontSize": "13.6px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-research-desk",
+      "text": "Freshness is based on recent run history; these timestamps describe different ev",
+      "ratio": 4.759592411185823,
+      "fontSize": "11.68px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "Sky Window",
+      "ratio": 14.73243309737477,
+      "fontSize": "24px",
+      "tag": "H1"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "PUBLIC WEATHER, SEVEN DAYS AHEAD",
+      "ratio": 8.493478236282098,
+      "fontSize": "10px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "Today",
+      "ratio": 8.727550279067925,
+      "fontSize": "13px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "Week",
+      "ratio": 9.087279396390418,
+      "fontSize": "13px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "Cities",
+      "ratio": 9.087279396390418,
+      "fontSize": "13px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "Refresh",
+      "ratio": 14.73243309737477,
+      "fontSize": "10px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "Your places, under one sky.",
+      "ratio": 14.73243309737477,
+      "fontSize": "38px",
+      "tag": "H2"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "Manage cities",
+      "ratio": 8.493478236282098,
+      "fontSize": "12px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "Chicago\nOvercast\n10\u00b0",
+      "ratio": 9.696145048454461,
+      "fontSize": "16px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "Lisbon\nPartly cloudy\n18\u00b0",
+      "ratio": 13.825495469508466,
+      "fontSize": "16px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "Tokyo\nMostly clear night\n9\u00b0",
+      "ratio": 13.825495469508466,
+      "fontSize": "16px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "Chicago",
+      "ratio": 14.73243309737477,
+      "fontSize": "58px",
+      "tag": "H2"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "41.88\u00b0 N / 87.63\u00b0 W",
+      "ratio": 10.438026422561952,
+      "fontSize": "10px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "\u2191 12\u00b0\n\u2193 4\u00b0\nToday's range",
+      "ratio": 14.73243309737477,
+      "fontSize": "14px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": " km/h",
+      "ratio": 11.903918843461271,
+      "fontSize": "12px",
+      "tag": "SMALL"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": " mm",
+      "ratio": 11.903918843461271,
+      "fontSize": "12px",
+      "tag": "SMALL"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "Nov 11 \u00b7 Conditions as of 10:45 GMT-6 \u00b7 Retrieved 10:56 AM",
+      "ratio": 10.63093940258235,
+      "fontSize": "10px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-sky-window",
+      "text": "Low to high, on a shared temperature scale. Rain chance and daily total below.",
+      "ratio": 8.493478236282098,
+      "fontSize": "10px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "\u2733\nPair Play\nA LITTLE MOMENT OF FOCUS",
+      "ratio": 10.705894312678529,
+      "fontSize": "29px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "A LITTLE MOMENT OF FOCUS",
+      "ratio": 5.132224067130059,
+      "fontSize": "9px",
+      "tag": "SMALL"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "Play",
+      "ratio": 11.56828691917829,
+      "fontSize": "13px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "Progress",
+      "ratio": 9.712192657797246,
+      "fontSize": "13px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "History",
+      "ratio": 9.712192657797246,
+      "fontSize": "13px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "THE ORCHARD COLLECTION \u00b7 01",
+      "ratio": 5.132224067130059,
+      "fontSize": "10px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "Good things\ncome in pairs.",
+      "ratio": 10.705894312678529,
+      "fontSize": "46px",
+      "tag": "H1"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "PAIRS",
+      "ratio": 10.705894312678529,
+      "fontSize": "9px",
+      "tag": "SMALL"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "01\n\u2605\nPAIR PLAY\n\ud83c\udf4a\nOrange",
+      "ratio": 19.094736510365905,
+      "fontSize": "15px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "02\n\u2605\nPAIR PLAY\n\ud83c\udf53\nStrawberry",
+      "ratio": 19.094736510365905,
+      "fontSize": "15px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "03\n\u2605\nPAIR PLAY\n\ud83c\udf49\nWatermelon",
+      "ratio": 19.094736510365905,
+      "fontSize": "15px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "04\n\u2605\nPAIR PLAY\n\ud83c\udf53\nStrawberry",
+      "ratio": 19.094736510365905,
+      "fontSize": "15px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "05\n\u2605\nPAIR PLAY\n\ud83c\udf47\nGrapes",
+      "ratio": 19.094736510365905,
+      "fontSize": "15px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "06\n\u2605\nPAIR PLAY\n\ud83c\udf4e\nApple",
+      "ratio": 19.094736510365905,
+      "fontSize": "15px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "07\n\u2605\nPAIR PLAY\n\ud83c\udf49\nWatermelon",
+      "ratio": 19.094736510365905,
+      "fontSize": "15px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "08\n\u2605\nPAIR PLAY\n\ud83c\udf4a\nOrange",
+      "ratio": 19.094736510365905,
+      "fontSize": "15px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "09\n\u2605\nPAIR PLAY\n\ud83c\udf4e\nApple",
+      "ratio": 19.094736510365905,
+      "fontSize": "15px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "10\n\u2605\nPAIR PLAY\n\ud83c\udf4c\nBanana",
+      "ratio": 19.094736510365905,
+      "fontSize": "15px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "11\n\u2605\nPAIR PLAY\n\ud83c\udf47\nGrapes",
+      "ratio": 19.094736510365905,
+      "fontSize": "15px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "12\n\u2605\nPAIR PLAY\n\ud83c\udf4c\nBanana",
+      "ratio": 19.094736510365905,
+      "fontSize": "15px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "A fresh look. A familiar pair.\nFlip two cards. Match the fruit. Find all six pai",
+      "ratio": 10.705894312678529,
+      "fontSize": "15px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "Flip two cards. Match the fruit. Find all six pairs.",
+      "ratio": 5.132224067130059,
+      "fontSize": "11px",
+      "tag": "SMALL"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "YOUR ROUND",
+      "ratio": 5.132224067130059,
+      "fontSize": "10px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "Every two flips count as one.",
+      "ratio": 5.132224067130059,
+      "fontSize": "10px",
+      "tag": "SMALL"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "Little by little",
+      "ratio": 10.705894312678529,
+      "fontSize": "21px",
+      "tag": "H2"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "6 more pairs waiting to be found.",
+      "ratio": 5.132224067130059,
+      "fontSize": "11px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "Finish a round to make your mark.",
+      "ratio": 5.132224067130059,
+      "fontSize": "11px",
+      "tag": "P"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "Your completed rounds\n\u2197",
+      "ratio": 10.705894312678529,
+      "fontSize": "11px",
+      "tag": "A"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "\u21bb New round",
+      "ratio": 10.705894312678529,
+      "fontSize": "12px",
+      "tag": "BUTTON"
+    },
+    {
+      "space": "guest-style-pair-play",
+      "text": "No clock. No rush.\nJust a little room to focus.",
+      "ratio": 5.132224067130059,
+      "fontSize": "14px",
+      "tag": "P"
+    }
+  ],
+  "limits": "Host composites all measured ancestors over the opaque body gradient endpoint at x>0. Guest nearest opaque background samples only, no image/gradient/opacity audit; diagnostic not full WCAG certification."
+}

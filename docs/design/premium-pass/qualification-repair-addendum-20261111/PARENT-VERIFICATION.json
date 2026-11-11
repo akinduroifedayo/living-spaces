@@ -1,0 +1,137 @@
+{
+  "candidate": "d7f20699fe441b606a0e0684cfde34a37dada1d9",
+  "loadedSHA256": "d04bbde320eb5ab740fb9ab588034fbc2db8afc85b628941272c000c22dbbf10",
+  "candidateSHA256": "3a5ef2d4f276e26075cc3f194929392286bbc3f3b0d4b193b1d5ef915560c01f",
+  "normalizedSHA256": "406b8c96f73aa19c5861ece804f565833d1cc646821a40d3a007fa9555c5dcb7",
+  "normalizedLoadedEqualsCandidate": true,
+  "restored": {
+    "state": {
+      "hash": "#/spaces?space=research-desk",
+      "w": 1690,
+      "h": 858,
+      "scroll": [
+        0,
+        0
+      ],
+      "theme": "dark",
+      "dialogs": 0,
+      "guest": {
+        "hash": "",
+        "scroll": [
+          0,
+          0
+        ]
+      }
+    },
+    "equalsOriginal": true,
+    "timestamp": "2026-11-11T10:57:26.642975-06:00",
+    "cdpReleased": true
+  },
+  "sourceFiles": [
+    {
+      "path": "src/desktop/ui/components.jsx",
+      "sha256": "5400cfa9a41c9d2fe7c48fa3ef36e86fec1e93fe49cc18919afcf03510efae42",
+      "gitMatch": true
+    },
+    {
+      "path": "src/desktop/ui/space.jsx",
+      "sha256": "5698d2c04bbd1bd01ba877ba585d2819a830e51a0712b07e92e306d5213a60de",
+      "gitMatch": true
+    },
+    {
+      "path": "src/desktop/ui/index.jsx",
+      "sha256": "3bd4084e29becb9456b9563dd897fcf039e5f136b12a462945c1daa7a1e67699",
+      "gitMatch": true
+    },
+    {
+      "path": "src/desktop/ui/history.jsx",
+      "sha256": "1241ab9ee49729cc2f48fc28adedbf8c85746933f8612c4c7ef946d3174763b4",
+      "gitMatch": true
+    },
+    {
+      "path": "src/desktop/ui/permissions.jsx",
+      "sha256": "68d811e2ac238cad066407df0a02b3e64870f929494a6e3876e455145508ce27",
+      "gitMatch": true
+    },
+    {
+      "path": "src/desktop/ui/upkeep.jsx",
+      "sha256": "1e0dbea38cb3be551ea3aced44c74b415f08eb81b3d609b52fbfd96459b4cd38",
+      "gitMatch": true
+    },
+    {
+      "path": "src/living-spaces/runtime/kit/canvas-gallery.html",
+      "sha256": "7b2a708139ca787659db0ab87a218be1e5040d668063b446142af08ed0a6cde3",
+      "gitMatch": true
+    },
+    {
+      "path": "src/living-spaces/runtime/kit/showcase/sky-window/index.html",
+      "sha256": "f6da6d4d78ebe93cac5a8e6517766827c557bcb5e99f0d23339d096dbf95b969",
+      "gitMatch": true
+    },
+    {
+      "path": "src/living-spaces/runtime/kit/showcase/pair-play/index.html",
+      "sha256": "8c9737bf67e102e65c8cb42316164d5ecfb68d31385bd5a555e20da1053bf5ff",
+      "gitMatch": true
+    },
+    {
+      "path": "src/living-spaces/skills/build-space/references/research-desk/index.html",
+      "sha256": "fca51e18338cc311d5a4e33e0e38a5a54faf13b4998bfdd6e4eec57dcb9b8899",
+      "gitMatch": true
+    },
+    {
+      "path": "src/desktop/ui/styles.js",
+      "sha256": "9be5c1baf66daa26699ab62268163c3d72891efc7b54e7322a753cfcf722c044",
+      "gitMatch": true
+    },
+    {
+      "path": "src/living-spaces/runtime/kit/showcase/pair-play/styles.css",
+      "sha256": "2548c915d4aeb5d12e3cd42c003c9a8f83aab46941a4f074bd6e299eac8ba8df",
+      "gitMatch": true
+    },
+    {
+      "path": "src/living-spaces/runtime/kit/showcase/sky-window/styles.css",
+      "sha256": "59b7fc545e6842d98521bf2956535d4ca2c21dc82011cf45ec47bd4ce8c66eb0",
+      "gitMatch": true
+    },
+    {
+      "path": "src/living-spaces/runtime/kit/spaces-kit.css",
+      "sha256": "cde2653ae11005b6b4cf98856bf2cba72cde83d1f5c1f2e2e7a36b26a1b90261",
+      "gitMatch": true
+    },
+    {
+      "path": "src/living-spaces/runtime/vendor/fonts/dm-sans.css",
+      "sha256": "7a48c964a4fd5202e976251ca59208a891deeb8fc64229e44066cde246b1ad97",
+      "gitMatch": true
+    },
+    {
+      "path": "src/living-spaces/runtime/vendor/fonts/inter.css",
+      "sha256": "e282cfb4c9ddea77655d9b8f373298285c5299cbd18b64fc719d8ac93b13e298",
+      "gitMatch": true
+    },
+    {
+      "path": "src/living-spaces/skills/build-space/references/research-desk/styles.css",
+      "sha256": "23e6f6f9aaac24adb3dc67d2d664113c84a5261d36b43940a7537bb731d72eeb",
+      "gitMatch": true
+    },
+    {
+      "path": "src/living-spaces/skills/build-space/references/weather-window/styles.css",
+      "sha256": "6effca8492e219b35703eee6bb3fa9dd4101d105a7055f04abeb2381a8d320ea",
+      "gitMatch": true
+    }
+  ],
+  "sourceFilesVerified": 18,
+  "imagesIncluded": 28,
+  "issueCounts": {
+    "P0": 0,
+    "P1": 2,
+    "P2": 4,
+    "P3": 0
+  },
+  "headerExtraHeight": 42.0,
+  "guestExcess": {
+    "research": 33,
+    "sky": 25
+  },
+  "timestamp": "2026-11-11T11:10:26.093088-06:00",
+  "excluded": "Full-window B PNGs, raw external-Desktop detector text, intermediate malformed/cropped captures, bytecode. Source-only reports retain original raw-path references for diagnostic provenance."
+}

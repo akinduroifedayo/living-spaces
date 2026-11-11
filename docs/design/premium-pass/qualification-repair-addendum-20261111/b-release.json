@@ -1,0 +1,23 @@
+{
+  "state": {
+    "hash": "#/spaces?space=research-desk",
+    "w": 1690,
+    "h": 858,
+    "scroll": [
+      0,
+      0
+    ],
+    "theme": "dark",
+    "dialogs": 0,
+    "guest": {
+      "hash": "",
+      "scroll": [
+        0,
+        0
+      ]
+    }
+  },
+  "equalsOriginal": true,
+  "timestamp": "2026-11-11T10:57:26.642975-06:00",
+  "cdpReleased": true
+}

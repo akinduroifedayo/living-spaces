@@ -90,7 +90,7 @@ Maintaining-bot controls are intended to address the Space's own bot through a n
 
 Space data is local SQLite at `<HERMES_HOME>/plugin-data/living-spaces/spaces.db`. It includes projects, file blobs, revisions, records, grants, sessions, feed history, upkeep links, and runtime logs. Native cron retains agent execution history. The plugin sends no telemetry. Records can enter the configured model's context when a bot reads them, and internet requests contact their destination services.
 
-The plugin needs no new credentials. Do not put credentials in projects or records. Direct frame networking is deferred to the next release and must not expose Hermes credentials.
+The plugin needs no Hermes credentials and does not read credential stores. User-provided API keys are Space data. A key held only in generated code memory is not automatically saved. If a Space saves a key in a record or project file, it lives in this SQLite store, with no additional encryption or vault protection. It may remain in revisions or backups and enter model context when a bot reads it. The mediated path attaches only credentials supplied by the Space, never Hermes's own credentials. Direct frame networking is deferred.
 
 Feed scheduling writes `<HERMES_HOME>/scripts/living-spaces-refresh-<space-id>.py` and creates a native cron job. Agent scheduling creates the native job without a feed script. Hermes executes the script or agent job under its normal runtime policy. Removing upkeep or deleting the Space removes associated future jobs and the feed script.
 

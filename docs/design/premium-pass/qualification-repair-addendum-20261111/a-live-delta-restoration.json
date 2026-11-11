@@ -1,0 +1,178 @@
+{
+  "route": "#/spaces?space=research-desk",
+  "w": 1690,
+  "h": 858,
+  "scroll": [
+    0,
+    0
+  ],
+  "theme": null,
+  "root": {
+    "x": 260,
+    "y": 34,
+    "width": 1430,
+    "height": 804,
+    "top": 34,
+    "right": 1690,
+    "bottom": 838,
+    "left": 260
+  },
+  "header": {
+    "x": 260,
+    "y": 34,
+    "width": 1430,
+    "height": 67.5,
+    "top": 34,
+    "right": 1690,
+    "bottom": 101.5,
+    "left": 260
+  },
+  "identity": {
+    "x": 373.375,
+    "y": 46,
+    "width": 675.84375,
+    "height": 42.5,
+    "top": 46,
+    "right": 1049.21875,
+    "bottom": 88.5,
+    "left": 373.375
+  },
+  "mode": "wide",
+  "headerText": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 2 hr. ago \u00b7 Source data from 22 hr. ago\nUpkeep: paused\nHistory\nInternet on\nPermissions\nRefresh now",
+  "frames": [
+    {
+      "title": "Space: Research Desk",
+      "rect": {
+        "x": 273,
+        "y": 226.5,
+        "width": 1404,
+        "height": 598.5,
+        "top": 226.5,
+        "right": 1677,
+        "bottom": 825,
+        "left": 273
+      }
+    }
+  ],
+  "dialogs": [],
+  "buttons": [
+    {
+      "text": "Spaces",
+      "label": null
+    },
+    {
+      "text": "Upkeep: paused",
+      "label": null
+    },
+    {
+      "text": "History",
+      "label": null
+    },
+    {
+      "text": "Internet on",
+      "label": null
+    },
+    {
+      "text": "Permissions",
+      "label": null
+    },
+    {
+      "text": "Refresh now",
+      "label": null
+    },
+    {
+      "text": "",
+      "label": "More Space actions"
+    },
+    {
+      "text": "Check bot status",
+      "label": null
+    }
+  ],
+  "guest": {
+    "hash": "",
+    "w": 1404,
+    "h": 599,
+    "scroll": [
+      0,
+      0
+    ],
+    "scrollW": 1389,
+    "bodyW": 1389,
+    "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence\nPUBLIC RESEARCH \u00b7 cs.AI\nRefresh\nOverview\nLibrary\nReading queue\nPriority review\n\n01 / THE OVERVIEW\n\nA little clarity.\nAhead of the curve.\n\nFollow the research.\nKeep what matters.\nMake room to think.\n\nFrom the research frontier\narXiv \u00b7 cs.AI\n01\n\nNov 10, 2026, 12:59 PM\n\nMedical Image Segmentation: Foundation Model Adaptation versus Task-Specific Training\n\nFoundation models pretrained on large natural-image collections are increasingly adapted for medical image segmentation, in the expectation that they will replace models trained for each task. Most comparisons, however, use data from the training distribution and a single task-specific baseline whose configuration is rarely justified, and therefore provide limited evidence of performance at new clinical sites. It also remains unclear how much of a foundation model must be adapted, and what determines this. We adapted a foundation model, DINOv2, with strategies ranging from tuning only its bias terms to full fine-tuning, and compared it with U-Nets and ResU-Nets trained from scratch. Experiments covered colonoscopy, breast ultrasound and dermoscopy, with testing on held-out data from the training source and on independent datasets from other institutions. The adapted foundation model generalised better on every external dataset. Within the training distribution, the task-specific models remained competitive when training data were abundant, and delineated boundaries more precisely, while the foundation model more often missed small lesions. Only a small fraction of the foundation model required adaptation, and the capacity needed was determined by the imaging domain rather than by the adaptation method. A widely used polyp test set was also found to duplicate images from another benchmark. Foundation-model adaptation is therefore warranted where models must work across sites, with capacity selected on the target domain.\n\nQueued\n02\n\nNov 10, 2026, 12:59 PM\n\nToward Foundation Detection Models via Example-Based Grounding in EM-DETR\n\nDeepLearning (DL)-based Computer-Aided Diagnostic (CAD) systems have shown great promise in supporting clinicians, but their performance heavily depends on the availability of large, well-annotated datasets. In medical lesion detection, the scarcity of comprehensive, stan dardized annotations and the heterogeneity of existing datasets limit the development of robust foundation models. In this work, we introduce a novel approach to building a multi-domain foundation model for le sion detection by integrating diverse medical image datasets annotated for both anatomical structures and abnormalities. We first propose a student-teacher training strategy to effectively combine datasets with heterogeneous label spaces, mitigating catastrophic forgetting, and im proving feature learning. In addition, building on our previously pro posed example-based EM-DETR framework, we adapt it to jointly learn from multiple domain-specific datasets, enabling fine-grained, example driven detection across modalities. Our model achieves state-of-the-art (SOTA) results, with image-level AUC scores exceeding previous SOTA by 1% point on four key findings in CXRs. We achieve a leading mAP50 in CXRs and mammography, surpassing EM-DETR trained on a single dataset by 2-3% points. This approach paves the way for scalable foundation models in medical imaging that leverage heterogeneous data while maintaining robust and generalizable performance.\n\nQueued\n03\n\nNov 10, 2026, 12:58 PM\n\nContrastive Discovery: Open-Ended Scientific Discovery over Competing Explanations\n\nLLM agents are increasingly used for open-ended, data-driven scientific discovery, yet most of them evaluate hypotheses pointwise, testing an empirical claim $h$ only against its complement $\\neg h$. When evidence rejects $h$, the agent learns that one explanation is unlikely but not which alternative the evidence supports. To recover that alternative, we introduce Contrastive Discovery, which replaces the single hypothesis with a contrast set, a scientific question paired with mutually exclusive and collectively exhaustive competing explanations. Each experiment is scored by how its evidence redistributes belief across the set, and the question is resolved when belief concentrates on one explanation. Because contrast sets change only the unit an agent proposes and scores, an existing agent can use them to re-evaluate evidence it has already collected or to guide its search. Across six domains, $89\\%$ of the pointwise candidates with the largest belief shifts are rejections. On the same evidence, contrast sets resolve $73\\%$ of these candidates to a specific alternative. When contrast sets guide search, the agent resolves $67\\%$ more questions than pointwise surprisal under the same experiment budget. In a blinded study, $38$ human experts chose the same explanation on $78\\%$ of resolved questions and on $82\\%$ of questions where the pointwise agent rejected its hypothesis and stopped. Together, these results support explicit competing explanations as a way for discovery agents to resolve more scientific questions from the same evidence and validation budget.\n\nQueued\n04\n\nNov 10, 2026, 12:50 PM\n\nComparative Analysis of Agent Evaluation Frameworks: Stability, Detection, and Discovery in Enterprise Analytics Agents\n\nDeploying LLM-based analytics agents in enterprise settings requires evaluation frameworks that can reliably detect failures across complex, multi-tool workflows. We present a three-phase comparative study of three evaluation frameworks, each representing a distinct evaluation paradigm (trace-based LLM judging, text-only LLM judging with red-teaming, and deterministic heuristics), applied to two analytics agents in a controlled research setting using frozen execution traces. Phase 1 quantifies evaluation harness stability through repeated measurements, finding that 97% of configurations meet the stability threshold and that stability patterns are agent-independent. Phase 2 measures known risk detection on 72 ground-truth test cases, where the trace-based framework achieves the best precision-recall balance (F1=0.90) while text-only evaluation matches on recall but generates 5x more false alarms. Phase 3 evaluates unknown risk discovery, uncovering 24 novel failures with zero overlap between functional testing and security red-teaming. Our results demonstrate that (1) the information available to the evaluation harness determines evaluation quality, (2) functional and security evaluation are complementary, and (3) LLM-based evaluation harnesses surface subtle errors that human reviewers miss. We recommend a two-framework strategy: trace-based evaluation for functional assessment and adversarial red-teaming for security validation.\n\nQueued\nExplore the library\n\u2197\n\nTHE SHORTLIST\n\n1\npaper deserves a closer look.\n\nHigh priority. Not yet completed.\n\nOpen priority review\n\u2197\nYour reading ledger\n47 total\nIn the queue\n42\nReading now\n1\nCompleted\n4\n\nEvery paper stays in your library, including completed work.\n\nSOURCE NOTE\n\nFresh research, lasting notes.\n\nFeed updates change public paper details\u2014not your saved notes, status or priority.\n\nLast attempt\nNov 11, 2026, 8:26 AM \u00b7 succeeded\nLast successful refresh\nNov 11, 2026, 8:26 AM\nSource as of\nNov 10, 2026, 12:59 PM\n\nFreshness is based on recent run history; these timestamps describe different events.\n\nRESEARCH DESK / arXiv cs.AI\nPublic sources. Your own perspective.",
+    "headings": [
+      {
+        "text": "A little clarity.Ahead of the curve.",
+        "rect": {
+          "x": 56.15625,
+          "y": 254.78125,
+          "width": 445.421875,
+          "height": 125.46875,
+          "top": 254.78125,
+          "right": 501.578125,
+          "bottom": 380.25,
+          "left": 56.15625
+        }
+      },
+      {
+        "text": "From the research frontier",
+        "rect": {
+          "x": 56.15625,
+          "y": 417.25,
+          "width": 224.984375,
+          "height": 24,
+          "top": 417.25,
+          "right": 281.140625,
+          "bottom": 441.25,
+          "left": 56.15625
+        }
+      },
+      {
+        "text": "paper deserves a closer look.",
+        "rect": {
+          "x": 1058.84375,
+          "y": 578.640625,
+          "width": 226.84375,
+          "height": 66,
+          "top": 578.640625,
+          "right": 1285.6875,
+          "bottom": 644.640625,
+          "left": 1058.84375
+        }
+      },
+      {
+        "text": "Your reading ledger",
+        "rect": {
+          "x": 1032.84375,
+          "y": 802.296875,
+          "width": 167.65625,
+          "height": 24,
+          "top": 802.296875,
+          "right": 1200.5,
+          "bottom": 826.296875,
+          "left": 1032.84375
+        }
+      },
+      {
+        "text": "Fresh research, lasting notes.",
+        "rect": {
+          "x": 82.15625,
+          "y": 1414.421875,
+          "width": 592.34375,
+          "height": 30,
+          "top": 1414.421875,
+          "right": 674.5,
+          "bottom": 1444.421875,
+          "left": 82.15625
+        }
+      }
+    ],
+    "outliers": []
+  },
+  "themeEvidence": {
+    "htmlClass": "dark",
+    "colorScheme": "dark"
+  },
+  "checkedAt": "2026-11-11T10:50:01.571789-06:00",
+  "verified": true
+}

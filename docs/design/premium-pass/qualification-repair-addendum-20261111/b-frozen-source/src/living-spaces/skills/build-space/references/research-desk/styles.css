@@ -1,0 +1,32 @@
+/* App geometry only. Surfaces, controls, type, colors and states come from kit. */
+.desk-header { align-items: start; }
+.desk-next { margin-top: var(--space-4); padding-block: var(--space-5); border-block: 1px solid var(--space-line); }
+.desk-next-title { font: 1.714rem/1.35 var(--space-heading-font); max-width: 48ch; text-wrap: balance; }
+.panel summary { cursor: pointer; min-height: 44px; align-content: center; }
+.panel summary h3 { display: inline; font-size: 1rem; }
+.panel details p { margin-top: var(--space-2); color: var(--space-muted); }
+.desk-header .space-refresh { justify-content: end; max-width: 40%; }
+.counts { margin-block: var(--space-4) var(--space-5); }
+.count strong { grid-column: 1; grid-row: 2; }
+.count > span:not(.space-tile) { grid-column: 1; grid-row: 1; }
+.panel > p { margin-top: var(--space-3); color: var(--space-muted); }
+.panel .space-facts { margin-block: var(--space-4); }
+.add-item { margin-block: var(--space-4); }
+.add-item .space-save { flex-basis: 100%; }
+.paper-list { margin-top: var(--space-3); }
+.paper-list li { display: grid; gap: var(--space-1); }
+.paper-list button { white-space: normal; }
+.summary { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; margin-block: var(--space-3); }
+.provenance { color: var(--space-muted); font-size: var(--space-text-xs); }
+.editor fieldset { border: 0; padding: 0; margin: var(--space-4) 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.editor fieldset label { margin: 0; }
+.editor fieldset label:has(textarea) { grid-column: 1 / -1; }
+.editor fieldset button { justify-self: start; grid-column: 1 / -1; }
+.editor > .space-save { margin-bottom: var(--space-2); }
+section[aria-labelledby="queue-heading"] > label { max-width: 240px; }
+section[aria-labelledby="queue-heading"] > .editor { margin-top: var(--space-5); }
+@media (max-width: 680px) {
+  .desk-header .space-refresh { max-width: 100%; justify-content: start; }
+  .counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .editor fieldset { grid-template-columns: 1fr; }
+}

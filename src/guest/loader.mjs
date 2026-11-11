@@ -107,6 +107,41 @@ export function projectResolver() {
 
 export function spaceLoader(resolver) {
   const parent = window.parent
+  const NativePromise = Promise
+  const promiseThen = Promise.prototype.then
+  const apply = Reflect.apply
+  const descriptor = Object.getOwnPropertyDescriptor
+  const hasOwn = Object.prototype.hasOwnProperty
+  const own = (object, key) => {
+    if (object == null) return undefined
+    if (!apply(hasOwn, object, [key])) return undefined
+    const entry = descriptor(object, key)
+    return entry && entry.value
+  }
+  const addEvent = window.addEventListener.bind(window)
+  const removeEvent = window.removeEventListener.bind(window)
+  const cancelInterval = clearInterval
+  const mapSet = Map.prototype.set
+  const mapGet = Map.prototype.get
+  const mapDelete = Map.prototype.delete
+  const mapClear = Map.prototype.clear
+  const mapForEach = Map.prototype.forEach
+  const nativePort = typeof MessagePort === 'function' ? MessagePort.prototype : null
+  const postPort = nativePort?.postMessage
+  const closePort = nativePort?.close
+  const setPortHandler = nativePort && descriptor(nativePort, 'onmessage').set
+  const messageData = nativePort && descriptor(MessageEvent.prototype, 'data').get
+  const messageSource = nativePort && descriptor(MessageEvent.prototype, 'source').get
+  const messagePorts = nativePort && descriptor(MessageEvent.prototype, 'ports').get
+  const stopEvent = nativePort && Event.prototype.stopImmediatePropagation
+  const deferBoot = nativePort && window.setTimeout.bind(window)
+  const readTrust = typeof Event === 'function' && descriptor(new Event('click'), 'isTrusted')?.get
+  const readPhase = typeof Event === 'function' && descriptor(Event.prototype, 'eventPhase')?.get
+  const readType = typeof Event === 'function' && descriptor(Event.prototype, 'type')?.get
+  let currentClick = null
+  if (readTrust && readPhase && readType) addEvent('click', event => {
+    if (apply(readTrust, event, []) && apply(readType, event, []) === 'click') currentClick = event
+  }, true)
   // srcdoc inherits the host's base URL, so fragment links need an explicit same-document target.
   document.addEventListener('click', event => {
     const anchor = event.target?.closest?.('a[href]')
@@ -117,6 +152,8 @@ export function spaceLoader(resolver) {
     window.location.hash = href.slice(1)
   })
   let port = null
+  let post = null
+  let close = null
   let closed = false
   let seq = 0
   const pending = new Map()
@@ -130,11 +167,20 @@ export function spaceLoader(resolver) {
       Object.assign(this, error)
     }
   }
-  const send = (op, args) => new Promise((resolve, reject) => {
+  const send = (op, args) => new NativePromise((resolve, reject) => {
     if (closed) return reject(new SpaceError({ code: 'session_invalid', message: 'Space session is closed' }))
+    if (op === 'bot.request') {
+      if (!currentClick || !apply(readTrust, currentClick, []) || !apply(readPhase, currentClick, [])) {
+        return reject(new SpaceError({ code: 'blocked', message: 'Bot requests need a current click inside this Space. No request was sent.' }))
+      }
+      currentClick = null
+    }
     const id = ++seq
-    pending.set(id, { resolve, reject })
-    port.postMessage({ v: 1, id, op, args })
+    apply(mapSet, pending, [id, { resolve, reject }])
+    try { post({ v: 1, id, op, args }) } catch (error) {
+      apply(mapDelete, pending, [id])
+      reject(error)
+    }
   })
   const responseBlob = reply => {
     if (closed) throw new SpaceError({ code: 'session_invalid', message: 'Space session is closed' })
@@ -334,7 +380,7 @@ export function spaceLoader(resolver) {
       const script = document.createElement('script')
       for (const attribute of old.attributes) script.setAttribute(attribute.name, attribute.value)
       script.textContent = old.type === 'module' ? old.textContent : resolver.rewriteImports(entryPath, old.textContent)
-      const done = script.src || script.type === 'module' ? new Promise((resolve, reject) => {
+      const done = script.src || script.type === 'module' ? new NativePromise((resolve, reject) => {
         script.onload = resolve
         script.onerror = () => reject(new Error(`Script failed: ${old.getAttribute('src') || 'entry module'}`))
       }) : null
@@ -342,33 +388,44 @@ export function spaceLoader(resolver) {
       if (done) await done
     }
   }
-  window.addEventListener('message', function onBoot(e) {
-    if (e.source !== parent || e.data?.type !== 'space-boot' || e.data.v !== 1 || !e.ports[0]) return
-    window.removeEventListener('message', onBoot)
-    port = e.ports[0]
-    port.onmessage = event => {
-      const message = event.data
-      if (message?.v !== 1 || closed) return
-      if (message.type === 'event') {
-        if (message.event === 'session.closed') {
+  addEvent('message', function onBoot(e) {
+    const source = messageSource ? apply(messageSource, e, []) : e.source
+    const data = messageData ? apply(messageData, e, []) : e.data
+    const ports = messagePorts ? apply(messagePorts, e, []) : e.ports
+    if (source !== parent || data?.type !== 'space-boot' || data.v !== 1 || !ports[0]) return
+    if (stopEvent) apply(stopEvent, e, [])
+    removeEvent('message', onBoot, true)
+    port = ports[0]
+    post = postPort ? message => apply(postPort, port, [message]) : port.postMessage.bind(port)
+    close = closePort ? () => apply(closePort, port, []) : port.close.bind(port)
+    const onMessage = event => {
+      const message = messageData ? apply(messageData, event, []) : event.data
+      if (own(message, 'v') !== 1 || closed) return
+      if (own(message, 'type') === 'event') {
+        if (own(message, 'event') === 'session.closed') {
           closed = true
-          clearInterval(logTimer)
-          for (const { reject } of pending.values()) reject(new SpaceError({ code: 'session_invalid', message: message.payload.reason }))
-          pending.clear()
-          port.close()
+          currentClick = null
+          cancelInterval(logTimer)
+          apply(mapForEach, pending, [({ reject }) => reject(new SpaceError({ code: 'session_invalid', message: own(own(message, 'payload'), 'reason') }))])
+          apply(mapClear, pending, [])
+          close()
           return
         }
-        const name = { 'data.changed': 'change', 'run.updated': 'run', 'bot.status': 'bot' }[message.event]
+        const name = { 'data.changed': 'change', 'run.updated': 'run', 'bot.status': 'bot' }[own(message, 'event')]
         for (const cb of listeners[name] || []) {
-          try { cb(message.payload) } catch (error) { pushLog('error', [error]) }
+          try { cb(own(message, 'payload')) } catch (error) { pushLog('error', [error]) }
         }
         return
       }
-      const request = pending.get(message.id)
+      const request = apply(mapGet, pending, [own(message, 'id')])
       if (!request) return
-      pending.delete(message.id)
-      message.ok ? request.resolve(message.result) : request.reject(new SpaceError(message.error))
+      apply(mapDelete, pending, [own(message, 'id')])
+      own(message, 'ok') ? request.resolve(own(message, 'result')) : request.reject(new SpaceError(own(message, 'error')))
     }
-    boot(e.data.bundle, e.data.grants).catch(showError)
-  })
+    if (setPortHandler) apply(setPortHandler, port, [onMessage])
+    else port.onmessage = onMessage
+    const start = () => { if (!closed) apply(promiseThen, boot(data.bundle, data.grants), [undefined, showError]) }
+    if (deferBoot) deferBoot(start, 0)
+    else start()
+  }, true)
 }

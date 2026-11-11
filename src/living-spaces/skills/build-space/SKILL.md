@@ -164,7 +164,12 @@ three-line brief for yourself (a comment in `styles.css` is enough):
 Then commit to it. Every colour, typeface, radius, icon and empty state should
 belong to that concept. When torn between safe and committed, commit. Two
 Spaces from the same bot should not look like siblings unless the user asked
-for that.
+for that. Do not turn the examples below into a house voice: cream paper,
+serif display type and repeated “A little…” headlines are one possible direction,
+not a premium default. Choose typography, density and colour from this Space's
+purpose; a saturated procedural canvas or a crisp sans-serif working board can
+be just as considered. Compare against other Spaces you made, and vary the
+composition as well as the palette when the briefs differ.
 
 ### 2. Build the world with real materials
 
@@ -287,8 +292,10 @@ should not hide a result or delay a control. Offer pause for ongoing ambient art
 
 ### 7. Fit any width
 
-The canvas can be narrower than the app window because the host's navigation
-and frame take space. Use fluid type (`clamp()`), wrapping grids and container
+The canvas can be as narrow as about 220 CSS pixels. The host's navigation,
+frame, and scrollbar reduce the space available inside the app window. Lay out
+to the width the canvas is actually given; do not assume a 320px minimum.
+Use fluid type (`clamp()`), wrapping grids and container
 queries; measure the actual canvas viewport, not just the outer window. At
 narrow widths, lead with the current reading, result list or playable board;
 compress decorative mastheads and slogans before shrinking essential text.

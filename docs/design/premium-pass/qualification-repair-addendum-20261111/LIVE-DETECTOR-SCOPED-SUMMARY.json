@@ -1,0 +1,69 @@
+{
+  "command": "impeccable detect --cdp 9341 --target dist/index.html --json",
+  "exitCode": 2,
+  "rawFileSHA256": "a891c3e9bf20a51480596d68f7a396bea55fe71916cbab807c73a6a3a53edf10",
+  "rawFindings": 15,
+  "scope": "All15 selectors independently resolved outside .ls-root; no generated-frame scan claim. Raw text excluded from delivery because Desktop chrome is outside scope.",
+  "rules": [
+    {
+      "severity": "warning",
+      "selector": "div.group\\/tab.relative:nth-of-type(2) > div.pane-tab-content.flex > span.flex.h-full > span.block.min-w-0"
+    },
+    {
+      "severity": "advisory",
+      "selector": "li.group\\/menu-item.relative:nth-of-type(1) > button.peer\\/menu-button.items-center > span.min-w-0.truncate"
+    },
+    {
+      "severity": "warning",
+      "selector": "input.h-7.min-w-0"
+    },
+    {
+      "severity": "warning",
+      "selector": "div.relative.flex:nth-of-type(1) > div.group\\/section.flex > button.group\\/section-label.flex > span.flex.min-w-0 > span.min-w-0.truncate"
+    },
+    {
+      "severity": "warning",
+      "selector": "div.min-h-\\[1\\.625rem\\].pr-2:nth-of-type(1) > div.flex.shrink-0 > div.relative.z-2 > span > span.pointer-events-none.whitespace-nowrap > span.inline-block.text-right > time.pointer-events-auto"
+    },
+    {
+      "severity": "warning",
+      "selector": "div.min-h-\\[1\\.625rem\\].pr-2:nth-of-type(2) > div.flex.shrink-0 > div.relative.z-2 > span > span.pointer-events-none.whitespace-nowrap > span.inline-block.text-right > time.pointer-events-auto"
+    },
+    {
+      "severity": "warning",
+      "selector": "div.min-h-\\[1\\.625rem\\].pr-2:nth-of-type(3) > div.flex.shrink-0 > div.relative.z-2 > span > span.pointer-events-none.whitespace-nowrap > span.inline-block.text-right > time.pointer-events-auto"
+    },
+    {
+      "severity": "warning",
+      "selector": "div.min-h-\\[1\\.625rem\\].pr-2:nth-of-type(4) > div.flex.shrink-0 > div.relative.z-2 > span > span.pointer-events-none.whitespace-nowrap > span.inline-block.text-right > time.pointer-events-auto"
+    },
+    {
+      "severity": "warning",
+      "selector": "div.min-h-\\[1\\.625rem\\].pr-2:nth-of-type(5) > div.flex.shrink-0 > div.relative.z-2 > span > span.pointer-events-none.whitespace-nowrap > span.inline-block.text-right > time.pointer-events-auto"
+    },
+    {
+      "severity": "warning",
+      "selector": "div.min-h-\\[1\\.625rem\\].pr-2:nth-of-type(6) > div.flex.shrink-0 > div.relative.z-2 > span > span.pointer-events-none.whitespace-nowrap > span.inline-block.text-right > time.pointer-events-auto"
+    },
+    {
+      "severity": "warning",
+      "selector": "span.shrink-0.text-\\[0\\.64rem\\]"
+    },
+    {
+      "severity": "warning",
+      "selector": "div.min-h-\\[1\\.625rem\\].pr-2:nth-of-type(8) > div.flex.shrink-0 > div.relative.z-2 > span > span.pointer-events-none.whitespace-nowrap > span.inline-block.text-right > time.pointer-events-auto"
+    },
+    {
+      "severity": "warning",
+      "selector": "div.min-h-\\[1\\.625rem\\].pr-2:nth-of-type(9) > div.flex.shrink-0 > div.relative.z-2 > span > span.pointer-events-none.whitespace-nowrap > span.inline-block.text-right > time.pointer-events-auto"
+    },
+    {
+      "severity": "warning",
+      "selector": "span.truncate.text-muted-foreground\\/80"
+    },
+    {
+      "severity": "advisory",
+      "selector": "body"
+    }
+  ]
+}

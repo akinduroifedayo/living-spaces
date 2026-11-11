@@ -1,0 +1,7 @@
+{
+  "destination": "src/living-spaces/skills/build-space/references/research-desk/kit/spaces-kit.css",
+  "gitSource": "src/living-spaces/runtime/kit/spaces-kit.css",
+  "git": "d7f20699fe441b606a0e0684cfde34a37dada1d9",
+  "sha256": "cde2653ae11005b6b4cf98856bf2cba72cde83d1f5c1f2e2e7a36b26a1b90261",
+  "reason": "Documented build-space runtime copies kit under kit/; exact git asset, not fabricated markup."
+}

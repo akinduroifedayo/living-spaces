@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "name": "Chromatic Current",
+  "description": "A living mathematical colour weave. Pause, vary and keep a composition; no Internet required.",
+  "entry": "index.html",
+  "imports": {},
+  "accent": "blue",
+  "icon": "sparkles",
+  "data": {"version": 1, "collections": {"compositions": {"description": "Current kept artwork: validated seed, colourway and frozen phase."}}, "migrations": []}
+}

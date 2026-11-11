@@ -15,11 +15,21 @@ The candidate includes these capabilities and qualifications:
 - Multi-file apps, custom CSS, binary assets, and optional bundled libraries. The design kit is optional.
 - File-by-reference imports are implemented. The bot can copy local files or public HTTPS resources into durable project assets without echoing base64. Final real-chat import, restart, and restore qualification remains pending.
 - Upkeep uses ordinary native cron as its sole schedule and execution truth. The plugin keeps a link, with no approval or synchronization layer. The Upkeep panel reads native state and offers Pause, Resume, Run now, and Remove. Agent work uses model calls and subscription quota; feed refresh does not.
-- Maintaining-bot controls are implemented in source. Admission, activation, and retry safety remain release gates. The required behavior is one in-Space click, with no unattended model spend from mounting, timers, or retries. That safety is not yet proved.
+- Maintaining-bot controls are implemented in source. One genuine click inside a Space can start at most one ordinary Hermes chat turn. There is no second Send control. The click is attributed to **a click inside this Space**, not a specific callback. A Space's own code could start that one turn from another click inside the same Space. Hermes's normal approvals still govern what the bot does. Source tests and standalone browser checks do not replace final real-Desktop qualification. See [the intent boundary and next-release proposal](docs/evidence/BOT-INTENT-BOUNDARY.md).
 - Release 1 uses mediated public HTTPS retrieval, including keyed APIs with the Space's own credentials. The `space.net.blob` image-by-URL helper is integrated and under final qualification. Direct frame internet is deferred by owner decision to the next release. Live embeds, streams, WebSockets, and libraries loaded from the web at runtime are not supported. See the [mechanism findings and remaining checks](docs/evidence/DIRECT-INTERNET-NEXT-RELEASE.md).
 - Known narrow-layout bugs affect the composed Desktop and generated canvas. Repairs require real captures of the repaired candidate before the bugs can be marked closed.
 
 Internet Off blocks supported canvas fetches, but is not a complete outbound-data guarantee because WebRTC remains an exception. Native bot tools follow Hermes's own authority. Private cron APIs and raw Desktop bridge use also remain compatibility and catalog-review concerns.
+
+## Network, credentials, and background work
+
+Spaces can request any public HTTPS host through mediated fetch, subject to destination checks, redirects, and response limits. This includes keyed APIs and image URLs. Requests can send data readable by that Space to the selected third party. Feed upkeep contacts its configured public sources. The plugin sends no telemetry.
+
+A user-provided API key is Space data, not a Hermes credential. If generated code keeps it only in memory, Living Spaces does not automatically save it. If the Space saves it in records or project files, it is stored in the profile's `plugin-data/living-spaces/spaces.db`, together with revisions and file blobs. The plugin adds no encryption or secret-vault protection. Saved values can remain in revisions or backups, and a bot reading those records or files can include them in model context. Choose what you save accordingly.
+
+The mediated path forwards only credentials supplied by the Space in its own request, including `Authorization` and `Cookie`. It does not read Hermes credential stores or attach Hermes's credentials. Cross-origin redirects remove the Space's authorization and cookie headers. This is not a shared browser login or cookie jar.
+
+Native Hermes cron provides background upkeep while Hermes runs. Agent jobs use model calls and enabled tools under native Hermes policy; feed jobs do not use a model. The Upkeep panel exposes the linked job and its controls. Remove upkeep before uninstalling the plugin, because native jobs can outlive plugin removal. There is no separate plugin daemon.
 
 ## Install a reviewed revision
 
