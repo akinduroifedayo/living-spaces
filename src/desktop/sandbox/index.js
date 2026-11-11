@@ -14,15 +14,20 @@ export const OP_GRANT = Object.freeze({
 export const MAX_REQUEST_SIZE = 1024 * 1024
 
 export function validateRequest(message) {
-  if (!message || typeof message !== 'object' || Array.isArray(message)) return 'request must be an object'
-  if (message.v !== BRIDGE_VERSION) return 'unsupported bridge version'
-  if (!Number.isSafeInteger(message.id)) return 'id must be an integer'
-  if (typeof message.op !== 'string') return 'op must be a string'
-  if (!message.args || typeof message.args !== 'object' || Array.isArray(message.args)) return 'args must be an object'
+  return requestError(message)?.message ?? null
+}
+
+function requestError(message) {
+  if (!message || typeof message !== 'object' || Array.isArray(message)) return { code: 'invalid', message: 'request must be an object' }
+  if (message.v !== BRIDGE_VERSION) return { code: 'invalid', message: 'unsupported bridge version' }
+  if (!Number.isSafeInteger(message.id)) return { code: 'invalid', message: 'id must be an integer' }
+  if (typeof message.op !== 'string') return { code: 'invalid', message: 'op must be a string' }
+  if (!message.args || typeof message.args !== 'object' || Array.isArray(message.args)) return { code: 'invalid', message: 'args must be an object' }
   try {
-    if (JSON.stringify(message).length > MAX_REQUEST_SIZE) return 'request exceeds 1 MB'
+    const actual = new TextEncoder().encode(JSON.stringify(message)).byteLength
+    if (actual > MAX_REQUEST_SIZE) return { code: 'limit', message: 'request exceeds 1 MB', limit: MAX_REQUEST_SIZE, actual }
   } catch {
-    return 'request is not JSON serializable'
+    return { code: 'invalid', message: 'request is not JSON serializable' }
   }
   return null
 }
@@ -86,31 +91,28 @@ export function mountSpace(container, { bundle, grants = [], call, onEvent = () 
   port.onmessage = async e => {
     if (state !== 'booted') return
     const m = e.data
-    const reason = validateRequest(m)
-    if (reason) {
-      onEvent({ kind: 'denied', op: typeof m?.op === 'string' ? m.op : null, reason })
-      if (m?.v === BRIDGE_VERSION && Number.isSafeInteger(m.id)) {
-        port.postMessage({ v: 1, id: m.id, ok: false, error: { code: reason === 'request exceeds 1 MB' ? 'limit' : 'invalid', message: reason } })
-      }
-      return
-    }
     const reply = body => {
-      if (state === 'booted') port.postMessage({ v: 1, id: m.id, ...body })
+      if (state === 'booted' && Number.isSafeInteger(m?.id)) port.postMessage({ v: 1, id: m.id, ...body })
     }
+    const reject = error => {
+      const op = typeof m?.op === 'string' ? m.op : null
+      onEvent({ kind: 'denied', op, reason: error.message })
+      if (['data.put', 'data.delete', 'data.batch'].includes(op)) onEvent({ kind: 'write-rejected', op, error })
+      reply({ ok: false, error })
+    }
+    const invalid = requestError(m)
+    if (invalid) return reject(invalid)
     const denied = checkGrant(m.op, grants)
-    if (denied) {
-      onEvent({ kind: 'denied', op: m.op, reason: denied.message })
-      reply({ ok: false, error: denied })
-      return
-    }
+    if (denied) return reject(denied)
     let args = m.args
     if (m.op === 'log') {
-      if (!Array.isArray(args.entries) || args.entries.length > 50 || args.entries.some(entry =>
-        !entry || typeof entry.level !== 'string' || typeof entry.msg !== 'string' || entry.msg.length > 4000)) {
-        onEvent({ kind: 'denied', op: 'log', reason: 'invalid log entries' })
-        reply({ ok: false, error: { code: 'invalid', message: 'Invalid log entries' } })
-        return
+      if (!Array.isArray(args.entries) || Array.from(args.entries).some(entry =>
+        !entry || typeof entry.level !== 'string' || typeof entry.msg !== 'string')) {
+        return reject({ code: 'invalid', message: 'Invalid log entries' })
       }
+      if (args.entries.length > 50) return reject({ code: 'limit', message: 'Log batch exceeds 50 entries', limit: 50, actual: args.entries.length })
+      const oversized = args.entries.find(entry => entry.msg.length > 4000)
+      if (oversized) return reject({ code: 'limit', message: 'Log message exceeds 4000 characters', limit: 4000, actual: oversized.msg.length })
       if (args.entries.some(entry => entry.level === 'warn' && entry.msg.startsWith('Space log overflow:'))) overflow()
       const now = performance.now()
       if (now - lastLog < 500) {
@@ -124,10 +126,8 @@ export function mountSpace(container, { bundle, grants = [], call, onEvent = () 
     try {
       const result = await call(m.op, args)
       const revoked = checkGrant(m.op, grants)
-      if (revoked && result.ok) {
-        onEvent({ kind: 'denied', op: m.op, reason: revoked.message })
-        reply({ ok: false, error: revoked })
-      } else reply(result)
+      if (revoked && result.ok) reject(revoked)
+      else reply(result)
     } catch (error) {
       onEvent({ kind: 'error', message: String(error.message || error) })
       reply({ ok: false, error: { code: error.code || 'blocked', message: String(error.message || error) } })
@@ -151,6 +151,7 @@ export function mountSpace(container, { bundle, grants = [], call, onEvent = () 
   return {
     postEvent(event, payload) {
       if (state !== 'booted') return
+      if (event === 'data.changed' && checkGrant('data.query', grants)) return
       port.postMessage({ v: 1, type: 'event', event, payload })
       if (event === 'session.closed') stop()
     },
