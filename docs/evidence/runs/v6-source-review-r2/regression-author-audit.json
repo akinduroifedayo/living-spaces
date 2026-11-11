@@ -1,0 +1,31 @@
+{
+  "seat": "v6-regressions-author-r2",
+  "thread_id": "01a1cac3-892f-7c20-81df-d2bd25e76ac7",
+  "model": "gpt-6-astra",
+  "effort": "high",
+  "provider": "openai",
+  "requested_tier": "fast",
+  "returned_tier": "unknown",
+  "packet_bodies_seen": 41,
+  "baseline_files": 621,
+  "changed_files": [
+    "tests/js/ui/canvas-actions.test.mjs",
+    "tests/python/test_file_refs_suffix.py"
+  ],
+  "existing_prefixes_unchanged": true,
+  "tests_executed_by_writer": false,
+  "parent_test_method_hashes": {
+    "CredentialSuffixTests.test_explicit_dotted_credential_files_are_refused": "22969d4bfb7d2980a067a7113f76507783abafdfa95ddbbdca59108da5010ee8",
+    "CredentialSuffixTests.test_public_design_tokens_still_import": "103124c2e39a457f180ac8b459bf502574eb136c7eea55b0cf6bfbef72769aef",
+    "CredentialSuffixTests.test_known_ssh_path_remains_refused": "70c2a4dee239732f6752fdcacd352074df05f7cca1bef1f9200c12c991ea4533",
+    "ConventionalCredentialStoreTests.test_create_refuses_claude_credentials_atomically": "c70ed0cf6bfe0ed9377ca7ca0770e05cb442a794909f23ba346223ae470b6708",
+    "ConventionalCredentialStoreTests.test_create_refuses_claude_credentials_alias_atomically": "1c71310d0a09484c41827d1a930f07d16321e4137ebda909564aebfd1a921f8b",
+    "ConventionalCredentialStoreTests.test_write_refuses_claude_credentials_atomically": "1415b5c1eafd8ecea550e7bd46e21d87e3e394e77c475c8117e282debb3f8cfc",
+    "ConventionalCredentialStoreTests.test_write_refuses_claude_credentials_alias_atomically": "6be4101c5806f252b1e16d7769f8dd9699155eb8d90953e81e60fa268f8c15d3",
+    "ConventionalCredentialStoreTests.test_tokens_css_imports_through_create_and_write": "3ea7a30f605b1734a2b6169537aca41ce3c724062e9c4171d903abfe0fda7a3f"
+  },
+  "adoption_hashes": {
+    "tests/js/ui/canvas-actions.test.mjs": "487758dc6b198347bb83d92db6016d5accccb7373a93923c078ee936c413b46b",
+    "tests/python/test_file_refs_suffix.py": "6279a6d641b61250da2c391a3f1fbdd3dda89dfa5113e2f388bf031dc9906ed2"
+  }
+}

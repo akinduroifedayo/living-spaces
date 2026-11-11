@@ -1,0 +1,65 @@
+{
+  "execution_owner": "parent",
+  "python": {
+    "exit": 1,
+    "ordered_case_ids": [
+      "tests.python.test_file_refs_suffix.ConventionalCredentialStoreTests.test_create_refuses_claude_credentials_alias_atomically",
+      "tests.python.test_file_refs_suffix.ConventionalCredentialStoreTests.test_create_refuses_claude_credentials_atomically",
+      "tests.python.test_file_refs_suffix.ConventionalCredentialStoreTests.test_tokens_css_imports_through_create_and_write",
+      "tests.python.test_file_refs_suffix.ConventionalCredentialStoreTests.test_write_refuses_claude_credentials_alias_atomically",
+      "tests.python.test_file_refs_suffix.ConventionalCredentialStoreTests.test_write_refuses_claude_credentials_atomically",
+      "tests.python.test_file_refs_suffix.CredentialSuffixTests.test_explicit_dotted_credential_files_are_refused",
+      "tests.python.test_file_refs_suffix.CredentialSuffixTests.test_known_ssh_path_remains_refused",
+      "tests.python.test_file_refs_suffix.CredentialSuffixTests.test_public_design_tokens_still_import"
+    ],
+    "test_methods": 8,
+    "failing_methods": [
+      "tests.python.test_file_refs_suffix.ConventionalCredentialStoreTests.test_create_refuses_claude_credentials_alias_atomically",
+      "tests.python.test_file_refs_suffix.ConventionalCredentialStoreTests.test_create_refuses_claude_credentials_atomically",
+      "tests.python.test_file_refs_suffix.ConventionalCredentialStoreTests.test_write_refuses_claude_credentials_alias_atomically",
+      "tests.python.test_file_refs_suffix.ConventionalCredentialStoreTests.test_write_refuses_claude_credentials_atomically"
+    ],
+    "subtest_assertion_failures": 8,
+    "errors": 0,
+    "skips": 0
+  },
+  "node": {
+    "exit": 1,
+    "ordered_case_ids": [
+      "a switched active chat/profile cannot replace the pinned owner and queued is not complete",
+      "native receipt alone determines busy and correlated completion with answer",
+      "unknown admission has no automatic resend; explicit retry preserves exact input and payload",
+      "reload observes a durable intent without submitting again",
+      "duplicate requests coalesce and changed same-key payload fails visibly",
+      "mount and timer actions without user activation never call native transport",
+      "a missing or ambiguous registered route fails offline without fallback",
+      "canonical profile mismatch prevents any native submission",
+      "route removed after resume fails the fresh registered-route check",
+      "an unrelated receipt cannot complete or release the activation",
+      "closing during admission suppresses late observation and delivery",
+      "native denial remains visible and never reports completion",
+      "Space action REST and cleanup stay on the captured backend after ambient switch",
+      "coalescing a different activation explicitly says no new request was sent",
+      "legacy runtime identity is refused without creating a replacement session",
+      "one activation burst cannot dispatch new inputs after coalesced work settles",
+      "a fresh activation after completed work admits a different input and payload",
+      "definitive permission_denied settles refusal across reload and permits a fresh intent",
+      "definitive queue_full settles refusal across reload and permits a fresh intent",
+      "ambiguous transport loss remains unresolved across reload until exact-ID explicit retry"
+    ],
+    "failing_methods": [
+      "one activation burst cannot dispatch new inputs after coalesced work settles",
+      "definitive permission_denied settles refusal across reload and permits a fresh intent",
+      "definitive queue_full settles refusal across reload and permits a fresh intent"
+    ],
+    "pass": 17,
+    "fail": 3,
+    "skips": 0,
+    "cancelled": 0
+  },
+  "frozen_test_files": {
+    "tests/python/test_file_refs_suffix.py": "6279a6d641b61250da2c391a3f1fbdd3dda89dfa5113e2f388bf031dc9906ed2",
+    "tests/js/ui/canvas-actions.test.mjs": "487758dc6b198347bb83d92db6016d5accccb7373a93923c078ee936c413b46b"
+  },
+  "scope": "synthetic registered-adapter/source-coordinator fixtures, not actual native model admission or spending"
+}

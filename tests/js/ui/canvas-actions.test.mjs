@@ -216,3 +216,245 @@ test('legacy runtime identity is refused without creating a replacement session'
   assert.equal((await f.adapter.request(request)).status, 'failed')
   assert.ok(!f.calls.some(([method]) => ['prompt.submit', 'session.create'].includes(method)))
 })
+
+
+// This models transport and durable claims; it does not run native admissions or models.
+function actionLifecycleFixture({ submitErrors = [], beforeSubmit = async () => {}, completeOnReceipt = false } = {}) {
+  const intents = new Map(), keys = new Map(), admissions = new Map()
+  const calls = [], posts = [], statuses = [], protocolErrors = [], adapters = []
+  const errors = [...submitErrors]
+  let activation = true
+  const copy = value => structuredClone(value)
+  const unexpected = message => { protocolErrors.push(message); throw new Error(message) }
+  const intent = id => id ? intents.get(id) : [...intents.values()].at(-1) || null
+  const complete = inputId => {
+    const entry = admissions.get(inputId)
+    assert.ok(entry, 'Only an admitted native input can complete')
+    Object.assign(entry.receipt, { status: 'terminal', outcome: 'completed', execution_generation: 1,
+      result: { final_response: 'Synthetic native answer' } })
+  }
+  const host = {
+    profileRoutes: async () => [copy(ownerRoute), copy(otherRoute)],
+    retainProfile: async () => () => {},
+    requestProfile: async (route, method, params) => {
+      calls.push({ route: copy(route), method, params: copy(params) })
+      if (method === 'runtime.describe') return { profile_id: binding.profile_id, capabilities: ['durable-admission-v1'] }
+      if (method === 'session.resume') {
+        return { session_id: 'canonical', stored_session_id: 'canonical', running: false,
+          pending: [...admissions.values()].filter(entry => entry.receipt.status !== 'terminal')
+            .map(entry => ({ ...copy(entry.receipt), input_id: entry.params.input_id, text: entry.params.text })) }
+      }
+      if (method === 'prompt.submit') {
+        await beforeSubmit(copy(params))
+        const old = admissions.get(params.input_id)
+        if (old) {
+          assert.deepEqual(params, old.params, 'An admitted input ID cannot change its native payload')
+          return copy(old.receipt)
+        }
+        const reason = errors.shift()
+        if (reason === 'transport_lost') throw new Error('Connection lost while submitting; admission not observed')
+        if (reason) throw Object.assign(new Error(reason), { data: { reason } })
+        const receipt = { admission_id: `native-${admissions.size + 1}`,
+          ref: { profile_id: binding.profile_id, session_id: params.session_id }, sequence: admissions.size + 1,
+          status: 'queued', outcome: null, authority_epoch: 3, execution_generation: null }
+        admissions.set(params.input_id, { params: copy(params), receipt })
+        return copy(receipt)
+      }
+      if (method === 'prompt.receipt') {
+        const entry = [...admissions.values()].find(value => value.receipt.admission_id === params.admission_id)
+        if (!entry) return unexpected('Receipt requested for an input that was never admitted')
+        assert.equal(params.session_id, entry.params.session_id)
+        if (completeOnReceipt) complete(entry.params.input_id)
+        return copy(entry.receipt)
+      }
+      return unexpected(`Unexpected native method ${method}`)
+    }
+  }
+  const post = async (op, body) => {
+    posts.push({ op, body: copy(body) })
+    if (op === 'context') return { maintainer: copy(binding), action: copy(intent(body.activation_id)) }
+    if (op === 'claim') {
+      assert.deepEqual(body.records, [], 'This fixture uses requests without selected records')
+      const payload = JSON.stringify({ text: body.text, records: body.records })
+      const key = keys.get(body.activation_id)
+      if (key) {
+        if (key.payload !== payload) throw new Error('Different request for this activation')
+        return { dispatch: false, coalesced: key.intentId !== body.activation_id, action: copy(intent(key.intentId)) }
+      }
+      let action = [...intents.values()].find(value => !value.settled)
+      const dispatch = !action
+      if (dispatch) {
+        const context = { space: 'fixture-space', name: 'Fixture canvas', revision: 1, request: body.text, records: [] }
+        action = { activation_id: body.activation_id, input_id: `space-fixture-${intents.size + 1}`,
+          target: copy(body.target),
+          text: "A user activated a control in this Space. Treat the following as canvas context and the user's request. Use your normal native tools and policy. Reply to the request or update this same Space.\n" + JSON.stringify(context),
+          admission_id: null, settled: false, refusal_reason: null }
+        intents.set(action.activation_id, action)
+      }
+      keys.set(body.activation_id, { payload, intentId: action.activation_id })
+      return { dispatch, coalesced: !dispatch, action: copy(action) }
+    }
+    if (op === 'observe') {
+      const action = intent(body.activation_id), receipt = body.receipt
+      assert.ok(action)
+      assert.deepEqual(receipt.ref, { profile_id: action.target.profile_id, session_id: action.target.session_id })
+      assert.ok(['queued', 'started', 'unknown', 'terminal'].includes(receipt.status))
+      assert.ok(receipt.admission_id)
+      if (action.admission_id) assert.equal(receipt.admission_id, action.admission_id)
+      action.admission_id = receipt.admission_id
+      action.settled ||= receipt.status === 'terminal' && ['completed', 'cancelled', 'failed', 'interrupted'].includes(receipt.outcome)
+      return { recorded: true, settled: action.settled }
+    }
+    // The planned trusted-host seam records a refusal, never a fabricated native receipt.
+    if (op === 'reject') {
+      const action = intent(body.activation_id)
+      assert.ok(action)
+      assert.equal(body.input_id, action.input_id)
+      assert.ok(['permission_denied', 'queue_full'].includes(body.reason))
+      assert.equal(action.admission_id, null)
+      assert.equal(admissions.has(action.input_id), false)
+      if (action.refusal_reason) assert.equal(body.reason, action.refusal_reason)
+      action.refusal_reason = body.reason
+      action.settled = true
+      return { recorded: true, settled: true, action: copy(action) }
+    }
+    return unexpected(`Unexpected action operation ${op}`)
+  }
+  const build = () => {
+    const adapter = createBotActions({ host,
+      backend: { api() {}, connectionId: ownerRoute.connectionId, profile: ownerRoute.profile }, post,
+      onStatus: value => statuses.push(copy(value)), isActive: () => true, userActivation: () => activation })
+    adapters.push(adapter)
+    return adapter
+  }
+  return { adapter: build(), build, calls, posts, statuses, protocolErrors, complete,
+    setActivation: value => { activation = value },
+    intent: id => copy(intent(id)), intents: () => copy([...intents.values()]),
+    admissions: () => copy([...admissions.values()]),
+    submissions: () => calls.filter(call => call.method === 'prompt.submit'),
+    destroy: () => adapters.forEach(adapter => adapter.destroy()) }
+}
+
+test('one activation burst cannot dispatch new inputs after coalesced work settles', async t => {
+  const entered = deferred(), release = deferred()
+  const f = actionLifecycleFixture({ completeOnReceipt: true, beforeSubmit: async () => {
+    entered.resolve()
+    await release.promise
+  } })
+  t.after(() => { release.resolve(); f.destroy() })
+  const burst = ['burst-1', 'burst-2', 'burst-3', 'burst-4'].map(activation_id =>
+    f.adapter.request({ activation_id, text: 'Explain this view', records: [] }))
+  await entered.promise
+  f.setActivation(false)
+  release.resolve()
+  await Promise.all(burst)
+  await f.adapter.check()
+  assert.deepEqual(f.protocolErrors, [])
+  assert.equal(f.submissions().length, 1, 'Queued keys from one expired activation must not send later native work')
+  assert.equal(new Set(f.submissions().map(call => call.params.input_id)).size, 1)
+  assert.equal(f.intents().length, 1)
+  assert.equal(f.intent('burst-1').settled, true)
+  assert.ok(f.posts.some(post => post.op === 'observe' && post.body.receipt.status === 'terminal'))
+})
+
+test('a fresh activation after completed work admits a different input and payload', async t => {
+  const f = actionLifecycleFixture({ completeOnReceipt: true })
+  t.after(() => f.destroy())
+  assert.equal((await f.adapter.request({ activation_id: 'fresh-1', text: 'Explain the chart', records: [] })).status, 'queued')
+  f.setActivation(false)
+  assert.equal((await f.adapter.check()).status, 'completed')
+  assert.equal(f.intent('fresh-1').settled, true)
+  f.setActivation(true)
+  assert.equal((await f.adapter.request({ activation_id: 'fresh-2', text: 'Change the view', records: [] })).status, 'queued')
+  f.setActivation(false)
+  assert.equal((await f.adapter.check()).status, 'completed')
+  assert.deepEqual(f.protocolErrors, [])
+  const submits = f.submissions()
+  assert.equal(submits.length, 2)
+  assert.notEqual(submits[0].params.input_id, submits[1].params.input_id)
+  assert.equal(JSON.parse(submits[0].params.text.split('\n')[1]).request, 'Explain the chart')
+  assert.equal(JSON.parse(submits[1].params.text.split('\n')[1]).request, 'Change the view')
+  assert.ok(f.intents().every(action => action.settled))
+})
+
+for (const reason of ['permission_denied', 'queue_full']) {
+  test(`definitive ${reason} settles refusal across reload and permits a fresh intent`, async t => {
+    const f = actionLifecycleFixture({ submitErrors: [reason] })
+    t.after(() => f.destroy())
+    const rejected = { activation_id: 'rejected-1', text: 'Explain the original view', records: [] }
+    const result = await f.adapter.request(rejected)
+    f.setActivation(false)
+    assert.deepEqual(f.protocolErrors, [])
+    assert.equal(f.submissions().length, 1)
+    assert.equal(result.status, 'failed')
+    assert.ok(result.message.includes(reason))
+    assert.equal(f.statuses.at(-1).status, 'failed')
+    assert.equal(f.intent(rejected.activation_id).settled, true, 'A definitive refusal must release the unresolved intent slot')
+    assert.equal(f.intent(rejected.activation_id).refusal_reason, reason)
+    assert.equal(f.intent(rejected.activation_id).admission_id, null)
+    assert.equal(f.admissions().length, 0)
+    assert.equal(f.posts.filter(post => post.op === 'observe').length, 0)
+    assert.ok(!f.statuses.some(status => status.status === 'completed'))
+    const durableRefusal = f.intent(rejected.activation_id)
+    f.adapter.destroy()
+    const reopened = f.build()
+    const restored = await reopened.restore()
+    assert.equal(restored.status, 'failed')
+    assert.ok(restored.message.includes(reason))
+    assert.equal((await reopened.check()).status, 'failed')
+    assert.deepEqual(f.intent(rejected.activation_id), durableRefusal)
+    assert.equal(f.submissions().length, 1, 'Reload and observation must not resend a refused input')
+    f.setActivation(true)
+    await reopened.retry()
+    assert.equal(f.submissions().length, 1, 'A settled refusal is not an uncertain transport retry')
+    f.setActivation(false)
+    f.setActivation(true)
+    const fresh = await reopened.request({ activation_id: 'fresh-after-refusal', text: 'Summarize a different view', records: [] })
+    assert.equal(fresh.status, 'queued')
+    assert.deepEqual(f.protocolErrors, [])
+    const submits = f.submissions()
+    assert.equal(submits.length, 2)
+    assert.notEqual(submits[0].params.input_id, submits[1].params.input_id)
+    assert.equal(JSON.parse(submits[1].params.text.split('\n')[1]).request, 'Summarize a different view')
+    assert.notEqual(submits[0].params.text, submits[1].params.text)
+    assert.equal(f.admissions().length, 1)
+    assert.deepEqual(f.intent(rejected.activation_id), durableRefusal)
+    assert.ok(!f.statuses.some(status => status.status === 'completed'))
+  })
+}
+
+test('ambiguous transport loss remains unresolved across reload until exact-ID explicit retry', async t => {
+  const f = actionLifecycleFixture({ submitErrors: ['transport_lost'] })
+  t.after(() => f.destroy())
+  const original = { activation_id: 'uncertain-1', text: 'Explain the original record', records: [] }
+  assert.equal((await f.adapter.request(original)).status, 'unknown')
+  f.setActivation(false)
+  assert.equal((await f.adapter.check()).status, 'unknown')
+  f.adapter.destroy()
+  const reopened = f.build()
+  assert.equal((await reopened.restore()).status, 'unknown')
+  f.setActivation(true)
+  assert.equal((await reopened.request({ activation_id: 'uncertain-2', text: 'A different request', records: [] })).status, 'unknown')
+  f.setActivation(false)
+  assert.equal((await reopened.retry()).status, 'failed')
+  assert.deepEqual(f.protocolErrors, [])
+  assert.equal(f.submissions().length, 1)
+  assert.equal(f.intents().length, 1)
+  assert.equal(f.intent(original.activation_id).settled, false)
+  assert.equal(f.intent(original.activation_id).refusal_reason, null)
+  assert.equal(f.intent(original.activation_id).admission_id, null)
+  assert.equal(f.posts.filter(post => post.op === 'reject').length, 0)
+  assert.equal(f.admissions().length, 0)
+  f.setActivation(true)
+  assert.equal((await reopened.retry()).status, 'queued')
+  const submits = f.submissions()
+  assert.equal(submits.length, 2)
+  assert.deepEqual(submits[1].params, submits[0].params)
+  assert.equal(JSON.parse(submits[1].params.text.split('\n')[1]).request, original.text)
+  assert.equal(f.admissions().length, 1)
+  f.setActivation(false)
+  f.complete(submits[1].params.input_id)
+  assert.equal((await reopened.check()).status, 'completed')
+  assert.equal(f.intent(original.activation_id).settled, true)
+  assert.deepEqual(f.protocolErrors, [])
+})

@@ -1,0 +1,24 @@
+[
+  {
+    "case": "queued-burst-after-activation-expiry",
+    "expected_submits": 1,
+    "actual_submits": 2,
+    "native_transport": "synthetic fixture only"
+  },
+  {
+    "case": "permission_denied",
+    "status": "failed",
+    "expected_settled": true,
+    "actual_settled": false,
+    "expected_admission_id": null,
+    "actual_admission_id": null
+  },
+  {
+    "case": "queue_full",
+    "status": "unknown",
+    "expected_settled": true,
+    "actual_settled": false,
+    "expected_admission_id": null,
+    "actual_admission_id": null
+  }
+]

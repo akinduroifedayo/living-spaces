@@ -1,0 +1,21 @@
+{
+  "captured_at": "2026-11-11T07:16:58.911730-06:00",
+  "authority": "Operator note 07:10 CT on t_d40eb81d; comment 2222",
+  "isolated_home": "/Volumes/Expansion/Development/Build/living-spaces-r1/home",
+  "config_path": "/Volumes/Expansion/Development/Build/living-spaces-r1/home/config.yaml",
+  "supported_route": "hermes config set; hermes config get; HERMES_PROFILE unset",
+  "readback": {
+    "model.default": "gpt-6-astra",
+    "model.provider": "openai-codex",
+    "agent.service_tier": "priority"
+  },
+  "old_provider_route_cleanup": "supported setter cleared old base_url and api_mode",
+  "auth_or_credentials_changes": "none",
+  "gateway_restart": "none",
+  "actual_generation_route": "must be verified by t_294ce114, not inferred from saved config",
+  "exclusive_owner": "t_294ce114",
+  "exclusive_until": "2026-11-11T08:30:00-06:00 or explicit early release",
+  "handoff_comment": 2224,
+  "handoff_readback_verified": true,
+  "header_probe": "approved exact MUTATIONS.md; deferred until host release; open-frame default unchanged"
+}

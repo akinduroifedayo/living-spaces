@@ -190,7 +190,8 @@ for that.
     transparent PNGs for cut-outs. Do not switch providers or use a paid/API
     fallback to bypass an unavailable tool. Draw SVG instead. Put the result in
     the project: this revision supports `files` with `{"b64", "mime"}`.
-    Use a future file-reference route only if the actual tool schema exposes it.
+    Use `{"from_path":"..."}` or `{"from_url":"..."}` when the actual tool
+    schema exposes these file-reference forms.
     Reference the asset from CSS or HTML, or through
     `space.asset(path)` at runtime.
   - Draw it. Inline SVG illustrations, patterns and pictograms are cheap and

@@ -1,0 +1,17 @@
+{
+  "seat": "combined-native-review-v6",
+  "process_session": "proc_e6dc19f8d49e",
+  "thread_id": "01a1cab3-eb5b-7303-aafb-d5f08a842401",
+  "provider": "openai",
+  "model": "gpt-6-astra",
+  "effort": "high",
+  "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/combined-native-review-v6",
+  "exit": 0,
+  "required_shards": 129,
+  "whole_bodies_seen": 129,
+  "source_unchanged": true,
+  "configured_service_tier": "fast",
+  "returned_service_tier": "unknown",
+  "verdict": "ISSUES, source-derived hypotheses, not live acceptance",
+  "later_parent_delta": "two delimiter-table lines and new synthetic suffix tests in integration are not covered by this frozen review"
+}

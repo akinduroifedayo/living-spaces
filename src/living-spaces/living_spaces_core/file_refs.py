@@ -12,11 +12,11 @@ from urllib.parse import urlsplit, urlunsplit
 from . import db, limits, net
 from .errors import SpacesError
 
-DENIED_NAMES = (".env", ".env.*", "auth.json", "*.key",
+DENIED_NAMES = (".env", ".env.*", "auth.json", ".credentials.json", "credentials.json", "*.key",
                 ".netrc", "_netrc", ".npmrc", ".git-credentials", ".gitconfig", ".boto", ".pypirc") + tuple(
     stem + extension
-    for stem in ("token", "tokens", ".token", ".tokens", "*[_-]token", "*[_-]tokens",
-                 "secret", "secrets", ".secret", ".secrets", "*[_-]secret", "*[_-]secrets")
+    for stem in ("token", "tokens", ".token", ".tokens", "*[._-]token", "*[._-]tokens",
+                 "secret", "secrets", ".secret", ".secrets", "*[._-]secret", "*[._-]secrets")
     for extension in ("", ".json", ".txt", ".yaml", ".yml", ".toml")
 )
 DENIED_DIRS = (".ssh", ".aws", ".docker", ".kube", ".gnupg", ".git")
