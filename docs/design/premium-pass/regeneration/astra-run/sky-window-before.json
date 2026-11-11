@@ -1,0 +1,143 @@
+{
+  "spaces": [
+    {
+      "id": "sky-window",
+      "name": "Sky Window",
+      "description": "A public weather dashboard for Chicago, Lisbon, Tokyo and cities you add, with live Open-Meteo forecasts.",
+      "owner": "Hermes",
+      "status": "active",
+      "head_rev": 4,
+      "data_version": 1,
+      "accent": "blue",
+      "icon": "globe",
+      "pinned": 0,
+      "last_opened_at": 1794401790.425371,
+      "created_at": 1794372831.536282,
+      "updated_at": 1794384130.612417,
+      "archived_at": null
+    }
+  ],
+  "records": [
+    {
+      "space": "sky-window",
+      "collection": "cities",
+      "id": "chicago",
+      "data": "{\"name\":\"Chicago\",\"lat\":41.8781,\"lon\":-87.6298,\"favourite\":false}",
+      "source": null,
+      "source_meta": null,
+      "rev": 1,
+      "created_at": 1794373117.544035,
+      "updated_at": 1794373117.544035,
+      "updated_by": "agent:Hermes"
+    },
+    {
+      "space": "sky-window",
+      "collection": "cities",
+      "id": "lisbon",
+      "data": "{\"name\":\"Lisbon\",\"lat\":38.7223,\"lon\":-9.1393,\"favourite\":false}",
+      "source": null,
+      "source_meta": null,
+      "rev": 1,
+      "created_at": 1794373117.546751,
+      "updated_at": 1794373117.546751,
+      "updated_by": "agent:Hermes"
+    },
+    {
+      "space": "sky-window",
+      "collection": "cities",
+      "id": "tokyo",
+      "data": "{\"name\":\"Tokyo\",\"lat\":35.6762,\"lon\":139.6503,\"favourite\":false}",
+      "source": null,
+      "source_meta": null,
+      "rev": 1,
+      "created_at": 1794373117.546794,
+      "updated_at": 1794373117.546794,
+      "updated_by": "agent:Hermes"
+    }
+  ],
+  "revisions": [
+    {
+      "space": "sky-window",
+      "rev": 1,
+      "parent_rev": null,
+      "kind": "create",
+      "restored_from": null,
+      "manifest": "{\"schema\":1,\"name\":\"Sky Window\",\"description\":\"A public weather dashboard for Chicago, Lisbon, Tokyo and cities you add, with live Open-Meteo forecasts.\",\"entry\":\"index.html\",\"accent\":\"blue\",\"icon\":\"globe\",\"theme\":{\"preset\":\"data\"},\"data\":{\"version\":1,\"collections\":{\"cities\":{\"description\":\"Saved cities: name, latitude, longitude, favourite flag\"}},\"migrations\":[]},\"imports\":{\"preact\":\"vendor/preact.mjs\",\"preact/hooks\":\"vendor/hooks.mjs\",\"spaces-kit\":\"kit/spaces-kit.mjs\",\"lightweight-charts\":\"vendor/lightweight-charts.mjs\",\"lucide\":\"vendor/lucide.mjs\"}}",
+      "files": "{\"index.html\":\"71562ecb9dfca1351ca653c4938f510e8bc3b48a391b56e6a39c739fa9b9d966\",\"app.js\":\"692247096a3e24bd05f4cd2c8db6cd76290b2422eb0a234ecf47d26ac3c7ee14\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"88ea9130306b200d254b118c463a47dddeb60249eedbf31be3b327bef3d71347\",\"vendor/lightweight-charts.mjs\":\"1bb1ee79f9d4dd17261b53d930f7a8995748276f80e7ba0e24412b5068062f5f\",\"vendor/lucide.mjs\":\"0c896aae847a48bc572d62e3a5c6ab6c467287539338a415836d48b73c1230f5\",\"vendor/licenses/lucide-LICENSE\":\"b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57\"}",
+      "author": "agent:Hermes",
+      "summary": "Created",
+      "created_at": 1794372831.539231
+    },
+    {
+      "space": "sky-window",
+      "rev": 2,
+      "parent_rev": 1,
+      "kind": "edit",
+      "restored_from": null,
+      "manifest": "{\"schema\":1,\"name\":\"Sky Window\",\"description\":\"A public weather dashboard for Chicago, Lisbon, Tokyo and cities you add, with live Open-Meteo forecasts.\",\"entry\":\"index.html\",\"accent\":\"blue\",\"icon\":\"globe\",\"theme\":{\"preset\":\"data\",\"tokens\":{\"radius\":\"10px\",\"density\":\".85\"}},\"data\":{\"version\":1,\"collections\":{\"cities\":{\"description\":\"Saved cities: name, lat, lon, favourite flag (at most one true)\"}},\"migrations\":[]},\"imports\":{}}",
+      "files": "{\"index.html\":\"c1260da4f30f2b97f433d79091d10925c3e6988163c1bf417df2b7dbf195cbab\",\"app.js\":\"1250b0556956bf04a007d1a680016f6f0da961fb9e28d532955801f8973a8dc0\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"88ea9130306b200d254b118c463a47dddeb60249eedbf31be3b327bef3d71347\",\"vendor/lightweight-charts.mjs\":\"1bb1ee79f9d4dd17261b53d930f7a8995748276f80e7ba0e24412b5068062f5f\",\"vendor/lucide.mjs\":\"0c896aae847a48bc572d62e3a5c6ab6c467287539338a415836d48b73c1230f5\",\"vendor/licenses/lucide-LICENSE\":\"b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57\",\"icons.js\":\"4a3c6265d80da9bbc1767b4b2834749efeebcf455cbeeb1faad652c49fa9a07b\",\"weather.js\":\"a5720682bbd7cc7d0324943b03e83ea6bb217a1979c67a4cba96cb3f6663e5bd\",\"views/panel.js\":\"6f34fc51773cfd834542e09bd84f38d3413169b4b0042ed89b76235044a456da\",\"views/today.js\":\"d8b2a48569a4a1256e3af007c91eb10a644613f771ed2404bc831c7174be3fc7\",\"views/week.js\":\"8bd7d048cd68bfcbd301333a0670cf1bd6a048477765291fe4367a9ab979d79f\",\"views/cities.js\":\"19a152c86602daea5a74d3fbbe4500056ff9bc37dc86f553aa7f99aee567a722\",\"styles.css\":\"985188ee5ba0e7e0973917d682cd39bdbf253358a4fbfc80d8a8dadbda07d4c1\"}",
+      "author": "agent:Hermes",
+      "summary": "Build Sky Window: Today, Week, Cities views",
+      "created_at": 1794373221.182467
+    },
+    {
+      "space": "sky-window",
+      "rev": 3,
+      "parent_rev": 2,
+      "kind": "edit",
+      "restored_from": null,
+      "manifest": "{\"schema\":1,\"name\":\"Sky Window\",\"description\":\"A public weather dashboard for Chicago, Lisbon, Tokyo and cities you add, with live Open-Meteo forecasts.\",\"entry\":\"index.html\",\"accent\":\"blue\",\"icon\":\"globe\",\"theme\":{\"preset\":\"data\",\"tokens\":{\"radius\":\"10px\",\"density\":\".85\"}},\"imports\":{\"preact\":\"vendor/preact.mjs\",\"preact/hooks\":\"vendor/hooks.mjs\",\"spaces-kit\":\"kit/spaces-kit.mjs\",\"lightweight-charts\":\"vendor/lightweight-charts.mjs\",\"lucide\":\"vendor/lucide.mjs\"},\"data\":{\"version\":1,\"collections\":{\"cities\":{\"description\":\"Saved cities: name, lat, lon, favourite flag (at most one true)\"}},\"migrations\":[]}}",
+      "files": "{\"index.html\":\"c1260da4f30f2b97f433d79091d10925c3e6988163c1bf417df2b7dbf195cbab\",\"app.js\":\"1250b0556956bf04a007d1a680016f6f0da961fb9e28d532955801f8973a8dc0\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"88ea9130306b200d254b118c463a47dddeb60249eedbf31be3b327bef3d71347\",\"vendor/lightweight-charts.mjs\":\"1bb1ee79f9d4dd17261b53d930f7a8995748276f80e7ba0e24412b5068062f5f\",\"vendor/lucide.mjs\":\"0c896aae847a48bc572d62e3a5c6ab6c467287539338a415836d48b73c1230f5\",\"vendor/licenses/lucide-LICENSE\":\"b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57\",\"icons.js\":\"4a3c6265d80da9bbc1767b4b2834749efeebcf455cbeeb1faad652c49fa9a07b\",\"weather.js\":\"a5720682bbd7cc7d0324943b03e83ea6bb217a1979c67a4cba96cb3f6663e5bd\",\"views/panel.js\":\"6f34fc51773cfd834542e09bd84f38d3413169b4b0042ed89b76235044a456da\",\"views/today.js\":\"d8b2a48569a4a1256e3af007c91eb10a644613f771ed2404bc831c7174be3fc7\",\"views/week.js\":\"8bd7d048cd68bfcbd301333a0670cf1bd6a048477765291fe4367a9ab979d79f\",\"views/cities.js\":\"19a152c86602daea5a74d3fbbe4500056ff9bc37dc86f553aa7f99aee567a722\",\"styles.css\":\"985188ee5ba0e7e0973917d682cd39bdbf253358a4fbfc80d8a8dadbda07d4c1\"}",
+      "author": "agent:Hermes",
+      "summary": "Restore library imports in manifest",
+      "created_at": 1794373227.794635
+    },
+    {
+      "space": "sky-window",
+      "rev": 4,
+      "parent_rev": 3,
+      "kind": "edit",
+      "restored_from": null,
+      "manifest": "{\"schema\":1,\"name\":\"Sky Window\",\"description\":\"A public weather dashboard for Chicago, Lisbon, Tokyo and cities you add, with live Open-Meteo forecasts.\",\"entry\":\"index.html\",\"accent\":\"blue\",\"icon\":\"globe\",\"theme\":{\"preset\":\"data\",\"tokens\":{\"radius\":\"10px\",\"density\":\".85\"}},\"imports\":{\"preact\":\"vendor/preact.mjs\",\"preact/hooks\":\"vendor/hooks.mjs\",\"spaces-kit\":\"kit/spaces-kit.mjs\",\"lightweight-charts\":\"vendor/lightweight-charts.mjs\",\"lucide\":\"vendor/lucide.mjs\"},\"data\":{\"version\":1,\"collections\":{\"cities\":{\"description\":\"Saved cities: name, lat, lon, favourite flag (at most one true)\"}},\"migrations\":[]}}",
+      "files": "{\"index.html\":\"c1260da4f30f2b97f433d79091d10925c3e6988163c1bf417df2b7dbf195cbab\",\"app.js\":\"1250b0556956bf04a007d1a680016f6f0da961fb9e28d532955801f8973a8dc0\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"88ea9130306b200d254b118c463a47dddeb60249eedbf31be3b327bef3d71347\",\"vendor/lightweight-charts.mjs\":\"1bb1ee79f9d4dd17261b53d930f7a8995748276f80e7ba0e24412b5068062f5f\",\"vendor/lucide.mjs\":\"0c896aae847a48bc572d62e3a5c6ab6c467287539338a415836d48b73c1230f5\",\"vendor/licenses/lucide-LICENSE\":\"b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57\",\"icons.js\":\"4a3c6265d80da9bbc1767b4b2834749efeebcf455cbeeb1faad652c49fa9a07b\",\"weather.js\":\"e0a813e61f9dbe3754fae174f044be2b696aeee472dccc243b9ab57d9b9c04d6\",\"views/panel.js\":\"6f34fc51773cfd834542e09bd84f38d3413169b4b0042ed89b76235044a456da\",\"views/today.js\":\"d8b2a48569a4a1256e3af007c91eb10a644613f771ed2404bc831c7174be3fc7\",\"views/week.js\":\"8bd7d048cd68bfcbd301333a0670cf1bd6a048477765291fe4367a9ab979d79f\",\"views/cities.js\":\"19a152c86602daea5a74d3fbbe4500056ff9bc37dc86f553aa7f99aee567a722\",\"styles.css\":\"985188ee5ba0e7e0973917d682cd39bdbf253358a4fbfc80d8a8dadbda07d4c1\"}",
+      "author": "agent:Hermes",
+      "summary": "Read forecast from net.fetch response.json",
+      "created_at": 1794384130.612417
+    }
+  ],
+  "grants": [
+    {
+      "space": "sky-window",
+      "capability": "data",
+      "status": "granted",
+      "scope": "{}",
+      "purpose": "Save and use this Space's data",
+      "requested_scope": "{}",
+      "requested_at": 1794372831.536334,
+      "decided_at": 1794372831.5366862,
+      "decided_by": "user"
+    },
+    {
+      "space": "sky-window",
+      "capability": "logs",
+      "status": "granted",
+      "scope": "{}",
+      "purpose": "Diagnose and repair this Space",
+      "requested_scope": "{}",
+      "requested_at": 1794372831.5367198,
+      "decided_at": 1794372831.5367522,
+      "decided_by": "user"
+    },
+    {
+      "space": "sky-window",
+      "capability": "net",
+      "status": "granted",
+      "scope": "{}",
+      "purpose": "Load and send internet content",
+      "requested_scope": "{}",
+      "requested_at": 1794372831.5367649,
+      "decided_at": 1794372831.536788,
+      "decided_by": "user"
+    }
+  ]
+}

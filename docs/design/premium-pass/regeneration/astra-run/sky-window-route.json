@@ -1,0 +1,28 @@
+{
+  "requested": {
+    "model": "gpt-6-astra",
+    "provider": "openai-codex",
+    "service_tier": "priority"
+  },
+  "observed_session_row": {
+    "id": "local-8dfe246890fb7941b7a48bfe692cb5b6087122e8dfaf2704f015095d716de44d",
+    "source": "local",
+    "model": "gpt-6-astra",
+    "model_config": "{\"_usage_anchor\": {\"prompt_tokens\": 104623, \"completion_tokens\": 315, \"base_count\": 154, \"base_last_role\": \"tool\", \"base_last_fp\": \"203674ad2b2cff73074967e4c68c7f7ce1c81b8f7510cbe24f9330784dfe38ba\", \"base_prefix_fp\": \"29830d274ba442a5b43d978ef10876468030db7e58294162da7be795b89d39b3\"}, \"gateway_runtime\": {\"provider\": \"openai-codex\", \"base_url\": \"https://chatgpt.com/backend-api/codex\", \"api_mode\": \"codex_responses\", \"fallback_active\": false}}",
+    "billing_provider": "openai-codex",
+    "billing_base_url": "https://chatgpt.com/backend-api/codex",
+    "billing_mode": "subscription_included",
+    "started_at": 1794403682.022522,
+    "ended_at": null,
+    "end_reason": null,
+    "message_count": 155,
+    "tool_call_count": 83,
+    "input_tokens": 98149,
+    "output_tokens": 21741,
+    "reasoning_tokens": 3514,
+    "title": "Redesign Sky Window Space across devices"
+  },
+  "ui_picker_label_before_send": [
+    "GPT-6-astra \u00b7 Fast"
+  ]
+}

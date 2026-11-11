@@ -1,0 +1,10 @@
+{
+  "space": "research-desk",
+  "prompt": "Give my Research Desk Space a fresh, polished design for keeping up with public AI research from arXiv cs.AI. Keep the overview, searchable library, reading queue and high-priority review, with notes, status and priority for each paper. Keep my saved papers and notes, including when new papers arrive. Make it comfortable to read and use on my phone. You choose the visual direction.",
+  "session": "local-a17cd73fb35a6bbae9a20f178fea498e180382a91a968701dfcb2e5d893c7f1a",
+  "submitted_at": 1794404814.274882,
+  "ui_picker_label_before_send": [
+    "GPT-6-astra \u00b7 Fast"
+  ],
+  "route": "new ordinary Desktop chat session, native CDP click/insertText/Enter on composer"
+}
