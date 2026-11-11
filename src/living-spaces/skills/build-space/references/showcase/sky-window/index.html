@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sky Window</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<main class="room" aria-busy="true">
+  <header class="masthead">
+    <h1>Sky Window</h1>
+    <p id="clock" class="clock">Three skies, right now</p>
+  </header>
+
+  <section class="windows" id="windows" aria-label="Current sky in each city">
+    <!-- Three panes rendered by app.js. Skeleton panes keep the layout while loading. -->
+    <article class="pane is-lead is-loading" aria-hidden="true"><div class="sky"></div></article>
+    <article class="pane is-loading" aria-hidden="true"><div class="sky"></div></article>
+    <article class="pane is-loading" aria-hidden="true"><div class="sky"></div></article>
+  </section>
+
+  <section class="almanac" aria-labelledby="week-title">
+    <div class="almanac-head">
+      <h2 id="week-title"><span id="week-city">—</span> · next 7 days · daily low to high, °C</h2>
+      <p class="legend"><span class="drop" aria-hidden="true"></span> chance of rain, %</p>
+    </div>
+    <div id="ribbon" class="ribbon" role="img" aria-label="Weekly forecast loading"></div>
+    <details class="values">
+      <summary>Daily values</summary>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Daily forecast values">
+        <table><thead><tr><th scope="col">Day</th><th scope="col">Sky</th><th scope="col">Low · °C</th><th scope="col">High · °C</th><th scope="col">Rain chance · %</th></tr></thead><tbody id="days"></tbody></table>
+      </div>
+    </details>
+  </section>
+
+  <footer class="colophon">
+    <p id="status" role="status" aria-live="polite">Opening the windows…</p>
+    <p id="source"></p>
+    <button id="reload" type="button">Refresh skies</button>
+  </footer>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
