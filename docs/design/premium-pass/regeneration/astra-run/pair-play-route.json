@@ -1,0 +1,28 @@
+{
+  "requested": {
+    "model": "gpt-6-astra",
+    "provider": "openai-codex",
+    "service_tier": "priority"
+  },
+  "observed_session_row": {
+    "id": "local-46ed47a09c477a63f3d1c61a7c1513e7fe4bd7811bbe36964e364ef8cf6dd106",
+    "source": "local",
+    "model": "gpt-6-astra",
+    "model_config": "{\"_usage_anchor\": {\"prompt_tokens\": 87201, \"completion_tokens\": 151, \"base_count\": 119, \"base_last_role\": \"tool\", \"base_last_fp\": \"4861d2760cedb0e9be0edaffb32660ff39197e417c6f3c8d38311c75e4258bed\", \"base_prefix_fp\": \"1d062a1136f34716458e7ed0f2842c6c89090f41b3f11a3c5d5c382b931f3ae6\"}, \"gateway_runtime\": {\"provider\": \"openai-codex\", \"base_url\": \"https://chatgpt.com/backend-api/codex\", \"api_mode\": \"codex_responses\", \"fallback_active\": false}}",
+    "billing_provider": "openai-codex",
+    "billing_base_url": "https://chatgpt.com/backend-api/codex",
+    "billing_mode": "subscription_included",
+    "started_at": 1794405819.202425,
+    "ended_at": null,
+    "end_reason": null,
+    "message_count": 120,
+    "tool_call_count": 67,
+    "input_tokens": 79744,
+    "output_tokens": 20807,
+    "reasoning_tokens": 3813,
+    "title": "Redesign Pair Play Space memory game"
+  },
+  "ui_picker_label_before_send": [
+    "GPT-6-astra \u00b7 Fast"
+  ]
+}
