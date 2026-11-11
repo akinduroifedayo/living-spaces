@@ -1,6 +1,6 @@
 name: living-spaces
 version: 0.1.0
-description: Build persistent applications in the Spaces tab and keep their data current with approved refreshes.
+description: Build persistent applications in the Spaces tab and keep their data current with ordinary Hermes cron upkeep.
 author: Living Spaces contributors
 kind: standalone
 requires_hermes: ">=0.23.1"
@@ -20,4 +20,5 @@ provides_tools:
   - spaces_revisions
   - spaces_restore
   - spaces_refresh
-  - spaces_request_schedule
+  - spaces_schedule_upkeep
+  - spaces_upkeep
