@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import importlib
 import json
 import threading
 import uuid
+from datetime import datetime
 
 from . import db, feeds
 from .errors import SpacesError
@@ -23,12 +25,17 @@ def get_run(run_id):
         row = conn.execute("SELECT * FROM runs WHERE id=?", (run_id,)).fetchone()
     if row is None:
         raise SpacesError("not_found", "Refresh run not found")
+    if row["handler"] == "agent" and row["status"] in ("queued", "running"):
+        _sync_agent_runs(row["space"])
+        with db.read() as conn:
+            row = conn.execute("SELECT * FROM runs WHERE id=?", (run_id,)).fetchone()
     return _run(row)
 
 
 def list_runs(sid, limit=50):
     if not isinstance(limit, int) or not 1 <= limit <= 500:
         raise SpacesError("invalid", "Run limit must be between 1 and 500")
+    _sync_agent_runs(sid)
     with db.read() as conn:
         rows = conn.execute("SELECT * FROM runs WHERE space=? ORDER BY queued_at DESC, rowid DESC LIMIT ?", (sid, limit)).fetchall()
     return [_run(row) for row in rows]
@@ -37,6 +44,7 @@ def list_runs(sid, limit=50):
 def freshness(sid):
     from . import schedules
 
+    _sync_agent_runs(sid)
     with db.read() as conn:
         success = conn.execute("SELECT ended_at,source_as_of FROM runs WHERE space=? AND status='succeeded' ORDER BY ended_at DESC LIMIT 1", (sid,)).fetchone()
         attempt = conn.execute("SELECT queued_at,status FROM runs WHERE space=? ORDER BY queued_at DESC, rowid DESC LIMIT 1", (sid,)).fetchone()
@@ -51,16 +59,105 @@ def freshness(sid):
 
 
 def cancel_pending(sid, reason):
+    from . import schedules
+
     with db.write() as conn:
         rows = conn.execute("SELECT * FROM runs WHERE space=? AND status IN ('queued','running')", (sid,)).fetchall()
         for row in rows:
             detail = json.loads(row["detail"])
             detail["cancel_reason"] = reason
-            if row["status"] == "queued":
+            if row["handler"] == "agent" and detail.get("cron_job_id"):
+                jobs = schedules._cron()
+                if detail.get("one_shot"):
+                    jobs.remove_job(detail["cron_job_id"])
+                else:
+                    jobs.pause_job(detail["cron_job_id"], reason=reason)
+                    jobs.cancel_job_run(detail["cron_job_id"], reason=reason)
+            if row["status"] == "queued" or row["handler"] == "agent":
                 conn.execute("UPDATE runs SET status='canceled',ended_at=?,detail=? WHERE id=?", (db.now(), json.dumps(detail), row["id"]))
             else:
                 conn.execute("UPDATE runs SET detail=? WHERE id=?", (json.dumps(detail), row["id"]))
     return len(rows)
+
+
+def _timestamp(value):
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp() if value else None
+
+
+def _sync_agent_runs(sid):
+    from . import schedules
+
+    with db.read() as conn:
+        schedule = conn.execute("SELECT cron_job_id FROM schedules WHERE space=?", (sid,)).fetchone()
+        pending = conn.execute("SELECT * FROM runs WHERE space=? AND handler='agent' AND status IN ('queued','running')", (sid,)).fetchall()
+    job_ids = {json.loads(row["detail"]).get("cron_job_id") for row in pending}
+    if schedule:
+        job_ids.add(schedule["cron_job_id"])
+    job_ids.discard(None)
+    if not job_ids:
+        return
+    try:
+        jobs = schedules._cron()
+        agent_jobs = {jid: jobs.get_job(jid) for jid in job_ids}
+        agent_jobs = {jid: job for jid, job in agent_jobs.items() if not job or job.get("no_agent") is False}
+        if not agent_jobs:
+            return
+        ledger = importlib.import_module("cron.executions")
+    except ImportError:
+        return
+    statuses = {"claimed": "queued", "running": "running", "completed": "succeeded", "failed": "failed", "unknown": "failed", "cancelled": "canceled"}
+    for jid, job in agent_jobs.items():
+        executions = ledger.list_executions(job_id=jid, limit=500)
+        cleanup = False
+        with db.write() as conn:
+            if conn.execute("SELECT 1 FROM spaces WHERE id=?", (sid,)).fetchone() is None:
+                continue
+            for execution in reversed(executions):
+                status = statuses.get(execution["status"])
+                if status is None:
+                    continue
+                claimed = _timestamp(execution["claimed_at"])
+                row = conn.execute("SELECT * FROM runs WHERE space=? AND json_extract(detail,'$.cron_run_id')=?", (sid, execution["id"])).fetchone()
+                if row is None:
+                    row = conn.execute("SELECT * FROM runs WHERE space=? AND handler='agent' AND status='queued' AND json_extract(detail,'$.cron_job_id')=? AND json_extract(detail,'$.cron_run_id') IS NULL AND queued_at<=? ORDER BY queued_at LIMIT 1", (sid, jid, claimed)).fetchone()
+                if row is None:
+                    rid = "run_cron_" + execution["id"]
+                    conn.execute("INSERT OR IGNORE INTO runs(id,space,trigger,handler,actor,status,queued_at) VALUES(?,?,'schedule','agent','upkeep:schedule','queued',?)", (rid, sid, claimed))
+                    row = conn.execute("SELECT * FROM runs WHERE id=?", (rid,)).fetchone()
+                detail = json.loads(row["detail"])
+                if detail.get("cancel_reason"):
+                    continue
+                if row["status"] in ("succeeded", "failed", "canceled") and status in ("queued", "running"):
+                    continue
+                if detail.get("cron_status") == execution["status"]:
+                    continue
+                detail.update(cron_job_id=jid, cron_run_id=execution["id"], cron_status=execution["status"], changed_unavailable=True)
+                if execution.get("scheduled_instant"):
+                    detail["scheduled_instant"] = execution["scheduled_instant"]
+                conn.execute("UPDATE runs SET status=?,started_at=?,ended_at=?,error=?,detail=?,heartbeat_at=? WHERE id=?", (
+                    status, _timestamp(execution.get("started_at")), _timestamp(execution.get("finished_at")), execution.get("error"), json.dumps(detail), db.now(), row["id"],
+                ))
+                cleanup = cleanup or (detail.get("one_shot", False) and status in ("succeeded", "failed", "canceled"))
+            if job is None:
+                conn.execute("UPDATE runs SET status='failed',error='Native cron job is missing',ended_at=? WHERE space=? AND handler='agent' AND status IN ('queued','running') AND json_extract(detail,'$.cron_job_id')=?", (db.now(), sid, jid))
+        if cleanup and job:
+            jobs.remove_job(jid)
+
+
+def _queue_agent(conn, sid, run_id, upkeep):
+    from . import schedules
+
+    jobs = schedules._cron()
+    prompt = schedules.agent_prompt(sid, upkeep)
+    job = jobs.create_job(prompt=prompt, schedule="in 1m", repeat=1, name=f"living-spaces:{sid}:{run_id}", no_agent=False, deliver="local", catch_up=True, paused=True)
+    detail = {"cron_job_id": job["id"], "one_shot": True, "changed_unavailable": True}
+    conn.execute("UPDATE runs SET detail=? WHERE id=?", (json.dumps(detail), run_id))
+    try:
+        if jobs.trigger_job(job["id"]) is None:
+            raise RuntimeError("Native cron job could not be triggered")
+    except Exception:
+        jobs.remove_job(job["id"])
+        raise
 
 
 def start_refresh(sid, *, trigger, actor, wait=False, session=None):
@@ -72,11 +169,14 @@ def start_refresh(sid, *, trigger, actor, wait=False, session=None):
     upkeep = projects.bundle(sid)["manifest"].get("upkeep") or {}
     handler = upkeep.get("handler", "")
     reason = "archived" if space["status"] == "archived" else None
-    if not reason and handler != "feed":
+    if not reason and handler not in ("feed", "agent"):
         reason = "no_handler"
+    if handler == "agent":
+        schedules.validate_upkeep(upkeep)
+        _sync_agent_runs(sid)
     hosts = set()
     if not reason:
-        for source in upkeep.get("sources", []):
+        for source in upkeep.get("sources", []) if handler == "feed" else []:
             try:
                 hosts.add(feeds.source_host(source["url"]))
             except (SpacesError, KeyError, TypeError, ValueError):
@@ -91,6 +191,15 @@ def start_refresh(sid, *, trigger, actor, wait=False, session=None):
     now = db.now()
     run_id = "run_" + uuid.uuid4().hex[:16]
     with db.write() as conn:
+        if handler == "agent":
+            schedules._require_current_upkeep(conn, sid, upkeep)
+            if not grants._check(conn, sid, "refresh"):
+                reason = "not_granted"
+            if not reason and trigger == "schedule":
+                schedule = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
+                job = schedules._cron().get_job(schedule["cron_job_id"]) if schedule and schedule["status"] == "active" and schedule["cron_job_id"] else None
+                if not job or job.get("no_agent") is not False or not job.get("enabled", True) or job.get("prompt") != schedules.agent_prompt(sid, upkeep):
+                    reason = "schedule_not_approved"
         if session is not None:
             sessions._require(conn, sid, session)
             if not grants._check(conn, sid, "refresh", {"hosts": sorted(hosts)}):
@@ -100,7 +209,7 @@ def start_refresh(sid, *, trigger, actor, wait=False, session=None):
             raise SpacesError("not_found", "Space not found")
         if current["status"] == "archived":
             reason = "archived"
-        conn.execute("UPDATE runs SET status='failed',error='interrupted',ended_at=? WHERE space=? AND status IN ('queued','running') AND COALESCE(heartbeat_at,started_at,queued_at)<?", (now, sid, now - STALE_SECONDS))
+        conn.execute("UPDATE runs SET status='failed',error='interrupted',ended_at=? WHERE space=? AND handler!='agent' AND status IN ('queued','running') AND COALESCE(heartbeat_at,started_at,queued_at)<?", (now, sid, now - STALE_SECONDS))
         row = conn.execute("SELECT * FROM runs WHERE space=? AND status IN ('queued','running') ORDER BY queued_at LIMIT 1", (sid,)).fetchone()
         if row:
             return _run(row)
@@ -111,7 +220,12 @@ def start_refresh(sid, *, trigger, actor, wait=False, session=None):
             run_id, sid, trigger, handler, actor, "blocked" if reason else "queued", now, now if reason else None,
             json.dumps({"added": 0, "updated": 0, "unchanged": 0, "removed": 0}), json.dumps(detail), now,
         ))
-    if not reason:
+        if not reason and handler == "agent":
+            try:
+                _queue_agent(conn, sid, run_id, upkeep)
+            except Exception as exc:
+                conn.execute("UPDATE runs SET status='failed',error=?,ended_at=? WHERE id=?", (str(exc), db.now(), run_id))
+    if not reason and handler != "agent":
         if wait:
             _work(run_id, upkeep)
         else:
