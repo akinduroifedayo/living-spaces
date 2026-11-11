@@ -1,0 +1,187 @@
+{
+  "passed": true,
+  "results": [
+    {
+      "label": "Dashboard loading is real in-flight work",
+      "passed": true
+    },
+    {
+      "label": "Live public forecast populated panes and exact table",
+      "passed": true,
+      "cities": [
+        {
+          "name": "chicago",
+          "temp": "5"
+        },
+        {
+          "name": "lisbon",
+          "temp": "17"
+        },
+        {
+          "name": "tokyo",
+          "temp": "11"
+        }
+      ],
+      "rows": 7,
+      "source": "Forecast from Open-Meteo · updated 2026-11-11 12:32 UTC",
+      "domain": [
+        "-5",
+        "20"
+      ]
+    },
+    {
+      "label": "sky-live geometry/targets/reduced-motion 1440",
+      "passed": true,
+      "width": 1440,
+      "scroll": 1440,
+      "minTarget": 44,
+      "running": 0
+    },
+    {
+      "label": "sky-live geometry/targets/reduced-motion 390",
+      "passed": true,
+      "width": 390,
+      "scroll": 390,
+      "minTarget": 44,
+      "running": 0
+    },
+    {
+      "label": "sky-live geometry/targets/reduced-motion 320",
+      "passed": true,
+      "width": 320,
+      "scroll": 320,
+      "minTarget": 44,
+      "running": 0
+    },
+    {
+      "label": "Keyboard city selection changes actual chart",
+      "passed": true
+    },
+    {
+      "label": "Visible city keyboard focus",
+      "passed": true
+    },
+    {
+      "label": "Keyboard opens exact-value table",
+      "passed": true
+    },
+    {
+      "label": "Repeated failed refresh preserves last-good forecast",
+      "passed": true
+    },
+    {
+      "label": "Sky ambient motion runs under no-preference",
+      "passed": true
+    },
+    {
+      "label": "Sky pause stops all ambient motion",
+      "passed": true
+    },
+    {
+      "label": "Empty forecast invents no values",
+      "passed": true
+    },
+    {
+      "label": "Sample is opt-in and explicitly labelled",
+      "passed": true
+    },
+    {
+      "label": "Internet-off response has accurate host recovery",
+      "passed": true
+    },
+    {
+      "label": "pair-ready geometry/targets/reduced-motion 1440",
+      "passed": true,
+      "width": 1440,
+      "scroll": 1440,
+      "minTarget": 44,
+      "running": 0
+    },
+    {
+      "label": "pair-ready geometry/targets/reduced-motion 390",
+      "passed": true,
+      "width": 390,
+      "scroll": 390,
+      "minTarget": 44,
+      "running": 0
+    },
+    {
+      "label": "pair-ready geometry/targets/reduced-motion 320",
+      "passed": true,
+      "width": 320,
+      "scroll": 320,
+      "minTarget": 44,
+      "running": 0
+    },
+    {
+      "label": "Space turns a card",
+      "passed": true
+    },
+    {
+      "label": "Mismatch costs exactly one turn",
+      "passed": true
+    },
+    {
+      "label": "Mismatch flips back and unlocks",
+      "passed": true
+    },
+    {
+      "label": "Complete game loop reaches six pairs in seven turns",
+      "passed": true
+    },
+    {
+      "label": "Failed round retained before redeal",
+      "passed": true
+    },
+    {
+      "label": "Finished round written create-only and read back",
+      "passed": true,
+      "receipt": [
+        {
+          "op": "data.put",
+          "id": "round-mwc3mzjj-fkw4okjui1f",
+          "turns": 7,
+          "baseRev": 0
+        },
+        {
+          "op": "data.put",
+          "id": "round-mwc3mzjj-fkw4okjui1f",
+          "turns": 7,
+          "baseRev": 0
+        },
+        {
+          "op": "data.get",
+          "id": "round-mwc3mzjj-fkw4okjui1f"
+        }
+      ]
+    },
+    {
+      "label": "Deal again starts a clean playable round",
+      "passed": true
+    },
+    {
+      "label": "Saved round survives complete frame reload",
+      "passed": true
+    },
+    {
+      "label": "Scorecard error keeps game playable",
+      "passed": true
+    },
+    {
+      "label": "Scorecard retry recovers real records",
+      "passed": true
+    },
+    {
+      "label": "Game CSS 200% geometry (not native zoom)",
+      "passed": true,
+      "w": 1440,
+      "s": 1440
+    },
+    {
+      "label": "No uncaught exceptions in final game context",
+      "passed": true,
+      "errors": []
+    }
+  ],
+  "scope": "Actual sandbox mount and Space bridge; isolated file-backed verifier storage and live public network. Not Desktop/chat generation or production backend qualification."
+}
