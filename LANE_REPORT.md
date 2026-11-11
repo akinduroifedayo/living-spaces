@@ -1,252 +1,237 @@
-# w2-submission lane report
+# c-tools lane report
 
-Ife needs the submission drafts to describe the current Living Spaces candidate
-without turning partial R1 evidence into release acceptance. This lane updates
-only submission documentation, the package README and a catalog consistency
-checker. No product code, manifest, contract or R1 status file changed.
+Ife wants agents to build distinctive Spaces with generated assets, validated
+themes and selected offline libraries. This lane implements those agent-tool
+paths without changing guest rendering or automatically editing app HTML.
 
-**Verdict: ISSUES.** Requested artifacts and offline verification are complete.
-Staging and committing are blocked by the sandbox. Catalog/publication gates and
-R1 acceptance remain open as detailed below. No push was attempted.
+**Verdict: ISSUES.** All requested product changes pass focused and Python
+regressions. The complete JavaScript suite passes serially; its parallel run
+exposes an existing fixed-delay host test failure. Package validation passes
+with two warnings in unchanged files. Git staging is sandbox-blocked. No push
+was attempted. This is not a real-Desktop or R1 acceptance verdict.
+
+Base is `7febcd8`, branch `forge/r1-c-tools`. The supplied grounding report was
+read in full before implementation, followed by the spec sections 2 and 4,
+frozen contracts, R1 ledger and all four named harness files. No GBrain tool was
+exposed in this session, so a context pack could not be pulled. No relevant Codex
+memory entry was found. The supplied frozen decisions governed implementation.
 
 ## Files changed
 
-- `docs/submission/catalog-entry.draft.yaml` matches manifest name, description,
-  version, Hermes floor and the 13 registered tools. Hooks, middleware and env
-  declarations remain empty. Documents the distinct empty host-capability list
-  and Desktop surface. Uses macOS-only qualification metadata. Keeps the private
-  URL and literal `PIN_40_CHAR_SHA_AT_FINAL_COMMIT`.
-- `scripts/check-catalog-draft.py` reads two YAML mappings using stdlib and PyYAML.
-  It rejects name/version/floor or registration drift, a changed host-capability
-  declaration, an invalid pin, missing required descriptive fields, incorrect
-  package/category or a missing Desktop entrypoint. Optional file arguments let
-  reviewers test malformed drafts without changing the real one.
-- `src/living-spaces/README.md` documents package placement, both enable switches,
-  grant revocation, archive/delete, local profile SQLite, no telemetry, chat/model
-  context, the exact WebRTC disclosure and the private scheduling import/reason.
-  Corrects the typed-ID deletion instruction. Separates historical validation,
-  observed paths and open R1 checks. Explains logical deletion and uninstall
-  retention without claiming secure erasure or an uninstall rehearsal.
-- `docs/submission/PR-DESCRIPTION.draft.md` carries the same disclosures, install
-  and lifecycle instructions, validation receipt and remaining acceptance work.
-  Removes stale validator TODO and false Claude Code attribution.
-- `docs/submission/DEMO-SCRIPT.md` retains 11 shots totaling 83 seconds, uses public
-  arXiv/Research Desk and Pair Play content, accepts truthful no-change refresh,
-  and defers final footage/screenshots until Miro's design kit merges.
-- `docs/submission/CHECKLIST.md` covers preflight, entry schema, all 18 admission
-  rules, PR/CI/reviewer stages and the separate publication/demo/Typeform gates.
-- `LANE_REPORT.md` is this requested handoff, explicitly authorized outside the
-  lane's normal owned paths.
+- `src/living-spaces/__init__.py` accepts UTF-8 strings, binary `{b64, mime?}`
+  descriptors, and write-only null deletions. Both tools decode at the boundary.
+  Malformed descriptors and invalid base64 return `invalid` naming the path.
+  Decoding rejects nonalphabet characters, whitespace, bad padding and nonzero
+  pad bits. Limits count decoded bytes, including an encoded `space.json` before
+  manifest extraction. Tool schemas and descriptions document generated Hermes
+  images, audio, fonts, decoded limits and optional library selection on writes.
+  Results include `notes` with the exact kit stylesheet link when kit CSS exists.
+- `src/living-spaces/living_spaces_core/projects.py` validates optional theme
+  objects inside normal manifest normalization. It rejects unknown theme keys,
+  bad presets, malformed token maps/names/values and more than 64 tokens. It
+  preserves valid CSS strings and optional-field presence without inventing a
+  preset, tokens or accent mapping. Library groups derive from packaged
+  `SHELF.json`; selection copies the exact declared files and licenses and adds
+  declared aliases. Existing legacy groups retain their dependencies. Core
+  `write_files(..., libraries=())` adds selected libraries within the revision
+  transaction and respects `base_rev`, file/byte limits and explicit edits.
+- `tests/python/test_c_tools.py` adds 23 tests using registered tool handlers and
+  the real core, with fresh `HERMES_HOME` and `LIVING_SPACES_DB` under `.run/`.
+  Assertions cover real PNG/WAV byte transport, descriptor/schema errors,
+  decoded-byte limits, theme boundaries, exact shelf contents, preserving files
+  and aliases, atomic errors and kit notes without HTML edits.
+- `LANE_REPORT.md` replaces the inherited earlier lane report with this handoff.
 
-## Verification and exact commands
+`limits.py` did not need changing. No guest, bridge, grants, networking, upkeep,
+kit CSS, build-space skill, spec or frozen contract file changed. Neither shipped
+artifact changed. No credentials or private content were used.
 
-Commands ran from this worktree. Test homes and generated artifacts are under
-`.run/`. Nothing was installed. No Desktop, gateway, Chrome, scheduler service,
-HTTP server or other listener was started. The unit tests exercise cron functions
-only against temporary test homes; this is not a running cron scheduler.
+## Decisions and limits of the implementation
 
-### Catalog checker
+- Model the Domain shaped the library implementation. Groups use the existing
+  shelf's `files` and `imports` shape, including licenses, rather than a second
+  inferred inventory of shelf payloads.
+- Create retains its established Preact/hooks/kit defaults. Explicit `[]` copies
+  nothing. Writes default to no additions. New shelf groups are never copied
+  unless selected. Selecting a group again preserves existing files and aliases;
+  explicit file replacements and null deletions win. Selection is additive, not
+  a request to remove other already-installed groups.
+- Optional `mime` must be a string. It is accepted but is not persisted as an
+  override. The frozen descriptor decodes to bytes, and existing bundle MIME
+  remains inferred from the path. Both tool descriptions tell agents to use the
+  correct extension. No storage-schema change was introduced.
+- Empty themes, empty token maps and empty CSS values are valid under decision 2.
+  Presets and token names are case-sensitive. Forbidden CSS substrings are
+  rejected case-insensitively. Values are not trimmed or rewritten.
+- Kit guidance is informational `notes`, not a new error warning. It says to add
+  `<link rel="stylesheet" href="kit/spaces-kit.css">` and adjust the relative
+  path for a nested entry. It can recur on later edits while kit CSS is present.
+  No HTML parsing or injection was added.
 
-```sh
-~/.hermes/hermes-agent/venv/bin/python scripts/check-catalog-draft.py
-```
+## Red-then-green evidence
 
-- Red, before draft edits: exit **1**, `FAIL: sha must be
-  PIN_40_CHAR_SHA_AT_FINAL_COMMIT or a 40-hex SHA` against the old
-  `PIN_AT_SUBMISSION` value.
-- Green, after draft edits and again after final review: exit **0**, `PASS:
-  catalog draft matches plugin.yaml (13 tools); pin syntax accepted`.
-- This is a draft consistency check, not the Hermes validator and not permission
-  to submit a placeholder as a real catalog pin.
+The final 22-test regression file before the additional padding case was run
+against the two original product files from `git show 7febcd8:<path>`. The current
+product bytes were saved first and restored in a `finally` block. Tests stayed
+unchanged during that replay. It exited 1 with **22 test methods, 96 failed
+assertions/subtests, 3 schema lookup errors**. Three unaffected methods passed.
+The schema errors were missing `anyOf` and write `libraries`, not import errors.
 
-```sh
-~/.hermes/hermes-agent/venv/bin/python .run/w2-submission/check-draft-cases.py
-PYTHONPYCACHEPREFIX="$PWD/.run/w2-submission/pycache" ~/.hermes/hermes-agent/venv/bin/python -m py_compile scripts/check-catalog-draft.py
-```
+| Fix | Red evidence | Green evidence |
+|---|---|---|
+| Binary input and schema | 35 failing assertions/subtests and 2 missing-schema errors. PNG/WAV create rejected descriptors, limits returned invalid, and errors omitted paths. | All 8 original binary methods passed. PNG and PCM WAV create, read through `spaces_read_file`, write into the same Space, and bundle return identical bytes and SHA-256. |
+| Theme validation | 44 failing subtests/assertions. Invalid shapes, presets, names, unsafe values and 65 tokens were accepted. | All 6 theme methods pass, including seven presets, tokens-only, both, optional absence, 40/41-character names, 200/201-character values and 64/65 tokens. |
+| Shelf selection | Create rejected all four groups; writes ignored selection; schema omitted choices. These plus kit produced 17 failures and 1 schema error. | All 8 shelf/kit methods pass. Each group has an exact file-set and byte-content comparison with the packaged group, including licenses and WOFF2 paths. |
+| Kit link | Both create and write lacked the exact link in warnings or notes. | The exact link is present after both selections; HTML remains byte-identical. |
 
-The local temporary verification driver passed **24/24**, exit **0**. It invokes
-the checker in subprocesses against YAML copies in a temporary directory. Cases
-cover the placeholder, two valid full SHAs, eight invalid pins, name/version/floor
-drift, each of four registration lists, three invalid capability mappings,
-category/subdir drift and a newly declared manifest host capability. The real
-manifest was never edited. Receipt is `.run/w2-submission/catalog-cases.log`.
-Compilation exited **0**. No product fix was made, so a product red/green run is
-not applicable; the existing bridge fix is reported only from R1 evidence.
+One additional review regression tested `YWJj=`, `YWJj====` and `Zh==` against
+create and write. With only `b64decode(validate=True)`, it exited 1 with **1
+method, 6 failed subtests**, because Python accepted all three. The canonical
+re-encoding check fixes it. The final focused run passes **23/23**, with no skips.
 
-### Python
-
-The stock discovery includes
-`tests.python.test_upkeep_runs.RunTests.test_manual_refresh_from_local_server_has_provenance_and_timestamps`,
-which constructs `ThreadingHTTPServer(("127.0.0.1", 0), ...)`. The hard lane
-boundary forbids listeners, so the runner marked exactly that method skipped
-before running the discovered suite. It did not try to bind and did not fabricate
-a sandbox error. Test files remain unchanged.
-
-```sh
-HERMES_HOME="$PWD/.run/w2-submission/home" LIVING_SPACES_DB="$PWD/.run/w2-submission/home/spaces.db" PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD" ~/.hermes/hermes-agent/venv/bin/python .run/w2-submission/run-python.py > .run/w2-submission/python.log 2>&1
-```
-
-Exit **0**. **151 discovered/run, 150 passed, 0 failures, 0 errors, 1 skipped**.
-The runner used `unittest.defaultTestLoader.discover('tests/python',
-top_level_dir='.')`, set the named method's `__unittest_skip__` and
-`__unittest_skip_why__`, then ran `unittest.TextTestRunner(verbosity=2)`.
-The runner and raw log are local ignored artifacts, not committed product files.
-
-Forge's full stock command outside the no-listener lane is:
+Exact focused commands, all from the worktree root:
 
 ```sh
-~/.hermes/hermes-agent/venv/bin/python -m unittest discover -s tests/python -t .
+PYTHONDONTWRITEBYTECODE=1 ~/.hermes/hermes-agent/venv/bin/python -m unittest tests.python.test_c_tools -v
+~/.hermes/hermes-agent/venv/bin/python -B -m unittest tests.python.test_c_tools -v
+PYTHONDONTWRITEBYTECODE=1 ~/.hermes/hermes-agent/venv/bin/python -m unittest tests.python.test_c_tools.BinaryTests.test_noncanonical_base64_is_rejected -v
 ```
 
-### JavaScript and rendering
+The first command initially ran 21 methods before the encoded-manifest case was
+added. That red run had 95 failures and 3 errors; its first green run passed
+21/21. The baseline replay used the second command with 22 methods. The third
+command is the separate padding red run. The first command's final run passed
+23/23. Raw receipts remain in ignored `.run/c-tools-red.log`,
+`.run/c-tools-red-final.log`, `.run/c-tools-padding-red.log` and
+`.run/c-tools-green-final.log`.
 
-Generated the dependency-graph prerequisite into `.run/`, leaving the shipped
-bundle untouched:
+Decoded limit tests temporarily lower the existing file/project constants to
+1,024/2,050 bytes. Two identical 1,024-byte files fit despite their larger base64
+representations; an extra 3-byte file fails the total limit at 2,051. A 1,025-byte
+file fails the file limit. Errors preserve the previous revision. The stock core
+limit tests also ran unchanged.
+
+## Full verification
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 ~/.hermes/hermes-agent/venv/bin/python -m unittest discover -s tests/python -t .
+```
+
+Final exit **0**, **241 passed, 0 failures, 0 errors, 0 skipped**. Earlier full
+runs before the padding test passed 240/240. Raw final receipt is
+`.run/c-tools-python-final.log`. The current suite uses injected transports;
+there was no listener test to skip. No gateway, Desktop, Chrome, network listener
+or cron scheduler was started, stopped or restarted. No package was installed.
+
+JavaScript uses the existing Preact resolver and Node VM-module flag. The command
+also includes `tests/js/ui/index.js`, which the `*.test.mjs` glob omits.
+
+```sh
+node --experimental-vm-modules --import ./tests/js/sandbox/env.mjs --test tests/js/sandbox/*.test.mjs tests/js/ui/*.test.mjs tests/js/ui/index.js tests/js/reference/*.test.mjs
+```
+
+- First run exited **1**, **178 passed / 179 total**, with one missing prerequisite.
+  The renderer graph test reported `ENOENT: no such file or directory, open
+  '.run/package/desktop-metafile.json'`.
+- Generated only ignored build output with the command below. Exit **0**.
+- Next two unchanged parallel runs each exited **1**, **178 passed / 179 total**.
+  `host.test.mjs:103` in `mount binds boot to host session, forwards replies and
+  emits versioned events` reported `0 !== 1` after its existing `await delay(20)`.
+- Serial execution exited **0**, **179 passed, 0 failed, 0 skipped**. This supports
+  timing sensitivity; it does not prove the cause or fix the parallel gate.
 
 ```sh
 esbuild src/desktop/plugin.src.js --bundle --format=esm --jsx=automatic --external:@hermes/plugin-sdk --external:react --external:react/jsx-runtime --outfile=.run/package/plugin.js --metafile=.run/package/desktop-metafile.json
-```
-
-Exit **0**. The UI unit entry is `tests/js/ui/index.js`; no `ui/*.test.mjs` files
-exist, so the stock glob was adjusted.
-
-```sh
-node --test tests/js/sandbox/*.test.mjs tests/js/ui/index.js tests/js/reference/*.test.mjs > .run/w2-submission/node.log 2>&1
-```
-
-Initial attempt reported **97 tests, 94 passed, 3 failed file starts**.
-`hooks.test.mjs`, `html.test.mjs` and `compatibility.test.mjs` could not resolve
-`preact`. Exact error was `Error [ERR_MODULE_NOT_FOUND]: Cannot find package
-'preact' imported from .../src/living-spaces/runtime/vendor/hooks.mjs`. The tool
-wrapper ended with `tail`, so its shell exit 0 was not a passing Node test run.
-
-```sh
-node --import ./tests/js/sandbox/env.mjs --test tests/js/sandbox/*.test.mjs tests/js/ui/index.js tests/js/reference/*.test.mjs > .run/w2-submission/node-with-env.log 2>&1
-```
-
-With the existing resolver preloaded, exit **1**, **113 tests, 112 passed,
-1 failed file start**. Exact error was `SyntaxError: The requested module
-'node:vm' does not provide an export named 'SourceTextModule'` in the reference
-suite. That suite needs Node's VM modules flag. No source or test edits were made.
-
-```sh
-node --experimental-vm-modules --import ./tests/js/sandbox/env.mjs --test tests/js/sandbox/*.test.mjs tests/js/ui/index.js tests/js/reference/*.test.mjs > .run/w2-submission/node-final.log 2>&1
-node tests/js/ui/render-smoke.mjs > .run/w2-submission/render.log 2>&1
+node --experimental-vm-modules --import ./tests/js/sandbox/env.mjs --test --test-concurrency=1 tests/js/sandbox/*.test.mjs tests/js/ui/*.test.mjs tests/js/ui/index.js tests/js/reference/*.test.mjs
 node scripts/check-renderer-graph.mjs .run/package/desktop-metafile.json
-```
-
-Final Node exit **0**, **131 tests passed, 0 failed, 0 skipped**. Static rendering
-exited **0** with **40 assertions** and 12 HTML fixtures. Graph gate exited **0**,
-`Renderer graph excludes guest code and guest HTML`. Rendering is not real
-Desktop acceptance. No app-driving harness was written or executed in this lane.
-
-### Documentation and whitespace
-
-A read-only `python3 -` assertion pass checked the following against actual files:
-
-- The spec section 2 disclosure is verbatim in README, PR draft and catalog draft.
-- All **21** relative Markdown file links resolve.
-- All **11** shot budgets sum to **83 seconds**, below 90.
-- Checklist includes all **18** numbered admission rules and all four separate
-  Ife approval gates.
-- The obsolete `PIN_AT_SUBMISSION` placeholder is absent.
-
-All five groups passed, exit **0**. The sources of current behavior were the
-manifest, spec, frozen contracts, R1 ledger, committed validator receipt, current
-host controls and read-only Hermes install/removal implementation. The GBrain
-context pack supplied no current implementation authority.
-
-```sh
-git diff --check
-git diff --cached --check
-```
-
-Both exited **0** before the attempted commit. The cached check was empty because
-staging failed. The final working-tree check also exited **0**.
-
-```sh
+~/.hermes/hermes-agent/venv/bin/python scripts/check-shelf.py
+~/.hermes/hermes-agent/venv/bin/python scripts/check-catalog-draft.py
+PYTHONPYCACHEPREFIX="$PWD/.run/c-tools-pycache" ~/.hermes/hermes-agent/venv/bin/python -m py_compile src/living-spaces/__init__.py src/living-spaces/living_spaces_core/projects.py tests/python/test_c_tools.py
 node tests/js/sandbox/check.mjs
 ```
 
-Exit **0**. Syntax passed for **18 JavaScript files**; whitespace passed for
-**24 lane files** including this report and the working-tree diff.
+All auxiliary commands exited **0**. Graph gate excludes guest code and HTML.
+Shelf integrity passes **12 files, 1,224,136 bytes**. Catalog metadata matches
+**13 tools**. Compilation passes. The syntax/whitespace gate passes **19 JS
+files and 25 lane files**. No harness was written or modified, so no harness
+compilation or runtime pass is claimed. Node receipts are `.run/c-tools-node.log`,
+`.run/c-tools-node-final.log`, `.run/c-tools-node-retry.log` and
+`.run/c-tools-node-serial.log`.
 
-## Git handoff failure
-
-Attempted the small verified catalog/checker commit with:
+Package validation called the installed validator directly, avoiding the CLI's
+dependency-bootstrap path. It used the existing interpreter with no installation.
 
 ```sh
-git add scripts/check-catalog-draft.py docs/submission/catalog-entry.draft.yaml
-git diff --cached --check
-git commit -m 'Align catalog draft with manifest and check metadata drift'
+mkdir -p .run/c-tools-validation
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$HOME/.hermes/hermes-agent" HERMES_HOME="$PWD/.run/c-tools-validation/home" LIVING_SPACES_DB="$PWD/.run/c-tools-validation/spaces.db" TMPDIR="$PWD/.run/c-tools-validation" ~/.hermes/hermes-agent/venv/bin/python - <<'PY'
+from pathlib import Path
+from hermes_cli.plugin_validate import validate_plugin_dir
+report = validate_plugin_dir(Path('src/living-spaces').resolve())
+for name, ok, detail in report.checks:
+    print(('PASS' if ok else 'FAIL') + ' ' + name + ': ' + detail)
+for warning in report.warnings:
+    print('WARN ' + warning)
+print(f'{len(report.checks)} checks, {len(report.failures)} failures, {len(report.warnings)} warnings')
+raise SystemExit(report.exit_code)
+PY
 ```
 
-Both staging and commit failed with:
+Exit **0**, **16 checks passed, 0 failures, 2 warnings**. The warnings name the
+private `cron.jobs` import at `living_spaces_core/schedules.py:18` and raw bridge
+`window.hermesDesktop` at `desktop/plugin.js:1105`. Both files are unchanged and
+outside this lane. Receipt is `.run/c-tools-validator.log`. Validation preceded
+the final two-line strict-padding fix; that fix passed the full Python rerun.
+
+## Git and handoff
+
+```sh
+git diff --check
+git add src/living-spaces/__init__.py src/living-spaces/living_spaces_core/projects.py tests/python/test_c_tools.py
+git diff --cached --check
+git add src/living-spaces/__init__.py src/living-spaces/living_spaces_core/projects.py tests/python/test_c_tools.py LANE_REPORT.md
+git commit -m 'Support binary assets, validated themes and selected shelf libraries'
+```
+
+Whitespace checks exited **0**. Both staging attempts and the commit attempt
+failed with exit **128**:
 
 ```text
-fatal: Unable to create '<shared-repo>/.git/worktrees/w2-submission/index.lock': Operation not permitted
+fatal: Unable to create '<shared-repo>/.git/worktrees/c-tools/index.lock': Operation not permitted
 ```
 
-The shared Git metadata path is sandbox-denied despite being listed as a writable
-root. Approval escalation is disabled. Changes remain **unstaged**, not committed.
-No alternate index, direct Git-object write or permission bypass was attempted.
-Forge can stage and commit these seven owned/requested files from an authorized
-shell after reviewing them. Do not push as part of this lane.
+Changes remain unstaged. The cached whitespace check was empty. No alternate
+index or Git-object workaround was used. Approval escalation is unavailable.
+Forge must stage and commit the four files above from an authorized shell.
 
-## Not done and proven issues
+## What is not done and proven issues
 
-1. No final package validator run or final SHA pin. Historical receipt remains
-   `docs/evidence/runs/validate-8724804/raw.log`, exit 0, 16 passed checks, one
-   private `cron.jobs` warning. The checker does not replace that run.
-2. Private API admission remains unresolved. The guide requires public surfaces;
-   it warns on this import even when `no core override` passes. README/PR explain
-   the missing public no-agent job creation/control seam. Forge must settle it
-   with maintainers before claiming catalog compliance.
-3. R1-01 and R1-12 are pending. R1-02 is pre-packaging evidence; R1-03 through
-   R1-11 remain partial. All specific missing observations from the current
-   ledger are listed in README/PR/checklist. No acceptance status was changed.
-4. Existing schedule/lifecycle/repair evidence includes disclosed fixtures and
-   harness accommodations. The demo does not use injected source divergence as
-   live retrieval, and does not claim a fixture is an unedited user journey.
-5. Final screenshots/video are not captured. They follow Miro's design kit merge
-   and Forge's qualification. No test schedule was created by this lane; cleanup
-   of existing qualification jobs remains Forge's release-end work.
-6. Linux/Windows are unqualified. Catalog `platforms: []` previously implied all
-   platforms; the draft now limits its claim to macOS.
-7. The prior README described an unverified local-directory installer and typed
-   deletion ID. Current docs use whole-package placement and the actual host
-   confirmation. The current Hermes removal implementation leaves profile plugin
-   data; no uninstall runtime rehearsal was performed.
-8. `projects.delete_space` removes records/revisions and dependent Space rows but
-   does not garbage-collect `blobs`. Docs now disclose that project file blobs can
-   remain; deletion is not secure erasure. A general data-erasure guarantee would
-   require a separately scoped design and tests.
-9. Raw Node commands lacked two existing test prerequisites. Corrected invocation
-   passed without code edits or package installation. One Python listener case
-   remains for Forge, as stated above.
-10. Staging and commit are sandbox-blocked. No commits or pushes were created.
-11. Public repo, catalog PR, demo-video publication and Typeform submission still
-    need separate Ife approval. No external publication, issue, PR, message or
-    submission was performed. Final name/lineage audit and catalog CI are pending.
+1. No real-Desktop asset rendering, playback, font rendering, theme application,
+   module execution or normal-chat model turn was run. Guest behavior belongs to
+   c-guest; Forge must qualify the integrated result serially in the shared app.
+   No app-driving harness was written, so there is no new harness command to run.
+2. Parallel JS verification still fails the fixed-delay host test described above.
+   Forge should rerun the exact parallel command and assign a deterministic
+   completion signal to its owning lane if it remains intermittent. Serial green
+   is reported separately and does not erase either failed receipt.
+3. The two package-validator warnings remain open for Forge. No unrelated fix was
+   attempted in schedules or the shipped renderer.
+4. No MIME override persistence was added. Correct extensions are required for
+   existing path-based bundle MIME inference.
+5. No commits or pushes were created because Git staging is denied. No generated
+   artifact is included in the changed-file set.
 
 ## Contract issues and spec gaps
 
-- Spec section 2 permits granting a narrower scope. The frozen R1 contract and
-  UI expose approve/deny/revoke for the requested scope, with no narrower choice.
-  R1-STATUS already discloses the gap. Proposed resolution is for Forge/Product
-  to decide whether to amend R1's accepted scope explicitly or commission narrow
-  grants with tests. Docs cannot silently mark this requirement complete.
-- Catalog and manifest both use the name `capabilities` for different shapes.
-  The catalog has a registration mapping; the manifest has a host-permission
-  list. The checker compares registration fields and separately rejects changes
-  from the disclosed empty host-permission list. No invented catalog field or
-  manifest edit was used. Desktop is an entrypoint/category, not a manifest key.
-- No new bridge-contract disagreement was found. Typed `limit`/`invalid`
-  responses require a usable request ID; docs preserve that qualification.
-- The spec requires explicit deletion and loss disclosure, not typed-ID input or
-  secure media erasure. The README's typed-ID claim was corrected to the actual
-  host control. Product should specify any future stronger erasure guarantee
-  separately, including retained blobs and backups.
-- No contract/spec files were edited. No new app harness needs a Forge command.
-  Forge owns the remaining existing R1 harness runs serially under the shared
-  isolated app protocol; this lane does not instruct parallel app execution.
+- No disagreement with the frozen lane decisions. `CONTRACTS.md` still lists htm
+  as pending, omits the four approved shelf groups and theme rules, and lacks the
+  new optional `libraries` keyword on core and tool writes. It also omits result
+  `notes`. Forge should amend sections 0, 3, 4 and 9 at integration. It was not
+  edited here.
+- Decision 1 gives `mime?` no storage or override semantics. This implementation
+  follows its bytes-at-boundary rule and retains existing MIME inference. If
+  MIME overrides are intended, Forge should define their revision storage and
+  read/bundle contract before commissioning that extension.
+- Spec R1-01/R1-04 include assets and bundled libraries, but no dedicated theme
+  acceptance case. Forge should add an integrated guest check for preset-only,
+  tokens-only, combined themes, CSS override order, and binary assets/fonts
+  created through these tools. Unit results alone do not establish that outcome.
