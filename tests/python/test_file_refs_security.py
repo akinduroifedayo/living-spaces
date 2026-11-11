@@ -180,7 +180,7 @@ class ProvenanceTests(stock.FileRefCase):
         self.responses = [stock.Response(status=302, headers={'Location': redirected}), stock.Response(b'font bytes')]
         sid = self.create({'font.woff2': {'from_url': original}})['space']
         summary = stock.core.list_revisions(sid)[0]['summary']
-        self.assertIn('https://cdn.example/font.woff2', summary)
+        self.assertIn('https://cdn.example', summary)
         self.assertIn(hashlib.sha256(b'font bytes').hexdigest(), summary)
         self.assertNotIn('SYNTHETIC-', summary)
         self.assertNotIn('?', summary)

@@ -202,7 +202,8 @@ class FromUrlTests(FileRefCase):
         headers = conn.request.call_args.kwargs["headers"]
         self.assertFalse({k.lower() for k in headers} & {"cookie", "authorization"})
         summary = core.list_revisions(result["space"])[0]["summary"]
-        self.assertIn(self.URL, summary)
+        self.assertIn('https://fonts.example', summary)
+        self.assertNotIn(self.URL, summary)
         self.assertIn(hashlib.sha256(font).hexdigest(), summary)
 
     def test_needs_no_net_grant(self):

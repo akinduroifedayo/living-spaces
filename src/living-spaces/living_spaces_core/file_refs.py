@@ -13,8 +13,13 @@ from urllib.parse import urlsplit, urlunsplit
 from . import db, limits, net
 from .errors import SpacesError
 
-DENIED_NAMES = (".env", ".env.*", "auth.json", "*token*", "*secret*", "*.key",
-                ".netrc", "_netrc", ".npmrc", ".git-credentials", ".gitconfig", ".boto", ".pypirc")
+DENIED_NAMES = (".env", ".env.*", "auth.json", "*.key",
+                ".netrc", "_netrc", ".npmrc", ".git-credentials", ".gitconfig", ".boto", ".pypirc") + tuple(
+    stem + extension
+    for stem in ("token", "tokens", ".token", ".tokens", "*[_-]token", "*[_-]tokens",
+                 "secret", "secrets", ".secret", ".secrets", "*[_-]secret", "*[_-]secrets")
+    for extension in ("", ".json", ".txt", ".yaml", ".yml", ".toml")
+)
 DENIED_DIRS = (".ssh", ".aws", ".docker", ".kube", ".gnupg", ".git")
 DENIED_STORES = tuple(tuple(path.lower().split("/")) for path in (
     ".config/gh", ".config/gcloud", ".config/git", ".config/google-chrome", ".config/chromium",
@@ -121,7 +126,7 @@ def _url_note(url):
             host = f"[{host}]"
         if parts.port is not None:
             host += f":{parts.port}"
-        clean = urlunsplit((parts.scheme, host, parts.path, "", ""))
+        clean = urlunsplit((parts.scheme, host, "", "", ""))
     except ValueError:
         return "[unavailable URL]"
     return clean[:PROVENANCE_URL_CHARS]
