@@ -145,7 +145,12 @@ export function spaceLoader(resolver) {
   }
   const pushLog = (level, parts) => {
     if (logQueue.length === 50) { dropped++; return }
-    logQueue.push({ level, msg: parts.map(safeText).join(' ').slice(0, 4000) })
+    let msg = parts.map(safeText).join(' ')
+    if (msg.length > 4000) {
+      const marker = ` [truncated; original ${msg.length} chars]`
+      msg = msg.slice(0, 4000 - marker.length) + marker
+    }
+    logQueue.push({ level, msg })
   }
   for (const level of Object.getOwnPropertyNames(console).filter(name => typeof console[name] === 'function')) {
     const original = console[level].bind(console)
