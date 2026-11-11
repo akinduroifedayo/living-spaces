@@ -36,7 +36,13 @@ below exist only for isolation, data integrity and resource limits.
 Browser `fetch`, XMLHttpRequest, WebSocket, CDN or remote `import`, remote images,
 web fonts and iframe embeds are blocked by the frame's policy and will fail.
 To reach the internet, call `space.net.fetch(url, {method, headers, body, as})`.
-`as` is `'text'` (default), `'json'` or `'bytes'`. The Hermes host performs the
+`as` is `'text'` (default), `'json'` or `'bytes'`. The result always has
+`{status, url, headers}` plus `text`, `json` or `{b64, mime}`, respectively.
+For JSON use `const response = await space.net.fetch(url, {as: 'json'});`
+and then `const data = response.json`. There is no `.body` or `.json()` method.
+Check `response.status` before reading a successful payload. HTTP errors return
+their status; permission and network failures reject with a typed error.
+The Hermes host performs the
 request over public HTTPS only. It never sends cookies or credentials, refuses
 local and private addresses, and caps responses at 5 MiB. It works while the
 Space's "Internet access" permission is on. That is the default, and the user can
