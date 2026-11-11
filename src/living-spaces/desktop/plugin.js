@@ -473,222 +473,29 @@ function HistorySheet({ ctx, space, onClose, onChanged, initialTab = "runs", ret
 
 // src/desktop/ui/permissions.jsx
 import { Badge as Badge3, ErrorState as ErrorState3, Skeleton as Skeleton3, useQuery as useQuery3 } from "@hermes/plugin-sdk";
-import { useRef as useRef2, useState as useState4 } from "react";
-import { Fragment as Fragment3, jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
-var NET_DESCRIPTION = "This Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.";
-var NET_OFF_DESCRIPTION = "This Space can't load content from or send data to the internet through Internet access.";
-var NET_OFF_NOTE = "Off is not a complete block. A browser feature called WebRTC can still send data this Space can read. It still can't reach Hermes, your credentials, your files or other Spaces.";
-var CAPABILITIES = {
-  data: { name: "Own data", icon: "folder", scope: "This Space's records only. Cannot see other Spaces.", purpose: "Store your records, notes and statuses.", leaves: "This grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off." },
-  refresh: { name: "Refresh", icon: "refresh", purpose: "Keep public-source records current.", leaves: "Yes \xB7 requests the approved public sources through Hermes." },
-  logs: { name: "Diagnostics", icon: "info", scope: "Error logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.", purpose: "Let the owner see crashes and repair them.", leaves: "No ordinary network access. The owner can read these logs in chat." }
-};
-var FUTURE = ["Approved sites", "Camera", "Microphone", "Location", "Hermes tools (per tool)", "Files and folders", "Cross-Space access", "Agent requests"];
-function WebRTCNote() {
-  return /* @__PURE__ */ jsxs4("div", { className: "ls-disclosure", "data-testid": "webrtc-note", children: [
-    /* @__PURE__ */ jsxs4("strong", { children: [
-      /* @__PURE__ */ jsx4(Icon, { name: "info" }),
-      " Before you approve anything"
-    ] }),
-    /* @__PURE__ */ jsx4("p", { children: NET_OFF_NOTE })
-  ] });
-}
-function InternetAccess({ grant, onDecide, busy }) {
-  const enabled = grant.status === "granted";
-  return /* @__PURE__ */ jsx4("section", { className: "ls-section", children: /* @__PURE__ */ jsxs4("article", { className: "ls-grant", "data-testid": "internet-access", children: [
-    /* @__PURE__ */ jsxs4("div", { className: "ls-row-top", children: [
-      /* @__PURE__ */ jsx4("strong", { children: "Internet access" }),
-      /* @__PURE__ */ jsx4(Action, { role: "switch", "aria-label": "Internet access", "aria-checked": enabled, "aria-describedby": "ls-net-description", disabled: busy, onClick: () => onDecide(grant, enabled ? "revoke" : "grant"), children: enabled ? "On" : "Off" })
-    ] }),
-    /* @__PURE__ */ jsx4("p", { id: "ls-net-description", className: "ls-secondary", children: enabled ? NET_DESCRIPTION : NET_OFF_DESCRIPTION }),
-    grant.status === "requested" && /* @__PURE__ */ jsxs4("div", { className: "ls-actions", children: [
-      /* @__PURE__ */ jsx4(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" }),
-      /* @__PURE__ */ jsx4(Action, { disabled: busy, onClick: () => onDecide(grant, "deny"), children: "Deny" })
-    ] }),
-    !enabled && /* @__PURE__ */ jsx4(WebRTCNote, {})
-  ] }) });
-}
-function GrantCard({ grant, onDecide, busy }) {
-  const model = CAPABILITIES[grant.capability];
-  if (!model) return null;
-  const scope = grant.requested_scope || grant.scope || {};
-  const scopeText = grant.capability === "refresh" ? `Host-owned public-source handler. Approved hosts: ${(scope.hosts || []).join(", ") || "No hosts requested"}.` : model.scope;
-  return /* @__PURE__ */ jsxs4("article", { className: `ls-grant${grant.status === "requested" ? " ls-pending" : ""}`, children: [
-    /* @__PURE__ */ jsxs4("div", { className: "ls-row-top", children: [
-      /* @__PURE__ */ jsxs4("strong", { children: [
-        /* @__PURE__ */ jsx4(Icon, { name: model.icon }),
-        model.name
-      ] }),
-      /* @__PURE__ */ jsx4(StatusPill, { status: grant.status })
-    ] }),
-    /* @__PURE__ */ jsxs4("dl", { className: "ls-facts", children: [
-      /* @__PURE__ */ jsxs4("div", { children: [
-        /* @__PURE__ */ jsx4("dt", { children: "Scope" }),
-        /* @__PURE__ */ jsx4("dd", { children: scopeText })
-      ] }),
-      /* @__PURE__ */ jsxs4("div", { children: [
-        /* @__PURE__ */ jsx4("dt", { children: "Purpose" }),
-        /* @__PURE__ */ jsx4("dd", { children: grant.purpose || model.purpose })
-      ] }),
-      /* @__PURE__ */ jsxs4("div", { children: [
-        /* @__PURE__ */ jsx4("dt", { children: "Data leaves device" }),
-        /* @__PURE__ */ jsx4("dd", { children: model.leaves })
-      ] }),
-      /* @__PURE__ */ jsxs4("div", { children: [
-        /* @__PURE__ */ jsx4("dt", { children: "Access" }),
-        /* @__PURE__ */ jsx4("dd", { children: "Continuing" })
-      ] })
-    ] }),
-    /* @__PURE__ */ jsx4("div", { className: "ls-actions", children: grant.status === "granted" ? /* @__PURE__ */ jsx4(Action, { danger: true, disabled: busy, onClick: () => onDecide(grant, "revoke"), children: "Revoke" }) : grant.status === "requested" ? /* @__PURE__ */ jsxs4(Fragment3, { children: [
-      /* @__PURE__ */ jsx4(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" }),
-      /* @__PURE__ */ jsx4(Action, { disabled: busy, onClick: () => onDecide(grant, "deny"), children: "Deny" })
-    ] }) : grant.capability === "refresh" ? /* @__PURE__ */ jsxs4(Fragment3, { children: [
-      /* @__PURE__ */ jsxs4("p", { className: "ls-secondary", children: [
-        "Refresh permission ",
-        grant.status,
-        ". Approving Refresh leaves scheduled upkeep paused until you resume it."
-      ] }),
-      /* @__PURE__ */ jsx4(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" })
-    ] }) : /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: grant.status === "denied" ? `Denied. The Space shows \u201C${model.name} isn't available\u201D instead of prompting again.` : `${model.name} was revoked. Ask in chat to request access again.` }) })
-  ] });
-}
-function PermissionsContent({ space, grants, audit = [], schedule, onDecide, onSchedule, busy = false }) {
-  const net = grants.find((g) => g.capability === "net");
-  const pending = grants.filter((g) => g.capability !== "net" && g.status === "requested");
-  const settled = grants.filter((g) => g.capability !== "net" && g.status !== "requested");
-  return /* @__PURE__ */ jsxs4(Fragment3, { children: [
-    net && /* @__PURE__ */ jsx4(InternetAccess, { grant: net, onDecide, busy }),
-    /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
-      /* @__PURE__ */ jsxs4("h2", { className: "ls-section-title", children: [
-        "Granted to ",
-        space.name
-      ] }),
-      settled.map((g) => /* @__PURE__ */ jsx4(GrantCard, { grant: g, onDecide, busy }, g.capability)),
-      !settled.length && /* @__PURE__ */ jsx4("p", { children: "No grants approved yet." })
-    ] }),
-    /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
-      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "Waiting for your decision" }),
-      pending.map((g) => /* @__PURE__ */ jsx4(GrantCard, { grant: g, onDecide, busy }, g.capability)),
-      schedule?.status === "requested" && /* @__PURE__ */ jsxs4("article", { className: "ls-grant ls-pending", children: [
-        /* @__PURE__ */ jsxs4("div", { className: "ls-row-top", children: [
-          /* @__PURE__ */ jsxs4("strong", { children: [
-            /* @__PURE__ */ jsx4(Icon, { name: "watch" }),
-            "Scheduled upkeep"
-          ] }),
-          /* @__PURE__ */ jsx4(StatusPill, { status: "requested" })
-        ] }),
-        /* @__PURE__ */ jsxs4("dl", { className: "ls-facts", children: [
-          /* @__PURE__ */ jsxs4("div", { children: [
-            /* @__PURE__ */ jsx4("dt", { children: "Cadence" }),
-            /* @__PURE__ */ jsx4("dd", { children: schedule.cadence })
-          ] }),
-          /* @__PURE__ */ jsxs4("div", { children: [
-            /* @__PURE__ */ jsx4("dt", { children: "Timezone" }),
-            /* @__PURE__ */ jsx4("dd", { children: schedule.timezone })
-          ] }),
-          /* @__PURE__ */ jsxs4("div", { children: [
-            /* @__PURE__ */ jsx4("dt", { children: "Purpose" }),
-            /* @__PURE__ */ jsx4("dd", { children: schedule.purpose })
-          ] }),
-          /* @__PURE__ */ jsxs4("div", { children: [
-            /* @__PURE__ */ jsx4("dt", { children: "Owner" }),
-            /* @__PURE__ */ jsx4("dd", { children: space.owner })
-          ] }),
-          /* @__PURE__ */ jsxs4("div", { children: [
-            /* @__PURE__ */ jsx4("dt", { children: "Cost" }),
-            /* @__PURE__ */ jsx4("dd", { children: "No model calls" })
-          ] })
-        ] }),
-        /* @__PURE__ */ jsx4("p", { children: CATCH_UP }),
-        /* @__PURE__ */ jsxs4("div", { className: "ls-actions", children: [
-          /* @__PURE__ */ jsx4(Action, { primary: true, disabled: busy, onClick: () => onSchedule("approve"), children: "Approve" }),
-          /* @__PURE__ */ jsx4(Action, { disabled: busy, onClick: () => onSchedule("deny"), children: "Deny" })
-        ] })
-      ] }),
-      !pending.length && schedule?.status !== "requested" && /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "Nothing waiting for your decision." })
-    ] }),
-    /* @__PURE__ */ jsxs4("section", { className: "ls-section", "data-testid": "release-two", children: [
-      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "Coming in release 2 \u2014 not available yet" }),
-      FUTURE.map((name) => /* @__PURE__ */ jsx4("div", { className: "ls-grant ls-future", children: /* @__PURE__ */ jsxs4("div", { className: "ls-row-top", children: [
-        /* @__PURE__ */ jsx4("strong", { children: name }),
-        /* @__PURE__ */ jsx4(Badge3, { variant: "outline", children: "Not available yet" })
-      ] }) }, name)),
-      /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "Camera, microphone and location will start off and also follow Hermes and macOS permission prompts. Release 2 will revisit what Spaces can read before tool and file access is offered." })
-    ] }),
-    /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
-      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "Owner" }),
-      /* @__PURE__ */ jsx4(OwnerChip, { owner: space.owner }),
-      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "Audit" }),
-      audit.length ? /* @__PURE__ */ jsx4("ul", { className: "ls-audit", children: audit.slice(0, 10).map((a) => /* @__PURE__ */ jsxs4("li", { children: [
-        /* @__PURE__ */ jsx4(Time, { at: a.at }),
-        " \xB7 ",
-        a.actor,
-        " \xB7 ",
-        a.action,
-        " ",
-        a.capability || "",
-        " \xB7 ",
-        a.outcome
-      ] }, a.id)) }) : /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "No permission decisions recorded." })
-    ] })
-  ] });
-}
-function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
-  const base = spacePath(space.id);
-  const query = useQuery3({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "grants"], queryFn: () => ctx.rest(`${base}/grants`), refetchInterval: 2e3 });
-  const schedule = useQuery3({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "schedule"], queryFn: () => ctx.rest(`${base}/schedule`), refetchInterval: 2e3 });
-  const [revoke, setRevoke] = useState4(null);
-  const [busy, setBusy] = useState4(false);
-  const [error, setError] = useState4("");
-  const lock = useRef2(false);
-  async function decide(grant, decision) {
-    if (decision === "revoke" && grant.capability !== "net") {
-      setRevoke(grant);
-      return;
-    }
-    await change(`${base}/grants/${grant.capability}`, { decision, ...decision === "grant" ? { requested_scope: grant.requested_scope ?? grant.scope ?? {} } : {} });
-  }
-  async function change(path, body) {
-    if (lock.current) return;
-    lock.current = true;
-    setBusy(true);
-    setError("");
-    try {
-      await ctx.rest(path, { method: "POST", body });
-      await Promise.all([query.refetch(), schedule.refetch(), onChanged()]);
-    } catch (e) {
-      if ((e?.error || e?.body?.error || e)?.code === "conflict") {
-        setError("Permission request changed. Review the new request before approving.");
-      } else setError(`${errorText(e)} Review the current request before trying again.`);
-      await Promise.all([query.refetch(), schedule.refetch()]);
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
-  }
-  return /* @__PURE__ */ jsxs4(Fragment3, { children: [
-    /* @__PURE__ */ jsxs4(Drawer, { title: `Permissions \xB7 ${space.name}`, description: "Review this Space's access and schedule requests.", onClose, returnFocus, children: [
-      error && /* @__PURE__ */ jsx4(Banner, { kind: "failed", title: error }),
-      query.error || schedule.error ? /* @__PURE__ */ jsx4(ErrorState3, { title: "Permissions could not be loaded", description: errorText(query.error || schedule.error), children: /* @__PURE__ */ jsx4(Action, { onClick: () => {
-        query.refetch();
-        schedule.refetch();
-      }, children: "Try again" }) }) : query.isLoading ? /* @__PURE__ */ jsx4(Skeleton3, { style: { height: 180 } }) : /* @__PURE__ */ jsx4(PermissionsContent, { space, grants: query.data?.grants || [], audit: query.data?.audit || [], schedule: schedule.data, onDecide: decide, onSchedule: (decision) => change(`${base}/schedule`, { decision }), busy })
-    ] }),
-    revoke && /* @__PURE__ */ jsx4(DecisionDialog, { danger: true, title: `Revoke ${CAPABILITIES[revoke.capability].name} for ${space.name}?`, description: revoke.capability === "refresh" ? "Scheduled upkeep pauses and manual refreshes stop. Approve Refresh in Permissions, then resume upkeep to restart scheduled refreshes. Data already delivered to the Space can't be recalled, and completed requests can't be undone." : `The Space loses ${CAPABILITIES[revoke.capability].name.toLowerCase()} access. Data already delivered to the Space can't be recalled, and completed requests can't be undone.`, cancelLabel: "Keep access", confirmLabel: "Revoke", onClose: () => setRevoke(null), onConfirm: async () => {
-      await ctx.rest(`${base}/grants/${revoke.capability}`, { method: "POST", body: { decision: "revoke" } });
-      await query.refetch();
-      await onChanged();
-    } })
-  ] });
-}
+import { useRef as useRef3, useState as useState5 } from "react";
 
 // src/desktop/ui/schedule.jsx
-import { useRef as useRef3, useState as useState5 } from "react";
-import { Fragment as Fragment4, jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
+import { useRef as useRef2, useState as useState4 } from "react";
+import { Fragment as Fragment3, jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
+function UpkeepCost({ space }) {
+  const upkeep = space.manifest?.upkeep;
+  return upkeep?.handler === "agent" ? /* @__PURE__ */ jsxs4(Fragment3, { children: [
+    /* @__PURE__ */ jsx4("p", { children: "Uses model calls. Runs a Hermes agent with the tools enabled for native cron jobs." }),
+    /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "The agent is instructed to update only this Space through spaces_* tools and preserve user notes and statuses." }),
+    /* @__PURE__ */ jsxs4("div", { children: [
+      /* @__PURE__ */ jsx4("strong", { children: "Upkeep prompt" }),
+      /* @__PURE__ */ jsx4("p", { style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" }, children: upkeep.prompt })
+    ] })
+  ] }) : /* @__PURE__ */ jsxs4(Fragment3, { children: [
+    /* @__PURE__ */ jsx4("p", { children: "No model calls. Refreshes use the declared public-source handler and approved hosts." }),
+    /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "Feed limit 3 MB \xB7 200 entries per source \xB7 20 s request timeout." })
+  ] });
+}
 function ScheduleSheet({ ctx, space, onClose, onChanged, returnFocus }) {
-  const [error, setError] = useState5("");
-  const [busy, setBusy] = useState5(false);
-  const lock = useRef3(false);
+  const [error, setError] = useState4("");
+  const [busy, setBusy] = useState4(false);
+  const lock = useRef2(false);
   const schedule = space.schedule;
   const refresh = space.grants?.find((grant) => grant.capability === "refresh");
   const permissionReason = schedule?.reason?.match(/Refresh permission (revoked|denied)/i);
@@ -710,60 +517,268 @@ function ScheduleSheet({ ctx, space, onClose, onChanged, returnFocus }) {
       setBusy(false);
     }
   }
-  return /* @__PURE__ */ jsxs5(Drawer, { title: `Schedule \xB7 ${space.name}`, description: "Schedule, cost and missed-run policy", onClose, returnFocus, children: [
-    error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: error }),
-    schedule ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
-      /* @__PURE__ */ jsx5(StatusPill, { status: schedule.status === "active" ? "ready" : schedule.status === "paused" ? "paused" : schedule.status, label: schedule.status === "active" ? "Active" : schedule.status === "disabled" ? "Disabled" : void 0 }),
-      /* @__PURE__ */ jsxs5("dl", { className: "ls-facts", children: [
-        /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "Cadence" }),
-          /* @__PURE__ */ jsx5("dd", { children: schedule.cadence })
+  return /* @__PURE__ */ jsxs4(Drawer, { title: `Schedule \xB7 ${space.name}`, description: "Schedule, cost and missed-run policy", onClose, returnFocus, children: [
+    error && /* @__PURE__ */ jsx4(Banner, { kind: "failed", title: error }),
+    schedule ? /* @__PURE__ */ jsxs4(Fragment3, { children: [
+      /* @__PURE__ */ jsx4(StatusPill, { status: schedule.status === "active" ? "ready" : schedule.status === "paused" ? "paused" : schedule.status, label: schedule.status === "active" ? "Active" : schedule.status === "disabled" ? "Disabled" : void 0 }),
+      /* @__PURE__ */ jsxs4("dl", { className: "ls-facts", children: [
+        /* @__PURE__ */ jsxs4("div", { children: [
+          /* @__PURE__ */ jsx4("dt", { children: "Cadence" }),
+          /* @__PURE__ */ jsx4("dd", { children: schedule.cadence })
         ] }),
-        /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "Timezone" }),
-          /* @__PURE__ */ jsx5("dd", { children: schedule.timezone })
+        /* @__PURE__ */ jsxs4("div", { children: [
+          /* @__PURE__ */ jsx4("dt", { children: "Timezone" }),
+          /* @__PURE__ */ jsx4("dd", { children: schedule.timezone })
         ] }),
-        /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "Purpose" }),
-          /* @__PURE__ */ jsx5("dd", { children: schedule.purpose })
+        /* @__PURE__ */ jsxs4("div", { children: [
+          /* @__PURE__ */ jsx4("dt", { children: "Purpose" }),
+          /* @__PURE__ */ jsx4("dd", { children: schedule.purpose })
         ] }),
-        /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "Next run" }),
-          /* @__PURE__ */ jsx5("dd", { children: schedule.status === "active" ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
+        /* @__PURE__ */ jsxs4("div", { children: [
+          /* @__PURE__ */ jsx4("dt", { children: "Next run" }),
+          /* @__PURE__ */ jsx4("dd", { children: schedule.status === "active" ? /* @__PURE__ */ jsxs4(Fragment3, { children: [
             overdue && "Delayed \xB7 awaiting Hermes. Scheduled for ",
-            /* @__PURE__ */ jsx5(Time, { at: nextRun })
+            /* @__PURE__ */ jsx4(Time, { at: nextRun })
           ] }) : "Not scheduled while upkeep is inactive" })
         ] }),
-        /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "Last attempt" }),
-          /* @__PURE__ */ jsxs5("dd", { children: [
-            /* @__PURE__ */ jsx5(Time, { at: space.freshness?.last_attempt_at }),
+        /* @__PURE__ */ jsxs4("div", { children: [
+          /* @__PURE__ */ jsx4("dt", { children: "Last attempt" }),
+          /* @__PURE__ */ jsxs4("dd", { children: [
+            /* @__PURE__ */ jsx4(Time, { at: space.freshness?.last_attempt_at }),
             " \xB7 ",
             space.freshness?.last_attempt_status || "No attempts"
           ] })
         ] }),
-        reason && /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "Reason" }),
-          /* @__PURE__ */ jsx5("dd", { children: reason })
+        reason && /* @__PURE__ */ jsxs4("div", { children: [
+          /* @__PURE__ */ jsx4("dt", { children: "Reason" }),
+          /* @__PURE__ */ jsx4("dd", { children: reason })
         ] }),
-        schedule.last_dispatch && /* @__PURE__ */ jsxs5("div", { children: [
-          /* @__PURE__ */ jsx5("dt", { children: "Last dispatch" }),
-          /* @__PURE__ */ jsx5("dd", { children: dispatchText(schedule.last_dispatch, absolute) })
+        schedule.last_dispatch && /* @__PURE__ */ jsxs4("div", { children: [
+          /* @__PURE__ */ jsx4("dt", { children: "Last dispatch" }),
+          /* @__PURE__ */ jsx4("dd", { children: dispatchText(schedule.last_dispatch, absolute) })
         ] })
       ] })
-    ] }) : /* @__PURE__ */ jsx5("p", { children: "No schedule approved." }),
+    ] }) : /* @__PURE__ */ jsx4("p", { children: "No schedule approved." }),
+    /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
+      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "Cost" }),
+      /* @__PURE__ */ jsx4(UpkeepCost, { space })
+    ] }),
+    /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
+      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "If Hermes is asleep" }),
+      /* @__PURE__ */ jsx4("p", { children: CATCH_UP }),
+      /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "Background execution depends on Hermes being available." })
+    ] }),
+    schedule && ["active", "paused"].includes(schedule.status) && /* @__PURE__ */ jsx4(Action, { disabled: busy || space.status === "archived" || schedule.status === "paused" && refresh?.status !== "granted", icon: schedule.status === "paused" ? "play" : "debug-pause", onClick: pause, children: schedule.status === "paused" ? "Resume upkeep" : "Pause upkeep" }),
+    /* @__PURE__ */ jsx4("div", { className: "ls-section", children: /* @__PURE__ */ jsx4(CopyPrompt, { text: `${space.owner}, change the upkeep schedule for ${space.name}. Please confirm the cadence, timezone and purpose before requesting approval.`, label: "Change schedule in chat" }) })
+  ] });
+}
+
+// src/desktop/ui/permissions.jsx
+import { Fragment as Fragment4, jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
+var NET_DESCRIPTION = "This Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.";
+var NET_OFF_DESCRIPTION = "This Space can't load content from or send data to the internet through Internet access.";
+var NET_OFF_NOTE = "Off is not a complete block. A browser feature called WebRTC can still send data this Space can read. It still can't reach Hermes, your credentials, your files or other Spaces.";
+var CAPABILITIES = {
+  data: { name: "Own data", icon: "folder", scope: "This Space's records only. Cannot see other Spaces.", purpose: "Store your records, notes and statuses.", leaves: "This grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off." },
+  refresh: { name: "Refresh", icon: "refresh", purpose: "Keep public-source records current.", leaves: "Yes \xB7 requests the approved public sources through Hermes." },
+  logs: { name: "Diagnostics", icon: "info", scope: "Error logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.", purpose: "Let the owner see crashes and repair them.", leaves: "No ordinary network access. The owner can read these logs in chat." }
+};
+var FUTURE = ["Approved sites", "Camera", "Microphone", "Location", "Hermes tools (per tool)", "Files and folders", "Cross-Space access", "Agent requests"];
+function WebRTCNote() {
+  return /* @__PURE__ */ jsxs5("div", { className: "ls-disclosure", "data-testid": "webrtc-note", children: [
+    /* @__PURE__ */ jsxs5("strong", { children: [
+      /* @__PURE__ */ jsx5(Icon, { name: "info" }),
+      " Before you approve anything"
+    ] }),
+    /* @__PURE__ */ jsx5("p", { children: NET_OFF_NOTE })
+  ] });
+}
+function InternetAccess({ grant, onDecide, busy }) {
+  const enabled = grant.status === "granted";
+  return /* @__PURE__ */ jsx5("section", { className: "ls-section", children: /* @__PURE__ */ jsxs5("article", { className: "ls-grant", "data-testid": "internet-access", children: [
+    /* @__PURE__ */ jsxs5("div", { className: "ls-row-top", children: [
+      /* @__PURE__ */ jsx5("strong", { children: "Internet access" }),
+      /* @__PURE__ */ jsx5(Action, { role: "switch", "aria-label": "Internet access", "aria-checked": enabled, "aria-describedby": "ls-net-description", disabled: busy, onClick: () => onDecide(grant, enabled ? "revoke" : "grant"), children: enabled ? "On" : "Off" })
+    ] }),
+    /* @__PURE__ */ jsx5("p", { id: "ls-net-description", className: "ls-secondary", children: enabled ? NET_DESCRIPTION : NET_OFF_DESCRIPTION }),
+    grant.status === "requested" && /* @__PURE__ */ jsxs5("div", { className: "ls-actions", children: [
+      /* @__PURE__ */ jsx5(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" }),
+      /* @__PURE__ */ jsx5(Action, { disabled: busy, onClick: () => onDecide(grant, "deny"), children: "Deny" })
+    ] }),
+    !enabled && /* @__PURE__ */ jsx5(WebRTCNote, {})
+  ] }) });
+}
+function GrantCard({ grant, onDecide, busy }) {
+  const model = CAPABILITIES[grant.capability];
+  if (!model) return null;
+  const scope = grant.requested_scope || grant.scope || {};
+  const scopeText = grant.capability === "refresh" ? `Host-owned public-source handler. Approved hosts: ${(scope.hosts || []).join(", ") || "No hosts requested"}.` : model.scope;
+  return /* @__PURE__ */ jsxs5("article", { className: `ls-grant${grant.status === "requested" ? " ls-pending" : ""}`, children: [
+    /* @__PURE__ */ jsxs5("div", { className: "ls-row-top", children: [
+      /* @__PURE__ */ jsxs5("strong", { children: [
+        /* @__PURE__ */ jsx5(Icon, { name: model.icon }),
+        model.name
+      ] }),
+      /* @__PURE__ */ jsx5(StatusPill, { status: grant.status })
+    ] }),
+    /* @__PURE__ */ jsxs5("dl", { className: "ls-facts", children: [
+      /* @__PURE__ */ jsxs5("div", { children: [
+        /* @__PURE__ */ jsx5("dt", { children: "Scope" }),
+        /* @__PURE__ */ jsx5("dd", { children: scopeText })
+      ] }),
+      /* @__PURE__ */ jsxs5("div", { children: [
+        /* @__PURE__ */ jsx5("dt", { children: "Purpose" }),
+        /* @__PURE__ */ jsx5("dd", { children: grant.purpose || model.purpose })
+      ] }),
+      /* @__PURE__ */ jsxs5("div", { children: [
+        /* @__PURE__ */ jsx5("dt", { children: "Data leaves device" }),
+        /* @__PURE__ */ jsx5("dd", { children: model.leaves })
+      ] }),
+      /* @__PURE__ */ jsxs5("div", { children: [
+        /* @__PURE__ */ jsx5("dt", { children: "Access" }),
+        /* @__PURE__ */ jsx5("dd", { children: "Continuing" })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsx5("div", { className: "ls-actions", children: grant.status === "granted" ? /* @__PURE__ */ jsx5(Action, { danger: true, disabled: busy, onClick: () => onDecide(grant, "revoke"), children: "Revoke" }) : grant.status === "requested" ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
+      /* @__PURE__ */ jsx5(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" }),
+      /* @__PURE__ */ jsx5(Action, { disabled: busy, onClick: () => onDecide(grant, "deny"), children: "Deny" })
+    ] }) : grant.capability === "refresh" ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
+      /* @__PURE__ */ jsxs5("p", { className: "ls-secondary", children: [
+        "Refresh permission ",
+        grant.status,
+        ". Approving Refresh leaves scheduled upkeep paused until you resume it."
+      ] }),
+      /* @__PURE__ */ jsx5(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" })
+    ] }) : /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: grant.status === "denied" ? `Denied. The Space shows \u201C${model.name} isn't available\u201D instead of prompting again.` : `${model.name} was revoked. Ask in chat to request access again.` }) })
+  ] });
+}
+function PermissionsContent({ space, grants, audit = [], schedule, onDecide, onSchedule, busy = false }) {
+  const net = grants.find((g) => g.capability === "net");
+  const pending = grants.filter((g) => g.capability !== "net" && g.status === "requested");
+  const settled = grants.filter((g) => g.capability !== "net" && g.status !== "requested");
+  return /* @__PURE__ */ jsxs5(Fragment4, { children: [
+    net && /* @__PURE__ */ jsx5(InternetAccess, { grant: net, onDecide, busy }),
     /* @__PURE__ */ jsxs5("section", { className: "ls-section", children: [
-      /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Cost" }),
-      /* @__PURE__ */ jsx5("p", { children: "No model calls. Refreshes use the declared public-source handler and approved hosts." }),
-      /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "Feed limit 3 MB \xB7 200 entries per source \xB7 20 s request timeout." })
+      /* @__PURE__ */ jsxs5("h2", { className: "ls-section-title", children: [
+        "Granted to ",
+        space.name
+      ] }),
+      settled.map((g) => /* @__PURE__ */ jsx5(GrantCard, { grant: g, onDecide, busy }, g.capability)),
+      !settled.length && /* @__PURE__ */ jsx5("p", { children: "No grants approved yet." })
     ] }),
     /* @__PURE__ */ jsxs5("section", { className: "ls-section", children: [
-      /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "If Hermes is asleep" }),
-      /* @__PURE__ */ jsx5("p", { children: CATCH_UP }),
-      /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "Background execution depends on Hermes being available." })
+      /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Waiting for your decision" }),
+      pending.map((g) => /* @__PURE__ */ jsx5(GrantCard, { grant: g, onDecide, busy }, g.capability)),
+      schedule?.status === "requested" && /* @__PURE__ */ jsxs5("article", { className: "ls-grant ls-pending", children: [
+        /* @__PURE__ */ jsxs5("div", { className: "ls-row-top", children: [
+          /* @__PURE__ */ jsxs5("strong", { children: [
+            /* @__PURE__ */ jsx5(Icon, { name: "watch" }),
+            "Scheduled upkeep"
+          ] }),
+          /* @__PURE__ */ jsx5(StatusPill, { status: "requested" })
+        ] }),
+        /* @__PURE__ */ jsxs5("dl", { className: "ls-facts", children: [
+          /* @__PURE__ */ jsxs5("div", { children: [
+            /* @__PURE__ */ jsx5("dt", { children: "Cadence" }),
+            /* @__PURE__ */ jsx5("dd", { children: schedule.cadence })
+          ] }),
+          /* @__PURE__ */ jsxs5("div", { children: [
+            /* @__PURE__ */ jsx5("dt", { children: "Timezone" }),
+            /* @__PURE__ */ jsx5("dd", { children: schedule.timezone })
+          ] }),
+          /* @__PURE__ */ jsxs5("div", { children: [
+            /* @__PURE__ */ jsx5("dt", { children: "Purpose" }),
+            /* @__PURE__ */ jsx5("dd", { children: schedule.purpose })
+          ] }),
+          /* @__PURE__ */ jsxs5("div", { children: [
+            /* @__PURE__ */ jsx5("dt", { children: "Owner" }),
+            /* @__PURE__ */ jsx5("dd", { children: space.owner })
+          ] }),
+          /* @__PURE__ */ jsxs5("div", { children: [
+            /* @__PURE__ */ jsx5("dt", { children: "Cost" }),
+            /* @__PURE__ */ jsx5("dd", { children: /* @__PURE__ */ jsx5(UpkeepCost, { space }) })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsx5("p", { children: CATCH_UP }),
+        /* @__PURE__ */ jsxs5("div", { className: "ls-actions", children: [
+          /* @__PURE__ */ jsx5(Action, { primary: true, disabled: busy, onClick: () => onSchedule("approve"), children: "Approve" }),
+          /* @__PURE__ */ jsx5(Action, { disabled: busy, onClick: () => onSchedule("deny"), children: "Deny" })
+        ] })
+      ] }),
+      !pending.length && schedule?.status !== "requested" && /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "Nothing waiting for your decision." })
     ] }),
-    schedule && ["active", "paused"].includes(schedule.status) && /* @__PURE__ */ jsx5(Action, { disabled: busy || space.status === "archived" || schedule.status === "paused" && refresh?.status !== "granted", icon: schedule.status === "paused" ? "play" : "debug-pause", onClick: pause, children: schedule.status === "paused" ? "Resume upkeep" : "Pause upkeep" }),
-    /* @__PURE__ */ jsx5("div", { className: "ls-section", children: /* @__PURE__ */ jsx5(CopyPrompt, { text: `${space.owner}, change the upkeep schedule for ${space.name}. Please confirm the cadence, timezone and purpose before requesting approval.`, label: "Change schedule in chat" }) })
+    /* @__PURE__ */ jsxs5("section", { className: "ls-section", "data-testid": "release-two", children: [
+      /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Coming in release 2 \u2014 not available yet" }),
+      FUTURE.map((name) => /* @__PURE__ */ jsx5("div", { className: "ls-grant ls-future", children: /* @__PURE__ */ jsxs5("div", { className: "ls-row-top", children: [
+        /* @__PURE__ */ jsx5("strong", { children: name }),
+        /* @__PURE__ */ jsx5(Badge3, { variant: "outline", children: "Not available yet" })
+      ] }) }, name)),
+      /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "Camera, microphone and location will start off and also follow Hermes and macOS permission prompts. Release 2 will revisit what Spaces can read before tool and file access is offered." })
+    ] }),
+    /* @__PURE__ */ jsxs5("section", { className: "ls-section", children: [
+      /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Owner" }),
+      /* @__PURE__ */ jsx5(OwnerChip, { owner: space.owner }),
+      /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Audit" }),
+      audit.length ? /* @__PURE__ */ jsx5("ul", { className: "ls-audit", children: audit.slice(0, 10).map((a) => /* @__PURE__ */ jsxs5("li", { children: [
+        /* @__PURE__ */ jsx5(Time, { at: a.at }),
+        " \xB7 ",
+        a.actor,
+        " \xB7 ",
+        a.action,
+        " ",
+        a.capability || "",
+        " \xB7 ",
+        a.outcome
+      ] }, a.id)) }) : /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "No permission decisions recorded." })
+    ] })
+  ] });
+}
+function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
+  const base = spacePath(space.id);
+  const query = useQuery3({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "grants"], queryFn: () => ctx.rest(`${base}/grants`), refetchInterval: 2e3 });
+  const schedule = useQuery3({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "schedule"], queryFn: () => ctx.rest(`${base}/schedule`), refetchInterval: 2e3 });
+  const [revoke, setRevoke] = useState5(null);
+  const [busy, setBusy] = useState5(false);
+  const [error, setError] = useState5("");
+  const lock = useRef3(false);
+  async function decide(grant, decision) {
+    if (decision === "revoke" && grant.capability !== "net") {
+      setRevoke(grant);
+      return;
+    }
+    await change(`${base}/grants/${grant.capability}`, { decision, ...decision === "grant" ? { requested_scope: grant.requested_scope ?? grant.scope ?? {} } : {} });
+  }
+  async function change(path, body) {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await ctx.rest(path, { method: "POST", body });
+      await Promise.all([query.refetch(), schedule.refetch(), onChanged()]);
+    } catch (e) {
+      if ((e?.error || e?.body?.error || e)?.code === "conflict") {
+        setError("Permission request changed. Review the new request before approving.");
+      } else setError(`${errorText(e)} Review the current request before trying again.`);
+      await Promise.all([query.refetch(), schedule.refetch(), onChanged()]);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  return /* @__PURE__ */ jsxs5(Fragment4, { children: [
+    /* @__PURE__ */ jsxs5(Drawer, { title: `Permissions \xB7 ${space.name}`, description: "Review this Space's access and schedule requests.", onClose, returnFocus, children: [
+      error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: error }),
+      query.error || schedule.error ? /* @__PURE__ */ jsx5(ErrorState3, { title: "Permissions could not be loaded", description: errorText(query.error || schedule.error), children: /* @__PURE__ */ jsx5(Action, { onClick: () => {
+        query.refetch();
+        schedule.refetch();
+      }, children: "Try again" }) }) : query.isLoading ? /* @__PURE__ */ jsx5(Skeleton3, { style: { height: 180 } }) : /* @__PURE__ */ jsx5(PermissionsContent, { space, grants: query.data?.grants || [], audit: query.data?.audit || [], schedule: schedule.data, onDecide: decide, onSchedule: (decision) => change(`${base}/schedule`, { decision, ...decision === "approve" ? { requested_upkeep: space.manifest?.upkeep } : {} }), busy })
+    ] }),
+    revoke && /* @__PURE__ */ jsx5(DecisionDialog, { danger: true, title: `Revoke ${CAPABILITIES[revoke.capability].name} for ${space.name}?`, description: revoke.capability === "refresh" ? "Scheduled upkeep pauses and manual refreshes stop. Approve Refresh in Permissions, then resume upkeep to restart scheduled refreshes. Data already delivered to the Space can't be recalled, and completed requests can't be undone." : `The Space loses ${CAPABILITIES[revoke.capability].name.toLowerCase()} access. Data already delivered to the Space can't be recalled, and completed requests can't be undone.`, cancelLabel: "Keep access", confirmLabel: "Revoke", onClose: () => setRevoke(null), onConfirm: async () => {
+      await ctx.rest(`${base}/grants/${revoke.capability}`, { method: "POST", body: { decision: "revoke" } });
+      await query.refetch();
+      await onChanged();
+    } })
   ] });
 }
 

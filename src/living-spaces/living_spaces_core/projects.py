@@ -93,8 +93,7 @@ def _manifest(value, name, description):
         limits.object_json(definition)
     migrations.validate(value["data"].get("migrations", []))
     if "upkeep" in value:
-        from . import schedules
-        schedules.validate_upkeep(value["upkeep"])
+        _upkeep("schedules", "validate_upkeep", value["upkeep"])
         limits.object_json(value["upkeep"])
         sources = value["upkeep"].get("sources", [])
         if not isinstance(sources, list):
@@ -210,8 +209,7 @@ def _warnings(conn, manifest, files):
 
 
 def _save_revision(conn, space, manifest, files, *, kind, author, summary, restored_from=None):
-    from . import schedules
-    schedules.on_manifest_change(conn, space["id"], _revision(conn, space["id"])["manifest"], manifest, actor=author)
+    _upkeep("schedules", "on_manifest_change", conn, space["id"], _revision(conn, space["id"])["manifest"], manifest, actor=author)
     encoded_manifest = limits.object_json(manifest, limits.FILE_BYTES, "manifest")
     rev, at = space["head_rev"] + 1, db.now()
     conn.execute("INSERT INTO revisions(space,rev,parent_rev,kind,restored_from,manifest,files,author,summary,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",

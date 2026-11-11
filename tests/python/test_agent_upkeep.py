@@ -332,21 +332,15 @@ class NativeAgentCronTests(UpkeepCase):
                 jobs.remove_job(job["id"])
 
 
-class AgentIntegrationPatchTests(unittest.TestCase):
+class AgentIntegrationSeamTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="agent-integration-", dir=ROOT / ".run")
+        self.temp = tempfile.TemporaryDirectory(prefix="agent-integration-", dir=ROOT / ".run" if (ROOT / ".run").exists() else None)
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.env = patch.dict(os.environ, {"HERMES_HOME": str(self.root / "home"), "LIVING_SPACES_DB": str(self.root / "home/spaces.db")})
         self.env.start()
         self.addCleanup(self.env.stop)
         shutil.copytree(ROOT / "src", self.root / "src", ignore=shutil.ignore_patterns("__pycache__"))
-        for name in ("projects", "init", "permissions", "schedule-api"):
-            args = ["patch", "-p1", "--batch", "-i", str(ROOT / ".run" / (name + ".patch"))]
-            applied = subprocess.run(args + ["--forward"], cwd=self.root, capture_output=True, text=True)
-            if applied.returncode:
-                already = subprocess.run(args + ["--reverse", "--dry-run"], cwd=self.root, capture_output=True, text=True)
-                self.assertEqual(already.returncode, 0, applied.stdout + applied.stderr)
 
     def load(self, name, path):
         spec = importlib.util.spec_from_file_location(name, path, submodule_search_locations=[str(path.parent)])
@@ -356,7 +350,7 @@ class AgentIntegrationPatchTests(unittest.TestCase):
         spec.loader.exec_module(module)
         return module
 
-    def test_manifest_hooks_in_patch_copy(self):
+    def test_manifest_hooks_in_integrated_tree(self):
         package = self.root / "src/living-spaces"
         core = self.load("agent_upkeep_patch_core", package / "living_spaces_core/__init__.py")
         manifest = {"upkeep": {"handler": "agent", "prompt": "Update public demo data."}}
@@ -381,7 +375,7 @@ class AgentIntegrationPatchTests(unittest.TestCase):
             core.restore_revision(sid, 1, author="agent:demo")
             self.assertEqual(core.get_schedule(sid)["status"], "requested")
 
-    def test_source_owned_adapter_in_patch_copy(self):
+    def test_source_owned_adapter_in_integrated_tree(self):
         package = self.root / "src/living-spaces"
         core = self.load("agent_upkeep_patch_core", package / "living_spaces_core/__init__.py")
         plugin = self.load("agent_upkeep_patch_plugin", package / "__init__.py")
@@ -408,7 +402,7 @@ class AgentIntegrationPatchTests(unittest.TestCase):
         self.assertEqual(denied.exception.code, "not_granted")
         self.assertEqual(core.records.get(sid, "papers", "demo"), updated)
 
-    def test_host_approval_snapshot_reaches_core_in_patch_copy(self):
+    def test_host_approval_snapshot_reaches_core_in_integrated_tree(self):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
@@ -435,7 +429,7 @@ class AgentIntegrationPatchTests(unittest.TestCase):
             response = client.post(f"/spaces/{sid}/schedule", json={"decision": "approve", "requested_upkeep": None})
             self.assertEqual(response.status_code, 400)
 
-    def test_host_cost_and_prompt_render_before_approval_in_patch_copy(self):
+    def test_host_cost_and_prompt_render_before_approval_in_integrated_tree(self):
         modules = Path.home() / ".hermes/hermes-agent/apps/desktop/node_modules"
         esbuild = shutil.which("esbuild")
         if not esbuild or not (modules / "react-dom/package.json").exists():
