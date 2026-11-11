@@ -48,6 +48,7 @@ class AgentIntegrationSeamTests(unittest.TestCase):
         self.assertNotIn("refresh", [grant["capability"] for grant in core.list_grants(sid)])
         cron = Mock()
         cron.create_job.side_effect = lambda **kw: {**kw, "id": "demo-cron"}
+        cron.list_jobs.return_value = []
         cron.get_job.side_effect = lambda jid: {"id": jid, "no_agent": False, "prompt": "native", "enabled": True, "state": "scheduled"}
         with patch.object(core.upkeep, "_cron", return_value=cron), patch.object(core.upkeep, "_ledger", return_value=Mock(list_executions=Mock(return_value=[]))):
             self.assertEqual(core.schedule_upkeep(sid, kind="agent", cadence="0 * * * *", timezone="UTC", prompt="Chat task", actor="agent:demo")["job"]["prompt"], "native")

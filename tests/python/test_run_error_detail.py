@@ -34,18 +34,18 @@ class RunErrorDetailTests(unittest.TestCase):
 
     def test_feed_entry_limit_preserves_numbers_and_recovers(self):
         entry = b"<item><guid>public-paper</guid><title>Public paper</title></item>"
-        payload = b"<rss><channel>" + entry * 201 + b"</channel></rss>"
+        payload = b"<rss><channel>" + entry * 1001 + b"</channel></rss>"
         with patch.object(feeds, "fetch", return_value=payload):
             run = self.refresh()
         self.assertEqual(run["status"], "failed")
         source = run["detail"]["sources"][0]
         self.assertFalse(source["ok"])
         self.assertEqual(source["error_detail"], {
-            "code": "limit", "message": "Feed exceeds 200 entries", "limit": 200, "actual": 201,
+            "code": "limit", "message": "Feed exceeds 1000 entries", "limit": 1000, "actual": 1001,
         })
         for message in (source["error"], run["error"]):
-            self.assertIn("limit 200", message)
-            self.assertIn("actual 201", message)
+            self.assertIn("limit 1000", message)
+            self.assertIn("actual 1001", message)
         self.assertEqual(runs.get_run(run["id"]), run)
         self.assertEqual(runs.list_runs(self.sid), [run])
         self.assertEqual(records.query(self.sid, "papers")["total"], 0)

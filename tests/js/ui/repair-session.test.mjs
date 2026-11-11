@@ -18,6 +18,20 @@ function fixture(transport, options = {}) {
   return { session, calls, writes, call: (...args) => bridge.call(...args) }
 }
 
+test('closing a session the server already closed is not reported as a failure', async () => {
+  const errors = []
+  const rest = async (path, request = {}) => {
+    if (path.endsWith('/sessions')) return { session: 'demo-session', head_rev: 1, grants: ['data'] }
+    if (path.endsWith('/bundle')) return { rev: 1 }
+    if (request.method === 'DELETE') throw new Error('403 {"error":{"code":"session_invalid","message":"This Space session is closed"}}')
+    throw new Error(`Unexpected path ${path}`)
+  }
+  const session = createSpaceSession({ rest, sid: 'demo-space', container: {}, mount: () => ({ destroy() {} }), onEvent() {}, onCloseError: error => errors.push(error) })
+  await session.ready
+  assert.deepEqual(await session.destroy(), { closed: true })
+  assert.deepEqual(errors, [])
+})
+
 for (const batch of [false, true]) {
   test(`F2 lost ${batch ? 'batch' : 'put'} response reuses create IDs and never overwrites a later edit`, async () => {
     const rows = new Map(), requests = []

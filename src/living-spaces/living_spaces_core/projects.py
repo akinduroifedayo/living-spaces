@@ -432,6 +432,8 @@ def set_status(sid, status, *, actor):
     limits.text(actor, "actor")
     with db.write() as conn:
         space = db.space(conn, sid)
+        if status == "archived" and space["status"] != "archived":
+            upkeep.pause_for_archive(conn, sid)
         if status != "archived":
             revision = _revision(conn, sid)
             status = "active" if revision["manifest"]["entry"] in revision["files"] else "building"
@@ -441,7 +443,6 @@ def set_status(sid, status, *, actor):
             conn.execute("UPDATE sessions SET closed_at=coalesce(closed_at,?) WHERE space=?", (db.now(), sid))
     if status == "archived":
         runs.cancel_pending(sid, "archived")
-        upkeep.on_archive(sid)
     return get_space(sid)
 
 

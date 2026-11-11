@@ -456,8 +456,8 @@ TOOLS = [
         "Refresh now. A feed Space runs its declared feed sources in-process (needs Internet access) and returns "
         "the run; check spaces_get recent_runs for the outcome before reporting it. An agent Space triggers its "
         "linked Hermes cron job, or starts a one-time Hermes cron agent run when none is linked, and returns "
-        "{kind:'cron', cron_job_id, triggered}; that run uses model calls, and spaces_upkeep status shows its "
-        "outcome." + REF_NOTE,
+        "{kind:'cron', cron_job_id, triggered}; that run uses model calls, and spaces_upkeep status lists its "
+        "outcome under one_shots." + REF_NOTE,
         {"space": SPACE_ARG}, ["space"])),
     (spaces_schedule_upkeep, _schema(
         "spaces_schedule_upkeep",
@@ -470,7 +470,7 @@ TOOLS = [
          "kind": {"type": "string", "enum": ["agent", "feed"]},
          "cadence": {"type": "string", "description": "Hermes cron schedule, e.g. \"0 7 * * *\" or \"every 6h\"."},
          "timezone": {"type": "string", "description": "IANA timezone, e.g. \"America/Chicago\"."},
-         "prompt": {"type": "string", "description": "Required for agent: the upkeep task, at most 4000 characters."}},
+         "prompt": {"type": "string", "description": "Required for agent: the upkeep task."}},
         ["space", "kind", "cadence", "timezone"])),
     (spaces_upkeep, _schema(
         "spaces_upkeep",

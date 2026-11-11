@@ -356,7 +356,7 @@ describe the error. Show last attempt, last success, and source-as-of separately
 None implies either of the others. An agent Space returns
 `{kind:'cron', cron_job_id, triggered:true}`: it triggers the linked Hermes cron
 job, or starts a one-time Hermes cron agent run when none is linked. Read the
-outcome with `spaces_upkeep` action `status`.
+outcome with `spaces_upkeep` action `status` (`one_shots` for unlinked runs).
 The app's `space.refresh()` runs only the feed handler. For an agent Space it
 returns `blocked` with reason `agent_from_guest`; agent upkeep runs from Refresh
 now in Hermes, from chat, or from the linked cron job.

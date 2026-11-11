@@ -138,7 +138,7 @@ for (const kind of ['late', 'on_time']) {
     } finally { await act(async () => view.unmount()) }
   })
 }
-const job = (patch = {}) => ({ id: 'job1', name: 'living-spaces:demo-space', prompt: 'Update Demo from public sources.', schedule_display: 'every 1h', cadence: '0 * * * *', timezone: 'America/Chicago', enabled: true, state: 'scheduled', next_run_at: '2026-11-11T16:00:00+00:00', last_run_at: '2026-11-11T15:00:00+00:00', last_status: 'ok', last_error: null, ...patch })
+const job = (patch = {}) => ({ id: 'job1', name: 'living-spaces:demo-space', prompt: 'Update Demo from public sources.', schedule_display: 'every 1h', cadence: '0 * * * *', timezone: 'America/Chicago', enabled: true, state: 'scheduled', next_run_at: '2026-11-11T16:00:00+00:00', last_run_at: '2026-11-11T15:00:00+00:00', last_status: 'ok', last_error: null, uses_model: true, ...patch })
 const upkeepPayload = (patch = {}) => ({ link: { cron_job_id: 'job1', kind: 'agent', created_at: 1, created_by: 'agent' }, job: job(), executions: [{ id: 'e1', status: 'succeeded', claimed_at: 1794312000, started_at: 1794312001, finished_at: 1794312010, error: null, scheduled_instant: 1794312000 }, { id: 'e2', status: 'unknown', claimed_at: 1794300000, started_at: 1794300001, finished_at: null, error: null, scheduled_instant: 1794300000 }], missing: false, error: null, ...patch })
 const upkeepProps = (calls, reply) => ({ space: demo(), onClose() {}, onChanged() {}, ctx: { rest: async (path, options = {}) => { calls.push({ path, body: options.body }); return reply ? reply(path, options) : {} } } })
 test('Upkeep sheet renders the native prompt, cadence, next run and executions', async () => {
@@ -168,11 +168,31 @@ test('unknown execution reads outcome unknown with side-effects copy', async () 
 })
 test('feed kind shows No model calls and no prompt', async () => {
   setup()
-  data.upkeep = upkeepPayload({ link: { cron_job_id: 'job1', kind: 'feed', created_at: 1, created_by: 'agent' }, job: job({ prompt: null }) })
+  data.upkeep = upkeepPayload({ link: { cron_job_id: 'job1', kind: 'feed', created_at: 1, created_by: 'agent' }, job: job({ prompt: null, uses_model: false }) })
   try {
     await render(UpkeepSheet, upkeepProps([]))
     assert.match(document.body.textContent, /No model calls/)
     assert.doesNotMatch(document.body.textContent, /Uses model calls/)
+  } finally { await act(async () => view.unmount()) }
+})
+test('native job mode wins over a stale feed link for the model-call disclosure', async () => {
+  setup()
+  data.upkeep = upkeepPayload({ link: { cron_job_id: 'job1', kind: 'feed', created_at: 1, created_by: 'agent' }, job: job({ prompt: 'Edited in cron', uses_model: true }) })
+  try {
+    await render(UpkeepSheet, upkeepProps([]))
+    assert.match(document.body.textContent, /Uses model calls/)
+    assert.match(document.body.textContent, /Edited in cron/)
+  } finally { await act(async () => view.unmount()) }
+})
+test('Refresh now one-shot runs are listed with their native outcome', async () => {
+  setup()
+  data.upkeep = upkeepPayload({ link: null, job: null, executions: [], one_shots: [{ id: 'once1', uses_model: true, executions: [{ id: 'x1', status: 'unknown', claimed_at: 1794300000, started_at: null, finished_at: null, error: null, scheduled_instant: null }] }] })
+  try {
+    await render(UpkeepSheet, upkeepProps([]))
+    const section = document.querySelector('[data-testid="one-shots"]')
+    assert.match(section.textContent, /Refresh now runs/)
+    assert.match(section.textContent, /model calls/)
+    assert.match(section.querySelector('li[data-status="unknown"]').textContent, /Outcome unknown/)
   } finally { await act(async () => view.unmount()) }
 })
 test('Upkeep buttons post the right action and re-read', async () => {

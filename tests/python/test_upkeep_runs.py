@@ -437,7 +437,7 @@ class FeedTests(UpkeepCase):
                     feeds.parse(payload)
 
     def test_entry_and_body_limits_are_visible(self):
-        too_many = b"<rss><channel>" + b"<item><guid>demo</guid></item>" * 201 + b"</channel></rss>"
+        too_many = b"<rss><channel>" + b"<item><guid>demo</guid></item>" * (feeds.MAX_ENTRIES + 1) + b"</channel></rss>"
         for payload in (too_many, b"x" * (feeds.MAX_BYTES + 1)):
             with self.subTest(size=len(payload)):
                 with self.assertRaises(SpacesError) as caught:
@@ -645,11 +645,11 @@ class NativeCronTests(UpkeepCase):
 
     def test_upkeep_validation(self):
         for value in (None, [], {}, {"handler": "shell"}, {"handler": "agent"}, {"handler": "agent", "prompt": " "},
-                      {"handler": "agent", "prompt": 3}, {"handler": "agent", "prompt": "a" * 4001}):
+                      {"handler": "agent", "prompt": 3}):
             with self.subTest(upkeep=value), self.assertRaises(SpacesError) as error:
                 upkeep.validate_upkeep(value)
             self.assertEqual(error.exception.code, "invalid")
-        upkeep.validate_upkeep({"handler": "agent", "prompt": "a" * 4000})
+        upkeep.validate_upkeep({"handler": "agent", "prompt": "a" * 40000})
         upkeep.validate_upkeep({"handler": "feed", "sources": []})
 
 

@@ -272,6 +272,92 @@ class NativeUpkeepTests(unittest.TestCase):
         for phrase in ("ordinary Hermes cron job", "consent", "model calls", "replaces"):
             self.assertIn(phrase, description)
 
+    def test_feed_shim_never_starts_model_work_after_the_handler_becomes_agent(self):
+        fx = self.fx
+        sid = fx.make(handler="feed")
+        fx.schedule(sid, kind="feed")
+        fx.change_upkeep(sid, {"handler": "agent", "prompt": AGENT_PROMPT})
+        before = dict(fx.cron.jobs)
+        run = fx.runs.start_refresh(sid, trigger="schedule", actor="upkeep:schedule", wait=True)
+        self.assertEqual((run["status"], run["detail"]["reason"]), ("blocked", "no_handler"))
+        self.assertEqual(fx.cron.jobs.keys(), before.keys())
+        self.assertNotIn("trigger", [call[0] for call in fx.cron.calls])
+
+    def test_archive_pauses_pending_one_shots(self):
+        fx = self.fx
+        sid = fx.make()
+        once = fx.runs.start_refresh(sid, trigger="manual", actor="user")["cron_job_id"]
+        fx.projects.set_status(sid, "archived", actor="user")
+        self.assertFalse(fx.cron.jobs[once]["enabled"])
+
+    def test_archive_fails_closed_when_native_pause_fails(self):
+        fx = self.fx
+        sid = fx.make()
+        jid = fx.schedule(sid)["link"]["cron_job_id"]
+        with patch.object(fx.cron, "pause_job", side_effect=OSError("cron store unavailable")):
+            with self.assertRaises(fx.core.SpacesError) as error:
+                fx.projects.set_status(sid, "archived", actor="user")
+        self.assertEqual(error.exception.code, "blocked")
+        self.assertEqual(fx.projects.get_space(sid)["status"], "active")
+        self.assertTrue(fx.cron.jobs[jid]["enabled"])
+        fx.projects.set_status(sid, "archived", actor="user")
+        self.assertFalse(fx.cron.jobs[jid]["enabled"])
+
+    def test_archive_with_a_missing_linked_job_still_archives(self):
+        fx = self.fx
+        sid = fx.make()
+        jid = fx.schedule(sid)["link"]["cron_job_id"]
+        del fx.cron.jobs[jid]
+        self.assertEqual(fx.projects.set_status(sid, "archived", actor="user")["status"], "archived")
+
+    def test_refresh_now_one_shot_creation_holds_the_write_lock(self):
+        fx = self.fx
+        sid = fx.make()
+        original = fx.cron.create_job
+        observed = []
+
+        def contend(**kwargs):
+            contender = sqlite3.connect(fx.db.db_path(), timeout=0.05)
+            try:
+                contender.execute("BEGIN IMMEDIATE")
+                observed.append("acquired")
+                contender.execute("ROLLBACK")
+            except sqlite3.OperationalError as exc:
+                observed.append(str(exc))
+            finally:
+                contender.close()
+            return original(**kwargs)
+
+        with patch.object(fx.cron, "create_job", side_effect=contend):
+            fx.runs.start_refresh(sid, trigger="manual", actor="user")
+        self.assertEqual(observed, ["database is locked"])
+
+    def test_one_shot_outcomes_are_visible_in_upkeep_status(self):
+        fx = self.fx
+        sid = fx.make()
+        once = fx.runs.start_refresh(sid, trigger="manual", actor="user")["cron_job_id"]
+        fx.cron.execution(once, "unknown")
+        shown = fx.upkeep.get_upkeep(sid)
+        self.assertIsNone(shown["link"])
+        self.assertEqual([(shot["id"], shot["uses_model"], [e["status"] for e in shot["executions"]])
+                          for shot in shown["one_shots"]], [(once, True, ["unknown"])])
+
+    def test_shown_kind_follows_the_native_job_not_the_link(self):
+        fx = self.fx
+        sid = fx.make(handler="feed")
+        jid = fx.schedule(sid, kind="feed")["link"]["cron_job_id"]
+        fx.cron.jobs[jid].update(no_agent=False, prompt="Edited in cron")
+        shown = fx.upkeep.get_upkeep(sid)
+        self.assertEqual((shown["job"]["uses_model"], shown["job"]["prompt"]), (True, "Edited in cron"))
+        self.assertEqual(fx.projects.get_space(sid)["upkeep"]["kind"], "agent")
+
+    def test_long_upkeep_prompts_are_accepted(self):
+        fx = self.fx
+        sid = fx.make()
+        long_prompt = "Check each public source and summarize. " * 400
+        shown = fx.schedule(sid, prompt=long_prompt)
+        self.assertTrue(shown["job"]["prompt"].endswith(long_prompt))
+
     def test_link_table_enforces_kind_and_unique_job(self):
         fx = self.fx
         sid = fx.make()

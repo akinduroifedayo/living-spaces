@@ -16,7 +16,7 @@ LOG_MESSAGE = 4000
 LOG_HISTORY = 2000
 BRIDGE_BYTES = 1024 * 1024
 FEED_BYTES = 3 * 1024 * 1024
-FEED_ENTRIES = 200
+FEED_ENTRIES = 1000
 LIMITS = {
     "project_bytes": PROJECT_BYTES, "project_files": PROJECT_FILES,
     "file_bytes": FILE_BYTES, "data_bytes": DATA_BYTES, "source_bytes": SOURCE_BYTES,
