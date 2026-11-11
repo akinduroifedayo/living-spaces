@@ -26,7 +26,7 @@ class PackagedApiTests(unittest.TestCase):
                 result = tools.spaces_create(core, {'name': 'Chat Demo', 'files': {'index.html': '<h1>Public demo</h1>'}}, 'Demo')
                 sid = result['space']
                 self.assertEqual(result['rev'], 1)
-                self.assertEqual(result['warnings'], ['Network URLs in vendor/preact.mjs are blocked at runtime'])
+                self.assertEqual(result['warnings'], [])
                 self.assertEqual(tools.spaces_get(core, {'space': sid}, 'Demo')['id'], sid)
                 detail = tools.spaces_read_file(core, {'space': sid, 'path': 'index.html'}, 'Demo')
                 self.assertIn('Public demo', detail['text'])
@@ -38,6 +38,8 @@ class PackagedApiTests(unittest.TestCase):
                 rows = tools.spaces_query(core, {'space': sid, 'collection': 'notes'}, 'Demo')['records']
                 self.assertEqual(rows[0]['data'], {'note': 'Public note'})
                 self.assertEqual(len(tools.spaces_list(core, {}, 'Demo')), 1)
+                remote = tools.spaces_write_files(core, {'space': sid, 'files': {'app.js': "const u = 'https://example.org/data.json'"}, 'summary': 'Add remote URL'}, 'Demo')
+                self.assertIn('Network URLs in app.js are blocked at runtime; use space.net.fetch for public HTTPS', remote['warnings'])
 
     def test_loose_rest_adapter_uses_real_public_core(self):
         (ROOT / '.run').mkdir(exist_ok=True)

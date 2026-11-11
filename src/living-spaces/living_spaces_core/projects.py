@@ -193,8 +193,8 @@ def _warnings(conn, manifest, files):
         if not path.endswith((".js", ".mjs", ".html", ".css")):
             continue
         content = conn.execute("SELECT content FROM blobs WHERE sha=?", (sha,)).fetchone()[0].decode("utf-8", errors="replace")
-        if re.search(r"https?://", content):
-            warnings.append(f"Network URLs in {path} are blocked at runtime")
+        if re.search(r"https?://(?!www\.w3\.org/)", content):
+            warnings.append(f"Network URLs in {path} are blocked at runtime; use space.net.fetch for public HTTPS")
         for target in re.findall(r'''(?:from\s*|import\s*|import\s*\(\s*)["'](\.[^"']+)["']''', content):
             parts = list(Path(path).parent.parts)
             for segment in target.split("/"):

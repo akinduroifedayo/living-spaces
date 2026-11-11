@@ -164,8 +164,9 @@ def _warnings(written, paths, manifest):
         if not isinstance(text, str):
             continue
         if NETWORK_RE.search(text):
-            warnings.append(f"{path}: network access (fetch, WebSocket or a remote URL) is blocked in the sandbox. "
-                            "Load data with window.space and vendored libraries through the import map.")
+            warnings.append(f"{path}: direct network access (fetch, WebSocket or a remote URL) is blocked in the frame. "
+                            "Use space.net.fetch for public HTTPS, window.space for saved data, and project files or "
+                            "libraries for code and assets.")
         for ref, is_module in _refs(path, text):
             if re.match(r"^(?:[a-z][a-z0-9+.-]*:|#|//)", ref, re.I):
                 continue
