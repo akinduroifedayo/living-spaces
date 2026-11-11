@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY, space TEXT NOT NULL,
 CREATE TABLE IF NOT EXISTS schedules(space TEXT PRIMARY KEY REFERENCES spaces(id) ON DELETE CASCADE,
   status TEXT NOT NULL CHECK(status IN ('requested','active','paused','disabled')),
   cadence TEXT NOT NULL, timezone TEXT NOT NULL, purpose TEXT NOT NULL DEFAULT '',
-  cron_job_id TEXT, catch_up TEXT NOT NULL DEFAULT 'one', requested_at REAL, decided_at REAL, next_run_at REAL);
+  cron_job_id TEXT, catch_up TEXT NOT NULL DEFAULT 'one', requested_at REAL, decided_at REAL, next_run_at REAL, reason TEXT);
 CREATE TABLE IF NOT EXISTS logs(id INTEGER PRIMARY KEY AUTOINCREMENT, space TEXT NOT NULL, session TEXT, rev INTEGER,
   at REAL NOT NULL, level TEXT NOT NULL, msg TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS changes_space_seq ON changes(space, seq);
@@ -91,7 +91,15 @@ def connect() -> sqlite3.Connection:
         if key not in _initialized or not existed:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.executescript(DDL)
-            conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                if "reason" not in {row["name"] for row in conn.execute("PRAGMA table_info(schedules)")}:
+                    conn.execute("ALTER TABLE schedules ADD COLUMN reason TEXT")
+                conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+                conn.execute("COMMIT")
+            except BaseException:
+                conn.close()
+                raise
             _initialized.add(key)
     return conn
 

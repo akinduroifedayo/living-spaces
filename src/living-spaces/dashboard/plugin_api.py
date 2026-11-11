@@ -163,12 +163,15 @@ async def grants(space_id: str):
 @router.post("/spaces/{space_id}/grants/{cap}")
 async def grant_decide(space_id: str, cap: str, body=Body(default=None)):
     def action(core):
-        _body(core, body, ("decision", "scope"), ("decision",))
+        _body(core, body, ("decision", "scope", "requested_scope"), ("decision",))
         if body["decision"] not in ("grant", "deny", "revoke"):
             _invalid(core, "decision must be grant, deny or revoke.")
         if "scope" in body and not isinstance(body["scope"], dict):
             _invalid(core, "scope must be an object.")
-        return core.decide(space_id, cap, body["decision"], actor="user", scope=body.get("scope"))
+        if body["decision"] == "grant" and not isinstance(body.get("requested_scope"), dict):
+            _invalid(core, "Approval requires the displayed requested_scope object.")
+        return core.decide(space_id, cap, body["decision"], actor="user", scope=body.get("scope"),
+                           requested_scope=body.get("requested_scope"))
     return await _run(space_id, action)
 
 

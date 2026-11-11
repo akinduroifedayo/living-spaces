@@ -46,14 +46,19 @@ export function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }
   const lock = useRef(false)
   async function decide(grant, decision) {
     if (decision === 'revoke') { setRevoke(grant); return }
-    await change(`${base}/grants/${grant.capability}`, { decision })
+    await change(`${base}/grants/${grant.capability}`, { decision, ...(decision === 'grant' ? { requested_scope: grant.requested_scope ?? grant.scope ?? {} } : {}) })
   }
   async function change(path, body) {
     if (lock.current) return
     lock.current = true
     setBusy(true); setError('')
     try { await ctx.rest(path, { method: 'POST', body }); await Promise.all([query.refetch(), schedule.refetch(), onChanged()]) }
-    catch (e) { setError(errorText(e)) }
+    catch (e) {
+      if ((e?.error || e?.body?.error || e)?.code === 'conflict') {
+        setError('Permission request changed. Review the new request before approving.')
+      } else setError(`${errorText(e)} Review the current request before trying again.`)
+      await Promise.all([query.refetch(), schedule.refetch()])
+    }
     finally { lock.current = false; setBusy(false) }
   }
   return <><Drawer title={`Permissions · ${space.name}`} description="Review this Space's access and schedule requests." onClose={onClose} note={<WebRTCNote />} returnFocus={returnFocus}>
