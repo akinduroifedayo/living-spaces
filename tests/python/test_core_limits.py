@@ -7,11 +7,12 @@ import sys
 import tempfile
 import unittest
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src" / "living-spaces"))
 from living_spaces_core import SpacesError, bridge, db, feeds, grants, limits, logs, projects, records, sessions
+from .feed_transport_support import PinnedTransport, Response
 
 
 def json_bytes(value):
@@ -294,18 +295,10 @@ class FeedLimitTests(LimitCase):
 
     def test_feed_stream_byte_limit_stops_without_writes_and_recovers(self):
         self.refresh_setup()
-        response = Mock(is_redirect=False)
-        response.__enter__ = Mock(return_value=response)
-        response.__exit__ = Mock(return_value=False)
-        response.iter_bytes.return_value = iter([b"x" * limits.FEED_BYTES, b"x"])
-        client = Mock()
-        client.__enter__ = Mock(return_value=client)
-        client.__exit__ = Mock(return_value=False)
-        client.stream.return_value = response
-        with patch.object(feeds.httpx, "Client", return_value=client):
+        transport = PinnedTransport([Response(b"x" * limits.FEED_BYTES + b"x"), Response(feed_xml())])
+        with transport.installed():
             self.rejected(limits.FEED_BYTES, limits.FEED_BYTES + 1,
                           lambda: feeds.fetch(self.sid, "https://example.org/feed"))
-            response.iter_bytes.return_value = iter([feed_xml()])
             self.assertEqual(feeds.fetch(self.sid, "https://example.org/feed"), feed_xml())
 
 
