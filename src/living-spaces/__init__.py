@@ -295,6 +295,11 @@ def spaces_write_records(core, args, owner):
             for op in ops:
                 if not isinstance(op, dict) or op.get("op") != "put" or "data" in op:
                     raise _invalid(core, "Source-owned operations must put source fields, without data")
+                if "base_rev" in op:
+                    core.limits.integer(op["base_rev"], "base_rev")
+                    core.records._ids(op.get("collection"), op.get("id"))
+                    row = core.records._row(conn, sid, op.get("collection"), op.get("id"))
+                    core.records._concurrency(row, op["base_rev"])
                 metadata = op.get("source_meta", {})
                 core.limits.object_json(metadata, core.limits.SOURCE_BYTES, "source metadata")
                 metadata = {**metadata, "handler": "agent", "fetched_at": core.db.now()}
@@ -405,12 +410,14 @@ TOOLS = [
         "spaces_write_records",
         "Change records in one all-or-nothing batch, so the running app updates live. Ops: {\"op\":\"put\", "
         "\"collection\", \"id\", \"data\", \"base_rev\"} shallow-merges data into the record; {\"op\":\"delete\", "
-        "\"collection\", \"id\", \"base_rev\"}. To update an existing record pass base_rev = its current rev from "
+        "\"collection\", \"id\", \"base_rev\"}. To update an existing record's data pass base_rev = its current rev from "
         "spaces_query; omit base_rev (or 0) only to create a new record. A stale base_rev fails the whole batch with "
         "code conflict and the record's current value: re-read and retry, never overwrite blindly. Only write the "
         "user's own fields (data) by default. For upkeep, set source_owned=true and use put operations with "
         "source and optional source_meta instead of data. This requires Refresh and preserves user data; "
-        "source-owned deletes are not supported." + REF_NOTE,
+        "source-owned deletes are not supported. For source-owned puts, a supplied base_rev must be a nonnegative "
+        "integer matching the current rev (0 to create); omitting base_rev performs an idempotent upsert "
+        "without a revision check." + REF_NOTE,
         {"space": SPACE_ARG,
          "source_owned": {"type": "boolean", "description": "Upkeep writes source fields only; preserves user notes. Default false."},
          "ops": {"type": "array", "description": "Up to 500 operations applied together.",
