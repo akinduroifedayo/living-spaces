@@ -143,7 +143,6 @@ def _file_refs(core):
 
 
 def _files(core, args, *, deleting=False, space=None):
-    """Preflight destinations and final state, then expand within the remaining byte budget."""
     files = _json_arg(core, args, "files", dict)
     for path, value in files.items():
         if (not isinstance(value, str) and not (value is None and deleting)

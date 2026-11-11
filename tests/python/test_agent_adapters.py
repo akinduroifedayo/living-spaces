@@ -129,7 +129,7 @@ class AdapterCase(unittest.TestCase):
 
 class ToolTests(AdapterCase):
     def test_registration_and_skill(self):
-        self.assertEqual(set(self.tools), set(PARAMS))
+        self.assertEqual(set(self.tools), set(PARAMS) | {"spaces_bind_maintainer"})
         for name, tool in self.tools.items():
             with self.subTest(name=name):
                 self.assertEqual(tool["toolset"], "living_spaces")
@@ -290,7 +290,8 @@ def tool_success(name):
         else:
             self.assertEqual(reply["result"]["space"], SID)
             self.assertEqual(reply["result"]["rev"], 2 if name == "spaces_create" else 3)
-            self.assertEqual(reply["result"]["warnings"], [])
+            expected_warnings = ['Canvas bot actions are unavailable because native maintaining-session context was missing. Bind it from a native maintenance turn with spaces_bind_maintainer.'] if name == "spaces_create" else []
+            self.assertEqual(reply["result"]["warnings"], expected_warnings)
         if name not in ("spaces_list", "spaces_create"):
             self.core.resolve_space.assert_called_once_with(PARAMS[name]["space"])
             self.assertEqual(target.call_args.args[0], SID)

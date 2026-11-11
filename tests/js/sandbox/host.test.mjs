@@ -26,7 +26,7 @@ test('validator accepts the v1 envelope, measures JSON length and catches serial
   assert.match(validateRequest(request({ args: { text: 'a'.repeat(MAX_REQUEST_SIZE - base + 1) } })), /1 MB/)
 })
 test('grant map exactly covers the frozen v1 operations', () => {
-  assert.deepEqual(OP_GRANT, { meta: null, 'data.query': 'data', 'data.get': 'data', 'data.put': 'data', 'data.delete': 'data', 'data.batch': 'data', refresh: null, 'runs.list': null, log: 'logs', 'net.fetch': 'net' })
+  assert.deepEqual(OP_GRANT, { meta: null, 'data.query': 'data', 'data.get': 'data', 'data.put': 'data', 'data.delete': 'data', 'data.batch': 'data', refresh: null, 'runs.list': null, 'bot.request': null, log: 'logs', 'net.fetch': 'net' })
   for (const op of Object.keys(OP_GRANT)) {
     assert.equal(checkGrant(op, ['data', 'logs', 'refresh', 'net']), null)
     if (OP_GRANT[op] === null) assert.equal(checkGrant(op, []), null)

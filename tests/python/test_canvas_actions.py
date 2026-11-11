@@ -16,7 +16,9 @@ from living_spaces_core import actions, bridge, db, projects, records, sessions,
 
 class CanvasActions(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(dir=ROOT / ".run-evidence/tmp")
+        work = ROOT / ".run"
+        work.mkdir(exist_ok=True)
+        self.temp = tempfile.TemporaryDirectory(dir=work)
         self.addCleanup(self.temp.cleanup)
         self.env = patch.dict(os.environ, {"LIVING_SPACES_DB": str(Path(self.temp.name) / "spaces.db"), "HERMES_HOME": self.temp.name})
         self.env.start()

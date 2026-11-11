@@ -1,4 +1,3 @@
-"""Agent-side file references: copy a local file or a public HTTPS download into a Space as bytes."""
 from __future__ import annotations
 
 from contextlib import ExitStack
@@ -133,7 +132,6 @@ def _url_note(url):
 
 
 def fetch_url(url: str, *, max_bytes=None):
-    """Return (bytes, provenance note). The bot is acting, so no Space `net` grant applies."""
     if not isinstance(url, str):
         raise SpacesError("invalid", "from_url must be an HTTPS URL")
     maximum = limits.FILE_BYTES if max_bytes is None else min(max_bytes, limits.FILE_BYTES)

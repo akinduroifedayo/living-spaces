@@ -31,7 +31,7 @@ class PackagedApiTests(unittest.TestCase):
                 result = tools.spaces_create(core, {'name': 'Chat Demo', 'files': {'index.html': '<h1>Public demo</h1>'}}, 'Demo')
                 sid = result['space']
                 self.assertEqual(result['rev'], 1)
-                self.assertEqual(result['warnings'], [])
+                self.assertEqual(result['warnings'], ['Canvas bot actions are unavailable because native maintaining-session context was missing. Bind it from a native maintenance turn with spaces_bind_maintainer.'])
                 self.assertEqual(tools.spaces_get(core, {'space': sid}, 'Demo')['id'], sid)
                 detail = tools.spaces_read_file(core, {'space': sid, 'path': 'index.html'}, 'Demo')
                 self.assertIn('Public demo', detail['text'])

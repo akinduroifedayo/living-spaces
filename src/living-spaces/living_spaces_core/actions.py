@@ -1,4 +1,3 @@
-"""Maintainer bindings and immutable canvas activation intents. Native owns execution."""
 import json
 import re
 import uuid
