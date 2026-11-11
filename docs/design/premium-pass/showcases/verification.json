@@ -23,7 +23,7 @@
         }
       ],
       "rows": 7,
-      "source": "Forecast from Open-Meteo · updated 2026-11-11 12:32 UTC",
+      "source": "Forecast from Open-Meteo · updated 2026-11-11 12:37 UTC",
       "domain": [
         "-5",
         "20"
@@ -139,19 +139,19 @@
       "receipt": [
         {
           "op": "data.put",
-          "id": "round-mwc3mzjj-fkw4okjui1f",
+          "id": "round-mwc3uapt-e3m1u2ayanb",
           "turns": 7,
           "baseRev": 0
         },
         {
           "op": "data.put",
-          "id": "round-mwc3mzjj-fkw4okjui1f",
+          "id": "round-mwc3uapt-e3m1u2ayanb",
           "turns": 7,
           "baseRev": 0
         },
         {
           "op": "data.get",
-          "id": "round-mwc3mzjj-fkw4okjui1f"
+          "id": "round-mwc3uapt-e3m1u2ayanb"
         }
       ]
     },

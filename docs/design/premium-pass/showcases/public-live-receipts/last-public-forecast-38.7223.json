@@ -1,0 +1,108 @@
+{
+  "retrieved": "2026-11-11T12:37:55.725Z",
+  "status": 200,
+  "url": "https://api.open-meteo.com/v1/forecast?latitude=38.7223&longitude=-9.1393&timezone=auto&forecast_days=7&current=temperature_2m%2Capparent_temperature%2Cweather_code%2Cis_day%2Cwind_speed_10m%2Crelative_humidity_2m&daily=weather_code%2Ctemperature_2m_max%2Ctemperature_2m_min%2Cprecipitation_probability_max%2Csunrise%2Csunset",
+  "json": {
+    "latitude": 38.746044,
+    "longitude": -9.175565,
+    "generationtime_ms": 0.34058094024658203,
+    "utc_offset_seconds": 0,
+    "timezone": "Europe/Lisbon",
+    "timezone_abbreviation": "GMT",
+    "elevation": 66,
+    "current_units": {
+      "time": "iso8601",
+      "interval": "seconds",
+      "temperature_2m": "°C",
+      "apparent_temperature": "°C",
+      "weather_code": "wmo code",
+      "is_day": "",
+      "wind_speed_10m": "km/h",
+      "relative_humidity_2m": "%"
+    },
+    "current": {
+      "time": "2026-11-11T12:30",
+      "interval": 900,
+      "temperature_2m": 16.5,
+      "apparent_temperature": 16.1,
+      "weather_code": 65,
+      "is_day": 1,
+      "wind_speed_10m": 16.3,
+      "relative_humidity_2m": 95
+    },
+    "daily_units": {
+      "time": "iso8601",
+      "weather_code": "wmo code",
+      "temperature_2m_max": "°C",
+      "temperature_2m_min": "°C",
+      "precipitation_probability_max": "%",
+      "sunrise": "iso8601",
+      "sunset": "iso8601"
+    },
+    "daily": {
+      "time": [
+        "2026-11-11",
+        "2026-11-12",
+        "2026-11-13",
+        "2026-11-14",
+        "2026-11-15",
+        "2026-11-16",
+        "2026-11-17"
+      ],
+      "weather_code": [
+        80,
+        80,
+        95,
+        95,
+        80,
+        80,
+        63
+      ],
+      "temperature_2m_max": [
+        18.4,
+        19.3,
+        20.2,
+        19.2,
+        19.6,
+        19.5,
+        20
+      ],
+      "temperature_2m_min": [
+        16.4,
+        16.7,
+        16.1,
+        15.1,
+        15.1,
+        17.3,
+        19.5
+      ],
+      "precipitation_probability_max": [
+        100,
+        48,
+        49,
+        53,
+        28,
+        70,
+        70
+      ],
+      "sunrise": [
+        "2026-11-11T07:14",
+        "2026-11-12T07:15",
+        "2026-11-13T07:16",
+        "2026-11-14T07:17",
+        "2026-11-15T07:18",
+        "2026-11-16T07:20",
+        "2026-11-17T07:21"
+      ],
+      "sunset": [
+        "2026-11-11T17:26",
+        "2026-11-12T17:25",
+        "2026-11-13T17:24",
+        "2026-11-14T17:24",
+        "2026-11-15T17:23",
+        "2026-11-16T17:22",
+        "2026-11-17T17:21"
+      ]
+    }
+  }
+}

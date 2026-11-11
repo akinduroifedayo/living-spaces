@@ -29,3 +29,8 @@ No actual Desktop/chat-generation or production-backend qualification, screen-re
 
 Executed assertion count: 29
 Valid PNG capture count: 22
+
+
+## Final execution receipt
+
+Source revision: e26f9553d2f6ba88e90c3e15f39c6eb10677f43b. Re-executed from a new empty isolated store; initialHistoryCount was 0. All 29 checks passed. The 22 PNG files in this packet were replaced with this final run, not prior-revision captures. Public network response receipts and the one demo round are in public-live-receipts/. Temporary verifier server was stopped after the run. Final visual recheck passed; the two requested polish changes were confirmed in these captures.
