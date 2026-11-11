@@ -91,6 +91,10 @@ function fixture(call = async () => ({ ok: true, result: { records: [] } }), gra
     cleanup() { mount.destroy(); frame.peer.close(); globalThis.document = originalDocument; globalThis.window = originalWindow }
   }
 }
+async function until(check, ms = 2000) {
+  const end = Date.now() + ms
+  while (!check() && Date.now() < end) await delay(5)
+}
 test('mount binds boot to host session, forwards replies and emits versioned events', async () => {
   const f = fixture()
   try {
@@ -99,11 +103,11 @@ test('mount binds boot to host session, forwards replies and emits versioned eve
     assert.equal(Object.hasOwn(f.frame.boot.bundle, 'sandbox'), false)
     assert.equal(f.frame.boot.v, 1)
     f.frame.peer.postMessage(request())
-    await delay(20)
+    await until(() => f.replies.length >= 1)
     assert.equal(f.calls.length, 1)
     assert.deepEqual(f.replies[0], { v: 1, id: 7, ok: true, result: { records: [] } })
     f.mount.postEvent('data.changed', { seq: 2, changes: [] })
-    await delay(20)
+    await until(() => f.replies.length >= 2)
     assert.deepEqual(f.replies[1], { v: 1, type: 'event', event: 'data.changed', payload: { seq: 2, changes: [] } })
   } finally { f.cleanup() }
 })
