@@ -62,11 +62,17 @@ def cancel_pending(sid, reason):
     from . import schedules
 
     with db.write() as conn:
+        schedule = conn.execute("SELECT cron_job_id FROM schedules WHERE space=?", (sid,)).fetchone()
+        if schedule and schedule["cron_job_id"]:
+            schedules._cron().pause_job(schedule["cron_job_id"], reason=reason)
+        _sync_agent_runs(sid, conn=conn)
         rows = conn.execute("SELECT * FROM runs WHERE space=? AND status IN ('queued','running')", (sid,)).fetchall()
+        canceled_jobs = set()
         for row in rows:
             detail = json.loads(row["detail"])
             detail["cancel_reason"] = reason
-            if row["handler"] == "agent" and detail.get("cron_job_id"):
+            if row["handler"] == "agent" and detail.get("cron_job_id") not in canceled_jobs and detail.get("cron_job_id"):
+                canceled_jobs.add(detail["cron_job_id"])
                 jobs = schedules._cron()
                 if detail.get("one_shot"):
                     jobs.remove_job(detail["cron_job_id"])
@@ -84,12 +90,14 @@ def _timestamp(value):
     return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp() if value else None
 
 
-def _sync_agent_runs(sid):
+def _sync_agent_runs(sid, *, conn=None):
     from . import schedules
 
-    with db.read() as conn:
-        schedule = conn.execute("SELECT cron_job_id FROM schedules WHERE space=?", (sid,)).fetchone()
-        pending = conn.execute("SELECT * FROM runs WHERE space=? AND handler='agent' AND status IN ('queued','running')", (sid,)).fetchall()
+    if conn is None:
+        with db.write() as conn:
+            return _sync_agent_runs(sid, conn=conn)
+    schedule = conn.execute("SELECT cron_job_id FROM schedules WHERE space=?", (sid,)).fetchone()
+    pending = conn.execute("SELECT * FROM runs WHERE space=? AND handler='agent' AND status IN ('queued','running')", (sid,)).fetchall()
     job_ids = {json.loads(row["detail"]).get("cron_job_id") for row in pending}
     if schedule:
         job_ids.add(schedule["cron_job_id"])
@@ -105,41 +113,46 @@ def _sync_agent_runs(sid):
         ledger = importlib.import_module("cron.executions")
     except ImportError:
         return
-    statuses = {"claimed": "queued", "running": "running", "completed": "succeeded", "failed": "failed", "unknown": "failed", "cancelled": "canceled"}
+    statuses = {"claimed": "queued", "running": "running", "completed": "succeeded", "failed": "failed", "unknown": "failed", "cancelled": "canceled", "missed": "blocked"}
     for jid, job in agent_jobs.items():
         executions = ledger.list_executions(job_id=jid, limit=500)
+        page = executions
+        while len(page) == 500:
+            page = ledger.list_executions(job_id=jid, limit=500, before_claimed_at=page[-1]["claimed_at"])
+            executions.extend(page)
         cleanup = False
-        with db.write() as conn:
-            if conn.execute("SELECT 1 FROM spaces WHERE id=?", (sid,)).fetchone() is None:
+        if conn.execute("SELECT 1 FROM spaces WHERE id=?", (sid,)).fetchone() is None:
+            continue
+        for execution in reversed(executions):
+            status = statuses.get(execution["status"])
+            if status is None:
                 continue
-            for execution in reversed(executions):
-                status = statuses.get(execution["status"])
-                if status is None:
-                    continue
-                claimed = _timestamp(execution["claimed_at"])
-                row = conn.execute("SELECT * FROM runs WHERE space=? AND json_extract(detail,'$.cron_run_id')=?", (sid, execution["id"])).fetchone()
-                if row is None:
-                    row = conn.execute("SELECT * FROM runs WHERE space=? AND handler='agent' AND status='queued' AND json_extract(detail,'$.cron_job_id')=? AND json_extract(detail,'$.cron_run_id') IS NULL AND queued_at<=? ORDER BY queued_at LIMIT 1", (sid, jid, claimed)).fetchone()
-                if row is None:
-                    rid = "run_cron_" + execution["id"]
-                    conn.execute("INSERT OR IGNORE INTO runs(id,space,trigger,handler,actor,status,queued_at) VALUES(?,?,'schedule','agent','upkeep:schedule','queued',?)", (rid, sid, claimed))
-                    row = conn.execute("SELECT * FROM runs WHERE id=?", (rid,)).fetchone()
-                detail = json.loads(row["detail"])
-                if detail.get("cancel_reason"):
-                    continue
-                if row["status"] in ("succeeded", "failed", "canceled") and status in ("queued", "running"):
-                    continue
-                if detail.get("cron_status") == execution["status"]:
-                    continue
-                detail.update(cron_job_id=jid, cron_run_id=execution["id"], cron_status=execution["status"], changed_unavailable=True)
-                if execution.get("scheduled_instant"):
-                    detail["scheduled_instant"] = execution["scheduled_instant"]
-                conn.execute("UPDATE runs SET status=?,started_at=?,ended_at=?,error=?,detail=?,heartbeat_at=? WHERE id=?", (
-                    status, _timestamp(execution.get("started_at")), _timestamp(execution.get("finished_at")), execution.get("error"), json.dumps(detail), db.now(), row["id"],
-                ))
-                cleanup = cleanup or (detail.get("one_shot", False) and status in ("succeeded", "failed", "canceled"))
-            if job is None:
-                conn.execute("UPDATE runs SET status='failed',error='Native cron job is missing',ended_at=? WHERE space=? AND handler='agent' AND status IN ('queued','running') AND json_extract(detail,'$.cron_job_id')=?", (db.now(), sid, jid))
+            claimed = _timestamp(execution["claimed_at"])
+            row = conn.execute("SELECT * FROM runs WHERE space=? AND json_extract(detail,'$.cron_run_id')=?", (sid, execution["id"])).fetchone()
+            if row is None and execution["status"] != "missed":
+                row = conn.execute("SELECT * FROM runs WHERE space=? AND handler='agent' AND status='queued' AND json_extract(detail,'$.cron_job_id')=? AND json_extract(detail,'$.cron_run_id') IS NULL AND queued_at<=? ORDER BY queued_at LIMIT 1", (sid, jid, claimed)).fetchone()
+            if row is None:
+                rid = "run_cron_" + execution["id"]
+                conn.execute("INSERT OR IGNORE INTO runs(id,space,trigger,handler,actor,status,queued_at) VALUES(?,?,'schedule','agent','upkeep:schedule','queued',?)", (rid, sid, claimed))
+                row = conn.execute("SELECT * FROM runs WHERE id=?", (rid,)).fetchone()
+            detail = json.loads(row["detail"])
+            if detail.get("cancel_reason"):
+                continue
+            if row["status"] in ("succeeded", "failed", "canceled", "blocked") and status in ("queued", "running"):
+                continue
+            if detail.get("cron_status") == execution["status"]:
+                continue
+            detail.update(cron_job_id=jid, cron_run_id=execution["id"], cron_status=execution["status"], changed_unavailable=True)
+            if execution["status"] == "missed":
+                detail["reason"] = execution.get("error") or "Scheduled occurrence missed"
+            if execution.get("scheduled_instant"):
+                detail["scheduled_instant"] = execution["scheduled_instant"]
+            conn.execute("UPDATE runs SET status=?,started_at=?,ended_at=?,error=?,detail=?,heartbeat_at=? WHERE id=?", (
+                status, _timestamp(execution.get("started_at")), _timestamp(execution.get("finished_at")), execution.get("error"), json.dumps(detail), db.now(), row["id"],
+            ))
+            cleanup = cleanup or (detail.get("one_shot", False) and status in ("succeeded", "failed", "canceled"))
+        if job is None:
+            conn.execute("UPDATE runs SET status='failed',error='Native cron job is missing',ended_at=? WHERE space=? AND handler='agent' AND status IN ('queued','running') AND json_extract(detail,'$.cron_job_id')=?", (db.now(), sid, jid))
         if cleanup and job:
             jobs.remove_job(jid)
 

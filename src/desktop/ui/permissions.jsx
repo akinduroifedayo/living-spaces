@@ -29,9 +29,11 @@ export function GrantCard({ grant, onDecide, busy }) {
   const model = CAPABILITIES[grant.capability]
   if (!model) return null
   const scope = grant.requested_scope || grant.scope || {}
-  const scopeText = grant.capability === 'refresh' ? `Host-owned public-source handler. Approved hosts: ${(scope.hosts || []).join(', ') || 'No hosts requested'}.` : model.scope
+  const agent = grant.capability === 'refresh' && scope.upkeep?.handler === 'agent'
+  const scopeText = grant.capability === 'refresh' ? agent ? 'Run the exact Hermes agent task below, on request or through separately approved scheduled upkeep.' : `Host-owned public-source handler. Approved hosts: ${(scope.hosts || []).join(', ') || 'No hosts requested'}.` : model.scope
   return <article className={`ls-grant${grant.status === 'requested' ? ' ls-pending' : ''}`}><div className="ls-row-top"><strong><Icon name={model.icon} />{model.name}</strong><StatusPill status={grant.status} /></div>
-    <dl className="ls-facts"><div><dt>Scope</dt><dd>{scopeText}</dd></div><div><dt>Purpose</dt><dd>{grant.purpose || model.purpose}</dd></div><div><dt>Data leaves device</dt><dd>{model.leaves}</dd></div><div><dt>Access</dt><dd>Continuing</dd></div></dl>
+    <dl className="ls-facts"><div><dt>Scope</dt><dd>{scopeText}</dd></div><div><dt>Purpose</dt><dd>{grant.purpose || model.purpose}</dd></div><div><dt>Data leaves device</dt><dd>{agent ? 'Yes · model calls and the tools enabled for native cron jobs can send data.' : model.leaves}</dd></div><div><dt>Access</dt><dd>Continuing</dd></div></dl>
+    {agent && <UpkeepCost upkeep={scope.upkeep} />}
     <div className="ls-actions">{grant.status === 'granted' ? <Action danger disabled={busy} onClick={() => onDecide(grant, 'revoke')}>Revoke</Action> : grant.status === 'requested' ? <><Action primary disabled={busy} onClick={() => onDecide(grant, 'grant')}>Approve</Action><Action disabled={busy} onClick={() => onDecide(grant, 'deny')}>Deny</Action></> : grant.capability === 'refresh' ? <><p className="ls-secondary">Refresh permission {grant.status}. Approving Refresh leaves scheduled upkeep paused until you resume it.</p><Action primary disabled={busy} onClick={() => onDecide(grant, 'grant')}>Approve</Action></> : <p className="ls-secondary">{grant.status === 'denied' ? `Denied. The Space shows “${model.name} isn't available” instead of prompting again.` : `${model.name} was revoked. Ask in chat to request access again.`}</p>}</div>
   </article>
 }
@@ -69,7 +71,7 @@ export function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }
     try { await ctx.rest(path, { method: 'POST', body }); await Promise.all([query.refetch(), schedule.refetch(), onChanged()]) }
     catch (e) {
       if ((e?.error || e?.body?.error || e)?.code === 'conflict') {
-        setError('Permission request changed. Review the new request before approving.')
+        setError(path === `${base}/schedule` ? 'Schedule request changed. Review the current cadence, timezone, purpose and upkeep prompt before approving again.' : 'Permission request changed. Review the new request before approving.')
       } else setError(`${errorText(e)} Review the current request before trying again.`)
       await Promise.all([query.refetch(), schedule.refetch(), onChanged()])
     }
@@ -77,6 +79,6 @@ export function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }
   }
   return <><Drawer title={`Permissions · ${space.name}`} description="Review this Space's access and schedule requests." onClose={onClose} returnFocus={returnFocus}>
     {error && <Banner kind="failed" title={error} />}
-    {query.error || schedule.error ? <ErrorState title="Permissions could not be loaded" description={errorText(query.error || schedule.error)}><Action onClick={() => { query.refetch(); schedule.refetch() }}>Try again</Action></ErrorState> : query.isLoading ? <Skeleton style={{ height: 180 }} /> : <PermissionsContent space={space} grants={query.data?.grants || []} audit={query.data?.audit || []} schedule={schedule.data} onDecide={decide} onSchedule={decision => change(`${base}/schedule`, { decision, ...(decision === 'approve' ? { requested_upkeep: space.manifest?.upkeep } : {}) })} busy={busy} />}
+    {query.error || schedule.error ? <ErrorState title="Permissions could not be loaded" description={errorText(query.error || schedule.error)}><Action onClick={() => { query.refetch(); schedule.refetch() }}>Try again</Action></ErrorState> : query.isLoading ? <Skeleton style={{ height: 180 }} /> : <PermissionsContent space={space} grants={query.data?.grants || []} audit={query.data?.audit || []} schedule={schedule.data} onDecide={decide} onSchedule={decision => change(`${base}/schedule`, { decision, ...(decision === 'approve' ? { requested_upkeep: space.manifest?.upkeep, requested_schedule: { cadence: schedule.data.cadence, timezone: schedule.data.timezone, purpose: schedule.data.purpose, requested_at: schedule.data.requested_at } } : {}) })} busy={busy} />}
   </Drawer>{revoke && <DecisionDialog danger title={`Revoke ${CAPABILITIES[revoke.capability].name} for ${space.name}?`} description={revoke.capability === 'refresh' ? "Scheduled upkeep pauses and manual refreshes stop. Approve Refresh in Permissions, then resume upkeep to restart scheduled refreshes. Data already delivered to the Space can't be recalled, and completed requests can't be undone." : `The Space loses ${CAPABILITIES[revoke.capability].name.toLowerCase()} access. Data already delivered to the Space can't be recalled, and completed requests can't be undone.`} cancelLabel="Keep access" confirmLabel="Revoke" onClose={() => setRevoke(null)} onConfirm={async () => { await ctx.rest(`${base}/grants/${revoke.capability}`, { method: 'POST', body: { decision: 'revoke' } }); await query.refetch(); await onChanged() }} />}</>
 }

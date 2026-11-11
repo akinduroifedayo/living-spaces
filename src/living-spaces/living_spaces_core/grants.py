@@ -48,12 +48,20 @@ def _subset(needed, granted):
 def _scope(capability, scope):
     limits.object_json(scope)
     if capability == "refresh":
-        if set(scope) - {"hosts"} or not isinstance(scope.get("hosts", []), list):
+        if set(scope) - {"hosts", "upkeep"} or not isinstance(scope.get("hosts", []), list):
             raise SpacesError("invalid", "Refresh scope must contain a hosts array")
         if any(not isinstance(host, str) or not host or host != host.lower()
                or any(char in host for char in "/:@* ") for host in scope.get("hosts", [])):
             raise SpacesError("invalid", "Refresh hosts must be exact lowercase hostnames")
-        return {"hosts": sorted(set(scope.get("hosts", [])))}
+        result = {"hosts": sorted(set(scope.get("hosts", [])))}
+        if "upkeep" in scope:
+            upkeep = scope["upkeep"]
+            if (not isinstance(upkeep, dict) or set(upkeep) != {"handler", "prompt"}
+                    or upkeep["handler"] != "agent" or not isinstance(upkeep["prompt"], str)
+                    or not upkeep["prompt"].strip() or len(upkeep["prompt"]) > 4000):
+                raise SpacesError("invalid", "Refresh upkeep scope requires handler agent and an exact prompt of at most 4000 characters")
+            result["upkeep"] = dict(upkeep)
+        return result
     if scope:
         raise SpacesError("invalid", "This capability has no external scope")
     return {}
@@ -97,11 +105,15 @@ def _manifest(conn, sid, manifest, actor):
         if not host:
             raise SpacesError("invalid", "Upkeep source URL requires a host")
         hosts.append(host.lower())
-    scope = _scope("refresh", {"hosts": hosts})
+    scope = {"hosts": hosts}
+    if upkeep.get("handler") == "agent":
+        scope["upkeep"] = {"handler": "agent", "prompt": upkeep["prompt"]}
+    scope = _scope("refresh", scope)
     row = conn.execute("SELECT * FROM grants WHERE space=? AND capability='refresh'", (sid,)).fetchone()
     if row:
         current = _grant(row)
-        if current["status"] == "granted" and _subset(scope, current["scope"]):
+        if (current["status"] == "granted" and _subset(scope, current["scope"])
+                and scope.get("upkeep") == current["scope"].get("upkeep")):
             return
         if current["status"] != "granted" and current["requested_scope"] == scope:
             return
@@ -121,6 +133,11 @@ def _check(conn, sid, capability, scope_need=None):
     limits.text(capability, "capability")
     row = conn.execute("SELECT * FROM grants WHERE space=? AND capability=?", (sid, capability)).fetchone()
     allowed = row is not None and row["status"] == "granted" and _subset(need, json.loads(row["scope"]))
+    if allowed and capability == "refresh":
+        revision = conn.execute("SELECT r.manifest FROM revisions r JOIN spaces s ON s.id=r.space AND s.head_rev=r.rev WHERE s.id=?", (sid,)).fetchone()
+        upkeep = (json.loads(revision["manifest"]).get("upkeep") or {}) if revision else {}
+        if upkeep.get("handler") == "agent":
+            allowed = json.loads(row["scope"]).get("upkeep") == {"handler": "agent", "prompt": upkeep["prompt"]}
     if not allowed:
         _audit(conn, sid, "app", "check", capability, "denied", {"scope_need": need})
     return allowed

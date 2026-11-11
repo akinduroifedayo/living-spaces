@@ -183,9 +183,14 @@ async def schedule_get(space_id: str):
 @router.post("/spaces/{space_id}/schedule")
 async def schedule_update(space_id: str, body=Body(default=None)):
     def action(core):
-        _body(core, body, ("decision", "paused", "requested_upkeep"))
-        if "decision" in body and set(body) <= {"decision", "requested_upkeep"} and body["decision"] in ("approve", "deny"):
+        _body(core, body, ("decision", "paused", "requested_upkeep", "requested_schedule"))
+        if "decision" in body and set(body) <= {"decision", "requested_upkeep", "requested_schedule"} and body["decision"] in ("approve", "deny"):
             kwargs = {}
+            if body["decision"] == "approve":
+                snapshot = body.get("requested_schedule")
+                if not isinstance(snapshot, dict) or set(snapshot) != {"cadence", "timezone", "purpose", "requested_at"}:
+                    _invalid(core, "Approval requires the displayed requested_schedule with cadence, timezone, purpose and requested_at.")
+                kwargs["requested_schedule"] = snapshot
             if "requested_upkeep" in body:
                 if not isinstance(body["requested_upkeep"], dict):
                     _invalid(core, "requested_upkeep must be an object")
