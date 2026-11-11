@@ -30,7 +30,7 @@ The selected day is UI state. Check-ins survive closing the app.
 
 ```html
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="journal">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">

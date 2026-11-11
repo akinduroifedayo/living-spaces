@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "name": "Weather Window",
+  "description": "A public twelve-hour forecast, with local sample exploration when live weather is unavailable.",
+  "entry": "index.html",
+  "imports": {},
+  "accent": "teal",
+  "icon": "globe",
+  "data": {"version": 1, "collections": {}, "migrations": []}
+}
