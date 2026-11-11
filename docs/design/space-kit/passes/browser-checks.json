@@ -1,0 +1,2729 @@
+{
+  "provenance": "Real reference code, synthetic in-memory records and explicitly labelled weather sample. Not Desktop, real chat, durable storage or network-boundary qualification.",
+  "pages": [
+    {
+      "label": "research-desk desktop",
+      "path": "/?example=research-desk",
+      "mode": "light",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "bg": "rgb(244, 244, 238)",
+      "text": "rgb(34, 42, 35)",
+      "theme": "editorial",
+      "targets": [
+        {
+          "text": "Refresh",
+          "height": 36,
+          "width": 78.328125
+        },
+        {
+          "text": "Overview",
+          "height": 40,
+          "width": 87.140625
+        },
+        {
+          "text": "Library",
+          "height": 40,
+          "width": 69.015625
+        },
+        {
+          "text": "Queue",
+          "height": 40,
+          "width": 66.390625
+        },
+        {
+          "text": "Open queue",
+          "height": 36,
+          "width": 107.484375
+        },
+        {
+          "text": "Public source freshness",
+          "height": 44,
+          "width": 1086
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "habit-planner desktop",
+      "path": "/?example=habit-planner",
+      "mode": "light",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "bg": "rgb(255, 244, 233)",
+      "text": "rgb(68, 45, 32)",
+      "theme": "journal",
+      "targets": [
+        {
+          "text": "date",
+          "height": 39,
+          "width": 240
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 617.109375
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "gallery desktop",
+      "path": "/src/living-spaces/skills/build-space/references/kit-gallery.html",
+      "mode": "light",
+      "width": 1429,
+      "scrollWidth": 1429,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(31, 35, 40)",
+      "theme": "default",
+      "targets": [
+        {
+          "text": "Composition",
+          "height": 40,
+          "width": 105.421875
+        },
+        {
+          "text": "Controls",
+          "height": 40,
+          "width": 78.625
+        },
+        {
+          "text": "States",
+          "height": 40,
+          "width": 65.140625
+        },
+        {
+          "text": "Data & play",
+          "height": 40,
+          "width": 98.03125
+        },
+        {
+          "text": "Hermes defaultEditorialTerminalPlayfulMinimalData-",
+          "height": 36,
+          "width": 146
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "QueuedReadingCompleted",
+          "height": 36,
+          "width": 213.1875
+        },
+        {
+          "text": "NormalHighLow",
+          "height": 36,
+          "width": 213.203125
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "Save example",
+          "height": 36,
+          "width": 118.640625
+        },
+        {
+          "text": "Reset example",
+          "height": 36,
+          "width": 124.59375
+        },
+        {
+          "text": "Show details",
+          "height": 36,
+          "width": 111.953125
+        },
+        {
+          "text": "Clear example notes",
+          "height": 36,
+          "width": 163.265625
+        },
+        {
+          "text": "Add a paper",
+          "height": 36,
+          "width": 107.296875
+        },
+        {
+          "text": "Try example again",
+          "height": 36,
+          "width": 148.34375
+        },
+        {
+          "text": "Keep mine",
+          "height": 36,
+          "width": 96.375
+        },
+        {
+          "text": "Use updated",
+          "height": 36,
+          "width": 111.796875
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "weather simulated off",
+      "path": "/weather-off.html",
+      "mode": "light",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(18, 46, 70)",
+      "theme": "default",
+      "targets": [
+        {
+          "text": "London",
+          "height": 44.5,
+          "width": 86.703125
+        },
+        {
+          "text": "Copenhagen",
+          "height": 44.5,
+          "width": 124.140625
+        },
+        {
+          "text": "Tokyo",
+          "height": 44.5,
+          "width": 74.234375
+        },
+        {
+          "text": "Explore sample",
+          "height": 44.5,
+          "width": 139.875
+        },
+        {
+          "text": "Hourly values & forecast details",
+          "height": 44,
+          "width": 753.0625
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "research-desk desktop",
+      "path": "/?example=research-desk",
+      "mode": "dark",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "bg": "rgb(21, 23, 20)",
+      "text": "rgb(232, 237, 227)",
+      "theme": "editorial",
+      "targets": [
+        {
+          "text": "Refresh",
+          "height": 36,
+          "width": 78.328125
+        },
+        {
+          "text": "Overview",
+          "height": 40,
+          "width": 87.140625
+        },
+        {
+          "text": "Library",
+          "height": 40,
+          "width": 69.015625
+        },
+        {
+          "text": "Queue",
+          "height": 40,
+          "width": 66.390625
+        },
+        {
+          "text": "Open queue",
+          "height": 36,
+          "width": 107.484375
+        },
+        {
+          "text": "Public source freshness",
+          "height": 44,
+          "width": 1086
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "habit-planner desktop",
+      "path": "/?example=habit-planner",
+      "mode": "dark",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "bg": "rgb(37, 30, 26)",
+      "text": "rgb(249, 232, 210)",
+      "theme": "journal",
+      "targets": [
+        {
+          "text": "date",
+          "height": 39,
+          "width": 240
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 617.109375
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "gallery desktop",
+      "path": "/src/living-spaces/skills/build-space/references/kit-gallery.html",
+      "mode": "dark",
+      "width": 1429,
+      "scrollWidth": 1429,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(230, 237, 243)",
+      "theme": "default",
+      "targets": [
+        {
+          "text": "Composition",
+          "height": 40,
+          "width": 105.421875
+        },
+        {
+          "text": "Controls",
+          "height": 40,
+          "width": 78.625
+        },
+        {
+          "text": "States",
+          "height": 40,
+          "width": 65.140625
+        },
+        {
+          "text": "Data & play",
+          "height": 40,
+          "width": 98.03125
+        },
+        {
+          "text": "Hermes defaultEditorialTerminalPlayfulMinimalData-",
+          "height": 36,
+          "width": 146
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "QueuedReadingCompleted",
+          "height": 36,
+          "width": 213.1875
+        },
+        {
+          "text": "NormalHighLow",
+          "height": 36,
+          "width": 213.203125
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "Save example",
+          "height": 36,
+          "width": 118.640625
+        },
+        {
+          "text": "Reset example",
+          "height": 36,
+          "width": 124.59375
+        },
+        {
+          "text": "Show details",
+          "height": 36,
+          "width": 111.953125
+        },
+        {
+          "text": "Clear example notes",
+          "height": 36,
+          "width": 163.265625
+        },
+        {
+          "text": "Add a paper",
+          "height": 36,
+          "width": 107.296875
+        },
+        {
+          "text": "Try example again",
+          "height": 36,
+          "width": 148.34375
+        },
+        {
+          "text": "Keep mine",
+          "height": 36,
+          "width": 96.375
+        },
+        {
+          "text": "Use updated",
+          "height": 36,
+          "width": 111.796875
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "weather simulated off",
+      "path": "/weather-off.html",
+      "mode": "dark",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(224, 241, 252)",
+      "theme": "default",
+      "targets": [
+        {
+          "text": "London",
+          "height": 44.5,
+          "width": 86.703125
+        },
+        {
+          "text": "Copenhagen",
+          "height": 44.5,
+          "width": 124.140625
+        },
+        {
+          "text": "Tokyo",
+          "height": 44.5,
+          "width": 74.234375
+        },
+        {
+          "text": "Explore sample",
+          "height": 44.5,
+          "width": 139.875
+        },
+        {
+          "text": "Hourly values & forecast details",
+          "height": 44,
+          "width": 753.0625
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "research-desk narrow 390",
+      "path": "/?example=research-desk",
+      "mode": "dark",
+      "width": 375,
+      "scrollWidth": 375,
+      "bg": "rgb(21, 23, 20)",
+      "text": "rgb(232, 237, 227)",
+      "theme": "editorial",
+      "targets": [
+        {
+          "text": "Refresh",
+          "height": 44,
+          "width": 78.328125
+        },
+        {
+          "text": "Overview",
+          "height": 44,
+          "width": 87.140625
+        },
+        {
+          "text": "Library",
+          "height": 44,
+          "width": 69.015625
+        },
+        {
+          "text": "Queue",
+          "height": 44,
+          "width": 66.390625
+        },
+        {
+          "text": "Open queue",
+          "height": 44,
+          "width": 107.484375
+        },
+        {
+          "text": "Public source freshness",
+          "height": 44,
+          "width": 309
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "habit-planner narrow 390",
+      "path": "/?example=habit-planner",
+      "mode": "dark",
+      "width": 375,
+      "scrollWidth": 375,
+      "bg": "rgb(37, 30, 26)",
+      "text": "rgb(249, 232, 210)",
+      "theme": "journal",
+      "targets": [
+        {
+          "text": "date",
+          "height": 44,
+          "width": 240
+        },
+        {
+          "text": "text",
+          "height": 44,
+          "width": 343
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "gallery narrow 390",
+      "path": "/src/living-spaces/skills/build-space/references/kit-gallery.html",
+      "mode": "dark",
+      "width": 379,
+      "scrollWidth": 379,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(230, 237, 243)",
+      "theme": "default",
+      "targets": [
+        {
+          "text": "Composition",
+          "height": 44,
+          "width": 105.421875
+        },
+        {
+          "text": "Controls",
+          "height": 44,
+          "width": 78.625
+        },
+        {
+          "text": "States",
+          "height": 44,
+          "width": 65.140625
+        },
+        {
+          "text": "Data & play",
+          "height": 44,
+          "width": 98.03125
+        },
+        {
+          "text": "Hermes defaultEditorialTerminalPlayfulMinimalData-",
+          "height": 44,
+          "width": 146
+        },
+        {
+          "text": "text",
+          "height": 44,
+          "width": 347
+        },
+        {
+          "text": "QueuedReadingCompleted",
+          "height": 44,
+          "width": 347
+        },
+        {
+          "text": "NormalHighLow",
+          "height": 44,
+          "width": 347
+        },
+        {
+          "text": "text",
+          "height": 44,
+          "width": 347
+        },
+        {
+          "text": "Save example",
+          "height": 44,
+          "width": 118.640625
+        },
+        {
+          "text": "Reset example",
+          "height": 44,
+          "width": 124.59375
+        },
+        {
+          "text": "Show details",
+          "height": 44,
+          "width": 111.953125
+        },
+        {
+          "text": "Clear example notes",
+          "height": 44,
+          "width": 163.265625
+        },
+        {
+          "text": "Add a paper",
+          "height": 44,
+          "width": 107.296875
+        },
+        {
+          "text": "Try example again",
+          "height": 44,
+          "width": 148.34375
+        },
+        {
+          "text": "Keep mine",
+          "height": 44,
+          "width": 96.375
+        },
+        {
+          "text": "Use updated",
+          "height": 44,
+          "width": 111.796875
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "weather narrow 390",
+      "path": "/weather-off.html",
+      "mode": "dark",
+      "width": 379,
+      "scrollWidth": 379,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(224, 241, 252)",
+      "theme": "default",
+      "targets": [
+        {
+          "text": "London",
+          "height": 44,
+          "width": 109
+        },
+        {
+          "text": "Copenhagen",
+          "height": 44,
+          "width": 109
+        },
+        {
+          "text": "Tokyo",
+          "height": 44,
+          "width": 109
+        },
+        {
+          "text": "Explore sample",
+          "height": 44.5,
+          "width": 139.875
+        },
+        {
+          "text": "Hourly values & forecast details",
+          "height": 44,
+          "width": 303
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "research-desk narrow 320",
+      "path": "/?example=research-desk",
+      "mode": "dark",
+      "width": 305,
+      "scrollWidth": 305,
+      "bg": "rgb(21, 23, 20)",
+      "text": "rgb(232, 237, 227)",
+      "theme": "editorial",
+      "targets": [
+        {
+          "text": "Refresh",
+          "height": 44,
+          "width": 78.328125
+        },
+        {
+          "text": "Overview",
+          "height": 44,
+          "width": 87.140625
+        },
+        {
+          "text": "Library",
+          "height": 44,
+          "width": 69.015625
+        },
+        {
+          "text": "Queue",
+          "height": 44,
+          "width": 66.390625
+        },
+        {
+          "text": "Open queue",
+          "height": 44,
+          "width": 107.484375
+        },
+        {
+          "text": "Public source freshness",
+          "height": 44,
+          "width": 239
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "habit-planner narrow 320",
+      "path": "/?example=habit-planner",
+      "mode": "dark",
+      "width": 305,
+      "scrollWidth": 305,
+      "bg": "rgb(37, 30, 26)",
+      "text": "rgb(249, 232, 210)",
+      "theme": "journal",
+      "targets": [
+        {
+          "text": "date",
+          "height": 44,
+          "width": 240
+        },
+        {
+          "text": "text",
+          "height": 44,
+          "width": 273
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "gallery narrow 320",
+      "path": "/src/living-spaces/skills/build-space/references/kit-gallery.html",
+      "mode": "dark",
+      "width": 309,
+      "scrollWidth": 309,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(230, 237, 243)",
+      "theme": "default",
+      "targets": [
+        {
+          "text": "Composition",
+          "height": 44,
+          "width": 105.421875
+        },
+        {
+          "text": "Controls",
+          "height": 44,
+          "width": 78.625
+        },
+        {
+          "text": "States",
+          "height": 44,
+          "width": 65.140625
+        },
+        {
+          "text": "Data & play",
+          "height": 44,
+          "width": 98.03125
+        },
+        {
+          "text": "Hermes defaultEditorialTerminalPlayfulMinimalData-",
+          "height": 44,
+          "width": 146
+        },
+        {
+          "text": "text",
+          "height": 44,
+          "width": 277
+        },
+        {
+          "text": "QueuedReadingCompleted",
+          "height": 44,
+          "width": 277
+        },
+        {
+          "text": "NormalHighLow",
+          "height": 44,
+          "width": 277
+        },
+        {
+          "text": "text",
+          "height": 44,
+          "width": 277
+        },
+        {
+          "text": "Save example",
+          "height": 44,
+          "width": 118.640625
+        },
+        {
+          "text": "Reset example",
+          "height": 44,
+          "width": 124.59375
+        },
+        {
+          "text": "Show details",
+          "height": 44,
+          "width": 111.953125
+        },
+        {
+          "text": "Clear example notes",
+          "height": 44,
+          "width": 163.265625
+        },
+        {
+          "text": "Add a paper",
+          "height": 44,
+          "width": 107.296875
+        },
+        {
+          "text": "Try example again",
+          "height": 44,
+          "width": 148.34375
+        },
+        {
+          "text": "Keep mine",
+          "height": 44,
+          "width": 96.375
+        },
+        {
+          "text": "Use updated",
+          "height": 44,
+          "width": 111.796875
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "weather narrow 320",
+      "path": "/weather-off.html",
+      "mode": "dark",
+      "width": 309,
+      "scrollWidth": 309,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(224, 241, 252)",
+      "theme": "default",
+      "targets": [
+        {
+          "text": "London",
+          "height": 44,
+          "width": 76.4375
+        },
+        {
+          "text": "Copenhagen",
+          "height": 44,
+          "width": 104.125
+        },
+        {
+          "text": "Tokyo",
+          "height": 44,
+          "width": 76.4375
+        },
+        {
+          "text": "Explore sample",
+          "height": 44.5,
+          "width": 139.875
+        },
+        {
+          "text": "Hourly values & forecast details",
+          "height": 44,
+          "width": 233
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "research-desk narrow 720",
+      "path": "/?example=research-desk",
+      "mode": "dark",
+      "width": 705,
+      "scrollWidth": 705,
+      "bg": "rgb(21, 23, 20)",
+      "text": "rgb(232, 237, 227)",
+      "theme": "editorial",
+      "targets": [
+        {
+          "text": "Refresh",
+          "height": 36,
+          "width": 78.328125
+        },
+        {
+          "text": "Overview",
+          "height": 40,
+          "width": 87.140625
+        },
+        {
+          "text": "Library",
+          "height": 40,
+          "width": 69.015625
+        },
+        {
+          "text": "Queue",
+          "height": 40,
+          "width": 66.390625
+        },
+        {
+          "text": "Open queue",
+          "height": 36,
+          "width": 107.484375
+        },
+        {
+          "text": "Public source freshness",
+          "height": 44,
+          "width": 628.71875
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "habit-planner narrow 720",
+      "path": "/?example=habit-planner",
+      "mode": "dark",
+      "width": 705,
+      "scrollWidth": 705,
+      "bg": "rgb(37, 30, 26)",
+      "text": "rgb(249, 232, 210)",
+      "theme": "journal",
+      "targets": [
+        {
+          "text": "date",
+          "height": 39,
+          "width": 240
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 559.828125
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "gallery narrow 720",
+      "path": "/src/living-spaces/skills/build-space/references/kit-gallery.html",
+      "mode": "dark",
+      "width": 709,
+      "scrollWidth": 709,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(230, 237, 243)",
+      "theme": "default",
+      "targets": [
+        {
+          "text": "Composition",
+          "height": 40,
+          "width": 105.421875
+        },
+        {
+          "text": "Controls",
+          "height": 40,
+          "width": 78.625
+        },
+        {
+          "text": "States",
+          "height": 40,
+          "width": 65.140625
+        },
+        {
+          "text": "Data & play",
+          "height": 40,
+          "width": 98.03125
+        },
+        {
+          "text": "Hermes defaultEditorialTerminalPlayfulMinimalData-",
+          "height": 36,
+          "width": 146
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 256.71875
+        },
+        {
+          "text": "QueuedReadingCompleted",
+          "height": 36,
+          "width": 256.71875
+        },
+        {
+          "text": "NormalHighLow",
+          "height": 36,
+          "width": 256.71875
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 256.71875
+        },
+        {
+          "text": "Save example",
+          "height": 36,
+          "width": 118.640625
+        },
+        {
+          "text": "Reset example",
+          "height": 36,
+          "width": 124.59375
+        },
+        {
+          "text": "Show details",
+          "height": 36,
+          "width": 111.953125
+        },
+        {
+          "text": "Clear example notes",
+          "height": 36,
+          "width": 163.265625
+        },
+        {
+          "text": "Add a paper",
+          "height": 36,
+          "width": 107.296875
+        },
+        {
+          "text": "Try example again",
+          "height": 36,
+          "width": 148.34375
+        },
+        {
+          "text": "Keep mine",
+          "height": 36,
+          "width": 96.375
+        },
+        {
+          "text": "Use updated",
+          "height": 36,
+          "width": 111.796875
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "weather narrow 720",
+      "path": "/weather-off.html",
+      "mode": "dark",
+      "width": 709,
+      "scrollWidth": 709,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(224, 241, 252)",
+      "theme": "default",
+      "targets": [
+        {
+          "text": "London",
+          "height": 44,
+          "width": 219
+        },
+        {
+          "text": "Copenhagen",
+          "height": 44,
+          "width": 219
+        },
+        {
+          "text": "Tokyo",
+          "height": 44,
+          "width": 219
+        },
+        {
+          "text": "Explore sample",
+          "height": 44.5,
+          "width": 139.875
+        },
+        {
+          "text": "Hourly values & forecast details",
+          "height": 44,
+          "width": 633
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "preset editorial",
+      "path": "/src/living-spaces/skills/build-space/references/kit-gallery.html?theme=editorial",
+      "mode": "light",
+      "width": 1429,
+      "scrollWidth": 1429,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(34, 42, 35)",
+      "theme": "editorial",
+      "targets": [
+        {
+          "text": "Composition",
+          "height": 40,
+          "width": 105.421875
+        },
+        {
+          "text": "Controls",
+          "height": 40,
+          "width": 78.625
+        },
+        {
+          "text": "States",
+          "height": 40,
+          "width": 65.140625
+        },
+        {
+          "text": "Data & play",
+          "height": 40,
+          "width": 98.03125
+        },
+        {
+          "text": "Hermes defaultEditorialTerminalPlayfulMinimalData-",
+          "height": 36,
+          "width": 146
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "QueuedReadingCompleted",
+          "height": 36,
+          "width": 213.1875
+        },
+        {
+          "text": "NormalHighLow",
+          "height": 36,
+          "width": 213.203125
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "Save example",
+          "height": 36,
+          "width": 118.640625
+        },
+        {
+          "text": "Reset example",
+          "height": 36,
+          "width": 124.59375
+        },
+        {
+          "text": "Show details",
+          "height": 36,
+          "width": 111.953125
+        },
+        {
+          "text": "Clear example notes",
+          "height": 36,
+          "width": 163.265625
+        },
+        {
+          "text": "Add a paper",
+          "height": 36,
+          "width": 107.296875
+        },
+        {
+          "text": "Try example again",
+          "height": 36,
+          "width": 148.34375
+        },
+        {
+          "text": "Keep mine",
+          "height": 36,
+          "width": 96.375
+        },
+        {
+          "text": "Use updated",
+          "height": 36,
+          "width": 111.796875
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "preset terminal",
+      "path": "/src/living-spaces/skills/build-space/references/kit-gallery.html?theme=terminal",
+      "mode": "light",
+      "width": 1429,
+      "scrollWidth": 1429,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(23, 52, 62)",
+      "theme": "terminal",
+      "targets": [
+        {
+          "text": "Composition",
+          "height": 40,
+          "width": 116.71875
+        },
+        {
+          "text": "Controls",
+          "height": 40,
+          "width": 91.4375
+        },
+        {
+          "text": "States",
+          "height": 40,
+          "width": 74.578125
+        },
+        {
+          "text": "Data & play",
+          "height": 40,
+          "width": 116.71875
+        },
+        {
+          "text": "Hermes defaultEditorialTerminalPlayfulMinimalData-",
+          "height": 36,
+          "width": 161
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "QueuedReadingCompleted",
+          "height": 36,
+          "width": 213.1875
+        },
+        {
+          "text": "NormalHighLow",
+          "height": 36,
+          "width": 213.203125
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "Save example",
+          "height": 36,
+          "width": 127.15625
+        },
+        {
+          "text": "Reset example",
+          "height": 36,
+          "width": 135.578125
+        },
+        {
+          "text": "Show details",
+          "height": 36,
+          "width": 127.15625
+        },
+        {
+          "text": "Clear example notes",
+          "height": 36,
+          "width": 186.15625
+        },
+        {
+          "text": "Add a paper",
+          "height": 36,
+          "width": 118.71875
+        },
+        {
+          "text": "Try example again",
+          "height": 36,
+          "width": 169.296875
+        },
+        {
+          "text": "Keep mine",
+          "height": 36,
+          "width": 101.859375
+        },
+        {
+          "text": "Use updated",
+          "height": 36,
+          "width": 118.71875
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "preset playful",
+      "path": "/src/living-spaces/skills/build-space/references/kit-gallery.html?theme=playful",
+      "mode": "light",
+      "width": 1429,
+      "scrollWidth": 1429,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(48, 34, 73)",
+      "theme": "playful",
+      "targets": [
+        {
+          "text": "Composition",
+          "height": 40,
+          "width": 105.421875
+        },
+        {
+          "text": "Controls",
+          "height": 40,
+          "width": 78.625
+        },
+        {
+          "text": "States",
+          "height": 40,
+          "width": 65.140625
+        },
+        {
+          "text": "Data & play",
+          "height": 40,
+          "width": 98.03125
+        },
+        {
+          "text": "Hermes defaultEditorialTerminalPlayfulMinimalData-",
+          "height": 36,
+          "width": 146
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "QueuedReadingCompleted",
+          "height": 36,
+          "width": 213.1875
+        },
+        {
+          "text": "NormalHighLow",
+          "height": 36,
+          "width": 213.203125
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "Save example",
+          "height": 36,
+          "width": 118.640625
+        },
+        {
+          "text": "Reset example",
+          "height": 36,
+          "width": 124.59375
+        },
+        {
+          "text": "Show details",
+          "height": 36,
+          "width": 111.953125
+        },
+        {
+          "text": "Clear example notes",
+          "height": 36,
+          "width": 163.265625
+        },
+        {
+          "text": "Add a paper",
+          "height": 36,
+          "width": 107.296875
+        },
+        {
+          "text": "Try example again",
+          "height": 36,
+          "width": 148.34375
+        },
+        {
+          "text": "Keep mine",
+          "height": 36,
+          "width": 96.375
+        },
+        {
+          "text": "Use updated",
+          "height": 36,
+          "width": 111.796875
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "preset minimal",
+      "path": "/src/living-spaces/skills/build-space/references/kit-gallery.html?theme=minimal",
+      "mode": "light",
+      "width": 1429,
+      "scrollWidth": 1429,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(36, 36, 36)",
+      "theme": "minimal",
+      "targets": [
+        {
+          "text": "Composition",
+          "height": 40,
+          "width": 105.421875
+        },
+        {
+          "text": "Controls",
+          "height": 40,
+          "width": 78.625
+        },
+        {
+          "text": "States",
+          "height": 40,
+          "width": 65.140625
+        },
+        {
+          "text": "Data & play",
+          "height": 40,
+          "width": 98.03125
+        },
+        {
+          "text": "Hermes defaultEditorialTerminalPlayfulMinimalData-",
+          "height": 36,
+          "width": 146
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "QueuedReadingCompleted",
+          "height": 36,
+          "width": 213.1875
+        },
+        {
+          "text": "NormalHighLow",
+          "height": 36,
+          "width": 213.203125
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "Save example",
+          "height": 36,
+          "width": 118.640625
+        },
+        {
+          "text": "Reset example",
+          "height": 36,
+          "width": 124.59375
+        },
+        {
+          "text": "Show details",
+          "height": 36,
+          "width": 111.953125
+        },
+        {
+          "text": "Clear example notes",
+          "height": 36,
+          "width": 163.265625
+        },
+        {
+          "text": "Add a paper",
+          "height": 36,
+          "width": 107.296875
+        },
+        {
+          "text": "Try example again",
+          "height": 36,
+          "width": 148.34375
+        },
+        {
+          "text": "Keep mine",
+          "height": 36,
+          "width": 96.375
+        },
+        {
+          "text": "Use updated",
+          "height": 36,
+          "width": 111.796875
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "preset data",
+      "path": "/src/living-spaces/skills/build-space/references/kit-gallery.html?theme=data",
+      "mode": "light",
+      "width": 1429,
+      "scrollWidth": 1429,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(30, 48, 67)",
+      "theme": "data",
+      "targets": [
+        {
+          "text": "Composition",
+          "height": 40,
+          "width": 105.421875
+        },
+        {
+          "text": "Controls",
+          "height": 40,
+          "width": 78.625
+        },
+        {
+          "text": "States",
+          "height": 40,
+          "width": 65.140625
+        },
+        {
+          "text": "Data & play",
+          "height": 40,
+          "width": 98.03125
+        },
+        {
+          "text": "Hermes defaultEditorialTerminalPlayfulMinimalData-",
+          "height": 36,
+          "width": 146
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "QueuedReadingCompleted",
+          "height": 36,
+          "width": 213.1875
+        },
+        {
+          "text": "NormalHighLow",
+          "height": 36,
+          "width": 213.203125
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "Save example",
+          "height": 36,
+          "width": 118.640625
+        },
+        {
+          "text": "Reset example",
+          "height": 36,
+          "width": 124.59375
+        },
+        {
+          "text": "Show details",
+          "height": 36,
+          "width": 111.953125
+        },
+        {
+          "text": "Clear example notes",
+          "height": 36,
+          "width": 163.265625
+        },
+        {
+          "text": "Add a paper",
+          "height": 36,
+          "width": 107.296875
+        },
+        {
+          "text": "Try example again",
+          "height": 36,
+          "width": 148.34375
+        },
+        {
+          "text": "Keep mine",
+          "height": 36,
+          "width": 96.375
+        },
+        {
+          "text": "Use updated",
+          "height": 36,
+          "width": 111.796875
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "preset journal",
+      "path": "/src/living-spaces/skills/build-space/references/kit-gallery.html?theme=journal",
+      "mode": "light",
+      "width": 1429,
+      "scrollWidth": 1429,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(68, 45, 32)",
+      "theme": "journal",
+      "targets": [
+        {
+          "text": "Composition",
+          "height": 40,
+          "width": 105.421875
+        },
+        {
+          "text": "Controls",
+          "height": 40,
+          "width": 78.625
+        },
+        {
+          "text": "States",
+          "height": 40,
+          "width": 65.140625
+        },
+        {
+          "text": "Data & play",
+          "height": 40,
+          "width": 98.03125
+        },
+        {
+          "text": "Hermes defaultEditorialTerminalPlayfulMinimalData-",
+          "height": 36,
+          "width": 146
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "QueuedReadingCompleted",
+          "height": 36,
+          "width": 213.1875
+        },
+        {
+          "text": "NormalHighLow",
+          "height": 36,
+          "width": 213.203125
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "Save example",
+          "height": 36,
+          "width": 118.640625
+        },
+        {
+          "text": "Reset example",
+          "height": 36,
+          "width": 124.59375
+        },
+        {
+          "text": "Show details",
+          "height": 36,
+          "width": 111.953125
+        },
+        {
+          "text": "Clear example notes",
+          "height": 36,
+          "width": 163.265625
+        },
+        {
+          "text": "Add a paper",
+          "height": 36,
+          "width": 107.296875
+        },
+        {
+          "text": "Try example again",
+          "height": 36,
+          "width": 148.34375
+        },
+        {
+          "text": "Keep mine",
+          "height": 36,
+          "width": 96.375
+        },
+        {
+          "text": "Use updated",
+          "height": 36,
+          "width": 111.796875
+        }
+      ],
+      "missingLabels": 0
+    },
+    {
+      "label": "preset game",
+      "path": "/src/living-spaces/skills/build-space/references/kit-gallery.html?theme=game",
+      "mode": "light",
+      "width": 1429,
+      "scrollWidth": 1429,
+      "bg": "rgba(0, 0, 0, 0)",
+      "text": "rgb(28, 48, 86)",
+      "theme": "game",
+      "targets": [
+        {
+          "text": "Composition",
+          "height": 40,
+          "width": 105.421875
+        },
+        {
+          "text": "Controls",
+          "height": 40,
+          "width": 78.625
+        },
+        {
+          "text": "States",
+          "height": 40,
+          "width": 65.140625
+        },
+        {
+          "text": "Data & play",
+          "height": 40,
+          "width": 98.03125
+        },
+        {
+          "text": "Hermes defaultEditorialTerminalPlayfulMinimalData-",
+          "height": 36,
+          "width": 146
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "QueuedReadingCompleted",
+          "height": 36,
+          "width": 213.1875
+        },
+        {
+          "text": "NormalHighLow",
+          "height": 36,
+          "width": 213.203125
+        },
+        {
+          "text": "text",
+          "height": 37,
+          "width": 438.390625
+        },
+        {
+          "text": "Save example",
+          "height": 36,
+          "width": 118.640625
+        },
+        {
+          "text": "Reset example",
+          "height": 36,
+          "width": 124.59375
+        },
+        {
+          "text": "Show details",
+          "height": 36,
+          "width": 111.953125
+        },
+        {
+          "text": "Clear example notes",
+          "height": 36,
+          "width": 163.265625
+        },
+        {
+          "text": "Add a paper",
+          "height": 36,
+          "width": 107.296875
+        },
+        {
+          "text": "Try example again",
+          "height": 36,
+          "width": 148.34375
+        },
+        {
+          "text": "Keep mine",
+          "height": 36,
+          "width": 96.375
+        },
+        {
+          "text": "Use updated",
+          "height": 36,
+          "width": 111.796875
+        }
+      ],
+      "missingLabels": 0
+    }
+  ],
+  "checks": [
+    {
+      "evidence_class": "Chrome DOM activation with synthetic in-memory backend",
+      "example": "research-desk",
+      "checks": [
+        "allow-scripts-only outer frame",
+        "form-action CSP remains blocked",
+        "empty input cannot write",
+        "modified Enter cannot write",
+        "creation pending retains input and disables action",
+        "pending request has not created a row",
+        "repeat activation cannot duplicate pending write",
+        "click creates exactly one row",
+        "single-line Enter creates exactly one row",
+        "textarea Enter inserts newline without saving",
+        "explicit editor click saves multiline notes once",
+        "trusted DOM clicks and Enter were observed",
+        "actions never needed a native submit event"
+      ],
+      "mouseTargets": [
+        {
+          "expression": "document.querySelector('a[href=\"#/library\"]')",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 285.6484375,
+            "y": 138.59375
+          },
+          "coordinates": {
+            "x": 285.6484375,
+            "y": 186.59375
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "A",
+            "text": "Library",
+            "active": "BODY"
+          }
+        },
+        {
+          "expression": "document.querySelector(\"input[required]:not([type=date])\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 655.2890625,
+            "y": 353.09375
+          },
+          "coordinates": {
+            "x": 655.2890625,
+            "y": 401.09375
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "INPUT",
+            "text": "",
+            "disabled": true,
+            "title": "",
+            "active": "A"
+          }
+        },
+        {
+          "expression": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === \"Add to library\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 1221.2890625,
+            "y": 353.59375
+          },
+          "coordinates": {
+            "x": 1221.2890625,
+            "y": 401.59375
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "BUTTON",
+            "text": "Add to library",
+            "disabled": true,
+            "title": "",
+            "active": "INPUT"
+          }
+        },
+        {
+          "expression": "document.querySelector(\"input[required]:not([type=date])\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 655.2890625,
+            "y": 353.09375
+          },
+          "coordinates": {
+            "x": 655.2890625,
+            "y": 401.09375
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "INPUT",
+            "text": "",
+            "disabled": true,
+            "title": "",
+            "active": "BODY"
+          }
+        },
+        {
+          "expression": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === \"Add to library\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 1221.2890625,
+            "y": 353.59375
+          },
+          "coordinates": {
+            "x": 1221.2890625,
+            "y": 401.59375
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "BUTTON",
+            "text": "Add to library",
+            "disabled": false,
+            "title": "Public click fixture",
+            "active": "INPUT"
+          }
+        },
+        {
+          "expression": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === \"Add to library\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 1221.2890625,
+            "y": 353.59375
+          },
+          "coordinates": {
+            "x": 1221.2890625,
+            "y": 401.59375
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "BUTTON",
+            "text": "Add to library",
+            "disabled": true,
+            "title": "Public click fixture",
+            "active": "BUTTON"
+          }
+        },
+        {
+          "expression": "document.querySelector(\"input[required]:not([type=date])\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 655.2890625,
+            "y": 353.09375
+          },
+          "coordinates": {
+            "x": 655.2890625,
+            "y": 401.09375
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "INPUT",
+            "text": "",
+            "disabled": true,
+            "title": "",
+            "active": "BODY"
+          }
+        },
+        {
+          "expression": "document.querySelector(\"textarea\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 951.1953125,
+            "y": 675.390625
+          },
+          "coordinates": {
+            "x": 951.1953125,
+            "y": 723.390625
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "TEXTAREA",
+            "text": "",
+            "disabled": true,
+            "title": "",
+            "active": "BODY"
+          }
+        },
+        {
+          "expression": "[...document.querySelectorAll(\"button\")].find(el => el.textContent.trim() === \"Save changes\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 698.9921875,
+            "y": 765.890625
+          },
+          "coordinates": {
+            "x": 698.9921875,
+            "y": 813.890625
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "BUTTON",
+            "text": "Save changes",
+            "disabled": true,
+            "title": "",
+            "active": "TEXTAREA"
+          }
+        }
+      ],
+      "domEvents": [
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "mousedown",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "mouseup",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "click",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "INPUT",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": false
+        },
+        {
+          "type": "invalid",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "mousedown",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "mouseup",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "click",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "input",
+          "trusted": true,
+          "tag": "INPUT",
+          "composing": false,
+          "modifiers": false
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "INPUT",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": true
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "INPUT",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": true
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "INPUT",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": true
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "INPUT",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": true
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "mousedown",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "mouseup",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "click",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "BODY",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": false
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "mousedown",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "mouseup",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "click",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "input",
+          "trusted": true,
+          "tag": "INPUT",
+          "composing": false,
+          "modifiers": false
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "INPUT",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": false
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "TEXTAREA",
+          "modifiers": false
+        },
+        {
+          "type": "mousedown",
+          "trusted": true,
+          "tag": "TEXTAREA",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "TEXTAREA",
+          "modifiers": false
+        },
+        {
+          "type": "mouseup",
+          "trusted": true,
+          "tag": "TEXTAREA",
+          "modifiers": false
+        },
+        {
+          "type": "click",
+          "trusted": true,
+          "tag": "TEXTAREA",
+          "modifiers": false
+        },
+        {
+          "type": "input",
+          "trusted": true,
+          "tag": "TEXTAREA",
+          "composing": false,
+          "modifiers": false
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "TEXTAREA",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": false
+        },
+        {
+          "type": "input",
+          "trusted": true,
+          "tag": "TEXTAREA",
+          "composing": false,
+          "modifiers": false
+        },
+        {
+          "type": "input",
+          "trusted": true,
+          "tag": "TEXTAREA",
+          "composing": false,
+          "modifiers": false
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "mousedown",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "mouseup",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "click",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        }
+      ],
+      "calls": [
+        {
+          "op": "data.put",
+          "args": {
+            "collection": "papers",
+            "id": null,
+            "data": {
+              "title": "Public click fixture",
+              "status": "queued",
+              "priority": "normal",
+              "notes": ""
+            },
+            "base_rev": 0
+          }
+        },
+        {
+          "op": "data.put",
+          "args": {
+            "collection": "papers",
+            "id": null,
+            "data": {
+              "title": "Public Enter fixture",
+              "status": "queued",
+              "priority": "normal",
+              "notes": ""
+            },
+            "base_rev": 0
+          }
+        },
+        {
+          "op": "data.put",
+          "args": {
+            "collection": "papers",
+            "id": "demo-2",
+            "data": {
+              "status": "queued",
+              "priority": "normal",
+              "notes": "First line\nSecond line"
+            },
+            "base_rev": 1
+          }
+        }
+      ],
+      "status": "PASS"
+    },
+    {
+      "evidence_class": "Chrome DOM activation with synthetic in-memory backend",
+      "example": "habit-planner",
+      "checks": [
+        "allow-scripts-only outer frame",
+        "form-action CSP remains blocked",
+        "empty input cannot write",
+        "modified Enter cannot write",
+        "creation pending retains input and disables action",
+        "pending request has not created a row",
+        "repeat activation cannot duplicate pending write",
+        "click creates exactly one row",
+        "single-line Enter creates exactly one row",
+        "trusted DOM clicks and Enter were observed",
+        "actions never needed a native submit event"
+      ],
+      "mouseTargets": [
+        {
+          "expression": "document.querySelector(\"input[required]:not([type=date])\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 668.5546875,
+            "y": 255.296875
+          },
+          "coordinates": {
+            "x": 668.5546875,
+            "y": 303.296875
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "INPUT",
+            "text": "",
+            "disabled": true,
+            "title": "",
+            "active": "BODY"
+          }
+        },
+        {
+          "expression": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === \"Add habit\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 1034.5546875,
+            "y": 255.796875
+          },
+          "coordinates": {
+            "x": 1034.5546875,
+            "y": 303.796875
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "BUTTON",
+            "text": "Add habit",
+            "disabled": true,
+            "title": "",
+            "active": "INPUT"
+          }
+        },
+        {
+          "expression": "document.querySelector(\"input[required]:not([type=date])\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 668.5546875,
+            "y": 255.296875
+          },
+          "coordinates": {
+            "x": 668.5546875,
+            "y": 303.296875
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "INPUT",
+            "text": "",
+            "disabled": true,
+            "title": "",
+            "active": "BODY"
+          }
+        },
+        {
+          "expression": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === \"Add habit\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 1034.5546875,
+            "y": 255.796875
+          },
+          "coordinates": {
+            "x": 1034.5546875,
+            "y": 303.796875
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "BUTTON",
+            "text": "Add habit",
+            "disabled": false,
+            "title": "Public click fixture",
+            "active": "INPUT"
+          }
+        },
+        {
+          "expression": "[...document.querySelectorAll('button')].find(el => el.textContent.trim() === \"Add habit\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 1034.5546875,
+            "y": 255.796875
+          },
+          "coordinates": {
+            "x": 1034.5546875,
+            "y": 303.796875
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "BUTTON",
+            "text": "Add habit",
+            "disabled": true,
+            "title": "Public click fixture",
+            "active": "BUTTON"
+          }
+        },
+        {
+          "expression": "document.querySelector(\"input[required]:not([type=date])\")",
+          "outer": {
+            "x": 0,
+            "y": 48
+          },
+          "point": {
+            "x": 668.5546875,
+            "y": 255.296875
+          },
+          "coordinates": {
+            "x": 668.5546875,
+            "y": 303.296875
+          },
+          "target": "IFRAME",
+          "innerTarget": {
+            "tag": "INPUT",
+            "text": "",
+            "disabled": true,
+            "title": "",
+            "active": "BODY"
+          }
+        }
+      ],
+      "domEvents": [
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "mousedown",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "mouseup",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "click",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "INPUT",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": false
+        },
+        {
+          "type": "invalid",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "mousedown",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "mouseup",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "click",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "input",
+          "trusted": true,
+          "tag": "INPUT",
+          "composing": false,
+          "modifiers": false
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "INPUT",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": true
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "INPUT",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": true
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "INPUT",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": true
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "INPUT",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": true
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "mousedown",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "mouseup",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "click",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "BUTTON",
+          "modifiers": false
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "BODY",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": false
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "mousedown",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "mouseup",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "click",
+          "trusted": true,
+          "tag": "INPUT",
+          "modifiers": false
+        },
+        {
+          "type": "input",
+          "trusted": true,
+          "tag": "INPUT",
+          "composing": false,
+          "modifiers": false
+        },
+        {
+          "type": "keydown",
+          "trusted": true,
+          "tag": "INPUT",
+          "key": "Enter",
+          "composing": false,
+          "modifiers": false
+        }
+      ],
+      "calls": [
+        {
+          "op": "data.put",
+          "args": {
+            "collection": "habits",
+            "id": null,
+            "data": {
+              "name": "Public click fixture"
+            },
+            "base_rev": 0
+          }
+        },
+        {
+          "op": "data.put",
+          "args": {
+            "collection": "habits",
+            "id": null,
+            "data": {
+              "name": "Public Enter fixture"
+            },
+            "base_rev": 0
+          }
+        }
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "unsaved notes survive route remount; no automatic write",
+      "status": "PASS"
+    },
+    {
+      "name": "reduced-motion preserves static loading cue",
+      "status": "PASS"
+    },
+    {
+      "name": "actual Tab produces visible keyboard focus",
+      "status": "PASS"
+    }
+  ],
+  "screens": [
+    "research-desk-light.png",
+    "research-library-light.png",
+    "habit-planner-light.png",
+    "gallery-light.png",
+    "weather-off-light.png",
+    "weather-sample-light.png",
+    "research-desk-dark.png",
+    "research-library-dark.png",
+    "habit-planner-dark.png",
+    "gallery-dark.png",
+    "weather-off-dark.png",
+    "weather-sample-dark.png",
+    "research-desk-mobile-dark.png",
+    "habit-planner-mobile-dark.png",
+    "gallery-mobile-dark.png",
+    "weather-mobile-dark.png",
+    "weather-sandbox-sample.png",
+    "preset-editorial.png",
+    "preset-terminal.png",
+    "preset-playful.png",
+    "preset-minimal.png",
+    "preset-data.png",
+    "preset-journal.png",
+    "preset-game.png"
+  ],
+  "failures": [],
+  "browser": "Chrome/157.0.8103.51",
+  "status": "PASS"
+}

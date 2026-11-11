@@ -1,0 +1,27 @@
+✔ Editor confirms notes, status and priority only after the backend, and keeps failed drafts (16.168959ms)
+✔ Editor preserves drafts on conflict, rebases explicitly and requires a separate save (7.100458ms)
+✔ Editor Use updated adopts authoritative values without writing (3.929083ms)
+✔ Library uses actual EmptyState children and retains creation text until confirmation (3.026208ms)
+✔ App uses real routing and collection subscriptions without unmounting views on reload (11.755416ms)
+✔ freshness keeps failed attempts, successful completion and source time distinct (169.353334ms)
+✔ habit check-in keeps its intended value after conflict and retries only explicitly (3.406125ms)
+✔ Library failed creation retains the title and never selects a fictitious record (1.858958ms)
+✔ habit creation uses confirmation and keeps failed names and EmptyState instructions (3.862834ms)
+✔ habit conflict discard reloads authoritative check-ins without retrying (2.670834ms)
+✔ actual RefreshButton handles denial, queued replies, failure and success events (2.103542ms)
+✔ Chrome smoke bundles contain the unchanged actual kit, examples and resolvable local imports (18.678333ms)
+✔ habit retry retains its rebased revision if that explicit retry fails (2.899625ms)
+✔ Library explicit click validates input and locks duplicate pending activations (2.470667ms)
+✔ Library single-line Enter saves while modifiers and IME composition do not (2.462125ms)
+✔ Planner explicit click validates input and locks duplicate pending activations (1.886292ms)
+✔ Planner single-line Enter saves while modifiers and IME composition do not (2.590542ms)
+✔ Editor explicit save locks pending clicks and leaves multiline Enter to the textarea (1.414041ms)
+✔ Planner pending check-in locks immediate repeat toggles and creation (1.003584ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 451.967125

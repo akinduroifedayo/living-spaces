@@ -243,7 +243,7 @@ pre { max-width: 100%; overflow: auto; background: var(--space-card); padding: v
   .space-header { align-items: start; }
   .space-facts { grid-template-columns: 1fr; gap: var(--space-1); }
   .space-facts dd { margin-bottom: var(--space-3); }
-  button, .space-button, .space-nav a, input:not([type="checkbox"]):not([type="radio"]), select { min-height: 44px; }
+  button, .space-button, .space-nav a, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select { min-height: 44px; }
   .space-form-row > button { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -251,7 +251,8 @@ pre { max-width: 100%; overflow: auto; background: var(--space-card); padding: v
   .space-spinner { animation: none; border-style: dotted; }
   button, .space-button { transition: none; }
 }
-/* Optional starting points, never a palette whitelist. Put data-theme on html.
+/* Optional starting points, never a palette whitelist. Put data-theme on body
+   (or html when the loader preserves root attributes).
    All seven inherit the host preference; light-dark() also works in previews.
    Override any --space-* token in app CSS after the kit. Fonts are optional. */
 [data-theme] { color: var(--space-text); background-color: var(--space-bg); font-family: var(--space-font); }
