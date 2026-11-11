@@ -474,166 +474,12 @@ function HistorySheet({ ctx, space, onClose, onChanged, initialTab = "runs", ret
 // src/desktop/ui/permissions.jsx
 import { Badge as Badge3, ErrorState as ErrorState3, Skeleton as Skeleton3, useQuery as useQuery3 } from "@hermes/plugin-sdk";
 import { useRef as useRef2, useState as useState4 } from "react";
-
-// src/desktop/sandbox/index.js
-var BRIDGE_VERSION = 1;
-var WEBRTC_NOTE = "Spaces block ordinary internet connections unless you approve a site or capability. This is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle.";
-var OP_GRANT = Object.freeze({
-  meta: null,
-  "data.query": "data",
-  "data.get": "data",
-  "data.put": "data",
-  "data.delete": "data",
-  "data.batch": "data",
-  refresh: "refresh",
-  "runs.list": null,
-  log: "logs"
-});
-var MAX_REQUEST_SIZE = 1024 * 1024;
-function requestError(message) {
-  if (!message || typeof message !== "object" || Array.isArray(message)) return { code: "invalid", message: "request must be an object" };
-  if (message.v !== BRIDGE_VERSION) return { code: "invalid", message: "unsupported bridge version" };
-  if (!Number.isSafeInteger(message.id)) return { code: "invalid", message: "id must be an integer" };
-  if (typeof message.op !== "string") return { code: "invalid", message: "op must be a string" };
-  if (!message.args || typeof message.args !== "object" || Array.isArray(message.args)) return { code: "invalid", message: "args must be an object" };
-  try {
-    const actual = new TextEncoder().encode(JSON.stringify(message)).byteLength;
-    if (actual > MAX_REQUEST_SIZE) return { code: "limit", message: "request exceeds 1 MB", limit: MAX_REQUEST_SIZE, actual };
-  } catch {
-    return { code: "invalid", message: "request is not JSON serializable" };
-  }
-  return null;
-}
-function checkGrant(op, grants) {
-  if (!Object.hasOwn(OP_GRANT, op)) return { code: "not_granted", message: `Operation isn't available: ${op}` };
-  const capability = OP_GRANT[op];
-  if (capability === null) return null;
-  if (grants.some((g) => typeof g === "string" ? g === capability : g.capability === capability && g.status === "granted")) return null;
-  return { code: "not_granted", message: `Approve ${capability} in Permissions`, capability };
-}
-function parseBundle(value) {
-  const sandbox = value?.sandbox;
-  if (!sandbox || typeof sandbox !== "object" || Array.isArray(sandbox) || Object.keys(sandbox).length !== 2 || !Object.hasOwn(sandbox, "format") || !Object.hasOwn(sandbox, "shell_srcdoc") || sandbox.format !== 1 || typeof sandbox.shell_srcdoc !== "string" || !sandbox.shell_srcdoc.trim()) {
-    throw new Error("Living Spaces Desktop and backend are incompatible. Reinstall Living Spaces to load the packaged sandbox.");
-  }
-  const { space, rev, manifest, files } = value;
-  return { project: { space, rev, manifest, files }, document: sandbox.shell_srcdoc };
-}
-function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
-} }) {
-  const { project, document: shellDocument } = parseBundle(bundle);
-  const channel = new MessageChannel();
-  const port = channel.port1;
-  let frame;
-  let state = "created";
-  let lastLog = -Infinity;
-  let overflowReported = false;
-  const overflow = () => {
-    if (overflowReported) return;
-    overflowReported = true;
-    onEvent({ kind: "log-overflow" });
-  };
-  const stop = () => {
-    if (state === "closed") return;
-    state = "closed";
-    frame?.removeEventListener("load", onLoad);
-    port.onmessage = null;
-    port.close();
-    channel.port2.close();
-    window.removeEventListener("message", onShellMessage);
-  };
-  const reloaded = () => {
-    if (state !== "booted") return;
-    stop();
-    onEvent({ kind: "reloaded" });
-  };
-  function onShellMessage(e) {
-    if (e.source === frame.contentWindow && e.data?.v === 1 && e.data.type === "space-reloaded") reloaded();
-  }
-  function onLoad() {
-    if (state === "closed") return;
-    if (state === "booted") return reloaded();
-    state = "booted";
-    frame.contentWindow.postMessage({ type: "space-boot", v: 1, bundle: project, grants }, "*", [channel.port2]);
-    onEvent({ kind: "booted" });
-  }
-  port.onmessage = async (e) => {
-    if (state !== "booted") return;
-    const m = e.data;
-    const reply = (body) => {
-      if (state === "booted" && Number.isSafeInteger(m?.id)) port.postMessage({ v: 1, id: m.id, ...body });
-    };
-    const reject = (error) => {
-      const op = typeof m?.op === "string" ? m.op : null;
-      onEvent({ kind: "denied", op, reason: error.message });
-      if (["data.put", "data.delete", "data.batch"].includes(op)) onEvent({ kind: "write-rejected", op, error });
-      reply({ ok: false, error });
-    };
-    const invalid = requestError(m);
-    if (invalid) return reject(invalid);
-    const denied = checkGrant(m.op, grants);
-    if (denied) return reject(denied);
-    let args = m.args;
-    if (m.op === "log") {
-      if (!Array.isArray(args.entries) || Array.from(args.entries).some((entry) => !entry || typeof entry.level !== "string" || typeof entry.msg !== "string")) {
-        return reject({ code: "invalid", message: "Invalid log entries" });
-      }
-      if (args.entries.length > 50) return reject({ code: "limit", message: "Log batch exceeds 50 entries", limit: 50, actual: args.entries.length });
-      const oversized = args.entries.find((entry) => entry.msg.length > 4e3);
-      if (oversized) return reject({ code: "limit", message: "Log message exceeds 4000 characters", limit: 4e3, actual: oversized.msg.length });
-      if (args.entries.some((entry) => entry.level === "warn" && entry.msg.startsWith("Space log overflow:"))) overflow();
-      const now = performance.now();
-      if (now - lastLog < 500) {
-        overflow();
-        reply({ ok: true, result: { stored: 0 } });
-        return;
-      }
-      lastLog = now;
-      args = { entries: args.entries };
-    }
-    try {
-      const result = await call(m.op, args);
-      const revoked = checkGrant(m.op, grants);
-      if (revoked && result.ok) reject(revoked);
-      else reply(result);
-    } catch (error) {
-      onEvent({ kind: "error", message: String(error.message || error) });
-      reply({ ok: false, error: { code: error.code || "blocked", message: String(error.message || error) } });
-    }
-  };
-  try {
-    frame = document.createElement("iframe");
-    frame.setAttribute("sandbox", "allow-scripts");
-    frame.setAttribute("referrerpolicy", "no-referrer");
-    frame.style.cssText = "border:0;width:100%;height:100%;display:block;background:transparent";
-    frame.title = `Space: ${project.space.name}`;
-    window.addEventListener("message", onShellMessage);
-    frame.addEventListener("load", onLoad);
-    frame.srcdoc = shellDocument;
-    container.append(frame);
-  } catch (error) {
-    stop();
-    frame?.remove();
-    throw error;
-  }
-  return {
-    postEvent(event, payload) {
-      if (state !== "booted") return;
-      if (event === "data.changed" && checkGrant("data.query", grants)) return;
-      port.postMessage({ v: 1, type: "event", event, payload });
-      if (event === "session.closed") stop();
-    },
-    destroy() {
-      stop();
-      frame.remove();
-    }
-  };
-}
-
-// src/desktop/ui/permissions.jsx
 import { Fragment as Fragment3, jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
+var NET_DESCRIPTION = "This Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.";
+var NET_OFF_DESCRIPTION = "This Space can't load content from or send data to the internet through Internet access.";
+var NET_OFF_NOTE = "Off is not a complete block. A browser feature called WebRTC can still send data this Space can read. It still can't reach Hermes, your credentials, your files or other Spaces.";
 var CAPABILITIES = {
-  data: { name: "Own data", icon: "folder", scope: "This Space's records only. Cannot see other Spaces.", purpose: "Store your records, notes and statuses.", leaves: "No ordinary network access. Space-readable data is subject to the WebRTC limit above." },
+  data: { name: "Own data", icon: "folder", scope: "This Space's records only. Cannot see other Spaces.", purpose: "Store your records, notes and statuses.", leaves: "This grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off." },
   refresh: { name: "Refresh", icon: "refresh", purpose: "Keep public-source records current.", leaves: "Yes \xB7 requests the approved public sources through Hermes." },
   logs: { name: "Diagnostics", icon: "info", scope: "Error logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.", purpose: "Let the owner see crashes and repair them.", leaves: "No ordinary network access. The owner can read these logs in chat." }
 };
@@ -644,8 +490,23 @@ function WebRTCNote() {
       /* @__PURE__ */ jsx4(Icon, { name: "info" }),
       " Before you approve anything"
     ] }),
-    /* @__PURE__ */ jsx4("p", { children: WEBRTC_NOTE })
+    /* @__PURE__ */ jsx4("p", { children: NET_OFF_NOTE })
   ] });
+}
+function InternetAccess({ grant, onDecide, busy }) {
+  const enabled = grant.status === "granted";
+  return /* @__PURE__ */ jsx4("section", { className: "ls-section", children: /* @__PURE__ */ jsxs4("article", { className: "ls-grant", "data-testid": "internet-access", children: [
+    /* @__PURE__ */ jsxs4("div", { className: "ls-row-top", children: [
+      /* @__PURE__ */ jsx4("strong", { children: "Internet access" }),
+      /* @__PURE__ */ jsx4(Action, { role: "switch", "aria-label": "Internet access", "aria-checked": enabled, "aria-describedby": "ls-net-description", disabled: busy, onClick: () => onDecide(grant, enabled ? "revoke" : "grant"), children: enabled ? "On" : "Off" })
+    ] }),
+    /* @__PURE__ */ jsx4("p", { id: "ls-net-description", className: "ls-secondary", children: enabled ? NET_DESCRIPTION : NET_OFF_DESCRIPTION }),
+    grant.status === "requested" && /* @__PURE__ */ jsxs4("div", { className: "ls-actions", children: [
+      /* @__PURE__ */ jsx4(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" }),
+      /* @__PURE__ */ jsx4(Action, { disabled: busy, onClick: () => onDecide(grant, "deny"), children: "Deny" })
+    ] }),
+    !enabled && /* @__PURE__ */ jsx4(WebRTCNote, {})
+  ] }) });
 }
 function GrantCard({ grant, onDecide, busy }) {
   const model = CAPABILITIES[grant.capability];
@@ -692,9 +553,11 @@ function GrantCard({ grant, onDecide, busy }) {
   ] });
 }
 function PermissionsContent({ space, grants, audit = [], schedule, onDecide, onSchedule, busy = false }) {
-  const pending = grants.filter((g) => g.status === "requested");
-  const settled = grants.filter((g) => g.status !== "requested");
+  const net = grants.find((g) => g.capability === "net");
+  const pending = grants.filter((g) => g.capability !== "net" && g.status === "requested");
+  const settled = grants.filter((g) => g.capability !== "net" && g.status !== "requested");
   return /* @__PURE__ */ jsxs4(Fragment3, { children: [
+    net && /* @__PURE__ */ jsx4(InternetAccess, { grant: net, onDecide, busy }),
     /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
       /* @__PURE__ */ jsxs4("h2", { className: "ls-section-title", children: [
         "Granted to ",
@@ -779,7 +642,7 @@ function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
   const [error, setError] = useState4("");
   const lock = useRef2(false);
   async function decide(grant, decision) {
-    if (decision === "revoke") {
+    if (decision === "revoke" && grant.capability !== "net") {
       setRevoke(grant);
       return;
     }
@@ -804,7 +667,7 @@ function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
     }
   }
   return /* @__PURE__ */ jsxs4(Fragment3, { children: [
-    /* @__PURE__ */ jsxs4(Drawer, { title: `Permissions \xB7 ${space.name}`, description: "Review this Space's access and schedule requests.", onClose, note: /* @__PURE__ */ jsx4(WebRTCNote, {}), returnFocus, children: [
+    /* @__PURE__ */ jsxs4(Drawer, { title: `Permissions \xB7 ${space.name}`, description: "Review this Space's access and schedule requests.", onClose, returnFocus, children: [
       error && /* @__PURE__ */ jsx4(Banner, { kind: "failed", title: error }),
       query.error || schedule.error ? /* @__PURE__ */ jsx4(ErrorState3, { title: "Permissions could not be loaded", description: errorText(query.error || schedule.error), children: /* @__PURE__ */ jsx4(Action, { onClick: () => {
         query.refetch();
@@ -1021,6 +884,161 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, onW
       mounted?.destroy();
       mounted = null;
       return close();
+    }
+  };
+}
+
+// src/desktop/sandbox/index.js
+var BRIDGE_VERSION = 1;
+var OP_GRANT = Object.freeze({
+  meta: null,
+  "net.fetch": "net",
+  "data.query": "data",
+  "data.get": "data",
+  "data.put": "data",
+  "data.delete": "data",
+  "data.batch": "data",
+  refresh: "refresh",
+  "runs.list": null,
+  log: "logs"
+});
+var MAX_REQUEST_SIZE = 1024 * 1024;
+function requestError(message) {
+  if (!message || typeof message !== "object" || Array.isArray(message)) return { code: "invalid", message: "request must be an object" };
+  if (message.v !== BRIDGE_VERSION) return { code: "invalid", message: "unsupported bridge version" };
+  if (!Number.isSafeInteger(message.id)) return { code: "invalid", message: "id must be an integer" };
+  if (typeof message.op !== "string") return { code: "invalid", message: "op must be a string" };
+  if (!message.args || typeof message.args !== "object" || Array.isArray(message.args)) return { code: "invalid", message: "args must be an object" };
+  try {
+    const actual = new TextEncoder().encode(JSON.stringify(message)).byteLength;
+    if (actual > MAX_REQUEST_SIZE) return { code: "limit", message: "request exceeds 1 MB", limit: MAX_REQUEST_SIZE, actual };
+  } catch {
+    return { code: "invalid", message: "request is not JSON serializable" };
+  }
+  return null;
+}
+function checkGrant(op, grants) {
+  if (!Object.hasOwn(OP_GRANT, op)) return { code: "not_granted", message: `Operation isn't available: ${op}` };
+  const capability = OP_GRANT[op];
+  if (capability === null) return null;
+  if (grants.some((g) => typeof g === "string" ? g === capability : g.capability === capability && g.status === "granted")) return null;
+  return { code: "not_granted", message: `Approve ${capability} in Permissions`, capability };
+}
+function parseBundle(value) {
+  const sandbox = value?.sandbox;
+  if (!sandbox || typeof sandbox !== "object" || Array.isArray(sandbox) || Object.keys(sandbox).length !== 2 || !Object.hasOwn(sandbox, "format") || !Object.hasOwn(sandbox, "shell_srcdoc") || sandbox.format !== 1 || typeof sandbox.shell_srcdoc !== "string" || !sandbox.shell_srcdoc.trim()) {
+    throw new Error("Living Spaces Desktop and backend are incompatible. Reinstall Living Spaces to load the packaged sandbox.");
+  }
+  const { space, rev, manifest, files } = value;
+  return { project: { space, rev, manifest, files }, document: sandbox.shell_srcdoc };
+}
+function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
+} }) {
+  const { project, document: shellDocument } = parseBundle(bundle);
+  const channel = new MessageChannel();
+  const port = channel.port1;
+  let frame;
+  let state = "created";
+  let lastLog = -Infinity;
+  let overflowReported = false;
+  const overflow = () => {
+    if (overflowReported) return;
+    overflowReported = true;
+    onEvent({ kind: "log-overflow" });
+  };
+  const stop = () => {
+    if (state === "closed") return;
+    state = "closed";
+    frame?.removeEventListener("load", onLoad);
+    port.onmessage = null;
+    port.close();
+    channel.port2.close();
+    window.removeEventListener("message", onShellMessage);
+  };
+  const reloaded = () => {
+    if (state !== "booted") return;
+    stop();
+    onEvent({ kind: "reloaded" });
+  };
+  function onShellMessage(e) {
+    if (e.source === frame.contentWindow && e.data?.v === 1 && e.data.type === "space-reloaded") reloaded();
+  }
+  function onLoad() {
+    if (state === "closed") return;
+    if (state === "booted") return reloaded();
+    state = "booted";
+    frame.contentWindow.postMessage({ type: "space-boot", v: 1, bundle: project, grants }, "*", [channel.port2]);
+    onEvent({ kind: "booted" });
+  }
+  port.onmessage = async (e) => {
+    if (state !== "booted") return;
+    const m = e.data;
+    const reply = (body) => {
+      if (state === "booted" && Number.isSafeInteger(m?.id)) port.postMessage({ v: 1, id: m.id, ...body });
+    };
+    const reject = (error) => {
+      const op = typeof m?.op === "string" ? m.op : null;
+      onEvent({ kind: "denied", op, reason: error.message });
+      if (["data.put", "data.delete", "data.batch"].includes(op)) onEvent({ kind: "write-rejected", op, error });
+      reply({ ok: false, error });
+    };
+    const invalid = requestError(m);
+    if (invalid) return reject(invalid);
+    const denied = checkGrant(m.op, grants);
+    if (denied) return reject(denied);
+    let args = m.args;
+    if (m.op === "log") {
+      if (!Array.isArray(args.entries) || Array.from(args.entries).some((entry) => !entry || typeof entry.level !== "string" || typeof entry.msg !== "string")) {
+        return reject({ code: "invalid", message: "Invalid log entries" });
+      }
+      if (args.entries.length > 50) return reject({ code: "limit", message: "Log batch exceeds 50 entries", limit: 50, actual: args.entries.length });
+      const oversized = args.entries.find((entry) => entry.msg.length > 4e3);
+      if (oversized) return reject({ code: "limit", message: "Log message exceeds 4000 characters", limit: 4e3, actual: oversized.msg.length });
+      if (args.entries.some((entry) => entry.level === "warn" && entry.msg.startsWith("Space log overflow:"))) overflow();
+      const now = performance.now();
+      if (now - lastLog < 500) {
+        overflow();
+        reply({ ok: true, result: { stored: 0 } });
+        return;
+      }
+      lastLog = now;
+      args = { entries: args.entries };
+    }
+    try {
+      const result = await call(m.op, args);
+      const revoked = checkGrant(m.op, grants);
+      if (revoked && result.ok) reject(revoked);
+      else reply(result);
+    } catch (error) {
+      onEvent({ kind: "error", message: String(error.message || error) });
+      reply({ ok: false, error: { code: error.code || "blocked", message: String(error.message || error) } });
+    }
+  };
+  try {
+    frame = document.createElement("iframe");
+    frame.setAttribute("sandbox", "allow-scripts");
+    frame.setAttribute("referrerpolicy", "no-referrer");
+    frame.style.cssText = "border:0;width:100%;height:100%;display:block;background:transparent";
+    frame.title = `Space: ${project.space.name}`;
+    window.addEventListener("message", onShellMessage);
+    frame.addEventListener("load", onLoad);
+    frame.srcdoc = shellDocument;
+    container.append(frame);
+  } catch (error) {
+    stop();
+    frame?.remove();
+    throw error;
+  }
+  return {
+    postEvent(event, payload) {
+      if (state !== "booted") return;
+      if (event === "data.changed" && checkGrant("data.query", grants)) return;
+      port.postMessage({ v: 1, type: "event", event, payload });
+      if (event === "session.closed") stop();
+    },
+    destroy() {
+      stop();
+      frame.remove();
     }
   };
 }

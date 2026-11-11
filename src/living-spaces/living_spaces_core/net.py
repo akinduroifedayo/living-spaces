@@ -131,7 +131,7 @@ def _public(ip):
     if not ip.is_global or ip.is_reserved or ip.is_multicast or ip.is_unspecified or ip.is_loopback or ip.is_link_local:
         return False
     if isinstance(ip, ipaddress.IPv6Address):
-        if ip.teredo is not None or ip in ipaddress.ip_network('64:ff9b:1::/48'):
+        if ip.is_site_local or ip.teredo is not None or ip in ipaddress.ip_network('64:ff9b:1::/48'):
             return False
         if ip.ipv4_mapped is not None and not _public(ip.ipv4_mapped):
             return False

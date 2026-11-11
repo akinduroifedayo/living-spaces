@@ -431,7 +431,7 @@ class AuthorityTests(CoreCase):
         return {"upkeep": {"handler": "feed", "sources": [{"id": str(i), "url": f"https://{host}/public.xml", "collection": "papers"} for i, host in enumerate(hosts)]}}
 
     def test_default_grants_and_refresh_scope_widening(self):
-        self.assertEqual({row["capability"]: row["status"] for row in grants.list_grants(self.sid)}, {"data": "granted", "logs": "granted"})
+        self.assertEqual({row["capability"]: row["status"] for row in grants.list_grants(self.sid)}, {"data": "granted", "logs": "granted", "net": "granted"})
         self.write({}, manifest=self.upkeep(["example.org"]))
         refresh = next(row for row in grants.list_grants(self.sid) if row["capability"] == "refresh")
         self.assertEqual((refresh["status"], refresh["requested_scope"]), ("requested", {"hosts": ["example.org"]}))

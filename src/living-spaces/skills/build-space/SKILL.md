@@ -28,18 +28,53 @@ Never describe unsaved UI state as saved.
 
 ## Runtime and project files
 
-The host loads a multi-file project into a sandbox and supplies `window.space`.
-The app cannot use the network. Obtain all persistent data through `space`.
-Do not use `fetch`, XMLHttpRequest, WebSocket, CDN imports, remote images,
-`localStorage`, IndexedDB, Node, Hermes internals, or parent-frame access.
-Do not create a second backend or store user data in project files.
+The host loads a multi-file project into a sandboxed frame and supplies `window.space`.
+Any file types, folder layout, framework or plain JavaScript are fine. The rules
+below exist only for isolation, data integrity and resource limits.
+
+**This is the one network rule for Spaces.** The frame has no direct network.
+Browser `fetch`, XMLHttpRequest, WebSocket, CDN or remote `import`, remote images,
+web fonts and iframe embeds are blocked by the frame's policy and will fail.
+To reach the internet, call `space.net.fetch(url, {method, headers, body, as})`.
+`as` is `'text'` (default), `'json'` or `'bytes'`. The Hermes host performs the
+request over public HTTPS only. It never sends cookies or credentials, refuses
+local and private addresses, and caps responses at 5 MiB. It works while the
+Space's "Internet access" permission is on. That is the default, and the user can
+turn it off in Permissions. On `not_granted`, show a clear "Internet access is off
+for this Space" state rather than an error. Show remote images by fetching them
+`as: 'bytes'` and using a `data:` or `blob:` URL. Persist anything the app must
+keep in records, not in memory.
+
+Also unavailable in the frame: `localStorage`, IndexedDB, cookies, Node, Hermes
+internals and parent-frame access. Do not create a second backend or store user
+data in project files.
+
+Project files can be text or binary. Pass binary files (PNG, WebP, audio, WOFF2)
+in `files` as `{"b64": "<base64>", "mime": "image/png"}`. Images you make with
+Hermes's image generation tool can be placed in a Space this way (hero art,
+illustrations, sprites). Static references in HTML and CSS are resolved at load.
+For a path built at runtime (a Preact `src`, `srcset`, SVG `href`, `new Audio()`),
+use `space.asset('images/hero.png')`, which returns a frame-local URL or `null`.
 
 The default `libraries` are `preact`, `preact/hooks`, and `spaces-kit`.
 The tool copies their local files and adds their bare names to `manifest.imports`.
-Add `lightweight-charts` explicitly when the app needs it.
-Use relative imports for application modules and local asset paths in HTML/CSS.
-Link `kit/spaces-kit.css` before your own `styles.css`.
-Do not write an HTML import map. The host builds it from the manifest.
+Add other bundled offline libraries explicitly when the app needs them:
+`lightweight-charts`, `htm`, `lucide` (SVG icons), `font:inter` and `font:dm-sans`
+(WOFF2 files under `vendor/fonts/`). They are optional. Vendoring your own ESM
+library into the project's files also works. Use relative imports for
+application modules and local asset paths in HTML/CSS. Do not write an HTML
+import map. The host builds it from the manifest.
+
+The kit is optional. Link `kit/spaces-kit.css` before your own `styles.css` for
+the Hermes look, or bring your own CSS. `manifest.theme` sets a starting point
+without CSS edits: `{"preset": "editorial", "tokens": {"bg": "#101418"}}`.
+Presets are `editorial`, `terminal`, `playful`, `minimal`, `data`, `journal` and `game`.
+Each token becomes a `--space-<name>` CSS variable, and your own CSS still wins.
+`accent` only colors the Space's tile in the Spaces tab.
+
+Resource limits: 8 MiB per file, 600 files and 25 MiB per revision,
+256 KiB per record, 1 MiB per bridge message. They are generous. Design freely
+within them.
 
 ```js
 import { render } from 'preact';
