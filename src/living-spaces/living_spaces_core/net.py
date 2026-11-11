@@ -11,7 +11,7 @@ import threading
 import time
 from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 
-from . import db, grants, limits
+from . import db, grants, limits, sessions
 from .errors import SpacesError
 
 TIMEOUT = 20
@@ -189,25 +189,26 @@ def _request_options(method, headers, body, as_):
     return method, clean, body
 
 
-def fetch(sid, url, method='GET', headers=None, body=None, as_='text'):
+def _fetch_public(url, *, authorize, max_bytes, method='GET', headers=None, body=None, detail=None):
     deadline = time.monotonic() + TIMEOUT
-    detail = {'host': '', 'status': None, 'bytes': 0}
-    outcome = 'blocked'
+    if detail is None:
+        detail = {'host': '', 'status': None, 'bytes': 0}
+    headers = headers or {}
     try:
-        grants.check(sid, 'net')
-        method, headers, body = _request_options(method, headers, body, as_)
         for hop in range(6):
+            request_url = url
+            authorize(request_url)
             host, port, authority, target, url = _target(url)
             detail['host'] = host
-            grants.check(sid, 'net')
             ip = _addresses(host, port, deadline)
-            grants.check(sid, 'net')
+            authorize(request_url)
             conn = _connection(host, port, ip, _remaining(deadline))
             timer = threading.Timer(_remaining(deadline), conn.abort)
             timer.daemon = True
             response = None
             try:
                 timer.start()
+                authorize(request_url)
                 conn.request(method, target, body=body, headers={**headers, 'Host': authority, 'Accept-Encoding': 'identity'})
                 response = conn.getresponse()
                 _remaining(deadline)
@@ -216,7 +217,7 @@ def fetch(sid, url, method='GET', headers=None, body=None, as_='text'):
                     location = response.getheader('Location')
                     if hop == 5 or not location:
                         _blocked('redirect')
-                    url = urljoin(url, location)
+                    url = urljoin(request_url, location)
                     if (response.status == 303 and method != 'HEAD') or (response.status in (301, 302) and method == 'POST'):
                         method, body = 'GET', None
                         headers = {k: v for k, v in headers.items() if not k.lower().startswith('content-')}
@@ -226,43 +227,59 @@ def fetch(sid, url, method='GET', headers=None, body=None, as_='text'):
                 if method != 'HEAD':
                     while True:
                         _remaining(deadline)
-                        chunk = response.read1(min(65536, RESPONSE_BYTES + 1 - len(content)))
+                        chunk = response.read1(min(65536, max_bytes + 1 - len(content)))
                         if not chunk:
                             break
                         content.extend(chunk)
                         detail['bytes'] = len(content)
-                        limits.check(len(content), RESPONSE_BYTES, 'response body')
+                        limits.check(len(content), max_bytes, 'response body')
                     if response.length not in (None, 0):
                         raise http.client.IncompleteRead(bytes(content), response.length)
                 _remaining(deadline)
-                grants.check(sid, 'net')
+                authorize(request_url)
                 result = {'status': response.status, 'url': url, 'headers': response_headers}
-                mime = response_headers.get('content-type', 'application/octet-stream').split(';', 1)[0].strip()
-                if as_ == 'bytes':
-                    result.update(b64=base64.b64encode(content).decode('ascii'), mime=mime)
-                elif as_ == 'json':
-                    try:
-                        result['json'] = json.loads(content)
-                        limits.dumps(result['json'])
-                    except (ValueError, UnicodeError, RecursionError) as exc:
-                        raise SpacesError('invalid', 'Response is not valid JSON') from exc
-                else:
-                    result['text'] = content.decode('utf-8', errors='replace')
-                outcome = 'succeeded'
-                return result
+                return result, bytes(content)
             finally:
                 timer.cancel()
                 if response is not None:
                     response.close()
                 conn.close()
-    except SpacesError as exc:
-        outcome = exc.code
-        raise
     except (OSError, http.client.HTTPException) as exc:
         raise SpacesError('blocked', 'Internet request could not be completed', reason='network_error') from exc
     except (ValueError, UnicodeError) as exc:
-        outcome = 'invalid'
         raise SpacesError('invalid', 'Malformed internet request') from exc
+
+
+def fetch(sid, url, method='GET', headers=None, body=None, as_='text', session=None):
+    def authorize(_url):
+        if session is not None:
+            sessions.require(sid, session)
+        grants.check(sid, 'net')
+
+    detail = {'host': '', 'status': None, 'bytes': 0}
+    outcome = 'blocked'
+    try:
+        authorize(url)
+        method, headers, body = _request_options(method, headers, body, as_)
+        result, content = _fetch_public(url, authorize=authorize, max_bytes=RESPONSE_BYTES,
+                                       method=method, headers=headers, body=body, detail=detail)
+        mime = result['headers'].get('content-type', 'application/octet-stream').split(';', 1)[0].strip()
+        if as_ == 'bytes':
+            result.update(b64=base64.b64encode(content).decode('ascii'), mime=mime)
+        elif as_ == 'json':
+            try:
+                result['json'] = json.loads(content)
+                limits.dumps(result['json'])
+            except (ValueError, UnicodeError, RecursionError) as exc:
+                raise SpacesError('invalid', 'Response is not valid JSON') from exc
+        else:
+            result['text'] = content.decode('utf-8', errors='replace')
+        authorize(url)
+        outcome = 'succeeded'
+        return result
+    except SpacesError as exc:
+        outcome = exc.code
+        raise
     finally:
         with db.write() as conn:
             grants._audit(conn, sid, 'app', 'net.fetch', 'net', outcome, detail)

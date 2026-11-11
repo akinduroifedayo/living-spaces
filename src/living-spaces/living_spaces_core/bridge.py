@@ -42,7 +42,7 @@ def _call(sid, session, op, args):
     if op == "net.fetch":
         clean = args.copy()
         clean["as_"] = clean.pop("as", "text")
-        return net.fetch(sid, **clean)
+        return net.fetch(sid, session=session, **clean)
     if op == "meta":
         with db.read() as conn:
             row = db.space(conn, sid)
