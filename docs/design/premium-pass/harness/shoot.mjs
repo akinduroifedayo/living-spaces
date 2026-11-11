@@ -16,7 +16,7 @@ const until = async (fn, ms = 15000) => { const end = Date.now() + ms; while (Da
 const port = await until(async () => { try { return (await readFile(resolve(profile, 'DevToolsActivePort'), 'utf8')).trim().split('\n'); } catch { return null; } });
 const ws = new WebSocket(`ws://127.0.0.1:${port[0]}${port[1]}`); await new Promise(r => ws.onopen = r);
 let id = 0; const pending = new Map(); const logs = []; let frameSession = null;
-const send = (method, params = {}, sessionId) => new Promise((yes, no) => { const n = ++id; pending.set(n, {yes, no}); ws.send(JSON.stringify({id: n, method, params, ...(sessionId ? {sessionId} : {})})); });
+const send = (method, params = {}, sessionId) => new Promise((yes, no) => { if (process.env.TRACE) console.error(Date.now() % 100000, method); const n = ++id; pending.set(n, {yes, no}); ws.send(JSON.stringify({id: n, method, params, ...(sessionId ? {sessionId} : {})})); });
 ws.onmessage = e => { const m = JSON.parse(e.data);
   if (m.id) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.no(Error(JSON.stringify(m.error))) : p.yes(m.result); }
   if (m.method === 'Target.attachedToTarget' && m.params.targetInfo.type === 'iframe') {
@@ -30,7 +30,7 @@ ws.onmessage = e => { const m = JSON.parse(e.data);
 const base = 'http://127.0.0.1:' + (process.env.PORT || 8781) + '/';
 const report = [];
 for (const job of jobs) {
-  const [query, w, h, file, flag = '', script] = job.split('|');
+  const [query, w, h, file, flag = '', ...rest] = job.split('|'); const script = rest.join('|');
   const {targetId} = await send('Target.createTarget', {url: 'about:blank'});
   const {sessionId} = await send('Target.attachToTarget', {targetId, flatten: true});
   frameSession = null; logs.length = 0;
@@ -44,7 +44,7 @@ for (const job of jobs) {
   await delay(+(process.env.SETTLE || 5000));
   const evalIn = async expr => {
     const s = frameSession || sessionId;
-    const r = await send('Runtime.evaluate', {expression: expr, returnByValue: true, awaitPromise: true}, s).catch(e => ({error: e.message}));
+    const r = await Promise.race([send('Runtime.evaluate', {expression: expr, returnByValue: true, awaitPromise: true}, s), delay(20000).then(() => ({timeout: true}))]).catch(e => ({error: e.message})); if (r.timeout) logs.push('SCRIPT TIMEOUT');
     if (r.exceptionDetails) logs.push('SCRIPT: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text));
     return r.result?.value;
   };

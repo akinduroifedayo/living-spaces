@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "name": "Pair Play",
+  "description": "A memory card game on green felt. Finished rounds are kept as your scorecard.",
+  "entry": "index.html",
+  "imports": {},
+  "accent": "green",
+  "icon": "sparkles",
+  "data": {"version": 1, "collections": {"rounds": {"description": "Finished rounds: turns, seconds, finished_at"}}, "migrations": []}
+}
