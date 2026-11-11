@@ -1,0 +1,327 @@
+{
+  "url": "http://127.0.0.1:8769/?example=habit-planner",
+  "outerPreflight": {
+    "title": "[Human] Assessment B \u00b7 \ud83d\udc34 Space interiors \u00b7 synthetic preview",
+    "appended": true,
+    "executed": true
+  },
+  "applicationFrame": {
+    "id": "4595E6E501B396CF597B0E4F654F2B9F",
+    "parentId": "9D5CAAA56C139EA3D13A7CB91F32601E",
+    "loaderId": "308835ACCAC74B136A79F11578B34F24",
+    "name": "",
+    "url": "about:srcdoc",
+    "domainAndRegistry": "",
+    "securityOrigin": "://",
+    "securityOriginDetails": {
+      "isLocalhost": false
+    },
+    "mimeType": "text/html",
+    "adFrameStatus": {
+      "adFrameType": "none",
+      "explanations": []
+    },
+    "secureContextType": "Secure",
+    "crossOriginIsolatedContextType": "NotIsolatedFeatureDisabled",
+    "gatedAPIFeatures": []
+  },
+  "applicationPreflight": {
+    "result": {
+      "type": "object",
+      "value": {
+        "title": "[Human] Assessment B \u00b7 Daily Practice",
+        "appended": true,
+        "executed": true
+      }
+    }
+  },
+  "applicationInjection": {
+    "result": {
+      "type": "object",
+      "value": {
+        "src": "http://localhost:8401/detect.js",
+        "appended": true
+      }
+    }
+  },
+  "applicationDesktop": {
+    "result": {
+      "type": "object",
+      "value": {
+        "text": "Daily Practice\nDay\nNew habit\nAdd habit\n\u25cb\nReady\nPublic demo walk",
+        "console": [],
+        "csp": [
+          {
+            "blockedURI": "http://localhost:8401/detect.js",
+            "violatedDirective": "script-src-elem",
+            "originalPolicy": "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline' blob:; img-src blob: data:; font-src blob: data:; media-src blob: data:; worker-src blob:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; manifest-src 'none'; webrtc 'block'"
+          },
+          {
+            "blockedURI": "http://localhost:8401/detect.js",
+            "violatedDirective": "script-src-elem",
+            "originalPolicy": "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline' blob:; img-src blob: data:; font-src blob: data:; media-src blob: data:; worker-src blob:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; manifest-src 'none'; webrtc 'block'"
+          }
+        ],
+        "overlayLoad": "error",
+        "viewport": {
+          "w": 1280,
+          "h": 820
+        },
+        "overflow": {
+          "scroll": 1280,
+          "client": 1280
+        },
+        "headings": [
+          "Daily Practice"
+        ],
+        "controls": [
+          {
+            "tag": "INPUT",
+            "text": "",
+            "type": "date",
+            "label": null,
+            "width": 240,
+            "height": 39,
+            "disabled": false
+          },
+          {
+            "tag": "INPUT",
+            "text": "",
+            "type": "text",
+            "label": null,
+            "width": 1017.109375,
+            "height": 37,
+            "disabled": false
+          },
+          {
+            "tag": "BUTTON",
+            "text": "Add habit",
+            "type": "button",
+            "label": null,
+            "width": 90.890625,
+            "height": 36,
+            "disabled": true
+          },
+          {
+            "tag": "INPUT",
+            "text": "",
+            "type": "checkbox",
+            "label": null,
+            "width": 18,
+            "height": 18,
+            "disabled": false
+          }
+        ],
+        "overlayElements": []
+      }
+    }
+  },
+  "outerDesktop": {
+    "text": "Design reference \u00b7 actual kit + opaque-origin sandbox \u00b7 synthetic in-memory records\nResearch Desk \u00b7 Daily Practice \u00b7 Weather Window\nState probes\nVisual/interaction fixture only. Not Desktop, real chat, durable storage, public-feed or release qualification.",
+    "console": [
+      {
+        "level": "log",
+        "text": "%c[impeccable] No anti-patterns found. color: #22c55e; font-weight: bold"
+      }
+    ],
+    "csp": [],
+    "overlayLoad": "loaded",
+    "viewport": {
+      "w": 1280,
+      "h": 900
+    },
+    "overflow": {
+      "scroll": 1280,
+      "client": 1280
+    },
+    "headings": [],
+    "controls": [
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "type": "submit",
+        "label": null,
+        "width": 117.90625,
+        "height": 34,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "type": "submit",
+        "label": null,
+        "width": 91.90625,
+        "height": 34,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "type": "submit",
+        "label": null,
+        "width": 134.828125,
+        "height": 34,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "type": "submit",
+        "label": null,
+        "width": 166.03125,
+        "height": 34,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "type": "submit",
+        "label": null,
+        "width": 78.640625,
+        "height": 34,
+        "disabled": false
+      }
+    ],
+    "overlayElements": []
+  },
+  "outerMobile": {
+    "text": "Design reference \u00b7 actual kit + opaque-origin sandbox \u00b7 synthetic in-memory records\nResearch Desk \u00b7 Daily Practice \u00b7 Weather Window\nState probes\nVisual/interaction fixture only. Not Desktop, real chat, durable storage, public-feed or release qualification.",
+    "console": [
+      {
+        "level": "log",
+        "text": "%c[impeccable] No anti-patterns found. color: #22c55e; font-weight: bold"
+      }
+    ],
+    "csp": [],
+    "overlayLoad": "loaded",
+    "viewport": {
+      "w": 390,
+      "h": 844
+    },
+    "overflow": {
+      "scroll": 375,
+      "client": 375
+    },
+    "headings": [],
+    "controls": [
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "type": "submit",
+        "label": null,
+        "width": 117.90625,
+        "height": 34,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "type": "submit",
+        "label": null,
+        "width": 91.90625,
+        "height": 34,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "type": "submit",
+        "label": null,
+        "width": 134.828125,
+        "height": 34,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "type": "submit",
+        "label": null,
+        "width": 166.03125,
+        "height": 34,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "type": "submit",
+        "label": null,
+        "width": 78.640625,
+        "height": 34,
+        "disabled": false
+      }
+    ],
+    "overlayElements": []
+  },
+  "applicationMobile": {
+    "result": {
+      "type": "object",
+      "value": {
+        "text": "Daily Practice\nDay\nNew habit\nAdd habit\n\u25cb\nReady\nPublic demo walk",
+        "console": [],
+        "csp": [
+          {
+            "blockedURI": "http://localhost:8401/detect.js",
+            "violatedDirective": "script-src-elem",
+            "originalPolicy": "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline' blob:; img-src blob: data:; font-src blob: data:; media-src blob: data:; worker-src blob:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; manifest-src 'none'; webrtc 'block'"
+          },
+          {
+            "blockedURI": "http://localhost:8401/detect.js",
+            "violatedDirective": "script-src-elem",
+            "originalPolicy": "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline' blob:; img-src blob: data:; font-src blob: data:; media-src blob: data:; worker-src blob:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; manifest-src 'none'; webrtc 'block'"
+          }
+        ],
+        "overlayLoad": "error",
+        "viewport": {
+          "w": 375,
+          "h": 1100
+        },
+        "overflow": {
+          "scroll": 375,
+          "client": 375
+        },
+        "headings": [
+          "Daily Practice"
+        ],
+        "controls": [
+          {
+            "tag": "INPUT",
+            "text": "",
+            "type": "date",
+            "label": null,
+            "width": 240,
+            "height": 39,
+            "disabled": false
+          },
+          {
+            "tag": "INPUT",
+            "text": "",
+            "type": "text",
+            "label": null,
+            "width": 343,
+            "height": 37,
+            "disabled": false
+          },
+          {
+            "tag": "BUTTON",
+            "text": "Add habit",
+            "type": "button",
+            "label": null,
+            "width": 343,
+            "height": 44,
+            "disabled": true
+          },
+          {
+            "tag": "INPUT",
+            "text": "",
+            "type": "checkbox",
+            "label": null,
+            "width": 18,
+            "height": 18,
+            "disabled": false
+          }
+        ],
+        "overlayElements": []
+      }
+    }
+  }
+}

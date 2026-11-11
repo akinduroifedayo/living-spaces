@@ -38,7 +38,7 @@ function App() {
         <div class="space-heading"><span class="space-tile" data-accent="blue" aria-hidden="true"><span class="space-icon" data-icon="book"></span></span><div><h1>Research Desk</h1><p>Your reading workspace</p></div></div>
         <${RefreshButton} />
       </header>
-      <${Nav} items=${items} />
+      <${Nav} items=${route.path === '/' ? items.map((item, i) => i === 0 ? {...item, path: '/'} : item) : items} />
       ${runError && html`<p class="space-notice space-notice--error" role="alert">Could not read refresh history. ${runError}</p>`}
       ${collection.error && html`<p class="space-notice space-notice--error" role="alert">Could not load papers. ${collection.error.message}</p>`}
       ${collection.loading && html`<p class="space-loading" role="status">Loading your library...</p>`}

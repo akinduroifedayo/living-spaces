@@ -90,9 +90,10 @@ bring libraries that earn their place. Respect tool permissions and asset terms.
 **The kit is a floor, not a ceiling.** Use its HTML classes for a finished Hermes
 look, start from a preset, override everything, or skip its CSS entirely.
 
-Choose an identity from the job, not from “AI dashboard.” Kit presets on `<html
- data-theme="…">` are `editorial`, `terminal`, `playful`, `minimal`, `data`,
-`journal`, `game`; no preset follows the category automatically. All follow
+Choose an identity from the job, not from “AI dashboard.” Kit presets use
+`data-theme="…"` on `<body>` (or `<html>` when the loader supports root attributes):
+`editorial`, `terminal`, `playful`, `minimal`, `data`, `journal`, `game`; no preset
+follows the category automatically. All follow
 light/dark. Customize any `--space-*` token in your later CSS: arbitrary palette,
 `--space-font`/`--space-heading-font`, radius, `--space-density`, shadow,
 `--space-background-image` (solid/gradient/pattern/local or remote image), and
@@ -131,12 +132,13 @@ SVG/Canvas. Label units/axes/series; provide equivalent data or a useful summary
 Use actual domain calculations and zero/empty/no-eligible states. No fake trend,
 color-only series identification, or unlabelled decorative sparkline.
 
-With internet available, live CORS-enabled HTTPS APIs, remote imagery, web fonts,
-pinned CDN ESM and permitted embeds can add real value. Prefer local/bundled
-assets for the core offline experience. Design each remote region’s loading,
-failed-load, retry and Internet Off state; retain usable local work. Say “Internet
-is off for this Space” only from authoritative host state, not a guessed fetch
-failure. Otherwise say what couldn’t load. Never imitate host permission toggles.
+The **Runtime and project files** section above is authoritative about available
+network capabilities; these design defaults do not enable direct fetch, CDN
+imports or embeds. When supported by that runtime, public content can add value.
+Keep core work local/bundled, and give each remote region loading, failed-load,
+retry and unavailable states. Say “Internet is off for this Space” only from
+authoritative host state, not a guessed request failure. Otherwise name what
+couldn’t load. Never imitate host permission toggles.
 
 Avoid centered card soup, gray-everything, walls of identical tiles, nested
 cards, giant stacked forms, unearned gradients/glass, fake freshness and

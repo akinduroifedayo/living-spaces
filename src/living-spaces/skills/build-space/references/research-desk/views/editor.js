@@ -6,10 +6,20 @@ function fields(record) {
     notes: record.data.notes || '' };
 }
 
+const draftStores = new WeakMap();
+// Volatile drafts belong to this open Space API, never another Space or test.
+function store() {
+  const api = window.space;
+  if (!draftStores.has(api)) draftStores.set(api, new Map());
+  return draftStores.get(api);
+}
+
 export function Editor({ record, reload }) {
-  const [base, setBase] = useState(record);
-  const [draft, setDraft] = useState(() => fields(record));
-  const [conflict, setConflict] = useState(null);
+  const drafts = store();
+  const remembered = drafts.get(record.id);
+  const [base, setBase] = useState(() => remembered?.base || record);
+  const [draft, setDraft] = useState(() => remembered?.draft || fields(record));
+  const [conflict, setConflict] = useState(() => remembered?.conflict || null);
   const saving = useRef(false);
   const save = useSaveState();
   const dirty = JSON.stringify(draft) !== JSON.stringify(fields(base));
@@ -19,7 +29,11 @@ export function Editor({ record, reload }) {
       setDraft(fields(record));
     }
   }, [record.rev]);
-  const change = (name, value) => setDraft(previous => ({ ...previous, [name]: value }));
+  const change = (name, value) => setDraft(previous => {
+    const next = { ...previous, [name]: value };
+    drafts.set(record.id, {base, draft: next, conflict});
+    return next;
+  });
   const submit = async () => {
     if (saving.current || !dirty || conflict) return;
     saving.current = true;
@@ -27,22 +41,28 @@ export function Editor({ record, reload }) {
       await save.run(async () => {
         try {
           const saved = await window.space.put('papers', base.id, draft, { baseRev: base.rev });
+          drafts.delete(record.id);
           setBase(saved);
           setConflict(null);
           reload();
           return saved;
         } catch (error) {
-          if (error.code === 'conflict') setConflict(error);
+          if (error.code === 'conflict') {
+            drafts.set(record.id, {base, draft, conflict: error});
+            setConflict(error);
+          }
           throw error;
         }
       });
     } finally { saving.current = false; }
   };
   const keepDraft = current => {
+    drafts.set(record.id, {base: current, draft, conflict: null});
     setBase(current);
     setConflict(null);
   };
   const useUpdated = current => {
+    drafts.delete(record.id);
     setBase(current);
     setDraft(fields(current));
     setConflict(null);
@@ -66,7 +86,7 @@ export function Editor({ record, reload }) {
       </fieldset>
       <${SaveIndicator} state=${resolvedConflict || dirty && save.state === 'saved' ? 'idle' : save.state}
         message=${resolvedConflict ? (dirty ? 'Draft kept. Save changes to retry.' : 'Updated record loaded') : dirty && save.state === 'saved' ? 'Unsaved draft' : save.message} />
-      ${dirty && html`<p role="status">You have an unsaved draft.</p>`}
+      ${dirty && html`<p role="status">You have an unsaved draft. It stays available across views in this open Space, but is not saved until you choose Save changes.</p>`}
       ${conflict && html`
         <${ConflictBanner} current=${conflict.current} onKeepMine=${keepDraft} onUseUpdated=${useUpdated}
           message="This record changed elsewhere. Keep mine preserves your draft for a separate Save changes retry. Use updated discards it." />

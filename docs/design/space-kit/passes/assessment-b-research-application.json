@@ -1,0 +1,59 @@
+{
+  "preflight": {
+    "result": {
+      "type": "object",
+      "value": {
+        "title": "[Human] Assessment B \u00b7 Research Desk",
+        "appended": true,
+        "executed": true
+      }
+    }
+  },
+  "evidence": {
+    "result": {
+      "type": "object",
+      "value": {
+        "text": "Research Desk\n\nYour reading workspace\n\nRefresh\nOverview\nLibrary\nQueue\nOverview\n1\nIn library\n1\nQueued\n0\nReading\n0\nCompleted\nPublic source freshness\nLast attempt\n11/10/2026, 9:24:43 PM (succeeded)\nLast successful refresh\n11/10/2026, 9:24:53 PM\nSource as of\n11/10/2026, 8:24:43 PM\n\nApprove Refresh in the Space's Permissions before retrieving public papers.\n\nThis view uses the latest 50 runs. The host shows complete freshness information.",
+        "csp": [
+          {
+            "blockedURI": "http://localhost:8401/detect.js",
+            "violatedDirective": "script-src-elem",
+            "originalPolicy": "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline' blob:; img-src blob: data:; font-src blob: data:; media-src blob: data:; worker-src blob:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; manifest-src 'none'; webrtc 'block'"
+          },
+          {
+            "blockedURI": "http://localhost:8401/detect.js",
+            "violatedDirective": "script-src-elem",
+            "originalPolicy": "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline' blob:; img-src blob: data:; font-src blob: data:; media-src blob: data:; worker-src blob:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; manifest-src 'none'; webrtc 'block'"
+          }
+        ],
+        "overlayLoad": "error",
+        "overflow": {
+          "scroll": 1280,
+          "client": 1280
+        },
+        "cards": [
+          {
+            "text": "1\nIn library",
+            "padding": "16px"
+          },
+          {
+            "text": "1\nQueued",
+            "padding": "16px"
+          },
+          {
+            "text": "0\nReading",
+            "padding": "16px"
+          },
+          {
+            "text": "0\nCompleted",
+            "padding": "16px"
+          },
+          {
+            "text": "Public source freshness\nLast attempt\n11/10/2026, 9:24:43 PM (succeeded)\nLast successful refresh\n11/10/2026, 9:24:53 PM\nSource as of\n11/10/2026, 8:24:43 PM\n\nApprove Refresh in the Space's Permissions before retrieving public papers.\n\nThis view uses the latest 50 runs. The host shows complete freshness information.",
+            "padding": "16px"
+          }
+        ]
+      }
+    }
+  }
+}

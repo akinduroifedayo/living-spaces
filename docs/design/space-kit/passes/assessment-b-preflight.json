@@ -1,0 +1,28 @@
+{
+  "outer": {
+    "title": "[Human] Assessment B \u00b7 \ud83d\udc34 Space interiors \u00b7 synthetic preview",
+    "scriptAppended": true,
+    "scriptExecuted": true
+  },
+  "frames": {
+    "frameTree": {
+      "frame": {
+        "id": "8F735E42699D63511F1265B163E94F20",
+        "loaderId": "93E7C4943E673F5BD19E1487DEE99AA9",
+        "url": "http://127.0.0.1:8769/?example=research-desk",
+        "domainAndRegistry": "",
+        "securityOrigin": "http://127.0.0.1:8769",
+        "securityOriginDetails": {
+          "isLocalhost": true
+        },
+        "mimeType": "text/html",
+        "adFrameStatus": {
+          "adFrameType": "none"
+        },
+        "secureContextType": "SecureLocalhost",
+        "crossOriginIsolatedContextType": "NotIsolated",
+        "gatedAPIFeatures": []
+      }
+    }
+  }
+}

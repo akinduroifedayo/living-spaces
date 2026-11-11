@@ -44,7 +44,7 @@ The selected day is UI state. Check-ins survive closing the app.
     .practice-list label:has(:checked) { color: var(--space-success); }
   </style>
 </head>
-<body><main id="app" class="space-app"></main><script type="module" src="./app.js"></script></body>
+<body data-theme="journal"><main id="app" class="space-app"></main><script type="module" src="./app.js"></script></body>
 </html>
 ```
 

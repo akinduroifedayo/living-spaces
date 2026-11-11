@@ -1,0 +1,630 @@
+{
+  "url": "http://127.0.0.1:8769/src/living-spaces/skills/build-space/references/kit-gallery.html",
+  "preflight": {
+    "title": "[Human] Assessment B \u00b7 \ud83d\udc34 Spaces kit gallery",
+    "appended": true,
+    "executed": true
+  },
+  "desktop": {
+    "text": "Spaces kit\n\nComposable HTML for the work inside a Space\n\nSynthetic component gallery\nComposition\nControls\nStates\nData & play\nTile accents & compact measures\nPreview identity\nHermes default\nEditorial\nTerminal\nPlayful\nMinimal\nData-dense\nWarm journal\nGame\nBlue\nGreen\nAmber\nPurple\nTeal\nRose\nOrange\nGrey\nPapers in library\n12\nCompleted / all papers\n3 / 12\nCheck-ins / planned today\n2 / 3\nForms & actions\nPaper title (required)\nStatus\nQueued\nReading\nCompleted\nPriority\nNormal\nHigh\nLow\nNotes\nSource URL\n\nEnter a complete HTTPS URL.\n\nSave example\nReset fields\nUnavailable\n\nExample fields only; nothing is stored.\n\nReading list\nRead the introduction\nWrite a short note\nReturn to the source\nCompleted\nPending approval\nSave failed\nArchived\nShow details\nClear example notes\nHonest states\nYour library is empty\n\nAdd a paper to start your reading list.\n\nAdd a paper\n\nLoading your library\u2026\n\nLoading specimen; no request is running.\n\nRefresh failed. Last-good records are still available.\n\nThe source did not respond. Example only; no refresh was attempted.\n\nTry example again\n\nThis record changed elsewhere. Your draft is still here.\n\nKeep mine Use updated\nLive content unavailable\n\nCould not load this region. Local records and drafts are still available.\n\nWhen host state confirms Internet Off: \u201cThis part needs the internet, which is off for this Space. Turn it on in Permissions.\u201d A failed fetch alone cannot prove that.\n\nConflict specimen. In a real Space, use ConflictBanner and a confirmed revision-aware write.\n\nData & game surfaces\nPapers by status \u00b7 12 synthetic papers\nQueued\n5\nReading\n4\nCompleted\n3\n\nBar length: papers, zero baseline; longest bar = 5.\n\nSame 12 synthetic papers\nStatus\tPapers\tOf all 12\nQueued\t5\t41.7%\nReading\t4\t33.3%\nCompleted\t3\t25.0%\nBoard anatomy\n\nStatic layout specimen. Real games need visible turn/result text, keyboard input and deliberate restart.\n\nX\nO\nX\nO\nSynthetic component specimens \u00b7 local assets only \u00b7 follows the system light/dark preference",
+    "console": [
+      {
+        "level": "log",
+        "text": "%cicon-tile-stack%c 40x40px icon tile above h3 \"Your library is empty\" color: oklch(84% 0.19 80.46); font-weight: bold color: inherit [object HTMLHeadingElement]"
+      }
+    ],
+    "csp": [],
+    "overlayLoad": "loaded",
+    "overflow": {
+      "scroll": 1269,
+      "client": 1269
+    },
+    "flagged": [
+      {
+        "tag": "DIV",
+        "class": "space-card space-stat",
+        "text": "Papers in library\n12",
+        "padding": "16px",
+        "gap": "8px 12px",
+        "margin": "0px",
+        "box": {
+          "x": 74.5,
+          "y": 355,
+          "w": 365.328125,
+          "h": 91.5
+        },
+        "children": [
+          {
+            "tag": "SPAN",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 91.5,
+              "y": 372,
+              "w": 287.328125,
+              "h": 19.5
+            }
+          },
+          {
+            "tag": "SPAN",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 390.828125,
+              "y": 384.75,
+              "w": 32,
+              "h": 32
+            }
+          },
+          {
+            "tag": "STRONG",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 91.5,
+              "y": 399.5,
+              "w": 287.328125,
+              "h": 30
+            }
+          }
+        ]
+      },
+      {
+        "tag": "DIV",
+        "class": "space-card space-stat",
+        "text": "Completed / all papers\n3 / 12",
+        "padding": "16px",
+        "gap": "8px 12px",
+        "margin": "0px",
+        "box": {
+          "x": 451.828125,
+          "y": 355,
+          "w": 365.328125,
+          "h": 91.5
+        },
+        "children": [
+          {
+            "tag": "SPAN",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 468.828125,
+              "y": 372,
+              "w": 287.328125,
+              "h": 19.5
+            }
+          },
+          {
+            "tag": "SPAN",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 768.15625,
+              "y": 384.75,
+              "w": 32,
+              "h": 32
+            }
+          },
+          {
+            "tag": "STRONG",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 468.828125,
+              "y": 399.5,
+              "w": 287.328125,
+              "h": 30
+            }
+          }
+        ]
+      },
+      {
+        "tag": "DIV",
+        "class": "space-card space-stat",
+        "text": "Check-ins / planned today\n2 / 3",
+        "padding": "16px",
+        "gap": "8px 12px",
+        "margin": "0px",
+        "box": {
+          "x": 829.15625,
+          "y": 355,
+          "w": 365.34375,
+          "h": 91.5
+        },
+        "children": [
+          {
+            "tag": "SPAN",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 846.15625,
+              "y": 372,
+              "w": 287.34375,
+              "h": 19.5
+            }
+          },
+          {
+            "tag": "SPAN",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 1145.5,
+              "y": 384.75,
+              "w": 32,
+              "h": 32
+            }
+          },
+          {
+            "tag": "STRONG",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 846.15625,
+              "y": 399.5,
+              "w": 287.34375,
+              "h": 30
+            }
+          }
+        ]
+      },
+      {
+        "tag": "SECTION",
+        "class": "space-card",
+        "text": "Reading list\nRead the introduction\nWrite a short note\nReturn to the source",
+        "padding": "16px",
+        "gap": "normal",
+        "margin": "0px",
+        "box": {
+          "x": 536.890625,
+          "y": 533.890625,
+          "w": 657.609375,
+          "h": 249
+        },
+        "children": [
+          {
+            "tag": "H3",
+            "padding": "0px",
+            "margin": "0px 0px 12px",
+            "box": {
+              "x": 553.890625,
+              "y": 550.890625,
+              "w": 623.609375,
+              "h": 21
+            }
+          },
+          {
+            "tag": "UL",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 553.890625,
+              "y": 583.890625,
+              "w": 623.609375,
+              "h": 182
+            }
+          }
+        ]
+      },
+      {
+        "tag": "LI",
+        "class": "",
+        "text": "Read the introduction",
+        "padding": "0px 0px 12px",
+        "gap": "normal",
+        "margin": "0px",
+        "box": {
+          "x": 553.890625,
+          "y": 583.890625,
+          "w": 623.609375,
+          "h": 57
+        },
+        "children": [
+          {
+            "tag": "LABEL",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 553.890625,
+              "y": 583.890625,
+              "w": 623.609375,
+              "h": 44
+            }
+          }
+        ]
+      },
+      {
+        "tag": "LI",
+        "class": "",
+        "text": "Write a short note",
+        "padding": "12px 0px",
+        "gap": "normal",
+        "margin": "0px",
+        "box": {
+          "x": 553.890625,
+          "y": 640.890625,
+          "w": 623.609375,
+          "h": 69
+        },
+        "children": [
+          {
+            "tag": "LABEL",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 553.890625,
+              "y": 652.890625,
+              "w": 623.609375,
+              "h": 44
+            }
+          }
+        ]
+      },
+      {
+        "tag": "LI",
+        "class": "",
+        "text": "Return to the source",
+        "padding": "12px 0px 0px",
+        "gap": "normal",
+        "margin": "0px",
+        "box": {
+          "x": 553.890625,
+          "y": 709.890625,
+          "w": 623.609375,
+          "h": 56
+        },
+        "children": [
+          {
+            "tag": "LABEL",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 553.890625,
+              "y": 721.890625,
+              "w": 623.609375,
+              "h": 44
+            }
+          }
+        ]
+      },
+      {
+        "tag": "DIV",
+        "class": "space-table-wrap",
+        "text": "Same 12 synthetic papers\nStatus\tPapers\tOf all 12\nQueued\t5\t41.7%\nReading\t4\t33.3%\nCompleted\t3\t25.0%",
+        "padding": "0px",
+        "gap": "normal",
+        "margin": "0px",
+        "box": {
+          "x": 536.890625,
+          "y": 1841.171875,
+          "w": 657.609375,
+          "h": 207.5
+        },
+        "children": [
+          {
+            "tag": "TABLE",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 537.890625,
+              "y": 1842.171875,
+              "w": 655.609375,
+              "h": 205.5
+            }
+          }
+        ]
+      }
+    ],
+    "overlayElements": []
+  },
+  "mobile": {
+    "text": "Spaces kit\n\nComposable HTML for the work inside a Space\n\nSynthetic component gallery\nComposition\nControls\nStates\nData & play\nTile accents & compact measures\nPreview identity\nHermes default\nEditorial\nTerminal\nPlayful\nMinimal\nData-dense\nWarm journal\nGame\nBlue\nGreen\nAmber\nPurple\nTeal\nRose\nOrange\nGrey\nPapers in library\n12\nCompleted / all papers\n3 / 12\nCheck-ins / planned today\n2 / 3\nForms & actions\nPaper title (required)\nStatus\nQueued\nReading\nCompleted\nPriority\nNormal\nHigh\nLow\nNotes\nSource URL\n\nEnter a complete HTTPS URL.\n\nSave example\nReset fields\nUnavailable\n\nExample fields only; nothing is stored.\n\nReading list\nRead the introduction\nWrite a short note\nReturn to the source\nCompleted\nPending approval\nSave failed\nArchived\nShow details\nClear example notes\nHonest states\nYour library is empty\n\nAdd a paper to start your reading list.\n\nAdd a paper\n\nLoading your library\u2026\n\nLoading specimen; no request is running.\n\nRefresh failed. Last-good records are still available.\n\nThe source did not respond. Example only; no refresh was attempted.\n\nTry example again\n\nThis record changed elsewhere. Your draft is still here.\n\nKeep mine Use updated\nLive content unavailable\n\nCould not load this region. Local records and drafts are still available.\n\nWhen host state confirms Internet Off: \u201cThis part needs the internet, which is off for this Space. Turn it on in Permissions.\u201d A failed fetch alone cannot prove that.\n\nConflict specimen. In a real Space, use ConflictBanner and a confirmed revision-aware write.\n\nData & game surfaces\nPapers by status \u00b7 12 synthetic papers\nQueued\n5\nReading\n4\nCompleted\n3\n\nBar length: papers, zero baseline; longest bar = 5.\n\nSame 12 synthetic papers\nStatus\tPapers\tOf all 12\nQueued\t5\t41.7%\nReading\t4\t33.3%\nCompleted\t3\t25.0%\nBoard anatomy\n\nStatic layout specimen. Real games need visible turn/result text, keyboard input and deliberate restart.\n\nX\nO\nX\nO\nSynthetic component specimens \u00b7 local assets only \u00b7 follows the system light/dark preference\n\u2726 ICON TILE STACKED ABOVE HEADING",
+    "console": [
+      {
+        "level": "log",
+        "text": "%cicon-tile-stack%c 40x40px icon tile above h3 \"Your library is empty\" color: oklch(84% 0.19 80.46); font-weight: bold color: inherit [object HTMLHeadingElement]"
+      }
+    ],
+    "csp": [],
+    "overlayLoad": "loaded",
+    "overflow": {
+      "scroll": 502,
+      "client": 379
+    },
+    "flagged": [
+      {
+        "tag": "DIV",
+        "class": "space-card space-stat",
+        "text": "Papers in library\n12",
+        "padding": "16px",
+        "gap": "8px 12px",
+        "margin": "0px",
+        "box": {
+          "x": 16,
+          "y": 580.390625,
+          "w": 167.5,
+          "h": 111
+        },
+        "children": [
+          {
+            "tag": "SPAN",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 33,
+              "y": 597.390625,
+              "w": 89.5,
+              "h": 39
+            }
+          },
+          {
+            "tag": "SPAN",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 134.5,
+              "y": 619.890625,
+              "w": 32,
+              "h": 32
+            }
+          },
+          {
+            "tag": "STRONG",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 33,
+              "y": 644.390625,
+              "w": 89.5,
+              "h": 30
+            }
+          }
+        ]
+      },
+      {
+        "tag": "DIV",
+        "class": "space-card space-stat",
+        "text": "Completed / all papers\n3 / 12",
+        "padding": "16px",
+        "gap": "8px 12px",
+        "margin": "0px",
+        "box": {
+          "x": 195.5,
+          "y": 580.390625,
+          "w": 167.5,
+          "h": 111
+        },
+        "children": [
+          {
+            "tag": "SPAN",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 212.5,
+              "y": 597.390625,
+              "w": 89.5,
+              "h": 39
+            }
+          },
+          {
+            "tag": "SPAN",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 314,
+              "y": 619.890625,
+              "w": 32,
+              "h": 32
+            }
+          },
+          {
+            "tag": "STRONG",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 212.5,
+              "y": 644.390625,
+              "w": 89.5,
+              "h": 30
+            }
+          }
+        ]
+      },
+      {
+        "tag": "DIV",
+        "class": "space-card space-stat",
+        "text": "Check-ins / planned today\n2 / 3",
+        "padding": "16px",
+        "gap": "8px 12px",
+        "margin": "0px",
+        "box": {
+          "x": 16,
+          "y": 703.390625,
+          "w": 167.5,
+          "h": 111
+        },
+        "children": [
+          {
+            "tag": "SPAN",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 33,
+              "y": 720.390625,
+              "w": 89.5,
+              "h": 39
+            }
+          },
+          {
+            "tag": "SPAN",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 134.5,
+              "y": 742.890625,
+              "w": 32,
+              "h": 32
+            }
+          },
+          {
+            "tag": "STRONG",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 33,
+              "y": 767.390625,
+              "w": 89.5,
+              "h": 30
+            }
+          }
+        ]
+      },
+      {
+        "tag": "SECTION",
+        "class": "space-card",
+        "text": "Reading list\nRead the introduction\nWrite a short note\nReturn to the source",
+        "padding": "16px",
+        "gap": "normal",
+        "margin": "0px",
+        "box": {
+          "x": 16,
+          "y": 1521.28125,
+          "w": 347,
+          "h": 249
+        },
+        "children": [
+          {
+            "tag": "H3",
+            "padding": "0px",
+            "margin": "0px 0px 12px",
+            "box": {
+              "x": 33,
+              "y": 1538.28125,
+              "w": 313,
+              "h": 21
+            }
+          },
+          {
+            "tag": "UL",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 33,
+              "y": 1571.28125,
+              "w": 313,
+              "h": 182
+            }
+          }
+        ]
+      },
+      {
+        "tag": "LI",
+        "class": "",
+        "text": "Read the introduction",
+        "padding": "0px 0px 12px",
+        "gap": "normal",
+        "margin": "0px",
+        "box": {
+          "x": 33,
+          "y": 1571.28125,
+          "w": 313,
+          "h": 57
+        },
+        "children": [
+          {
+            "tag": "LABEL",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 33,
+              "y": 1571.28125,
+              "w": 313,
+              "h": 44
+            }
+          }
+        ]
+      },
+      {
+        "tag": "LI",
+        "class": "",
+        "text": "Write a short note",
+        "padding": "12px 0px",
+        "gap": "normal",
+        "margin": "0px",
+        "box": {
+          "x": 33,
+          "y": 1628.28125,
+          "w": 313,
+          "h": 69
+        },
+        "children": [
+          {
+            "tag": "LABEL",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 33,
+              "y": 1640.28125,
+              "w": 313,
+              "h": 44
+            }
+          }
+        ]
+      },
+      {
+        "tag": "LI",
+        "class": "",
+        "text": "Return to the source",
+        "padding": "12px 0px 0px",
+        "gap": "normal",
+        "margin": "0px",
+        "box": {
+          "x": 33,
+          "y": 1697.28125,
+          "w": 313,
+          "h": 56
+        },
+        "children": [
+          {
+            "tag": "LABEL",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 33,
+              "y": 1709.28125,
+              "w": 313,
+              "h": 44
+            }
+          }
+        ]
+      },
+      {
+        "tag": "DIV",
+        "class": "space-table-wrap",
+        "text": "Same 12 synthetic papers\nStatus\tPapers\tOf all 12\nQueued\t5\t41.7%\nReading\t4\t33.3%\nCompleted\t3\t25.0%",
+        "padding": "0px",
+        "gap": "normal",
+        "margin": "0px",
+        "box": {
+          "x": 16,
+          "y": 3366.0625,
+          "w": 347,
+          "h": 207.5
+        },
+        "children": [
+          {
+            "tag": "TABLE",
+            "padding": "0px",
+            "margin": "0px",
+            "box": {
+              "x": 17,
+              "y": 3367.0625,
+              "w": 345,
+              "h": 205.5
+            }
+          }
+        ]
+      }
+    ],
+    "overlayElements": []
+  }
+}
