@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -10,11 +9,11 @@ from xml.etree import ElementTree as ET
 
 import httpx
 
-from . import db
+from . import db, limits
 from .errors import SpacesError
 
-MAX_BYTES = 3 * 1024 * 1024
-MAX_ENTRIES = 200
+MAX_BYTES = limits.FEED_BYTES
+MAX_ENTRIES = limits.FEED_ENTRIES
 ATOM = "{http://www.w3.org/2005/Atom}"
 DC = "{http://purl.org/dc/elements/1.1/}"
 
@@ -73,8 +72,8 @@ def _timestamp(value):
 
 
 def parse(payload):
-    if len(payload) > MAX_BYTES:
-        raise SpacesError("limit", "Feed exceeds 3 MB", limit=MAX_BYTES, actual=len(payload))
+    size = len(payload.encode("utf-8")) if isinstance(payload, str) else len(payload)
+    limits.check(size, MAX_BYTES, "feed bytes")
     # Removing NULs also catches declarations in UTF-16 and UTF-32 XML.
     guard = payload.replace(b"\x00", b"") if isinstance(payload, bytes) else payload
     pattern = br"<!\s*(?:DOCTYPE|ENTITY)\b" if isinstance(guard, bytes) else r"<!\s*(?:DOCTYPE|ENTITY)\b"
@@ -118,9 +117,7 @@ def parse(payload):
             }
         if not identity:
             raise SpacesError("invalid", "Feed entry needs an id or link")
-        size = len(json.dumps(fields).encode("utf-8"))
-        if size > 64 * 1024:
-            raise SpacesError("limit", "Feed entry source exceeds 64 KB", limit=64 * 1024, actual=size)
+        limits.object_json(fields, limits.SOURCE_BYTES, "record source")
         rid = "src_" + hashlib.sha1(identity.encode("utf-8")).hexdigest()[:16]
         mapped.append((rid, fields))
     return mapped

@@ -183,10 +183,11 @@ def _warnings(conn, manifest, files):
 
 
 def _save_revision(conn, space, manifest, files, *, kind, author, summary, restored_from=None):
+    encoded_manifest = limits.object_json(manifest, limits.FILE_BYTES, "manifest")
     rev, at = space["head_rev"] + 1, db.now()
     conn.execute("INSERT INTO revisions(space,rev,parent_rev,kind,restored_from,manifest,files,author,summary,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
                  (space["id"], rev, space["head_rev"] or None, kind, restored_from,
-                  limits.dumps(manifest), limits.dumps(files), author, summary, at))
+                  encoded_manifest, limits.dumps(files), author, summary, at))
     status = "active" if manifest["entry"] in files else space["status"]
     conn.execute("UPDATE spaces SET head_rev=?,name=?,description=?,accent=?,icon=?,status=?,updated_at=? WHERE id=?",
                  (rev, manifest["name"], manifest["description"], manifest["accent"], manifest["icon"], status, at, space["id"]))
