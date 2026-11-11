@@ -70,9 +70,9 @@ async function click(label) {
 for (const nativeError of [false, true]) {
 test(`F1 approval binds scope and refreshes after ${nativeError ? 'native IPC' : 'structured'} conflict`, async () => {
   setup()
-  const displayed = { capability: 'refresh', status: 'requested', requested_scope: { hosts: ['example.com'] } }
+  const displayed = { capability: 'logs', status: 'requested', purpose: 'Reviewed example.com purpose', requested_scope: { hosts: ['example.com'] } }
   data.grants = { grants: [displayed] }
-  data.nextGrants = { grants: [{ ...displayed, requested_scope: { hosts: ['unreviewed.example'] } }] }
+  data.nextGrants = { grants: [{ ...displayed, purpose: 'Changed unreviewed.example purpose', requested_scope: { hosts: ['unreviewed.example'] } }] }
   const calls = []
   const props = { space: { id: 'demo-space', name: 'Demo' }, onClose() {}, onChanged() {}, ctx: { rest: async (path, options) => {
     calls.push(options.body)

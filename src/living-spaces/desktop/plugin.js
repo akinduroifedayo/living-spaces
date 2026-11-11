@@ -1,5 +1,5 @@
 // src/desktop/plugin.src.js
-import { ROUTES_AREA, SIDEBAR_NAV_AREA, TRANSCRIPT_DIRECTIVE_AREA, ErrorState as ErrorState5, host as host4, useQuery as useQuery5 } from "@hermes/plugin-sdk";
+import { ROUTES_AREA, SIDEBAR_NAV_AREA, TRANSCRIPT_DIRECTIVE_AREA, ErrorState as ErrorState6, host as host4, useQuery as useQuery6 } from "@hermes/plugin-sdk";
 import { useEffect as useEffect2, useState as useState7 } from "react";
 import { jsx as jsx7, jsxs as jsxs7 } from "react/jsx-runtime";
 
@@ -81,7 +81,7 @@ function cardLines(space, format) {
   if (state === "updating") return ["Refreshing now\u2026", `Last good update ${at(f.last_success_at)}`];
   if (state === "failed") return [`Refresh failed ${at(f.last_attempt_at)}`, `Showing last good data from ${at(f.last_success_at)}`];
   if (state === "blocked") return [`Refresh blocked ${at(f.last_attempt_at)}`, space.attention?.message || "Refresh needs your approval in Permissions"];
-  return [f.last_success_at == null ? "No successful update yet" : `Updated ${at(f.last_success_at)}`, space.schedule?.status === "paused" ? "Upkeep paused" : `Next refresh ${f.next_run_at == null ? "not scheduled" : format(f.next_run_at)}`];
+  return [f.last_success_at == null ? "No successful update yet" : `Updated ${at(f.last_success_at)}`, space.upkeep && space.upkeep.enabled === false ? "Upkeep paused" : `Next refresh ${f.next_run_at == null ? "not scheduled" : format(f.next_run_at)}`];
 }
 function advanceCursor(cursor, page) {
   const changes = (page?.changes || []).filter((c) => Number.isSafeInteger(c.seq) && c.seq > cursor).sort((a, b) => a.seq - b.seq);
@@ -91,7 +91,6 @@ function advanceCursor(cursor, page) {
 function refreshReason(space) {
   if (space.status === "archived") return "This Space is archived. Restore it to refresh.";
   if (!space.manifest?.upkeep) return "No refresh handler is declared. Ask the owner in chat to add one.";
-  if (!space.grants?.some((g) => g.capability === "refresh" && g.status === "granted")) return "Refresh needs your approval in Permissions";
   if (spaceStatus(space) === "blocked") return space.attention?.message || "Refresh is blocked. Review Permissions.";
   return "";
 }
@@ -111,6 +110,9 @@ function dispatchText(dispatch, format) {
   return `${catchUp ? "Catch-up refresh. Missed scheduled time" : "Scheduled time"} ${at(dispatch.scheduled_at)}. Actual dispatch ${at(dispatch.dispatched_at)}.${delay}${catchUp ? " Missed intervals were not replayed." : ""}`;
 }
 var CATCH_UP = "Runs one current refresh when Hermes wakes. Missed intervals aren't replayed.";
+var EXECUTION_LABELS = { succeeded: "Succeeded", failed: "Failed", running: "Running", claimed: "Claimed", queued: "Queued", unknown: "Outcome unknown, side effects may have run" };
+var executionLabel = (status) => EXECUTION_LABELS[status] || String(status ?? "Unknown");
+var toSeconds = (value) => value == null ? null : typeof value === "number" ? value : Number.isFinite(Date.parse(value)) ? Date.parse(value) / 1e3 : null;
 var PROMPTS = [
   "Build Research Desk: an overview, a searchable library and a reading queue. Keep my notes and reading status.",
   "Build a weekly fitness planner with a progress chart. Refresh it every Monday."
@@ -400,7 +402,7 @@ function SpacesIndex({ ctx }) {
 }
 
 // src/desktop/ui/space.jsx
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState4, Skeleton as Skeleton4, host as host2, useQuery as useQuery4 } from "@hermes/plugin-sdk";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery5 } from "@hermes/plugin-sdk";
 import { useEffect, useRef as useRef4, useState as useState6 } from "react";
 
 // src/desktop/ui/history.jsx
@@ -473,255 +475,111 @@ function HistorySheet({ ctx, space, onClose, onChanged, initialTab = "runs", ret
 
 // src/desktop/ui/permissions.jsx
 import { Badge as Badge3, ErrorState as ErrorState3, Skeleton as Skeleton3, useQuery as useQuery3 } from "@hermes/plugin-sdk";
-import { useRef as useRef3, useState as useState5 } from "react";
-
-// src/desktop/ui/schedule.jsx
 import { useRef as useRef2, useState as useState4 } from "react";
 import { Fragment as Fragment3, jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
-function UpkeepCost({ space, upkeep = space?.manifest?.upkeep }) {
-  return upkeep?.handler === "agent" ? /* @__PURE__ */ jsxs4(Fragment3, { children: [
-    /* @__PURE__ */ jsx4("p", { children: "Uses model calls. Runs a Hermes agent with the tools enabled for native cron jobs." }),
-    /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "The agent is instructed to update only this Space through spaces_* tools and preserve user notes and statuses." }),
-    /* @__PURE__ */ jsxs4("div", { children: [
-      /* @__PURE__ */ jsx4("strong", { children: "Upkeep prompt" }),
-      /* @__PURE__ */ jsx4("p", { style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" }, children: upkeep.prompt })
-    ] })
-  ] }) : /* @__PURE__ */ jsxs4(Fragment3, { children: [
-    /* @__PURE__ */ jsx4("p", { children: "No model calls. Refreshes use the declared public-source handler and approved hosts." }),
-    /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "Feed limit 3 MB \xB7 200 entries per source \xB7 20 s request timeout." })
-  ] });
-}
-function ScheduleSheet({ ctx, space, onClose, onChanged, returnFocus }) {
-  const [error, setError] = useState4("");
-  const [busy, setBusy] = useState4(false);
-  const lock = useRef2(false);
-  const schedule = space.schedule;
-  const refresh = space.grants?.find((grant) => grant.capability === "refresh");
-  const permissionReason = schedule?.reason?.match(/Refresh permission (revoked|denied)/i);
-  const permissionStatus = ["revoked", "denied"].includes(refresh?.status) ? refresh.status : permissionReason?.[1]?.toLowerCase();
-  const reason = permissionStatus ? refresh?.status === "granted" ? "Refresh permission approved. Select Resume upkeep to restart scheduled refreshes." : "Refresh permission revoked. Approve Refresh in Permissions, then resume upkeep." : schedule?.reason;
-  const nextRun = schedule?.next_run_at ?? space.freshness?.next_run_at;
-  const overdue = schedule?.status === "active" && nextRun != null && nextRun < Date.now() / 1e3;
-  async function pause() {
-    if (lock.current) return;
-    lock.current = true;
-    setBusy(true);
-    try {
-      await ctx.rest(`${spacePath(space.id)}/schedule`, { method: "POST", body: { paused: schedule.status !== "paused" } });
-      await onChanged();
-    } catch (e) {
-      setError(errorText(e));
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
-  }
-  return /* @__PURE__ */ jsxs4(Drawer, { title: `Schedule \xB7 ${space.name}`, description: "Schedule, cost and missed-run policy", onClose, returnFocus, children: [
-    error && /* @__PURE__ */ jsx4(Banner, { kind: "failed", title: error }),
-    schedule ? /* @__PURE__ */ jsxs4(Fragment3, { children: [
-      /* @__PURE__ */ jsx4(StatusPill, { status: schedule.status === "active" ? "ready" : schedule.status === "paused" ? "paused" : schedule.status, label: schedule.status === "active" ? "Active" : schedule.status === "disabled" ? "Disabled" : void 0 }),
-      /* @__PURE__ */ jsxs4("dl", { className: "ls-facts", children: [
-        /* @__PURE__ */ jsxs4("div", { children: [
-          /* @__PURE__ */ jsx4("dt", { children: "Cadence" }),
-          /* @__PURE__ */ jsx4("dd", { children: schedule.cadence })
-        ] }),
-        /* @__PURE__ */ jsxs4("div", { children: [
-          /* @__PURE__ */ jsx4("dt", { children: "Timezone" }),
-          /* @__PURE__ */ jsx4("dd", { children: schedule.timezone })
-        ] }),
-        /* @__PURE__ */ jsxs4("div", { children: [
-          /* @__PURE__ */ jsx4("dt", { children: "Purpose" }),
-          /* @__PURE__ */ jsx4("dd", { children: schedule.purpose })
-        ] }),
-        /* @__PURE__ */ jsxs4("div", { children: [
-          /* @__PURE__ */ jsx4("dt", { children: "Next run" }),
-          /* @__PURE__ */ jsx4("dd", { children: schedule.status === "active" ? /* @__PURE__ */ jsxs4(Fragment3, { children: [
-            overdue && "Delayed \xB7 awaiting Hermes. Scheduled for ",
-            /* @__PURE__ */ jsx4(Time, { at: nextRun })
-          ] }) : "Not scheduled while upkeep is inactive" })
-        ] }),
-        /* @__PURE__ */ jsxs4("div", { children: [
-          /* @__PURE__ */ jsx4("dt", { children: "Last attempt" }),
-          /* @__PURE__ */ jsxs4("dd", { children: [
-            /* @__PURE__ */ jsx4(Time, { at: space.freshness?.last_attempt_at }),
-            " \xB7 ",
-            space.freshness?.last_attempt_status || "No attempts"
-          ] })
-        ] }),
-        reason && /* @__PURE__ */ jsxs4("div", { children: [
-          /* @__PURE__ */ jsx4("dt", { children: "Reason" }),
-          /* @__PURE__ */ jsx4("dd", { children: reason })
-        ] }),
-        schedule.last_dispatch && /* @__PURE__ */ jsxs4("div", { children: [
-          /* @__PURE__ */ jsx4("dt", { children: "Last dispatch" }),
-          /* @__PURE__ */ jsx4("dd", { children: dispatchText(schedule.last_dispatch, absolute) })
-        ] })
-      ] })
-    ] }) : /* @__PURE__ */ jsx4("p", { children: "No schedule approved." }),
-    /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
-      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "Cost" }),
-      /* @__PURE__ */ jsx4(UpkeepCost, { space })
-    ] }),
-    /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
-      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "If Hermes is asleep" }),
-      /* @__PURE__ */ jsx4("p", { children: CATCH_UP }),
-      /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "Background execution depends on Hermes being available." })
-    ] }),
-    schedule && ["active", "paused"].includes(schedule.status) && /* @__PURE__ */ jsx4(Action, { disabled: busy || space.status === "archived" || schedule.status === "paused" && refresh?.status !== "granted", icon: schedule.status === "paused" ? "play" : "debug-pause", onClick: pause, children: schedule.status === "paused" ? "Resume upkeep" : "Pause upkeep" }),
-    /* @__PURE__ */ jsx4("div", { className: "ls-section", children: /* @__PURE__ */ jsx4(CopyPrompt, { text: `${space.owner}, change the upkeep schedule for ${space.name}. Please confirm the cadence, timezone and purpose before requesting approval.`, label: "Change schedule in chat" }) })
-  ] });
-}
-
-// src/desktop/ui/permissions.jsx
-import { Fragment as Fragment4, jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
 var NET_DESCRIPTION = "This Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.";
 var NET_OFF_DESCRIPTION = "This Space can't load content from or send data to the internet through Internet access.";
 var NET_OFF_NOTE = "Off is not a complete block. A browser feature called WebRTC can still send data this Space can read. It still can't reach Hermes, your credentials, your files or other Spaces.";
 var CAPABILITIES = {
   data: { name: "Own data", icon: "folder", scope: "This Space's records only. Cannot see other Spaces.", purpose: "Store your records, notes and statuses.", leaves: "This grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off." },
-  refresh: { name: "Refresh", icon: "refresh", purpose: "Keep public-source records current.", leaves: "Yes \xB7 requests the approved public sources through Hermes." },
   logs: { name: "Diagnostics", icon: "info", scope: "Error logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.", purpose: "Let the owner see crashes and repair them.", leaves: "No ordinary network access. The owner can read these logs in chat." }
 };
 var FUTURE = ["Approved sites", "Camera", "Microphone", "Location", "Hermes tools (per tool)", "Files and folders", "Cross-Space access", "Agent requests"];
 function WebRTCNote() {
-  return /* @__PURE__ */ jsxs5("div", { className: "ls-disclosure", "data-testid": "webrtc-note", children: [
-    /* @__PURE__ */ jsxs5("strong", { children: [
-      /* @__PURE__ */ jsx5(Icon, { name: "info" }),
+  return /* @__PURE__ */ jsxs4("div", { className: "ls-disclosure", "data-testid": "webrtc-note", children: [
+    /* @__PURE__ */ jsxs4("strong", { children: [
+      /* @__PURE__ */ jsx4(Icon, { name: "info" }),
       " Before you approve anything"
     ] }),
-    /* @__PURE__ */ jsx5("p", { children: NET_OFF_NOTE })
+    /* @__PURE__ */ jsx4("p", { children: NET_OFF_NOTE })
   ] });
 }
 function InternetAccess({ grant, onDecide, busy }) {
   const enabled = grant.status === "granted";
-  return /* @__PURE__ */ jsx5("section", { className: "ls-section", children: /* @__PURE__ */ jsxs5("article", { className: "ls-grant", "data-testid": "internet-access", children: [
-    /* @__PURE__ */ jsxs5("div", { className: "ls-row-top", children: [
-      /* @__PURE__ */ jsx5("strong", { children: "Internet access" }),
-      /* @__PURE__ */ jsx5(Action, { role: "switch", "aria-label": "Internet access", "aria-checked": enabled, "aria-describedby": "ls-net-description", disabled: busy, onClick: () => onDecide(grant, enabled ? "revoke" : "grant"), children: enabled ? "On" : "Off" })
+  return /* @__PURE__ */ jsx4("section", { className: "ls-section", children: /* @__PURE__ */ jsxs4("article", { className: "ls-grant", "data-testid": "internet-access", children: [
+    /* @__PURE__ */ jsxs4("div", { className: "ls-row-top", children: [
+      /* @__PURE__ */ jsx4("strong", { children: "Internet access" }),
+      /* @__PURE__ */ jsx4(Action, { role: "switch", "aria-label": "Internet access", "aria-checked": enabled, "aria-describedby": "ls-net-description", disabled: busy, onClick: () => onDecide(grant, enabled ? "revoke" : "grant"), children: enabled ? "On" : "Off" })
     ] }),
-    /* @__PURE__ */ jsx5("p", { id: "ls-net-description", className: "ls-secondary", children: enabled ? NET_DESCRIPTION : NET_OFF_DESCRIPTION }),
-    grant.status === "requested" && /* @__PURE__ */ jsxs5("div", { className: "ls-actions", children: [
-      /* @__PURE__ */ jsx5(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" }),
-      /* @__PURE__ */ jsx5(Action, { disabled: busy, onClick: () => onDecide(grant, "deny"), children: "Deny" })
+    /* @__PURE__ */ jsx4("p", { id: "ls-net-description", className: "ls-secondary", children: enabled ? NET_DESCRIPTION : NET_OFF_DESCRIPTION }),
+    grant.status === "requested" && /* @__PURE__ */ jsxs4("div", { className: "ls-actions", children: [
+      /* @__PURE__ */ jsx4(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" }),
+      /* @__PURE__ */ jsx4(Action, { disabled: busy, onClick: () => onDecide(grant, "deny"), children: "Deny" })
     ] }),
-    !enabled && /* @__PURE__ */ jsx5(WebRTCNote, {})
+    !enabled && /* @__PURE__ */ jsx4(WebRTCNote, {})
   ] }) });
 }
 function GrantCard({ grant, onDecide, busy }) {
   const model = CAPABILITIES[grant.capability];
   if (!model) return null;
   const scope = grant.requested_scope || grant.scope || {};
-  const agent = grant.capability === "refresh" && scope.upkeep?.handler === "agent";
-  const scopeText = grant.capability === "refresh" ? agent ? "Run the exact Hermes agent task below, on request or through separately approved scheduled upkeep." : `Host-owned public-source handler. Approved hosts: ${(scope.hosts || []).join(", ") || "No hosts requested"}.` : model.scope;
-  return /* @__PURE__ */ jsxs5("article", { className: `ls-grant${grant.status === "requested" ? " ls-pending" : ""}`, children: [
-    /* @__PURE__ */ jsxs5("div", { className: "ls-row-top", children: [
-      /* @__PURE__ */ jsxs5("strong", { children: [
-        /* @__PURE__ */ jsx5(Icon, { name: model.icon }),
+  const scopeText = model.scope;
+  return /* @__PURE__ */ jsxs4("article", { className: `ls-grant${grant.status === "requested" ? " ls-pending" : ""}`, children: [
+    /* @__PURE__ */ jsxs4("div", { className: "ls-row-top", children: [
+      /* @__PURE__ */ jsxs4("strong", { children: [
+        /* @__PURE__ */ jsx4(Icon, { name: model.icon }),
         model.name
       ] }),
-      /* @__PURE__ */ jsx5(StatusPill, { status: grant.status })
+      /* @__PURE__ */ jsx4(StatusPill, { status: grant.status })
     ] }),
-    /* @__PURE__ */ jsxs5("dl", { className: "ls-facts", children: [
-      /* @__PURE__ */ jsxs5("div", { children: [
-        /* @__PURE__ */ jsx5("dt", { children: "Scope" }),
-        /* @__PURE__ */ jsx5("dd", { children: scopeText })
+    /* @__PURE__ */ jsxs4("dl", { className: "ls-facts", children: [
+      /* @__PURE__ */ jsxs4("div", { children: [
+        /* @__PURE__ */ jsx4("dt", { children: "Scope" }),
+        /* @__PURE__ */ jsx4("dd", { children: scopeText })
       ] }),
-      /* @__PURE__ */ jsxs5("div", { children: [
-        /* @__PURE__ */ jsx5("dt", { children: "Purpose" }),
-        /* @__PURE__ */ jsx5("dd", { children: grant.purpose || model.purpose })
+      /* @__PURE__ */ jsxs4("div", { children: [
+        /* @__PURE__ */ jsx4("dt", { children: "Purpose" }),
+        /* @__PURE__ */ jsx4("dd", { children: grant.purpose || model.purpose })
       ] }),
-      /* @__PURE__ */ jsxs5("div", { children: [
-        /* @__PURE__ */ jsx5("dt", { children: "Data leaves device" }),
-        /* @__PURE__ */ jsx5("dd", { children: agent ? "Yes \xB7 model calls and the tools enabled for native cron jobs can send data." : model.leaves })
+      /* @__PURE__ */ jsxs4("div", { children: [
+        /* @__PURE__ */ jsx4("dt", { children: "Data leaves device" }),
+        /* @__PURE__ */ jsx4("dd", { children: model.leaves })
       ] }),
-      /* @__PURE__ */ jsxs5("div", { children: [
-        /* @__PURE__ */ jsx5("dt", { children: "Access" }),
-        /* @__PURE__ */ jsx5("dd", { children: "Continuing" })
+      /* @__PURE__ */ jsxs4("div", { children: [
+        /* @__PURE__ */ jsx4("dt", { children: "Access" }),
+        /* @__PURE__ */ jsx4("dd", { children: "Continuing" })
       ] })
     ] }),
-    agent && /* @__PURE__ */ jsx5(UpkeepCost, { upkeep: scope.upkeep }),
-    /* @__PURE__ */ jsx5("div", { className: "ls-actions", children: grant.status === "granted" ? /* @__PURE__ */ jsx5(Action, { danger: true, disabled: busy, onClick: () => onDecide(grant, "revoke"), children: "Revoke" }) : grant.status === "requested" ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
-      /* @__PURE__ */ jsx5(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" }),
-      /* @__PURE__ */ jsx5(Action, { disabled: busy, onClick: () => onDecide(grant, "deny"), children: "Deny" })
-    ] }) : grant.capability === "refresh" ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
-      /* @__PURE__ */ jsxs5("p", { className: "ls-secondary", children: [
-        "Refresh permission ",
-        grant.status,
-        ". Approving Refresh leaves scheduled upkeep paused until you resume it."
-      ] }),
-      /* @__PURE__ */ jsx5(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" })
-    ] }) : /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: grant.status === "denied" ? `Denied. The Space shows \u201C${model.name} isn't available\u201D instead of prompting again.` : `${model.name} was revoked. Ask in chat to request access again.` }) })
+    /* @__PURE__ */ jsx4("div", { className: "ls-actions", children: grant.status === "granted" ? /* @__PURE__ */ jsx4(Action, { danger: true, disabled: busy, onClick: () => onDecide(grant, "revoke"), children: "Revoke" }) : grant.status === "requested" ? /* @__PURE__ */ jsxs4(Fragment3, { children: [
+      /* @__PURE__ */ jsx4(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" }),
+      /* @__PURE__ */ jsx4(Action, { disabled: busy, onClick: () => onDecide(grant, "deny"), children: "Deny" })
+    ] }) : /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: grant.status === "denied" ? `Denied. The Space shows \u201C${model.name} isn't available\u201D instead of prompting again.` : `${model.name} was revoked. Ask in chat to request access again.` }) })
   ] });
 }
-function PermissionsContent({ space, grants, audit = [], schedule, onDecide, onSchedule, busy = false }) {
+function PermissionsContent({ space, grants: all, audit = [], onDecide, busy = false }) {
+  const grants = all.filter((g) => g.capability === "net" || CAPABILITIES[g.capability]);
   const net = grants.find((g) => g.capability === "net");
   const pending = grants.filter((g) => g.capability !== "net" && g.status === "requested");
   const settled = grants.filter((g) => g.capability !== "net" && g.status !== "requested");
-  return /* @__PURE__ */ jsxs5(Fragment4, { children: [
-    net && /* @__PURE__ */ jsx5(InternetAccess, { grant: net, onDecide, busy }),
-    /* @__PURE__ */ jsxs5("section", { className: "ls-section", children: [
-      /* @__PURE__ */ jsxs5("h2", { className: "ls-section-title", children: [
+  return /* @__PURE__ */ jsxs4(Fragment3, { children: [
+    net && /* @__PURE__ */ jsx4(InternetAccess, { grant: net, onDecide, busy }),
+    /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
+      /* @__PURE__ */ jsxs4("h2", { className: "ls-section-title", children: [
         "Granted to ",
         space.name
       ] }),
-      settled.map((g) => /* @__PURE__ */ jsx5(GrantCard, { grant: g, onDecide, busy }, g.capability)),
-      !settled.length && /* @__PURE__ */ jsx5("p", { children: "No grants approved yet." })
+      settled.map((g) => /* @__PURE__ */ jsx4(GrantCard, { grant: g, onDecide, busy }, g.capability)),
+      !settled.length && /* @__PURE__ */ jsx4("p", { children: "No grants approved yet." })
     ] }),
-    /* @__PURE__ */ jsxs5("section", { className: "ls-section", children: [
-      /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Waiting for your decision" }),
-      pending.map((g) => /* @__PURE__ */ jsx5(GrantCard, { grant: g, onDecide, busy }, g.capability)),
-      schedule?.status === "requested" && /* @__PURE__ */ jsxs5("article", { className: "ls-grant ls-pending", children: [
-        /* @__PURE__ */ jsxs5("div", { className: "ls-row-top", children: [
-          /* @__PURE__ */ jsxs5("strong", { children: [
-            /* @__PURE__ */ jsx5(Icon, { name: "watch" }),
-            "Scheduled upkeep"
-          ] }),
-          /* @__PURE__ */ jsx5(StatusPill, { status: "requested" })
-        ] }),
-        /* @__PURE__ */ jsxs5("dl", { className: "ls-facts", children: [
-          /* @__PURE__ */ jsxs5("div", { children: [
-            /* @__PURE__ */ jsx5("dt", { children: "Cadence" }),
-            /* @__PURE__ */ jsx5("dd", { children: schedule.cadence })
-          ] }),
-          /* @__PURE__ */ jsxs5("div", { children: [
-            /* @__PURE__ */ jsx5("dt", { children: "Timezone" }),
-            /* @__PURE__ */ jsx5("dd", { children: schedule.timezone })
-          ] }),
-          /* @__PURE__ */ jsxs5("div", { children: [
-            /* @__PURE__ */ jsx5("dt", { children: "Purpose" }),
-            /* @__PURE__ */ jsx5("dd", { children: schedule.purpose })
-          ] }),
-          /* @__PURE__ */ jsxs5("div", { children: [
-            /* @__PURE__ */ jsx5("dt", { children: "Owner" }),
-            /* @__PURE__ */ jsx5("dd", { children: space.owner })
-          ] }),
-          /* @__PURE__ */ jsxs5("div", { children: [
-            /* @__PURE__ */ jsx5("dt", { children: "Cost" }),
-            /* @__PURE__ */ jsx5("dd", { children: /* @__PURE__ */ jsx5(UpkeepCost, { space }) })
-          ] })
-        ] }),
-        /* @__PURE__ */ jsx5("p", { children: CATCH_UP }),
-        /* @__PURE__ */ jsxs5("div", { className: "ls-actions", children: [
-          /* @__PURE__ */ jsx5(Action, { primary: true, disabled: busy, onClick: () => onSchedule("approve"), children: "Approve" }),
-          /* @__PURE__ */ jsx5(Action, { disabled: busy, onClick: () => onSchedule("deny"), children: "Deny" })
-        ] })
-      ] }),
-      !pending.length && schedule?.status !== "requested" && /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "Nothing waiting for your decision." })
+    /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
+      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "Waiting for your decision" }),
+      pending.map((g) => /* @__PURE__ */ jsx4(GrantCard, { grant: g, onDecide, busy }, g.capability)),
+      !pending.length && /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "Nothing waiting for your decision." })
     ] }),
-    /* @__PURE__ */ jsxs5("section", { className: "ls-section", "data-testid": "release-two", children: [
-      /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Coming in release 2 \u2014 not available yet" }),
-      FUTURE.map((name) => /* @__PURE__ */ jsx5("div", { className: "ls-grant ls-future", children: /* @__PURE__ */ jsxs5("div", { className: "ls-row-top", children: [
-        /* @__PURE__ */ jsx5("strong", { children: name }),
-        /* @__PURE__ */ jsx5(Badge3, { variant: "outline", children: "Not available yet" })
+    /* @__PURE__ */ jsxs4("section", { className: "ls-section", "data-testid": "release-two", children: [
+      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "Coming in release 2 \u2014 not available yet" }),
+      FUTURE.map((name) => /* @__PURE__ */ jsx4("div", { className: "ls-grant ls-future", children: /* @__PURE__ */ jsxs4("div", { className: "ls-row-top", children: [
+        /* @__PURE__ */ jsx4("strong", { children: name }),
+        /* @__PURE__ */ jsx4(Badge3, { variant: "outline", children: "Not available yet" })
       ] }) }, name)),
-      /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "Camera, microphone and location will start off and also follow Hermes and macOS permission prompts. Release 2 will revisit what Spaces can read before tool and file access is offered." })
+      /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "Camera, microphone and location will start off and also follow Hermes and macOS permission prompts. Release 2 will revisit what Spaces can read before tool and file access is offered." })
     ] }),
-    /* @__PURE__ */ jsxs5("section", { className: "ls-section", children: [
-      /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Owner" }),
-      /* @__PURE__ */ jsx5(OwnerChip, { owner: space.owner }),
-      /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Audit" }),
-      audit.length ? /* @__PURE__ */ jsx5("ul", { className: "ls-audit", children: audit.slice(0, 10).map((a) => /* @__PURE__ */ jsxs5("li", { children: [
-        /* @__PURE__ */ jsx5(Time, { at: a.at }),
+    /* @__PURE__ */ jsxs4("section", { className: "ls-section", children: [
+      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "Owner" }),
+      /* @__PURE__ */ jsx4(OwnerChip, { owner: space.owner }),
+      /* @__PURE__ */ jsx4("h2", { className: "ls-section-title", children: "Audit" }),
+      audit.length ? /* @__PURE__ */ jsx4("ul", { className: "ls-audit", children: audit.slice(0, 10).map((a) => /* @__PURE__ */ jsxs4("li", { children: [
+        /* @__PURE__ */ jsx4(Time, { at: a.at }),
         " \xB7 ",
         a.actor,
         " \xB7 ",
@@ -730,18 +588,17 @@ function PermissionsContent({ space, grants, audit = [], schedule, onDecide, onS
         a.capability || "",
         " \xB7 ",
         a.outcome
-      ] }, a.id)) }) : /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "No permission decisions recorded." })
+      ] }, a.id)) }) : /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "No permission decisions recorded." })
     ] })
   ] });
 }
 function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
   const base = spacePath(space.id);
   const query = useQuery3({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "grants"], queryFn: () => ctx.rest(`${base}/grants`), refetchInterval: 2e3 });
-  const schedule = useQuery3({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "schedule"], queryFn: () => ctx.rest(`${base}/schedule`), refetchInterval: 2e3 });
-  const [revoke, setRevoke] = useState5(null);
-  const [busy, setBusy] = useState5(false);
-  const [error, setError] = useState5("");
-  const lock = useRef3(false);
+  const [revoke, setRevoke] = useState4(null);
+  const [busy, setBusy] = useState4(false);
+  const [error, setError] = useState4("");
+  const lock = useRef2(false);
   async function decide(grant, decision) {
     if (decision === "revoke" && grant.capability !== "net") {
       setRevoke(grant);
@@ -756,29 +613,168 @@ function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
     setError("");
     try {
       await ctx.rest(path, { method: "POST", body });
-      await Promise.all([query.refetch(), schedule.refetch(), onChanged()]);
+      await Promise.all([query.refetch(), onChanged()]);
     } catch (e) {
-      if ((e?.error || e?.body?.error || e)?.code === "conflict") {
-        setError(path === `${base}/schedule` ? "Schedule request changed. Review the current cadence, timezone, purpose and upkeep prompt before approving again." : "Permission request changed. Review the new request before approving.");
-      } else setError(`${errorText(e)} Review the current request before trying again.`);
-      await Promise.all([query.refetch(), schedule.refetch(), onChanged()]);
+      if ((e?.error || e?.body?.error || e)?.code === "conflict") setError("Permission request changed. Review the new request before approving.");
+      else setError(`${errorText(e)} Review the current request before trying again.`);
+      await Promise.all([query.refetch(), onChanged()]);
     } finally {
       lock.current = false;
       setBusy(false);
     }
   }
-  return /* @__PURE__ */ jsxs5(Fragment4, { children: [
-    /* @__PURE__ */ jsxs5(Drawer, { title: `Permissions \xB7 ${space.name}`, description: "Review this Space's access and schedule requests.", onClose, returnFocus, children: [
-      error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: error }),
-      query.error || schedule.error ? /* @__PURE__ */ jsx5(ErrorState3, { title: "Permissions could not be loaded", description: errorText(query.error || schedule.error), children: /* @__PURE__ */ jsx5(Action, { onClick: () => {
+  return /* @__PURE__ */ jsxs4(Fragment3, { children: [
+    /* @__PURE__ */ jsxs4(Drawer, { title: `Permissions \xB7 ${space.name}`, description: "Review this Space's access.", onClose, returnFocus, children: [
+      error && /* @__PURE__ */ jsx4(Banner, { kind: "failed", title: error }),
+      query.error ? /* @__PURE__ */ jsx4(ErrorState3, { title: "Permissions could not be loaded", description: errorText(query.error), children: /* @__PURE__ */ jsx4(Action, { onClick: () => {
         query.refetch();
-        schedule.refetch();
-      }, children: "Try again" }) }) : query.isLoading ? /* @__PURE__ */ jsx5(Skeleton3, { style: { height: 180 } }) : /* @__PURE__ */ jsx5(PermissionsContent, { space, grants: query.data?.grants || [], audit: query.data?.audit || [], schedule: schedule.data, onDecide: decide, onSchedule: (decision) => change(`${base}/schedule`, { decision, ...decision === "approve" ? { requested_upkeep: space.manifest?.upkeep, requested_schedule: { cadence: schedule.data.cadence, timezone: schedule.data.timezone, purpose: schedule.data.purpose, requested_at: schedule.data.requested_at } } : {} }), busy })
+      }, children: "Try again" }) }) : query.isLoading ? /* @__PURE__ */ jsx4(Skeleton3, { style: { height: 180 } }) : /* @__PURE__ */ jsx4(PermissionsContent, { space, grants: query.data?.grants || [], audit: query.data?.audit || [], onDecide: decide, busy })
     ] }),
-    revoke && /* @__PURE__ */ jsx5(DecisionDialog, { danger: true, title: `Revoke ${CAPABILITIES[revoke.capability].name} for ${space.name}?`, description: revoke.capability === "refresh" ? "Scheduled upkeep pauses and manual refreshes stop. Approve Refresh in Permissions, then resume upkeep to restart scheduled refreshes. Data already delivered to the Space can't be recalled, and completed requests can't be undone." : `The Space loses ${CAPABILITIES[revoke.capability].name.toLowerCase()} access. Data already delivered to the Space can't be recalled, and completed requests can't be undone.`, cancelLabel: "Keep access", confirmLabel: "Revoke", onClose: () => setRevoke(null), onConfirm: async () => {
+    revoke && /* @__PURE__ */ jsx4(DecisionDialog, { danger: true, title: `Revoke ${CAPABILITIES[revoke.capability].name} for ${space.name}?`, description: `The Space loses ${CAPABILITIES[revoke.capability].name.toLowerCase()} access. Data already delivered to the Space can't be recalled, and completed requests can't be undone.`, cancelLabel: "Keep access", confirmLabel: "Revoke", onClose: () => setRevoke(null), onConfirm: async () => {
       await ctx.rest(`${base}/grants/${revoke.capability}`, { method: "POST", body: { decision: "revoke" } });
       await query.refetch();
       await onChanged();
+    } })
+  ] });
+}
+
+// src/desktop/ui/upkeep.jsx
+import { ErrorState as ErrorState4, Skeleton as Skeleton4, useQuery as useQuery4 } from "@hermes/plugin-sdk";
+import { useRef as useRef3, useState as useState5 } from "react";
+import { Fragment as Fragment4, jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
+function UpkeepCost({ job, kind }) {
+  return kind === "agent" ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
+    /* @__PURE__ */ jsx5("p", { children: "Uses model calls. Runs a Hermes agent with the tools enabled for native cron jobs." }),
+    /* @__PURE__ */ jsxs5("div", { children: [
+      /* @__PURE__ */ jsx5("strong", { children: "Upkeep prompt" }),
+      /* @__PURE__ */ jsx5("p", { style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" }, children: job?.prompt })
+    ] })
+  ] }) : /* @__PURE__ */ jsx5("p", { children: "No model calls. Refreshes use the declared public-source handler and approved hosts." });
+}
+function Executions({ executions }) {
+  if (!executions?.length) return /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "No runs recorded yet." });
+  return /* @__PURE__ */ jsx5("ul", { className: "ls-audit", "aria-label": "Upkeep executions", children: executions.map((run) => /* @__PURE__ */ jsxs5("li", { "data-status": run.status, children: [
+    /* @__PURE__ */ jsx5(Time, { at: toSeconds(run.finished_at ?? run.started_at ?? run.claimed_at ?? run.scheduled_instant) }),
+    " \xB7 ",
+    /* @__PURE__ */ jsx5("strong", { children: executionLabel(run.status) }),
+    run.error ? ` \xB7 ${run.error}` : ""
+  ] }, run.id)) });
+}
+function UpkeepSheet({ ctx, space, onClose, onChanged, returnFocus }) {
+  const base = spacePath(space.id);
+  const query = useQuery4({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "upkeep"], queryFn: () => ctx.rest(`${base}/upkeep`), refetchInterval: 5e3 });
+  const [error, setError] = useState5("");
+  const [busy, setBusy] = useState5(false);
+  const [confirm, setConfirm] = useState5(false);
+  const lock = useRef3(false);
+  const data = query.data;
+  const link = data?.link;
+  const job = data?.job;
+  const archived = space.status === "archived";
+  async function act(action) {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await ctx.rest(`${base}/upkeep`, { method: "POST", body: { action } });
+      await Promise.all([query.refetch(), onChanged?.()]);
+    } catch (e) {
+      setError(errorText(e));
+      await query.refetch();
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  const removeButton = /* @__PURE__ */ jsx5(Action, { danger: true, disabled: busy, onClick: () => setConfirm(true), children: data?.missing ? "Remove link" : "Remove" });
+  let body;
+  if (query.error && !data) body = /* @__PURE__ */ jsx5(ErrorState4, { title: "Upkeep could not be loaded", description: errorText(query.error), children: /* @__PURE__ */ jsx5(Action, { onClick: () => query.refetch(), children: "Try again" }) });
+  else if (!data) body = /* @__PURE__ */ jsx5(Skeleton4, { style: { height: 180 } });
+  else if (!link) body = /* @__PURE__ */ jsxs5(Fragment4, { children: [
+    /* @__PURE__ */ jsx5("p", { children: "No upkeep scheduled" }),
+    /* @__PURE__ */ jsx5("div", { className: "ls-section", children: /* @__PURE__ */ jsx5(CopyPrompt, { text: `${space.owner}, schedule upkeep for ${space.name}. Please confirm the cadence and timezone, then create it as a Hermes cron job.`, label: "Ask in chat" }) })
+  ] });
+  else body = /* @__PURE__ */ jsxs5(Fragment4, { children: [
+    data.error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: "Hermes cron is unavailable", children: data.error }),
+    data.missing ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
+      /* @__PURE__ */ jsxs5(Banner, { kind: "blocked", title: "The linked Hermes job no longer exists", actions: removeButton, children: [
+        "Nothing will run. Ask ",
+        space.owner,
+        " in chat to schedule upkeep again."
+      ] }),
+      /* @__PURE__ */ jsx5("div", { className: "ls-section", children: /* @__PURE__ */ jsx5(CopyPrompt, { text: `${space.owner}, the Hermes cron job for ${space.name} no longer exists. Please schedule upkeep again.`, label: "Ask in chat" }) })
+    ] }) : job && /* @__PURE__ */ jsxs5(Fragment4, { children: [
+      /* @__PURE__ */ jsx5(StatusPill, { status: job.enabled ? "ready" : "paused", label: job.enabled ? "Active" : "Paused" }),
+      /* @__PURE__ */ jsxs5("dl", { className: "ls-facts", children: [
+        /* @__PURE__ */ jsxs5("div", { children: [
+          /* @__PURE__ */ jsx5("dt", { children: "Kind" }),
+          /* @__PURE__ */ jsx5("dd", { children: link.kind === "agent" ? "Agent" : "Feed" })
+        ] }),
+        /* @__PURE__ */ jsxs5("div", { children: [
+          /* @__PURE__ */ jsx5("dt", { children: "Schedule" }),
+          /* @__PURE__ */ jsx5("dd", { children: job.schedule_display || job.cadence })
+        ] }),
+        /* @__PURE__ */ jsxs5("div", { children: [
+          /* @__PURE__ */ jsx5("dt", { children: "Cadence" }),
+          /* @__PURE__ */ jsx5("dd", { children: job.cadence })
+        ] }),
+        /* @__PURE__ */ jsxs5("div", { children: [
+          /* @__PURE__ */ jsx5("dt", { children: "Timezone" }),
+          /* @__PURE__ */ jsx5("dd", { children: job.timezone })
+        ] }),
+        /* @__PURE__ */ jsxs5("div", { children: [
+          /* @__PURE__ */ jsx5("dt", { children: "State" }),
+          /* @__PURE__ */ jsxs5("dd", { children: [
+            job.enabled ? "Enabled" : "Disabled",
+            " \xB7 ",
+            job.state
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxs5("div", { children: [
+          /* @__PURE__ */ jsx5("dt", { children: "Next run" }),
+          /* @__PURE__ */ jsx5("dd", { children: job.enabled && job.next_run_at ? /* @__PURE__ */ jsx5(Time, { at: toSeconds(job.next_run_at) }) : "Not scheduled" })
+        ] }),
+        /* @__PURE__ */ jsxs5("div", { children: [
+          /* @__PURE__ */ jsx5("dt", { children: "Last run" }),
+          /* @__PURE__ */ jsx5("dd", { children: job.last_run_at ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
+            /* @__PURE__ */ jsx5(Time, { at: toSeconds(job.last_run_at) }),
+            " \xB7 ",
+            job.last_status || "No status"
+          ] }) : "Never" })
+        ] }),
+        job.last_error && /* @__PURE__ */ jsxs5("div", { children: [
+          /* @__PURE__ */ jsx5("dt", { children: "Last error" }),
+          /* @__PURE__ */ jsx5("dd", { children: job.last_error })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxs5("section", { className: "ls-section", children: [
+        /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Cost" }),
+        /* @__PURE__ */ jsx5(UpkeepCost, { job, kind: link.kind })
+      ] }),
+      /* @__PURE__ */ jsxs5("section", { className: "ls-section", children: [
+        /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "If Hermes is asleep" }),
+        /* @__PURE__ */ jsx5("p", { children: CATCH_UP })
+      ] }),
+      /* @__PURE__ */ jsxs5("div", { className: "ls-actions", children: [
+        /* @__PURE__ */ jsx5(Action, { disabled: busy || !job.enabled && archived, icon: job.enabled ? "debug-pause" : "play", onClick: () => act(job.enabled ? "pause" : "resume"), children: job.enabled ? "Pause" : "Resume" }),
+        /* @__PURE__ */ jsx5(Action, { disabled: busy || archived, icon: "run", onClick: () => act("run"), children: "Run now" }),
+        removeButton
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxs5("section", { className: "ls-section", children: [
+      /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Executions" }),
+      /* @__PURE__ */ jsx5(Executions, { executions: data.executions })
+    ] })
+  ] });
+  return /* @__PURE__ */ jsxs5(Fragment4, { children: [
+    /* @__PURE__ */ jsxs5(Drawer, { title: `Upkeep \xB7 ${space.name}`, description: "The Hermes cron job that keeps this Space current", onClose, returnFocus, children: [
+      error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: error }),
+      body
+    ] }),
+    confirm && /* @__PURE__ */ jsx5(DecisionDialog, { danger: true, title: `Remove upkeep for ${space.name}?`, description: "This deletes the Hermes cron job. The Space and its data are kept.", confirmLabel: "Remove", onClose: () => setConfirm(false), onConfirm: async () => {
+      await ctx.rest(`${base}/upkeep`, { method: "POST", body: { action: "remove" } });
+      await Promise.all([query.refetch(), onChanged?.()]);
     } })
   ] });
 }
@@ -914,7 +910,7 @@ var OP_GRANT = Object.freeze({
   "data.put": "data",
   "data.delete": "data",
   "data.batch": "data",
-  refresh: "refresh",
+  refresh: null,
   "runs.list": null,
   log: "logs"
 });
@@ -1092,7 +1088,7 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
 }
 function SpaceView({ ctx, sid }) {
   const base = spacePath(sid);
-  const detail = useQuery4({ queryKey: ["living-spaces", ctx.queryScope || null, sid, "detail"], queryFn: () => ctx.rest(base), refetchInterval: 2e3 });
+  const detail = useQuery5({ queryKey: ["living-spaces", ctx.queryScope || null, sid, "detail"], queryFn: () => ctx.rest(base), refetchInterval: 2e3 });
   const space = detail.data;
   const [sheet, setSheet] = useState6(null);
   const [confirmation, setConfirmation] = useState6(null);
@@ -1168,7 +1164,7 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
       if (controller.current === session) controller.current = null;
     };
   }, [ctx, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
-  const changes = useQuery4({ queryKey: ["living-spaces", ctx.queryScope || null, sid, "changes", space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 });
+  const changes = useQuery5({ queryKey: ["living-spaces", ctx.queryScope || null, sid, "changes", space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 });
   useEffect(() => {
     if (!hasData || !ready || !changes.data || !controller.current) return;
     const page = advanceCursor(cursor.current, changes.data);
@@ -1196,8 +1192,11 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
     setAnnouncement("Refreshing\u2026");
     try {
       const run = await ctx.rest(`${base}/refresh`, { method: "POST" });
-      controller.current?.postEvent("run.updated", run);
-      if (!inFlight(run.status)) setAnnouncement(`Refresh ${run.status}: ${runResult(run)}`);
+      if (run?.kind === "cron") setAnnouncement("Refresh started in Hermes");
+      else {
+        controller.current?.postEvent("run.updated", run);
+        if (!inFlight(run.status)) setAnnouncement(`Refresh ${run.status}: ${runResult(run)}`);
+      }
       await detail.refetch();
     } catch (e) {
       setActionError(errorText(e));
@@ -1220,15 +1219,15 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
       actionLock.current = false;
     }
   }
-  if (!space) return /* @__PURE__ */ jsx6("div", { className: "ls-page", children: detail.error ? /* @__PURE__ */ jsxs6(ErrorState4, { title: "This Space could not be opened", description: errorText(detail.error), children: [
+  if (!space) return /* @__PURE__ */ jsx6("div", { className: "ls-page", children: detail.error ? /* @__PURE__ */ jsxs6(ErrorState5, { title: "This Space could not be opened", description: errorText(detail.error), children: [
     /* @__PURE__ */ jsx6(Action, { onClick: () => detail.refetch(), children: "Try again" }),
     /* @__PURE__ */ jsx6(Action, { onClick: () => host2.navigate("/spaces"), children: "Spaces" })
-  ] }) : /* @__PURE__ */ jsx6(Skeleton4, { style: { height: 400 } }) });
-  const schedule = space.schedule;
+  ] }) : /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 400 } }) });
+  const upkeep = space.upkeep;
   const busy = refreshPending || inFlight(lastRun?.status) || status === "updating";
   const reason = refreshReason(space);
-  const pause = () => act("schedule", { paused: schedule.status !== "paused" });
-  const pauseAction = schedule && ["active", "paused"].includes(schedule.status) && !archived ? /* @__PURE__ */ jsx6(Action, { icon: schedule.status === "paused" ? "play" : "debug-pause", onClick: pause, children: schedule.status === "paused" ? "Resume upkeep" : "Pause upkeep" }) : null;
+  const pause = () => act("upkeep", { action: upkeep.enabled ? "pause" : "resume" });
+  const pauseAction = upkeep && !upkeep.missing && !archived ? /* @__PURE__ */ jsx6(Action, { icon: upkeep.enabled ? "debug-pause" : "play", onClick: pause, children: upkeep.enabled ? "Pause upkeep" : "Resume upkeep" }) : null;
   const opener = () => document.activeElement?.getAttribute("role") === "menuitem" ? overflow.current : document.activeElement;
   const openSheet = (kind, tab) => setSheet({ kind, tab, returnFocus: opener() });
   const openHistory = (tab) => openSheet("history", tab || "runs");
@@ -1261,7 +1260,7 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
       /* @__PURE__ */ jsxs6("div", { className: "ls-frame-actions", children: [
         /* @__PURE__ */ jsx6(SaveStatus, { write, announcement }),
         !building && /* @__PURE__ */ jsxs6(Fragment5, { children: [
-          /* @__PURE__ */ jsx6("div", { className: "ls-wide-only", children: /* @__PURE__ */ jsx6(Action, { icon: "watch", onClick: () => openSheet("schedule"), children: schedule ? `${schedule.status === "paused" ? "Paused \xB7 " : ""}${schedule.cadence} ${schedule.timezone}` : "No schedule" }) }),
+          /* @__PURE__ */ jsx6("div", { className: "ls-wide-only", children: /* @__PURE__ */ jsx6(Action, { icon: "watch", onClick: () => openSheet("upkeep"), children: !upkeep ? "No upkeep" : upkeep.missing ? "Upkeep missing" : upkeep.enabled ? "Upkeep on" : "Upkeep paused" }) }),
           /* @__PURE__ */ jsx6("div", { className: "ls-wide-only", children: pauseAction })
         ] }),
         /* @__PURE__ */ jsx6("span", { className: "ls-wide-only", children: /* @__PURE__ */ jsx6(Action, { onClick: () => openHistory(), children: "History" }) }),
@@ -1274,8 +1273,8 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
           /* @__PURE__ */ jsxs6(DropdownMenuContent, { align: "end", children: [
             /* @__PURE__ */ jsx6("div", { className: "ls-compact-only", children: /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openHistory(), children: "History" }) }),
             !building && /* @__PURE__ */ jsxs6(Fragment5, { children: [
-              /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openSheet("schedule"), children: "Schedule" }),
-              pauseAction && /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: pause, children: schedule.status === "paused" ? "Resume upkeep" : "Pause upkeep" }),
+              /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openSheet("upkeep"), children: "Upkeep" }),
+              pauseAction && /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: pause, children: upkeep.enabled ? "Pause upkeep" : "Resume upkeep" }),
               /* @__PURE__ */ jsx6(DropdownMenuSeparator, {}),
               /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => act("pin", { pinned: !space.pinned }), children: space.pinned ? "Unpin Space" : "Pin Space" }),
               /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => archived ? act("unarchive") : askConfirmation("archive"), children: archived ? "Restore Space" : "Archive Space\u2026" }),
@@ -1313,10 +1312,10 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
           space.owner,
           " is building the first version. This opens automatically when it's ready."
         ] }),
-        /* @__PURE__ */ jsx6(Skeleton4, { style: { height: 100 } }),
-        /* @__PURE__ */ jsx6(Skeleton4, { style: { height: 180 } })
+        /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 100 } }),
+        /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 180 } })
       ] }) : status === "crashed" ? /* @__PURE__ */ jsxs6("div", { className: "ls-crash", children: [
-        /* @__PURE__ */ jsx6(ErrorState4, { title: `${space.name} stopped working`, description: "The Space hit an error and was stopped. Your records are safe and weren't changed by the crash." }),
+        /* @__PURE__ */ jsx6(ErrorState5, { title: `${space.name} stopped working`, description: "The Space hit an error and was stopped. Your records are safe and weren't changed by the crash." }),
         /* @__PURE__ */ jsx6("pre", { className: "ls-diagnostic", children: `Revision ${space.head_rev}
 ${crashMessage}
 Logged to this Space only. Common credential values redacted.` }),
@@ -1338,7 +1337,7 @@ Logged to this Space only. Common credential values redacted.` }),
     ] }),
     sheet?.kind === "permissions" && /* @__PURE__ */ jsx6(PermissionsSheet, { returnFocus: sheet.returnFocus, ctx, space, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
     sheet?.kind === "history" && /* @__PURE__ */ jsx6(HistorySheet, { returnFocus: sheet.returnFocus, ctx, space, initialTab: sheet.tab, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
-    sheet?.kind === "schedule" && /* @__PURE__ */ jsx6(ScheduleSheet, { returnFocus: sheet.returnFocus, ctx, space, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
+    sheet?.kind === "upkeep" && /* @__PURE__ */ jsx6(UpkeepSheet, { returnFocus: sheet.returnFocus, ctx, space, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
     sheet?.kind === "compare" && write && /* @__PURE__ */ jsx6(Drawer, { returnFocus: sheet.returnFocus, title: "Compare record changes", description: "Your submitted change and the latest stored record", onClose: () => setSheet(null), children: /* @__PURE__ */ jsxs6("div", { className: "ls-compare", children: [
       /* @__PURE__ */ jsx6("h2", { children: "Your change" }),
       /* @__PURE__ */ jsx6("pre", { className: "ls-diagnostic", children: JSON.stringify(write.args, null, 2) }),
@@ -1398,8 +1397,8 @@ function SpacesPage({ ctx }) {
 }
 function OpenSpaceCard({ ctx, sid }) {
   const scoped = useScopedContext(ctx);
-  const query = useQuery5({ queryKey: ["living-spaces", scoped.queryScope, sid, "detail"], queryFn: () => scoped.rest(spacePath(sid)), refetchInterval: 2e3 });
-  if (!query.data) return query.error ? jsx7(ErrorState5, { title: "This Space could not be loaded", description: query.error.message }) : jsx7("span", { role: "status", children: "Loading Space\u2026" });
+  const query = useQuery6({ queryKey: ["living-spaces", scoped.queryScope, sid, "detail"], queryFn: () => scoped.rest(spacePath(sid)), refetchInterval: 2e3 });
+  if (!query.data) return query.error ? jsx7(ErrorState6, { title: "This Space could not be loaded", description: query.error.message }) : jsx7("span", { role: "status", children: "Loading Space\u2026" });
   const space = query.data;
   return jsxs7("div", { className: "ls-root ls-directive", children: [jsx7("style", { children: styles }), jsxs7("div", { className: "ls-card-top", children: [jsx7(SpaceTile, { space }), jsxs7("div", { children: [jsx7("strong", { children: space.name }), jsx7(OwnerChip, { owner: space.owner })] })] }), jsxs7("div", { className: "ls-actions", children: [jsx7(StatusPill, { status: spaceStatus(space) }), jsx7("span", { children: `Revision ${space.head_rev}` }), jsx7(Action, { primary: true, onClick: () => host4.navigate(spaceRoute(sid)), children: "Open Space" })] })] });
 }
