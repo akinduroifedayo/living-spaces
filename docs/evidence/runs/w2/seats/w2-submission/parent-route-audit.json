@@ -1,0 +1,19 @@
+{
+ "seat": "w2-submission",
+ "thread": "01a1c872-5505-70d3-ad2c-987ca7e4d830",
+ "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/w2-submission",
+ "model": "gpt-6-astra",
+ "effort": "high",
+ "provider": "openai",
+ "tier": "priority",
+ "route_match": true,
+ "completed": 1,
+ "failed": 0,
+ "exit": "0",
+ "brief_sha256": "0b9bee5b48a23d5a6c91ec4268f07c1aec105439c0f835a2b8523b826bd39e66",
+ "procedural_gaps": [
+  "No full frozen-input shard/preflight packet was prepared for this wave. Source-qualified evidence only; not a full pstack procedural pass."
+ ],
+ "skill_budget_warning": true,
+ "tier_evidence": "event_msg.thread_settings_applied.thread_settings.service_tier"
+}

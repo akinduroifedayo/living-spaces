@@ -177,6 +177,7 @@ class Qualification:
         self.state = {"sid": fixture["id"], "name": fixture["name"], "records": [], "job_ids": [], "shims": [], "cleaned": False}
         self.save()
         sid = self.state["sid"]
+        self.core.decide(sid, "refresh", "grant", actor="harness-fixture")
         for collection in sorted({source["collection"] for source in upkeep["sources"]}):
             source_records = self.core.query(self.args.source_space, collection)["records"]
             record = next((row for row in source_records if row.get("source") and row["source"].get("title")), None)
@@ -188,7 +189,6 @@ class Qualification:
             self.core.records.put(sid, collection, record["id"], user, actor="user", base_rev=current["rev"])
             self.state["records"].append({"collection": collection, "id": record["id"], "data": user})
             self.save()
-        self.core.decide(sid, "refresh", "grant", actor="harness-fixture")
         slot = (datetime.now(timezone.utc) + timedelta(minutes=30)).replace(second=0, microsecond=0)
         self.core.request_schedule(sid, cadence=f"{slot.minute} {slot.hour} * * *", timezone="UTC",
                                    purpose="Public demo offline catch-up qualification", actor="harness-fixture")

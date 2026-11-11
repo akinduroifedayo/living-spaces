@@ -1,0 +1,1192 @@
+{
+ "evidence_class": "real isolated Desktop; main-world Space probes; loopback listeners; canonical SQLite",
+ "status": "PASS",
+ "checks": [
+  {
+   "name": "HTTP, raw TCP/WebSocket and UDP listener controls received",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "fixture uses packaged runtime/vendor/preact.mjs bytes",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "mounted A3 document matches the reviewed packaged guest",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "Space has opaque origin",
+   "passed": true,
+   "observed": "null",
+   "expected": "null"
+  },
+  {
+   "name": "only the fixture is mounted",
+   "passed": true,
+   "observed": "hosting-probe",
+   "expected": "hosting-probe"
+  },
+  {
+   "name": "one open fixture bridge session",
+   "passed": true,
+   "observed": 1,
+   "expected": 1
+  },
+  {
+   "name": "local image decoded",
+   "passed": true,
+   "observed": 32,
+   "expected": 32
+  },
+  {
+   "name": "local CSS applied",
+   "passed": true,
+   "observed": "loaded",
+   "expected": "loaded"
+  },
+  {
+   "name": "local ES module executed",
+   "passed": true,
+   "observed": "Local module details",
+   "expected": "Local module details"
+  },
+  {
+   "name": "vendored library executed",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "navigation to details",
+   "passed": true,
+   "observed": "details",
+   "expected": "details"
+  },
+  {
+   "name": "navigation to overview",
+   "passed": true,
+   "observed": "overview",
+   "expected": "overview"
+  },
+  {
+   "name": "CDP captured Space frame targets before boot",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "CDP observed local blob resource requests",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "positive app emitted no non-blob/data resource requests",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "positive app sent zero listener traffic",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "raw spoofed parent messages left all canonical SQLite values unchanged",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "bridge still works after spoofed envelopes",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "privileged read parent.document is denied or empty",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "privileged read top.document is denied or empty",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "privileged read document.cookie is denied or empty",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "privileged read localStorage is denied or empty",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "privileged read indexedDB is denied or empty",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "privileged read caches is denied or empty",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "privileged read self.hermesDesktop is denied or empty",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "privileged read parent.hermesDesktop is denied or empty",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "privileged read top.hermesDesktop is denied or empty",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "privileged read backend-url is denied or empty",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "privileged read top.location is denied or empty",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "privileged read require is denied or empty",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "privileged read process is denied or empty",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "research-desk has records for cross-Space read control",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "forged space cannot read research-desk/papers",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "pair-play has records for cross-Space read control",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "forged space cannot read pair-play/game",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "forged space cannot read pair-play/settings",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "space attempted every network API",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "space network probes sent no listener traffic",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "fresh srcdoc actually executed the network probes",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "srcdoc attempted every network API",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "srcdoc network probes sent no listener traffic",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "blob child executed probes or has an observed CSP frame rejection",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "blob network probes sent no listener traffic",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "worker was denied or reported blocked fetch",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "worker sent no listener traffic",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "shared-worker was denied or reported blocked fetch",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "shared-worker sent no listener traffic",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "location left host URL unchanged",
+   "passed": true,
+   "observed": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe",
+   "expected": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe"
+  },
+  {
+   "name": "location created no popup",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "location reached no listener",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "location leaves a working fixture bridge",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "top.location left host URL unchanged",
+   "passed": true,
+   "observed": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe",
+   "expected": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe"
+  },
+  {
+   "name": "top.location created no popup",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "top.location reached no listener",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "top.location leaves a working fixture bridge",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "window.open left host URL unchanged",
+   "passed": true,
+   "observed": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe",
+   "expected": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe"
+  },
+  {
+   "name": "window.open created no popup",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "window.open reached no listener",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "window.open leaves a working fixture bridge",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "anchor-top left host URL unchanged",
+   "passed": true,
+   "observed": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe",
+   "expected": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe"
+  },
+  {
+   "name": "anchor-top created no popup",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "anchor-top reached no listener",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "anchor-top leaves a working fixture bridge",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "meta-refresh left host URL unchanged",
+   "passed": true,
+   "observed": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe",
+   "expected": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe"
+  },
+  {
+   "name": "meta-refresh created no popup",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "meta-refresh reached no listener",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "meta-refresh leaves a working fixture bridge",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "form left host URL unchanged",
+   "passed": true,
+   "observed": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe",
+   "expected": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe"
+  },
+  {
+   "name": "form created no popup",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "form reached no listener",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "form leaves a working fixture bridge",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "data-location left host URL unchanged",
+   "passed": true,
+   "observed": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe",
+   "expected": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe"
+  },
+  {
+   "name": "data-location created no popup",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "data-location reached no listener",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "data-location leaves a working fixture bridge",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "blob-location left host URL unchanged",
+   "passed": true,
+   "observed": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe",
+   "expected": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe"
+  },
+  {
+   "name": "blob-location created no popup",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "blob-location reached no listener",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "blob-location leaves a working fixture bridge",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "listeners remained active through observation",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "zero ordinary listener hits across the entire run",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "no UDP arrived outside WebRTC observation",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "disposable fixture deleted",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "research-desk snapshot byte-for-byte unchanged",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "pair-play snapshot byte-for-byte unchanged",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "CDP capture completed without instrumentation errors",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  }
+ ],
+ "probes": {
+  "spoof": [
+   {
+    "op": "tool:terminal",
+    "v": 1,
+    "oversized": false
+   },
+   {
+    "op": "agent.ask",
+    "v": 1,
+    "oversized": false
+   },
+   {
+    "op": "__proto__",
+    "v": 1,
+    "oversized": false
+   },
+   {
+    "op": "data.put",
+    "v": 1,
+    "session": "[REDACTED SESSION]",
+    "oversized": false
+   },
+   {
+    "op": "data.put",
+    "v": 999,
+    "oversized": false
+   },
+   {
+    "op": "data.put",
+    "v": 1,
+    "oversized": true
+   },
+   {
+    "op": "data.put",
+    "v": 1,
+    "type": "space-boot",
+    "session": "[REDACTED SESSION]",
+    "oversized": false
+   },
+   {
+    "type": "hermes-inline-preview-intent",
+    "oversized": false
+   }
+  ],
+  "privileged": [
+   {
+    "name": "parent.document",
+    "outcome": "threw",
+    "error": "SecurityError: Failed to read a named property 'document' from 'Window': Blocked a frame with origin \"null\" from accessing a cross-origin frame."
+   },
+   {
+    "name": "top.document",
+    "outcome": "threw",
+    "error": "SecurityError: Failed to read a named property 'document' from 'Window': Blocked a frame with origin \"null\" from accessing a cross-origin frame."
+   },
+   {
+    "name": "document.cookie",
+    "outcome": "threw",
+    "error": "SecurityError: Failed to read the 'cookie' property from 'Document': The document is sandboxed and lacks the 'allow-same-origin' flag."
+   },
+   {
+    "name": "localStorage",
+    "outcome": "threw",
+    "error": "SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag."
+   },
+   {
+    "name": "indexedDB",
+    "outcome": "threw",
+    "error": "SecurityError: Failed to execute 'databases' on 'IDBFactory': Access to the IndexedDB API is denied in this context."
+   },
+   {
+    "name": "caches",
+    "outcome": "threw",
+    "error": "SecurityError: Failed to read the 'caches' property from 'Window': Cache storage is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag."
+   },
+   {
+    "name": "self.hermesDesktop",
+    "outcome": "returned",
+    "empty": true,
+    "type": "undefined"
+   },
+   {
+    "name": "parent.hermesDesktop",
+    "outcome": "threw",
+    "error": "SecurityError: Failed to read a named property 'hermesDesktop' from 'Window': Blocked a frame with origin \"null\" from accessing a cross-origin frame."
+   },
+   {
+    "name": "top.hermesDesktop",
+    "outcome": "threw",
+    "error": "SecurityError: Failed to read a named property 'hermesDesktop' from 'Window': Blocked a frame with origin \"null\" from accessing a cross-origin frame."
+   },
+   {
+    "name": "backend-url",
+    "outcome": "threw",
+    "error": "SecurityError: Failed to read a named property 'hermesDesktop' from 'Window': Blocked a frame with origin \"null\" from accessing a cross-origin frame."
+   },
+   {
+    "name": "top.location",
+    "outcome": "threw",
+    "error": "SecurityError: Failed to read a named property 'href' from 'Location': Blocked a frame with origin \"null\" from accessing a cross-origin frame."
+   },
+   {
+    "name": "require",
+    "outcome": "returned",
+    "empty": true,
+    "type": "undefined"
+   },
+   {
+    "name": "process",
+    "outcome": "returned",
+    "empty": true,
+    "type": "undefined"
+   }
+  ],
+  "forged-read/research-desk/papers": {
+   "ok": true,
+   "value": []
+  },
+  "forged-read/pair-play/game": {
+   "ok": true,
+   "value": []
+  },
+  "forged-read/pair-play/settings": {
+   "ok": true,
+   "value": []
+  },
+  "space": [
+   {
+    "name": "fetch",
+    "outcome": "threw",
+    "error": "TypeError: Failed to fetch"
+   },
+   {
+    "name": "xhr",
+    "outcome": "returned",
+    "value": "error"
+   },
+   {
+    "name": "beacon",
+    "outcome": "returned",
+    "value": true
+   },
+   {
+    "name": "eventsource",
+    "outcome": "returned",
+    "value": "constructed"
+   },
+   {
+    "name": "websocket",
+    "outcome": "returned",
+    "value": "constructed"
+   },
+   {
+    "name": "image",
+    "outcome": "returned",
+    "value": "appended"
+   },
+   {
+    "name": "link",
+    "outcome": "returned",
+    "value": "appended"
+   },
+   {
+    "name": "script",
+    "outcome": "returned",
+    "value": "appended"
+   },
+   {
+    "name": "css-url",
+    "outcome": "returned",
+    "value": "appended"
+   },
+   {
+    "name": "css-import",
+    "outcome": "returned",
+    "value": "appended"
+   },
+   {
+    "name": "font",
+    "outcome": "returned",
+    "value": "appended"
+   }
+  ],
+  "srcdoc": {
+   "token": "[REDACTED SESSION]",
+   "executed": true,
+   "rows": [
+    {
+     "name": "fetch",
+     "outcome": "threw",
+     "error": "TypeError: Failed to fetch"
+    },
+    {
+     "name": "xhr",
+     "outcome": "returned",
+     "value": "error"
+    },
+    {
+     "name": "beacon",
+     "outcome": "returned",
+     "value": true
+    },
+    {
+     "name": "eventsource",
+     "outcome": "returned",
+     "value": "constructed"
+    },
+    {
+     "name": "websocket",
+     "outcome": "returned",
+     "value": "constructed"
+    },
+    {
+     "name": "image",
+     "outcome": "returned",
+     "value": "appended"
+    },
+    {
+     "name": "link",
+     "outcome": "returned",
+     "value": "appended"
+    },
+    {
+     "name": "script",
+     "outcome": "returned",
+     "value": "appended"
+    },
+    {
+     "name": "css-url",
+     "outcome": "returned",
+     "value": "appended"
+    },
+    {
+     "name": "css-import",
+     "outcome": "returned",
+     "value": "appended"
+    },
+    {
+     "name": "font",
+     "outcome": "returned",
+     "value": "appended"
+    }
+   ],
+   "started": true,
+   "violations": []
+  },
+  "blob": {
+   "token": "[REDACTED SESSION]",
+   "executed": false,
+   "started": false,
+   "violations": [
+    {
+     "directive": "frame-src",
+     "uri": ""
+    },
+    {
+     "directive": "frame-src",
+     "uri": ""
+    }
+   ]
+  },
+  "worker": {
+   "outcome": "blocked",
+   "error": "TypeError: Failed to fetch"
+  },
+  "shared-worker": {
+   "outcome": "threw",
+   "error": "SecurityError: Failed to construct 'SharedWorker': Access to shared workers is denied to origin 'null'."
+  },
+  "location": {
+   "kind": "location",
+   "scheduled": true,
+   "after": {
+    "ok": true,
+    "value": null
+   },
+   "origin_checks_since_previous_probe": []
+  },
+  "top.location": {
+   "kind": "top.location",
+   "scheduled": true,
+   "after": {
+    "ok": true,
+    "value": {
+     "kind": "top.location",
+     "outcome": "threw",
+     "error": "SecurityError: Failed to set a named property 'href' on 'Location': The current window does not have permission to navigate the target frame to 'http://127.0.0.1:57034/navigation/top.location'."
+    }
+   },
+   "origin_checks_since_previous_probe": []
+  },
+  "window.open": {
+   "kind": "window.open",
+   "scheduled": true,
+   "after": {
+    "ok": true,
+    "value": {
+     "kind": "window.open",
+     "outcome": "returned"
+    }
+   },
+   "origin_checks_since_previous_probe": []
+  },
+  "anchor-top": {
+   "kind": "anchor-top",
+   "scheduled": true,
+   "after": {
+    "ok": true,
+    "value": {
+     "kind": "anchor-top",
+     "outcome": "returned"
+    }
+   },
+   "origin_checks_since_previous_probe": []
+  },
+  "meta-refresh": {
+   "kind": "meta-refresh",
+   "scheduled": true,
+   "after": {
+    "ok": true,
+    "value": null
+   },
+   "origin_checks_since_previous_probe": []
+  },
+  "form": {
+   "kind": "form",
+   "scheduled": true,
+   "after": {
+    "ok": true,
+    "value": {
+     "kind": "form",
+     "outcome": "returned"
+    }
+   },
+   "origin_checks_since_previous_probe": []
+  },
+  "data-location": {
+   "kind": "data-location",
+   "scheduled": true,
+   "after": {
+    "ok": true,
+    "value": null
+   },
+   "origin_checks_since_previous_probe": [
+    "content/browser/site_info.cc:925] Check failed: origin.GetTupleOrPrecursorTupleIfOpaque().IsValid().",
+    "content/browser/site_info.cc:925] Check failed: origin.GetTupleOrPrecursorTupleIfOpaque().IsValid().",
+    "content/browser/site_info.cc:925] Check failed: origin.GetTupleOrPrecursorTupleIfOpaque().IsValid().",
+    "content/browser/site_info.cc:925] Check failed: origin.GetTupleOrPrecursorTupleIfOpaque().IsValid().",
+    "content/browser/site_info.cc:925] Check failed: origin.GetTupleOrPrecursorTupleIfOpaque().IsValid().",
+    "content/browser/site_info.cc:925] Check failed: origin.GetTupleOrPrecursorTupleIfOpaque().IsValid()."
+   ]
+  },
+  "blob-location": {
+   "kind": "blob-location",
+   "scheduled": true,
+   "after": {
+    "ok": true,
+    "value": null
+   },
+   "origin_checks_since_previous_probe": []
+  }
+ },
+ "errors": [],
+ "executed": true,
+ "completed": true,
+ "origin_log_available": true,
+ "browser": {
+  "protocolVersion": "1.3",
+  "product": "Chrome/152.0.7977.167",
+  "revision": "@cdfd153efe9cb5c02534ff816a5a60fec672d70e",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HermesLivingSpacesR1/0.0.0 Chrome/152.0.7977.167 Electron/44.9.3 Safari/537.36",
+  "jsVersion": "15.2.124.43"
+ },
+ "fixture_space": "hosting-probe",
+ "positive_requests": [
+  {
+   "at": 1794365346.3484201,
+   "phase": "positive",
+   "session": "[REDACTED SESSION]",
+   "method": "Network.requestWillBeSent",
+   "params": {
+    "requestId": "25183.17",
+    "loaderId": "270D007AB6B177C9E22BE5CA71BA728F",
+    "documentURL": "about:srcdoc",
+    "request": {
+     "url": "blob:null/a97c69c3-d559-45cd-912c-edece1ec8f7d",
+     "method": "GET",
+     "headers": {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HermesLivingSpacesR1/0.0.0 Chrome/152.0.7977.167 Electron/44.9.3 Safari/537.36",
+      "Referer": ""
+     },
+     "mixedContentType": "none",
+     "initialPriority": "VeryHigh",
+     "referrerPolicy": "no-referrer",
+     "isSameSite": false
+    },
+    "timestamp": 1497822.511809,
+    "wallTime": 1794365346.338943,
+    "initiator": {
+     "type": "script",
+     "stack": {
+      "callFrames": [
+       {
+        "functionName": "boot",
+        "scriptId": "20",
+        "url": "about:srcdoc",
+        "lineNumber": 152,
+        "columnNumber": 63
+       }
+      ]
+     }
+    },
+    "redirectHasExtraInfo": false,
+    "type": "Stylesheet",
+    "frameId": "9BF770C0B5054748326AB24DFB0B7593",
+    "hasUserGesture": false,
+    "renderBlockingBehavior": "NonBlockingDynamic"
+   }
+  },
+  {
+   "at": 1794365346.3485382,
+   "phase": "positive",
+   "session": "[REDACTED SESSION]",
+   "method": "Network.requestWillBeSent",
+   "params": {
+    "requestId": "25183.18",
+    "loaderId": "270D007AB6B177C9E22BE5CA71BA728F",
+    "documentURL": "about:srcdoc",
+    "request": {
+     "url": "blob:null/801cc219-e6e9-402a-9ca9-3f3f0e1bfa33",
+     "method": "GET",
+     "headers": {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HermesLivingSpacesR1/0.0.0 Chrome/152.0.7977.167 Electron/44.9.3 Safari/537.36",
+      "Referer": ""
+     },
+     "mixedContentType": "none",
+     "initialPriority": "Low",
+     "referrerPolicy": "no-referrer",
+     "isSameSite": false
+    },
+    "timestamp": 1497822.519807,
+    "wallTime": 1794365346.347833,
+    "initiator": {
+     "type": "other"
+    },
+    "redirectHasExtraInfo": false,
+    "type": "Image",
+    "frameId": "9BF770C0B5054748326AB24DFB0B7593",
+    "hasUserGesture": false
+   }
+  },
+  {
+   "at": 1794365346.38185,
+   "phase": "positive",
+   "session": "[REDACTED SESSION]",
+   "method": "Network.requestWillBeSent",
+   "params": {
+    "requestId": "25183.19",
+    "loaderId": "270D007AB6B177C9E22BE5CA71BA728F",
+    "documentURL": "about:srcdoc",
+    "request": {
+     "url": "blob:null/b3a0d5a2-dfd8-41a1-9673-f4930e1e028f",
+     "method": "GET",
+     "headers": {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HermesLivingSpacesR1/0.0.0 Chrome/152.0.7977.167 Electron/44.9.3 Safari/537.36",
+      "Origin": "null",
+      "Referer": ""
+     },
+     "mixedContentType": "none",
+     "initialPriority": "High",
+     "referrerPolicy": "no-referrer",
+     "isSameSite": false
+    },
+    "timestamp": 1497822.555491,
+    "wallTime": 1794365346.381307,
+    "initiator": {
+     "type": "script",
+     "url": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=hosting-probe",
+     "lineNumber": 0,
+     "columnNumber": 7
+    },
+    "redirectHasExtraInfo": false,
+    "type": "Script",
+    "frameId": "9BF770C0B5054748326AB24DFB0B7593",
+    "hasUserGesture": false,
+    "renderBlockingBehavior": "NonBlocking"
+   }
+  },
+  {
+   "at": 1794365346.385655,
+   "phase": "positive",
+   "session": "[REDACTED SESSION]",
+   "method": "Network.requestWillBeSent",
+   "params": {
+    "requestId": "25183.20",
+    "loaderId": "270D007AB6B177C9E22BE5CA71BA728F",
+    "documentURL": "about:srcdoc",
+    "request": {
+     "url": "blob:null/2f9e7bfb-66a7-46d6-8125-d8f24b06da23",
+     "method": "GET",
+     "headers": {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HermesLivingSpacesR1/0.0.0 Chrome/152.0.7977.167 Electron/44.9.3 Safari/537.36",
+      "Origin": "null",
+      "Referer": ""
+     },
+     "mixedContentType": "none",
+     "initialPriority": "High",
+     "referrerPolicy": "no-referrer",
+     "isSameSite": false
+    },
+    "timestamp": 1497822.559294,
+    "wallTime": 1794365346.385089,
+    "initiator": {
+     "type": "script",
+     "url": "blob:null/b3a0d5a2-dfd8-41a1-9673-f4930e1e028f",
+     "lineNumber": 0,
+     "columnNumber": 26
+    },
+    "redirectHasExtraInfo": false,
+    "type": "Script",
+    "frameId": "9BF770C0B5054748326AB24DFB0B7593",
+    "hasUserGesture": false,
+    "renderBlockingBehavior": "NonBlocking"
+   }
+  },
+  {
+   "at": 1794365346.385706,
+   "phase": "positive",
+   "session": "[REDACTED SESSION]",
+   "method": "Network.requestWillBeSent",
+   "params": {
+    "requestId": "25183.21",
+    "loaderId": "270D007AB6B177C9E22BE5CA71BA728F",
+    "documentURL": "about:srcdoc",
+    "request": {
+     "url": "blob:null/9e3f6951-6ecf-4b38-97ec-f5f99055af8a",
+     "method": "GET",
+     "headers": {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HermesLivingSpacesR1/0.0.0 Chrome/152.0.7977.167 Electron/44.9.3 Safari/537.36",
+      "Origin": "null",
+      "Referer": ""
+     },
+     "mixedContentType": "none",
+     "initialPriority": "High",
+     "referrerPolicy": "no-referrer",
+     "isSameSite": false
+    },
+    "timestamp": 1497822.559325,
+    "wallTime": 1794365346.385118,
+    "initiator": {
+     "type": "script",
+     "url": "blob:null/b3a0d5a2-dfd8-41a1-9673-f4930e1e028f",
+     "lineNumber": 1,
+     "columnNumber": 26
+    },
+    "redirectHasExtraInfo": false,
+    "type": "Script",
+    "frameId": "9BF770C0B5054748326AB24DFB0B7593",
+    "hasUserGesture": false,
+    "renderBlockingBehavior": "NonBlocking"
+   }
+  },
+  {
+   "at": 1794365346.385754,
+   "phase": "positive",
+   "session": "[REDACTED SESSION]",
+   "method": "Network.requestWillBeSent",
+   "params": {
+    "requestId": "25183.22",
+    "loaderId": "270D007AB6B177C9E22BE5CA71BA728F",
+    "documentURL": "about:srcdoc",
+    "request": {
+     "url": "blob:null/9b67ae3c-00f2-4e59-9471-8748b8294542",
+     "method": "GET",
+     "headers": {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HermesLivingSpacesR1/0.0.0 Chrome/152.0.7977.167 Electron/44.9.3 Safari/537.36",
+      "Origin": "null",
+      "Referer": ""
+     },
+     "mixedContentType": "none",
+     "initialPriority": "High",
+     "referrerPolicy": "no-referrer",
+     "isSameSite": false
+    },
+    "timestamp": 1497822.559344,
+    "wallTime": 1794365346.385137,
+    "initiator": {
+     "type": "script",
+     "url": "blob:null/b3a0d5a2-dfd8-41a1-9673-f4930e1e028f",
+     "lineNumber": 2,
+     "columnNumber": 24
+    },
+    "redirectHasExtraInfo": false,
+    "type": "Script",
+    "frameId": "9BF770C0B5054748326AB24DFB0B7593",
+    "hasUserGesture": false,
+    "renderBlockingBehavior": "NonBlocking"
+   }
+  }
+ ],
+ "webrtc": {
+  "outcome": "attempted",
+  "gatheringState": "gathering",
+  "udp_packets": [
+   {
+    "at": 1794365384.1609569,
+    "phase": "webrtc",
+    "transport": "udp",
+    "peer": [
+     "127.0.0.1",
+     57203
+    ],
+    "bytes": 20,
+    "data": "AAEAACESpEJpTm5kbjNVUm50a1g="
+   },
+   {
+    "at": 1794365384.5521002,
+    "phase": "webrtc",
+    "transport": "udp",
+    "peer": [
+     "127.0.0.1",
+     57203
+    ],
+    "bytes": 20,
+    "data": "AAEAACESpEJpTm5kbjNVUm50a1g="
+   },
+   {
+    "at": 1794365385.1792681,
+    "phase": "webrtc",
+    "transport": "udp",
+    "peer": [
+     "127.0.0.1",
+     57203
+    ],
+    "bytes": 20,
+    "data": "AAEAACESpEJpTm5kbjNVUm50a1g="
+   },
+   {
+    "at": 1794365386.333876,
+    "phase": "webrtc",
+    "transport": "udp",
+    "peer": [
+     "127.0.0.1",
+     57203
+    ],
+    "bytes": 20,
+    "data": "AAEAACESpEJpTm5kbjNVUm50a1g="
+   },
+   {
+    "at": 1794365388.4390552,
+    "phase": "webrtc",
+    "transport": "udp",
+    "peer": [
+     "127.0.0.1",
+     57203
+    ],
+    "bytes": 20,
+    "data": "AAEAACESpEJpTm5kbjNVUm50a1g="
+   }
+  ],
+  "packet_arrived": true,
+  "asserted_blocked": false
+ },
+ "snapshot_sha256": {
+  "research-desk": "c9cb92ec4d97f55fe2a07e6740685ebadd67dead3d812c0ca452c6f3abfaa5b0",
+  "pair-play": "6e8cd2e5a7e319df801beaf1e6dbdadc1ec5416ffbbda24f47cc663e8fe180b7"
+ },
+ "passed": 86,
+ "total": 86
+}

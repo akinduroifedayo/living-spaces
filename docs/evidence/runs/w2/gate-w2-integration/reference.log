@@ -1,0 +1,126 @@
+TAP version 13
+# Subtest: Editor confirms notes, status and priority only after the backend, and keeps failed drafts
+ok 1 - Editor confirms notes, status and priority only after the backend, and keeps failed drafts
+  ---
+  duration_ms: 7.248709
+  type: 'test'
+  ...
+# Subtest: Editor preserves drafts on conflict, rebases explicitly and requires a separate save
+ok 2 - Editor preserves drafts on conflict, rebases explicitly and requires a separate save
+  ---
+  duration_ms: 2.302625
+  type: 'test'
+  ...
+# Subtest: Editor Use updated adopts authoritative values without writing
+ok 3 - Editor Use updated adopts authoritative values without writing
+  ---
+  duration_ms: 1.9915
+  type: 'test'
+  ...
+# Subtest: Library uses actual EmptyState children and retains creation text until confirmation
+ok 4 - Library uses actual EmptyState children and retains creation text until confirmation
+  ---
+  duration_ms: 1.570708
+  type: 'test'
+  ...
+# Subtest: App uses real routing and collection subscriptions without unmounting views on reload
+ok 5 - App uses real routing and collection subscriptions without unmounting views on reload
+  ---
+  duration_ms: 2.581541
+  type: 'test'
+  ...
+# Subtest: freshness keeps failed attempts, successful completion and source time distinct
+ok 6 - freshness keeps failed attempts, successful completion and source time distinct
+  ---
+  duration_ms: 10.406875
+  type: 'test'
+  ...
+# Subtest: habit check-in keeps its intended value after conflict and retries only explicitly
+ok 7 - habit check-in keeps its intended value after conflict and retries only explicitly
+  ---
+  duration_ms: 1.939416
+  type: 'test'
+  ...
+# Subtest: Library failed creation retains the title and never selects a fictitious record
+ok 8 - Library failed creation retains the title and never selects a fictitious record
+  ---
+  duration_ms: 0.791375
+  type: 'test'
+  ...
+# Subtest: habit creation uses confirmation and keeps failed names and EmptyState instructions
+ok 9 - habit creation uses confirmation and keeps failed names and EmptyState instructions
+  ---
+  duration_ms: 1.204583
+  type: 'test'
+  ...
+# Subtest: habit conflict discard reloads authoritative check-ins without retrying
+ok 10 - habit conflict discard reloads authoritative check-ins without retrying
+  ---
+  duration_ms: 1.042583
+  type: 'test'
+  ...
+# Subtest: actual RefreshButton handles denial, queued replies, failure and success events
+ok 11 - actual RefreshButton handles denial, queued replies, failure and success events
+  ---
+  duration_ms: 0.833625
+  type: 'test'
+  ...
+# Subtest: Chrome smoke bundles contain the unchanged actual kit, examples and resolvable local imports
+ok 12 - Chrome smoke bundles contain the unchanged actual kit, examples and resolvable local imports
+  ---
+  duration_ms: 5.71675
+  type: 'test'
+  ...
+# Subtest: habit retry retains its rebased revision if that explicit retry fails
+ok 13 - habit retry retains its rebased revision if that explicit retry fails
+  ---
+  duration_ms: 1.33825
+  type: 'test'
+  ...
+# Subtest: Library explicit click validates input and locks duplicate pending activations
+ok 14 - Library explicit click validates input and locks duplicate pending activations
+  ---
+  duration_ms: 1.300959
+  type: 'test'
+  ...
+# Subtest: Library single-line Enter saves while modifiers and IME composition do not
+ok 15 - Library single-line Enter saves while modifiers and IME composition do not
+  ---
+  duration_ms: 0.727667
+  type: 'test'
+  ...
+# Subtest: Planner explicit click validates input and locks duplicate pending activations
+ok 16 - Planner explicit click validates input and locks duplicate pending activations
+  ---
+  duration_ms: 0.97825
+  type: 'test'
+  ...
+# Subtest: Planner single-line Enter saves while modifiers and IME composition do not
+ok 17 - Planner single-line Enter saves while modifiers and IME composition do not
+  ---
+  duration_ms: 1.329958
+  type: 'test'
+  ...
+# Subtest: Editor explicit save locks pending clicks and leaves multiline Enter to the textarea
+ok 18 - Editor explicit save locks pending clicks and leaves multiline Enter to the textarea
+  ---
+  duration_ms: 0.742083
+  type: 'test'
+  ...
+# Subtest: Planner pending check-in locks immediate repeat toggles and creation
+ok 19 - Planner pending check-in locks immediate repeat toggles and creation
+  ---
+  duration_ms: 1.033875
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 134.056959
+
+--- stderr ---

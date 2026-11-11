@@ -1,0 +1,120 @@
+{
+ "step": "frame-reload",
+ "status": "PASS",
+ "checks": [
+  {
+   "name": "research-desk exists",
+   "passed": true,
+   "observed": "research-desk",
+   "expected": "research-desk"
+  },
+  {
+   "name": "pair-play exists",
+   "passed": true,
+   "observed": "pair-play",
+   "expected": "pair-play"
+  },
+  {
+   "name": "Partials Reload fixture name is unused",
+   "passed": true,
+   "observed": false,
+   "expected": false
+  },
+  {
+   "name": "only the guest frame schedules its reload",
+   "passed": true,
+   "observed": {
+    "ok": true,
+    "value": "reload scheduled"
+   },
+   "expected": {
+    "ok": true,
+    "value": "reload scheduled"
+   }
+  },
+  {
+   "name": "old session is explicitly closed",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "shell emitted space-reloaded",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "host page was not reloaded",
+   "passed": true,
+   "observed": "partials-1794365510039484000",
+   "expected": "partials-1794365510039484000"
+  },
+  {
+   "name": "host replaced the old Space frame",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "old session replay is refused",
+   "passed": true,
+   "observed": [
+    false,
+    "session_invalid"
+   ],
+   "expected": [
+    false,
+    "session_invalid"
+   ]
+  },
+  {
+   "name": "reload and replay preserve all record bytes",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "replay appends no change",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "partials-reload fixture deleted",
+   "passed": true,
+   "observed": false,
+   "expected": false
+  },
+  {
+   "name": "research-desk protected snapshot is byte-identical",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "pair-play protected snapshot is byte-identical",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  }
+ ],
+ "fixtures": [
+  "partials-reload"
+ ],
+ "evidence_class": "isolated Desktop; native host controls; guest bridge; canonical SQLite",
+ "sessions": {
+  "old": "[REDACTED SESSION]",
+  "new": "[REDACTED SESSION]"
+ },
+ "replay": {
+  "ok": false,
+  "error": {
+   "code": "session_invalid",
+   "message": "Session is closed, unknown or belongs to another Space"
+  }
+ },
+ "cleanup_errors": [],
+ "passed": 14,
+ "total": 14
+}

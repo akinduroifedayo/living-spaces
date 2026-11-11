@@ -1,0 +1,19 @@
+{
+ "seat": "w2-backend-fix",
+ "thread": "01a1c887-48d9-7d40-b273-d4cc51390855",
+ "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/w2-backend-fix",
+ "model": "gpt-6-astra",
+ "effort": "high",
+ "provider": "openai",
+ "tier": "priority",
+ "route_match": true,
+ "completed": 0,
+ "failed": 0,
+ "exit": "running",
+ "brief_sha256": "331ad03935c0363e59d32aef369351faf965ac2d1ea34c22ad4827fa2ad7fafd",
+ "procedural_gaps": [
+  "No full frozen-input shard/preflight packet was prepared for this wave. Source-qualified evidence only; not a full pstack procedural pass."
+ ],
+ "skill_budget_warning": true,
+ "tier_evidence": "event_msg.thread_settings_applied.thread_settings.service_tier"
+}

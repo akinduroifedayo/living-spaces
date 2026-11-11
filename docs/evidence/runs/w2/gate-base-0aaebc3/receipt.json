@@ -1,0 +1,109 @@
+{
+ "tree": "/Volumes/Expansion/Development/Projects/living-spaces-wt/w2-review",
+ "head": "0aaebc35da217e11511bf678b9f4b88fc5add4e0",
+ "dirty": [],
+ "results": [
+  {
+   "step": "build-sandbox",
+   "argv": [
+    "node",
+    "scripts/build-sandbox.mjs"
+   ],
+   "exit": 0,
+   "seconds": 0.9,
+   "counts": {}
+  },
+  {
+   "step": "build-renderer",
+   "argv": [
+    "esbuild",
+    "src/desktop/plugin.src.js",
+    "--bundle",
+    "--format=esm",
+    "--jsx=automatic",
+    "--external:@hermes/plugin-sdk",
+    "--external:react",
+    "--external:react/jsx-runtime",
+    "--outfile=src/living-spaces/desktop/plugin.js",
+    "--metafile=.run/package/desktop-metafile.json",
+    "--log-level=warning"
+   ],
+   "exit": 0,
+   "seconds": 0.2,
+   "counts": {}
+  },
+  {
+   "step": "graph-gate",
+   "argv": [
+    "node",
+    "scripts/check-renderer-graph.mjs",
+    ".run/package/desktop-metafile.json"
+   ],
+   "exit": 0,
+   "seconds": 0.1,
+   "counts": {}
+  },
+  {
+   "step": "python",
+   "argv": [
+    "<hermes-runtime>",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests/python",
+    "-t",
+    "."
+   ],
+   "exit": 0,
+   "seconds": 4.3,
+   "counts": {
+    "ran": 151,
+    "ok": true
+   }
+  },
+  {
+   "step": "node",
+   "argv": [
+    "node",
+    "--test",
+    "--test-reporter=tap",
+    "tests/js/sandbox/",
+    "tests/js/ui/"
+   ],
+   "exit": 0,
+   "seconds": 1.8,
+   "counts": {
+    "tests": 112,
+    "pass": 112,
+    "fail": 0,
+    "skipped": 0,
+    "todo": 0
+   }
+  },
+  {
+   "step": "reference",
+   "argv": [
+    "node",
+    "--no-warnings",
+    "--experimental-vm-modules",
+    "--import",
+    "./tests/js/reference/env.mjs",
+    "--test",
+    "--test-reporter=tap",
+    "tests/js/reference/compatibility.test.mjs"
+   ],
+   "exit": 0,
+   "seconds": 0.2,
+   "counts": {
+    "tests": 19,
+    "pass": 19,
+    "fail": 0,
+    "skipped": 0,
+    "todo": 0
+   }
+  }
+ ],
+ "rebuilt_artifacts_match_committed": true,
+ "green": true
+}

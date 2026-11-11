@@ -1,0 +1,85 @@
+{
+  "evidence_class": "real isolated Desktop guest bridge and canonical core; fixture data only",
+  "checks": [
+    {
+      "name": "fixture opens with own-data authority",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "name": "change listener installed",
+      "actual": {
+        "ok": true,
+        "value": true
+      },
+      "expected": {
+        "ok": true,
+        "value": true
+      },
+      "passed": true
+    },
+    {
+      "name": "granted fixture receives its change metadata",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "name": "own-data permission card selected",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "name": "revoke confirmation selected",
+      "actual": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "name": "remounted guest lacks own-data authority",
+      "actual": false,
+      "expected": false,
+      "passed": true
+    },
+    {
+      "name": "revoked guest listener installed",
+      "actual": {
+        "ok": true,
+        "value": true
+      },
+      "expected": {
+        "ok": true,
+        "value": true
+      },
+      "passed": true
+    },
+    {
+      "name": "record query denied after revoke",
+      "actual": [
+        false,
+        "not_granted"
+      ],
+      "expected": [
+        false,
+        "not_granted"
+      ],
+      "passed": true
+    },
+    {
+      "name": "no new change metadata delivered over four poll intervals",
+      "actual": {
+        "ok": true,
+        "value": []
+      },
+      "expected": {
+        "ok": true,
+        "value": []
+      },
+      "passed": true
+    }
+  ],
+  "passed": 9,
+  "total": 9
+}

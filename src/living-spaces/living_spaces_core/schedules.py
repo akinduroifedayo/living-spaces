@@ -55,6 +55,8 @@ def _schedule_row(sid):
         if row is None:
             return None
         result = dict(row)
+        if result.get("reason") is None:
+            result.pop("reason", None)
         if result["status"] in ("disabled", "paused"):
             audit = conn.execute("SELECT detail FROM audit WHERE space=? AND action=? ORDER BY id DESC LIMIT 1", (sid, "schedule." + result["status"])).fetchone()
             if audit:
