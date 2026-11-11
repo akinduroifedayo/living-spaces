@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Canvas looks · specimen</title>
+<link rel="stylesheet" href="spaces-kit.css">
+<style>
+/* Specimen only. Generic placeholder content; no real data. Choose a look with ?look=observatory */
+body { padding: var(--space-pad); }
+.wrap { max-width: 1120px; margin-inline: auto; display: grid; gap: var(--space-5); }
+.looks { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.looks a { padding: 8px 12px; border: 1px solid var(--space-control-line); border-radius: 999px; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+.looks a[aria-current="true"] { background: var(--space-action); color: var(--space-on-action); border-color: var(--space-action); }
+.hero-art { position: absolute; inset: 0; z-index: -2; opacity: .9; }
+.bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; align-items: end; height: 120px; }
+.bars i { display: block; background: var(--space-ink-2); border-radius: var(--space-radius) var(--space-radius) 0 0; height: var(--h); transform-origin: bottom; }
+.bars-labels { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; font-size: var(--space-text-xs); color: var(--space-muted); text-align: center; }
+@media (prefers-reduced-motion: no-preference) { .bars i { animation: grow .7s var(--space-ease) both; animation-delay: calc(var(--i) * 50ms); } @keyframes grow { from { transform: scaleY(0); } } }
+</style></head>
+<body><div class="wrap">
+<nav class="looks" aria-label="Look" id="looks"></nav>
+<header class="space-hero space-hero--scrim">
+  <svg class="hero-art" viewBox="0 0 800 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><circle cx="620" cy="90" r="46" fill="var(--space-ink-2)" opacity=".85"/><path d="M0 300V230l60-30 50 20 70-60 60 40 80-70 90 80 70-30 80 50 70-40 100 60v50z" fill="currentColor" opacity=".18"/></svg>
+  <p class="space-kicker">Specimen · generic data</p>
+  <h1 class="space-display space-glow">18<small style="font-size:.4em">°C</small></h1>
+  <p style="max-width:42ch">A hero band with a display numeral, an inline SVG scene and a kicker. Each look supplies its own ground, type and depth.</p>
+</header>
+<section class="space-asymmetric">
+  <div class="space-panel space-stack">
+    <h2>Week at a glance · daily high, °C</h2>
+    <div class="bars" role="img" aria-label="Daily highs: Mon 14, Tue 16, Wed 18, Thu 17, Fri 21, Sat 19, Sun 15">
+      <i style="--h:50%;--i:0"></i><i style="--h:62%;--i:1"></i><i style="--h:75%;--i:2"></i><i style="--h:70%;--i:3"></i><i style="--h:100%;--i:4"></i><i style="--h:84%;--i:5"></i><i style="--h:58%;--i:6"></i>
+    </div>
+    <div class="bars-labels" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+  </div>
+  <div class="space-panel">
+    <h2>Ledger</h2>
+    <ul class="space-ledger"><li><span>Sunrise</span><b>06:52</b></li><li><span>Sunset</span><b>17:04</b></li><li><span>Wind, km/h</span><b>12</b></li><li><span>Rain chance, next 24 h</span><b>20%</b></li></ul>
+  </div>
+</section>
+<section class="space-asymmetric">
+  <div class="space-state space-panel">
+    <svg viewBox="0 0 220 120" aria-hidden="true"><circle cx="110" cy="60" r="38" fill="none" stroke="var(--space-ink-2)" stroke-width="3" stroke-dasharray="6 8"/><path d="M92 60h36M110 42v36" stroke="var(--space-ink-2)" stroke-width="3" stroke-linecap="round"/></svg>
+    <h2>Nothing pinned yet</h2><p class="space-muted">Add a city and its sky will appear here.</p>
+    <button type="button" class="space-button--primary">Add a city</button>
+  </div>
+  <div class="space-panel space-stack" aria-busy="true"><h2>Loading</h2><span class="space-skeleton" style="height:28px"></span><span class="space-skeleton" style="width:70%"></span><span class="space-skeleton" style="width:50%"></span></div>
+</section>
+</div>
+<script>
+const looks = ['observatory','letterpress','blueprint','felt','daybreak','enamel'];
+const cur = new URL(location.href).searchParams.get('look') || looks[0];
+document.body.dataset.theme = cur;
+document.getElementById('looks').innerHTML = looks.map(l => `<a href="?look=${l}" ${l===cur?'aria-current="true"':''}>${l}</a>`).join('');
+</script></body></html>
