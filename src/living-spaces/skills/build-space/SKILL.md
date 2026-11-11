@@ -128,11 +128,15 @@ A Space is an open canvas that belongs to you, the bot that made it. It has no
 house style. The user asked for a thing, and you get to decide how that thing
 looks. Make something they would show a friend. If the user names a style or
 their own design skill is installed (impeccable or another), follow that
-instead. Everything below is a strong default you can ignore.
+instead. The visual defaults below are suggestions, not templates or limits.
+Accessibility, truthful data, permissions and durable-save rules still apply.
 
 ### 1. Commit to an art direction before you write code
 
-Write a three-line brief for yourself (you can put it in a comment in `styles.css`):
+Choose the surface's mode first: **Operate** for tools and games, **Read** for
+documents, **Experience** for a visual piece. A working tool is not a marketing
+page: let the work lead, not a decorative welcome screen. Then write a
+three-line brief for yourself (a comment in `styles.css` is enough):
 - **Concept:** one image from the subject's own world, not "a dashboard".
   Weather could be an observatory, an airport departures board or a
   watercolour almanac. A reading list could be a library card catalogue or
@@ -151,12 +155,12 @@ for that.
 
 ### 2. Build the world with real materials
 
-- **Type:** pick a display face with character and a readable text face. If
-  the frame can load web fonts, use them (Google Fonts, Fontsource). If not,
-  use the bundled `font:inter` / `font:dm-sans`, vendor a WOFF2 into the
-  project, or use a deliberate system stack (`ui-serif`, `ui-rounded`,
-  `ui-monospace`). Use a real scale with large steps: display numerals at
-  64–160px are welcome. Use `font-variant-numeric: tabular-nums` for data.
+- **Type:** pick a display face with character and a readable text face.
+  Bundle an appropriately licensed WOFF2 and declare `@font-face`; the optional
+  `font:inter` / `font:dm-sans` libraries supply local text faces. A font name in
+  CSS does not download it. Deliberate system stacks are valid offline fallbacks.
+  Use expressive scale when the content earns it, not uniformly tiny type or
+  a giant numeral on every screen. Use `clamp()` and tabular numerals for data.
 - **Colour:** a ground, an ink and one or two accents with a job. Tint
   neutrals toward the concept's hue. Gradients, grain, glow, glass and deep
   shadows are all fine when they are the material you chose, not a garnish.
@@ -164,25 +168,35 @@ for that.
   surface that sits on it. Soft offset shadows, inner light, noise or paper
   texture (an SVG `feTurbulence` filter or a generated tile), and
   `backdrop-filter` all count.
-- **Imagery:** give most Spaces at least one real image.
-  - Generate it. Use Hermes's image generation tool for hero art, scene
+- **Imagery:** give the concept a visual signature where it helps. A reading
+  tool can be typographic; imagery is not a mandatory extra request or cost.
+  - Generate it. When an approved image tool and cost envelope are available,
+    use them for hero art, scene
     illustrations, spot illustrations for empty states, sprites, card backs,
     textures and icon sets. Prompt in the concept's style, and ask for
-    transparent PNGs for cut-outs. Put the result in the project: use the
-    file-by-reference tool when available, otherwise `files` with
-    `{"b64", "mime"}`. Reference it from CSS or HTML, or through
+    transparent PNGs for cut-outs. Do not switch providers or use a paid/API
+    fallback to bypass an unavailable tool. Draw SVG instead. Put the result in
+    the project: this revision supports `files` with `{"b64", "mime"}`.
+    Use a future file-reference route only if the actual tool schema exposes it.
+    Reference the asset from CSS or HTML, or through
     `space.asset(path)` at runtime.
   - Draw it. Inline SVG illustrations, patterns and pictograms are cheap and
     crisp: a sun arc, a city skyline silhouette, a card-suit motif.
-  - Use the web. When Internet access is on, public images, icon libraries,
-    fonts and embeds can make a Space feel live. Check licence and
-    attribution. If the frame can't load remote URLs directly, fetch them
-    `as: 'bytes'` through `space.net.fetch` and use a `blob:` URL.
+  - Use the web. When Internet access is on, fetch licensed public imagery
+    through the runtime's supported path. **The Runtime section is authoritative:**
+    at this revision direct remote images, web fonts, CDN imports and embeds are
+    blocked. Use `space.net.fetch(url, {as:'bytes'})` for images, check HTTP
+    status, and use the returned `b64` and `mime` as a data URL (or a decoded
+    Blob). Release replaced blob URLs. Bundle fonts and libraries locally.
+    If a later runtime explicitly enables direct remote assets, use that route
+    with load/error fallbacks; never infer capability from an amendment or plan.
   - **Always ship an offline fallback:** a bundled or generated asset, an SVG,
     or a styled placeholder, so the Space still looks finished when Internet
     access is off.
-  - Generated images are decoration and atmosphere. Never present them as
-    photos of real places, people or data.
+  - Keep source, licence/attribution and generated-art provenance with the
+    asset. Size it to its display role; compress large images before bundling.
+    Generated art is not a documentary photo or a data visualization. Never
+    present an invented skyline, person or condition as observed evidence.
 - **Icons:** one consistent family (bundled `lucide`, a web library, or
   your own SVG set). Emoji is fine as a deliberate voice (a game), not as a
   stand-in for an icon system.
@@ -199,8 +213,10 @@ viewport. Then arrange the rest by importance, with real size contrast.
   thing it describes.
 - **Game:** the board is the stage. Score, turn and restart are findable
   but quiet. Celebrate a win.
-- **Document / visual piece / live board:** a reading measure of about 65–75ch,
-  generous margins, and imagery set into the text like a magazine.
+- **Document:** a reading measure of about 65–75ch, generous margins, useful
+  headings and imagery set into the text like a magazine.
+- **Visual piece / live board:** let the artwork or board fill the stage; do
+  not constrain it to a document column. Keep spatial meaning on narrow screens.
 
 Avoid the default look: a row of identical stat cards, then a grid of
 same-size cards, all with the same border and radius. Vary the shapes: full
@@ -213,21 +229,27 @@ Charts are part of the art direction. Draw them for this subject:
 - a temperature ribbon or a sun-and-moon arc for weather, a radial clock
   for a schedule, a heat calendar for habits, a small-multiples strip for
   cities, a bar of real tiles for game progress, a timeline for research.
-- Use local SVG or Canvas, the bundled `lightweight-charts`, or a web chart
-  library when the frame allows. Style axes, gridlines and labels in the
+- Use local SVG or Canvas, a bundled chart library appropriate to the data
+  (`lightweight-charts` is for time series), or a locally vendored dependency.
+  Style axes, gridlines and labels in the
   concept's type and colour, or remove them when direct labels read better.
 - Keep the numbers honest. Use real calculations, units on every axis or
   label, and a text summary or table on demand. Don't invent trends, and
-  never identify a series by colour alone. Show zero, empty and
-  no-eligible states.
+  never identify a series by colour alone. Compute the domain from all eligible
+  values; preserve negative values and meaningful baselines. A sun arc represents
+  time, not temperature. A pretty shape is not permission to change the measure.
+  Show zero, empty and no-eligible states, not invented fallback values.
 
 ### 5. Add motion that means something
 
 Plan one authored moment per view: numbers counting up to a fresh value, the
 sun arc drawing in, cards flipping, a new record sliding into place, or a
 loading shimmer in the concept's material. Use a short exponential ease-out
-(150–400ms). Animate `transform`, `opacity`, `clip-path` and `filter`. Under
-`prefers-reduced-motion: reduce`, show the end state instead.
+(150–400ms for routine feedback). Prefer `transform` and `opacity`; profile
+`clip-path`, filters and large blur layers before using them. Keep essential
+content visible if animation fails. Under `prefers-reduced-motion: reduce`, show
+the end state instead, including drawn strokes and loading indicators. Motion
+should not hide a result or delay a control. Offer pause for ongoing ambient art.
 
 ### 6. Design every state in the same world
 
@@ -246,7 +268,7 @@ loading shimmer in the concept's material. Use a short exponential ease-out
 
 ### 7. Fit any width
 
-The canvas runs from about 360px (narrow window or phone) to 1600px. Use fluid
+The canvas runs from about 320px (narrow window or phone) to 1600px. Use fluid
 type (`clamp()`), wrapping grids and container queries. At narrow widths, keep
 the hero and the main action in the first screen, stack secondary panels, and
 make touch targets at least 44px. Long names wrap and never overflow.
@@ -258,8 +280,10 @@ Visible focus rings; labelled inputs and icon buttons; body text at least
 (add a scrim when needed); status always carries a word or icon, not colour
 alone; keyboard paths for every pointer action; reduced-motion alternatives;
 light and dark if you rely on the host theme. Check these again after custom
-CSS. Before you finish, look at the Space at narrow and wide widths and in its
-empty, loading and error states.
+CSS. Before you finish, inspect the running Space at wide, 390px and 320px widths,
+200% zoom, long text, keyboard focus and reduced motion; exercise its empty,
+loading, error, success and confirmed-save states. Say which checks you actually
+ran. A static frame is not evidence of a working save, refresh or game loop.
 
 ### The optional kit
 
@@ -267,17 +291,36 @@ empty, loading and error states.
 `hashRouter`, `Nav`, `SaveIndicator`, `ConflictBanner`, `EmptyState` and
 `RefreshButton`. Use it freely. Its markup is plain and easy to restyle.
 
-`kit/spaces-kit.css` is **one optional look** (quiet, Hermes-like) that loads
-only if you link it. Most Spaces should bring their own `styles.css` instead.
+`kit/spaces-kit.css` is **opt-in**, linked before the app's own `styles.css`.
+Use no kit CSS, its quiet base, or one of six optional canvas materials:
+`observatory` (night and glass), `letterpress` (paper and ink), `blueprint`
+(drafting grid), `felt` (tabletop), `daybreak` (warm light) and `enamel` (bold
+colour blocks). Set `data-theme="letterpress"` on **body**. These six are CSS
+attributes, **not accepted manifest preset names**. They choose their own light
+or dark scheme. They contain no downloaded fonts, generated images or app logic.
+Override tokens and composition freely; a material alone is not an art direction.
+
+Useful primitives: `space-hero`, `space-display`, `space-asymmetric`,
+`space-ledger`, `space-rail`, `space-panel` and `space-state`. Motion is opt-in:
+`space-reveal`, `space-draw`, `space-skeleton--shimmer`; `data-motion="none"`
+disables these helpers, and OS reduced motion wins. Keep loading text alongside
+decorative skeletons. Read the companion source
+[canvas guide](../../runtime/kit/README.md) and
+[specimen](../../runtime/kit/canvas-gallery.html) for composition, asset and state
+recipes. They demonstrate three different layouts with public synthetic content,
+not a mandated starting screen. These docs are source references, not files
+automatically copied into each created Space.
+
 `manifest.theme` presets (`editorial`, `terminal`, `playful`, `minimal`,
 `data`, `journal`, `game`) only set kit tokens. Treat them as palettes to
 start from, not as an art direction. `accent` colours the Space's tile in the
 Spaces tab; pick the hue closest to your concept.
 
 References: [Weather Window](references/weather-window/index.html) uses its
-own visual language without kit CSS. The [premium showcase](references/showcase/README.md)
-shows fully art-directed Spaces: a data dashboard, a game, and a live
-board. Read them for ambition and technique, not to copy their look.
+own visual language without kit CSS. [Showcase sources](references/showcase/README.md)
+are further technique references, not proof of chat generation or qualification;
+consult their verification receipts before claiming live behaviour. Read them
+for ambition and technique, not to copy their look.
 
 ## JavaScript-controlled forms
 
