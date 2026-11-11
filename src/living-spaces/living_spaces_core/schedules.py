@@ -183,7 +183,7 @@ def request_schedule(sid, *, cadence, timezone, purpose, actor):
     return _schedule_row(sid)
 
 
-def decide_schedule(sid, decision, *, actor="user", requested_upkeep=None):
+def decide_schedule(sid, decision, *, actor="user", requested_upkeep=None, requested_schedule=None):
     if decision not in ("approve", "deny"):
         raise SpacesError("invalid", "Schedule decision must be approve or deny")
     if decision == "approve":
@@ -197,11 +197,15 @@ def decide_schedule(sid, decision, *, actor="user", requested_upkeep=None):
         space = _space(conn, sid)
         if decision == "approve":
             _require_current_upkeep(conn, sid, upkeep)
-            if upkeep["handler"] == "agent" and not grants._check(conn, sid, "refresh"):
+            if not grants._check(conn, sid, "refresh"):
                 raise SpacesError("not_granted", "Refresh is not granted", capability="refresh")
         row = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
         if row is None:
             raise SpacesError("not_found", "Schedule not found")
+        if decision == "approve" and requested_schedule is not None:
+            displayed = {key: row[key] for key in ("cadence", "timezone", "purpose", "requested_at")}
+            if requested_schedule != displayed:
+                raise SpacesError("conflict", "Schedule request changed. Review the current cadence, timezone and purpose before approving.", current=dict(row))
         if decision == "approve" and space["status"] == "archived":
             raise SpacesError("archived", "Unarchive the Space before approving upkeep")
         try:
@@ -212,6 +216,8 @@ def decide_schedule(sid, decision, *, actor="user", requested_upkeep=None):
             if decision == "approve" and row["status"] == "active" and row["cron_job_id"] and jobs.get_job(row["cron_job_id"]):
                 return dict(row)
             if row["cron_job_id"]:
+                from . import runs
+                runs._sync_agent_runs(sid, conn=conn)
                 jobs.remove_job(row["cron_job_id"])
                 conn.execute("UPDATE schedules SET cron_job_id=NULL WHERE space=?", (sid,))
             shim = _shim(sid)
@@ -260,6 +266,8 @@ def pause_schedule(sid, paused, *, actor, reason="Space upkeep paused"):
             raise SpacesError("not_found", "Schedule not found")
         if not row["cron_job_id"] or row["status"] not in ("active", "paused"):
             raise SpacesError("blocked", "Approve the schedule before changing pause", reason="schedule_not_approved")
+        if not paused and not grants._check(conn, sid, "refresh"):
+            raise SpacesError("not_granted", "Refresh is not granted", capability="refresh")
         try:
             jobs = _cron()
         except ImportError as exc:
@@ -303,6 +311,8 @@ def remove_schedule(sid):
                 jobs = _cron()
             except ImportError as exc:
                 raise SpacesError("blocked", "Cannot remove the native cron job", reason=str(exc)) from exc
+            from . import runs
+            runs._sync_agent_runs(sid, conn=conn)
             jobs.remove_job(row["cron_job_id"])
         _shim(sid).unlink(missing_ok=True)
         conn.execute("DELETE FROM schedules WHERE space=?", (sid,))

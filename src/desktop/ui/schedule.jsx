@@ -2,8 +2,7 @@ import { useRef, useState } from 'react'
 import { Action, Banner, CopyPrompt, Drawer, StatusPill, Time, absolute } from './components.jsx'
 import { CATCH_UP, dispatchText, errorText, spacePath } from './model.mjs'
 
-export function UpkeepCost({ space }) {
-  const upkeep = space.manifest?.upkeep
+export function UpkeepCost({ space, upkeep = space?.manifest?.upkeep }) {
   return upkeep?.handler === 'agent' ? <><p>Uses model calls. Runs a Hermes agent with the tools enabled for native cron jobs.</p><p className="ls-secondary">The agent is instructed to update only this Space through spaces_* tools and preserve user notes and statuses.</p><div><strong>Upkeep prompt</strong><p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{upkeep.prompt}</p></div></> : <><p>No model calls. Refreshes use the declared public-source handler and approved hosts.</p><p className="ls-secondary">Feed limit 3 MB · 200 entries per source · 20 s request timeout.</p></>
 }
 
