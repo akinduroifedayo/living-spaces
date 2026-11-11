@@ -9,7 +9,7 @@ export function checkRendererGraph(metafile) {
     throw new Error('Renderer metafile must contain inputs and outputs')
   }
   const forbidden = Object.keys(metafile.inputs).filter(input => {
-    const path = relative(root, resolve(input)).split(sep).join('/')
+    const path = relative(root, resolve(root, input)).split(sep).join('/').toLowerCase()
     return path.startsWith('src/guest/') || path.startsWith('src/living-spaces/guest/') || path === 'src/desktop/sandbox/loader.js'
   })
   if (forbidden.length) throw new Error(`Guest code in renderer graph: ${forbidden.join(', ')}`)

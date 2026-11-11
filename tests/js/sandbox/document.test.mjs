@@ -64,3 +64,73 @@ test('the renderer graph gate rejects guest modules, guest HTML and the removed 
   assert.throws(() => checkRendererGraph({ inputs: {}, outputs: {} }), /must contain inputs and outputs/)
   checkRendererGraph(JSON.parse(readFileSync('.run/package/desktop-metafile.json', 'utf8')))
 })
+
+const ordinaryRendererInputs = ['src/desktop/plugin.src.js', 'src/desktop/sandbox/index.js', 'src/desktop/ui/space.jsx']
+const canonicalGuestInputs = ['src/guest/loader.mjs', 'src/guest/document.mjs', 'src/living-spaces/guest/space-host.html', 'src/desktop/sandbox/loader.js']
+const caseVariantGuestInputs = ['src/Guest/loader.mjs', 'src/GUEST/document.mjs', 'src/Living-Spaces/Guest/space-host.html', 'src/living-spaces/GUEST/space-host.html']
+const metafileOf = inputs => ({ inputs: Object.fromEntries(inputs.map(path => [path, {}])), outputs: { 'plugin.js': {} } })
+const rejectsGuest = path => error => /Guest code in renderer graph/.test(error.message) && error.message.includes(path)
+
+async function inForeignDirectory(run) {
+  const { mkdtempSync, rmSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const origin = process.cwd()
+  const scratch = mkdtempSync(join(tmpdir(), 'renderer-graph-'))
+  try {
+    process.chdir(scratch)
+    return await run(scratch)
+  } finally {
+    process.chdir(origin)
+    rmSync(scratch, { recursive: true, force: true })
+  }
+}
+
+test('the renderer graph gate judges root-relative inputs identically from a foreign working directory', async () => {
+  const verdicts = () => {
+    checkRendererGraph(metafileOf(ordinaryRendererInputs))
+    for (const path of canonicalGuestInputs) {
+      assert.throws(() => checkRendererGraph(metafileOf([...ordinaryRendererInputs, path])), rejectsGuest(path), path)
+    }
+  }
+  verdicts()
+  await inForeignDirectory(async () => verdicts())
+})
+
+test('the renderer graph gate rejects case-variant guest paths from the root and from a foreign working directory', async () => {
+  const verdicts = () => {
+    checkRendererGraph(metafileOf(ordinaryRendererInputs))
+    for (const path of caseVariantGuestInputs) {
+      assert.throws(() => checkRendererGraph(metafileOf([...ordinaryRendererInputs, path])), rejectsGuest(path), path)
+    }
+  }
+  verdicts()
+  await inForeignDirectory(async () => verdicts())
+})
+
+test('the renderer graph command exits nonzero for guest metafile inputs and zero for ordinary ones from any working directory', async () => {
+  const { spawnSync } = await import('node:child_process')
+  const { writeFileSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const { fileURLToPath } = await import('node:url')
+  const script = fileURLToPath(new URL('../../../scripts/check-renderer-graph.mjs', import.meta.url))
+  const root = fileURLToPath(new URL('../../../', import.meta.url))
+  await inForeignDirectory(async scratch => {
+    const run = (inputs, cwd) => {
+      const metafile = join(scratch, 'renderer.meta.json')
+      writeFileSync(metafile, JSON.stringify(metafileOf(inputs)))
+      return spawnSync(process.execPath, [script, metafile], { cwd, encoding: 'utf8', env: { PATH: process.env.PATH, HOME: scratch, TMPDIR: scratch } })
+    }
+    for (const cwd of [scratch, root]) {
+      const accepted = run(ordinaryRendererInputs, cwd)
+      assert.equal(accepted.status, 0, `ordinary inputs from ${cwd}: ${accepted.stderr}`)
+      assert.match(accepted.stdout, /Renderer graph excludes guest code and guest HTML/)
+      for (const path of [...canonicalGuestInputs, ...caseVariantGuestInputs]) {
+        const rejected = run([...ordinaryRendererInputs, path], cwd)
+        assert.equal(rejected.status, 1, `${path} from ${cwd}: ${rejected.stdout}`)
+        assert.match(rejected.stderr, /Guest code in renderer graph/)
+        assert.ok(rejected.stderr.includes(path), `${path} named in the failure from ${cwd}`)
+      }
+    }
+  })
+})
