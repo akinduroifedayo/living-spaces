@@ -23,6 +23,11 @@ def check(name, actual, expected):
         raise AssertionError(checks[-1])
 
 
+def has_data(value):
+    return any(g == 'data' or isinstance(g, dict) and g.get('capability') == 'data' and g.get('status') == 'granted'
+               for g in (value or {}).get('value', {}).get('grants', []))
+
+
 def listen():
     return guest("(window.__repairChanges = [], space.on('change', value => window.__repairChanges.push(value)), true)")
 
@@ -38,8 +43,8 @@ try:
                                       manifest={'entry': 'index.html', 'data': {'version': 1}})
         sid = fixture['id']
         q.evaluate(f'location.hash="/spaces?space={sid}"')
-        q.wait(lambda: guest('space.meta'), lambda value: value and value.get('ok'), 30)
-        check('fixture opens with own-data authority', 'data' in guest('space.meta')['value']['grants'], True)
+        q.wait(lambda: guest('space.meta'), lambda value: value and value.get('ok') and value.get('value', {}).get('space', {}).get('id') == sid, 30)
+        check('fixture opens with own-data authority', has_data(guest('space.meta')), True)
         check('change listener installed', listen(), {'ok': True, 'value': True})
         q.core.records.put(sid, 'private_notes', 'before-revoke', {'text': 'Public demo before revoke'}, actor='agent:demo', base_rev=0)
         q.wait(received, lambda value: value and value.get('value'), 15)
@@ -54,8 +59,8 @@ try:
         check('revoke confirmation selected', selected, True)
         q.press('Revoke', '#repair-revoke-dialog')
         q.wait(lambda: q.core.list_grants(sid), lambda grants: any(g['capability'] == 'data' and g['status'] == 'revoked' for g in grants), 10)
-        q.wait(lambda: guest('space.meta'), lambda value: value and value.get('ok') and 'data' not in value['value']['grants'], 20)
-        check('remounted guest lacks own-data authority', 'data' in guest('space.meta')['value']['grants'], False)
+        q.wait(lambda: guest('space.meta'), lambda value: value and value.get('ok') and not has_data(value), 20)
+        check('remounted guest lacks own-data authority', has_data(guest('space.meta')), False)
         check('revoked guest listener installed', listen(), {'ok': True, 'value': True})
         denied = guest("space.query('private_notes')")
         check('record query denied after revoke', (denied.get('ok'), denied.get('code')), (False, 'not_granted'))
