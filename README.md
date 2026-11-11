@@ -40,7 +40,7 @@ The [package README](src/living-spaces/README.md) explains usage, saved data, up
 
 ## Repository documentation
 
-The [specification](docs/spec/SPEC.md) and [amendments](docs/spec/AMENDMENTS.md) record scope. The [evidence ledger](docs/evidence/R1-STATUS.md) contains historical qualification receipts. Saved chat traces and selected probe dumps are omitted from the current tree; earlier commits retain that history.
+The [specification](docs/spec/SPEC.md) and [amendments](docs/spec/AMENDMENTS.md) record scope. The [current release status](docs/evidence/R1-STATUS.md) summarizes the proven Desktop core loop, native-cron upkeep, design and packaging results. Interim build logs, saved chat traces and selected probe dumps remain in Git history rather than the current tree.
 
 ## License
 
