@@ -1,5 +1,10 @@
 # Living Spaces demo script
 
+Open the voiceover and the first title card with the definition, in Ife's words:
+"I see spaces as an open canvas for your bots that live in Hermes." The bot is the
+trusted author and the Space is its canvas. Every shot below shows that: a bot
+builds, keeps current and edits a canvas the user also uses.
+
 Target length: 83 seconds. Hard ceiling: 85 seconds.
 
 ## Recording rules
@@ -16,6 +21,7 @@ These rules come from SPEC section 6 and `docs/evidence/R1-STATUS.md`.
 - Upkeep follows amendment A-03 (native cron only). R1-05 (shortened), R1-06, R1-07 and
   R1-11 are being rerun. Record shots 6 to 9 only from a verified final-candidate run;
   these shots do not pass any check. R1-01 and R1-12 remain pending.
+- Do not show or claim open internet in the frame, file-by-reference, a canvas-to-bot control or the premium design pass. They are in progress, not qualified, and not shipped at this commit. Add a shot only after it is qualified.
 - Final footage and screenshots follow Miro's design kit merge and Forge's serial
   qualification. The demo is planned, not recorded. Publication needs Ife approval.
 - If the arXiv feed has no new entries at recording time, show the truthful no-change

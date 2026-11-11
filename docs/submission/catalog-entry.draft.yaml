@@ -2,12 +2,14 @@
 # Not submitted. Catalog submission needs separate owner approval (docs/evidence/R1-STATUS.md).
 # Forge replaces the placeholder only after validating the final candidate commit.
 # The repository is private. Publication and a catalog PR need Ife approval.
+# Pitch, in Ife's words: "I see spaces as an open canvas for your bots that live in Hermes."
+# The bot is the trusted author and the canvas is its surface (docs/spec/AMENDMENTS.md A-04).
 name: living-spaces
 repo: https://github.com/akinduroifedayo/living-spaces
 sha: PIN_40_CHAR_SHA_AT_FINAL_COMMIT
 subdir: src/living-spaces
 title: Living Spaces
-description: Build persistent applications in the Spaces tab and keep their data current with ordinary Hermes cron upkeep.
+description: "An open canvas for your bots that live in Hermes: persistent Spaces they build in chat and keep current with ordinary Hermes cron upkeep."
 maintainer: akinduroifedayo
 tier: community
 category: desktop
@@ -19,10 +21,11 @@ known_issues:
   - "Release 1 acceptance is incomplete. See docs/evidence/R1-STATUS.md in the repository for observed, partial and pending checks."
   - "Upkeep uses the private cron.jobs and cron.executions APIs. Validation passes with a catalog rule 9 warning; compatibility and catalog maintainer review remain open."
   - "Frontend session cleanup pins its captured backend through window.hermesDesktop. Validation reports a catalog rule 8 raw-bridge warning. No supported pinned REST target was found in the inspected SDK. This is not an all-public-SDK or catalog-approved package."
-  - "Internet access is on by default per Space. space.net.fetch mediates public HTTPS requests and can send data the Space can read. Turn Internet access off in the host-owned Permissions panel. Direct frame networking, arbitrary CDN imports, remote assets and embeds remain blocked. Local/private destinations and Hermes backends are blocked. Off is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle."
+  - "Internet access is on by default per Space. space.net.fetch mediates public HTTPS requests and can send data the Space can read. Turn Internet access off in the host-owned Permissions panel. At this commit direct frame networking, CDN imports, remote assets and embeds are still blocked; open internet in the frame is in progress, not qualified. Local/private destinations and Hermes backends are blocked. Off is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle."
   - "Upkeep is an ordinary Hermes cron job created when the user asks in chat; the native job is the only schedule record and the plugin keeps only a link. It runs only while Hermes is running. Catch-up runs one current refresh when Hermes wakes, without replaying all missed intervals. Each Space's Upkeep panel shows what runs and offers pause, resume, run now and remove. Upkeep was reworked under amendment A-03 and its qualification evidence is being rerun, so release acceptance is not passed."
   - "Agent upkeep makes model/tool calls using the active Hermes profile and can consume its subscription quota. It is not a restricted sandbox. Feed upkeep has no model call. Space code can trigger only the no-model feed refresh, not agent upkeep."
-  - "Offline optional dependencies and fonts are pinned in runtime/vendor/SHELF.json with licenses in THIRD-PARTY.md. The bundled shelf is not a general package installer. See README for included items and deferred proposals."
+  - "In progress, not qualified, and not shipped at this commit: open internet in the frame, file-by-reference for generated images, fonts and libraries, a canvas-to-bot control that asks the owning bot to act, and the premium design pass. Do not rely on them."
+  - "Offline optional dependencies and fonts are pinned in runtime/vendor/SHELF.json with licenses in THIRD-PARTY.md. The bundled shelf is not a general package installer. See README for included items."
 # Pending Forge: capture final screenshots from the validated running candidate.
 # Add up to 6 GitHub-hosted screenshots pinned to the final candidate SHA.
 screenshots: []

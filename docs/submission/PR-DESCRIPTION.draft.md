@@ -4,7 +4,7 @@ Draft only. No PR is open. The repository remains private. The candidate pin, fi
 
 ## Why
 
-Ife wants normal Hermes Desktop chat to build persistent applications with multiple views and upkeep that runs as an ordinary Hermes cron job. Living Spaces gives those applications a Spaces tab, shared records, revisions, permissions and diagnostics. The agent uses the bundled build-space skill and fourteen spaces_* tools, then returns an Open Space card.
+Ife's definition: "I see spaces as an open canvas for your bots that live in Hermes." The bot is the trusted author and the canvas is its surface. Concretely, Ife wants normal Hermes Desktop chat to build persistent applications with multiple views and upkeep that runs as an ordinary Hermes cron job. Living Spaces gives those applications a Spaces tab, shared records, revisions, permissions and diagnostics. The agent uses the bundled build-space skill and fourteen spaces_* tools, then returns an Open Space card.
 
 ## Proposed catalog change
 
@@ -14,7 +14,7 @@ Add only `plugin-catalog/living-spaces.yaml`, from [the catalog draft](catalog-e
 
 - Both the profile plugin switch and Desktop Capabilities switch must enable Living Spaces. The package registers tools, a skill, a dashboard API and Desktop contributions. It registers no hooks, middleware or startup schedule and declares no environment requirements or host capabilities.
 - The trusted Desktop extension has renderer authority. Generated apps run in opaque-origin sandboxed frames. Their bridge binds records, logs and allowed operations to one Space and session.
-- Internet access is on by default per Space. `space.net.fetch` mediates public HTTPS requests and redirects, blocks local/private destinations and Hermes backends, and can send data readable by the Space. Direct frame networking, CDN imports and remote embeds stay blocked. Internet access is independently revocable.
+- Internet access is on by default per Space. `space.net.fetch` mediates public HTTPS requests and redirects, blocks local/private destinations and Hermes backends, and can send data readable by the Space. At this commit direct frame networking, CDN imports and remote embeds stay blocked; open internet in the frame, file-by-reference and a canvas-to-bot control are in progress, not qualified, and not claimed here. Internet access is independently revocable.
 - Revocation is not a complete outbound block. WebRTC can still send data the Space can read. It does not grant access to Hermes, credentials, unapproved files or other Spaces. Already delivered data cannot be recalled.
 - Records and project files persist in the active profile's `plugin-data/living-spaces/spaces.db`. Refresh preserves user fields. Stale writes conflict. Restore does not rewind saved records. Chat can place Space data in the configured model's context. The plugin sends no telemetry and stores no credentials.
 - Upkeep is an ordinary Hermes cron job. The user asks in chat and the agent creates it; that request is the consent, and the native job is the only schedule record (the plugin stores a link). Each Space's Upkeep panel reads the job live, shows exactly what runs, and offers Pause, Resume, Run now and Remove. Amendment A-03 records the decision.

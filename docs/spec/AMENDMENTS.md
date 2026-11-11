@@ -1,7 +1,10 @@
 # Spec amendments
 
-Amendments to `SPEC.md` (v5.1). Each entry records the owner's decision, its date and the engineering status. Where an entry conflicts with SPEC.md, the entry governs.
+> **Definition (Ife, A-04).** "I see spaces as an open canvas for your bots that live in Hermes." The bot is the trusted author and the canvas is its surface. This supersedes the framing of SPEC v5.1, which treated a Space as an untrusted app to be permissioned.
 
+Order of authority: Ife's decisions in this file, then SPEC v6 when it lands, then `SPEC.md` (v5.1). Where SPEC v5.1 sections 2 and 3 (the capability and permission model, the upkeep model) conflict with an entry here, v5.1 does not apply.
+
+Each entry records the owner's decision, its date and the engineering status. Where an entry conflicts with SPEC.md, the entry governs.
 ## A-01. Spaces reach the internet; isolation is unchanged (Nov 10, 2026)
 
 **Decision (Ife).** "Well why is internet restricted for spaces? It should be exposed to whatever Hermes's is exposed to. Whats the restriction?. Isn't that limiting?"
@@ -85,3 +88,50 @@ This supersedes SPEC.md v5.1's host-owned schedule approval and the Refresh capa
 **Evidence to rerun.** R1-05 (shortened: Internet access, Data and Diagnostics grants and revocation, with no Refresh grant), R1-06, R1-07 and R1-11. Earlier receipts for the removed approval flow do not count toward these.
 
 **Engineering status: in progress, not qualified.** The contract is `docs/contracts/CONTRACTS.md` section 14.
+
+## A-04. A Space is an open canvas for the user's bots (Nov 11, 2026)
+
+**Definition (Ife).** "I see spaces as an open canvas for your bots that live in Hermes. Is this what we are building? Because if you look at it that way, the choices we are making are much clearer in terms of product."
+
+This is the definition of the product. It supersedes the framing of SPEC v5.1.
+
+**What it settles (comment 2155).**
+1. **The bot is the trusted author; the canvas is its surface.** v5.1 treated a Space as an untrusted app to be permissioned. That framing produced the internet block, the build-skill bans and the approval layer for upkeep. The sandbox stays to protect the Desktop app and to keep one canvas from breaking another, not to police the bot.
+2. **When in doubt, do what Hermes does for the bot's own chat widgets.** If a choice needs a permission screen Hermes doesn't have, it is the wrong choice.
+3. **Anything the bot can do in chat, it can put on or do for a canvas:** any tool, any skill, any time, from chat, cron or another task.
+4. **The canvas talks back to its bot.** A control on a canvas can ask its bot to act. Under this definition that is core, not an extra.
+5. **Keep:** the user's own input on a canvas is never overwritten by the bot's refresh, saved means saved, revisions and restore.
+
+**Engineering status.** Points 2 to 4 are a lens for defaults, not shipped features. Point 3 is partly shipped (chat and cron already write Spaces through the `spaces_*` tools). Point 4 is in progress, not qualified (see A-06). Point 5 ships and is covered by the existing record, revision and restore evidence.
+
+## A-05. Release 4 is removed; the permission model becomes "the canvas asks its bot" (Nov 11, 2026)
+
+**Decision (Ife).** "I don't even consider the release 4 items in scope of what this product should be."
+
+**Rule.**
+- Release 4 (authenticated web dashboard access) is **removed from the roadmap, not deferred**. No web dashboard, remote access or hosted surface is planned. It does not appear in the README, catalog entry or demo.
+- Release 2's per-tool, per-site and per-device permission model (approved sites, camera, microphone, location, per-tool Hermes grants) is **replaced by "the canvas asks its bot"**. A canvas needing something asks the bot that owns it, and the bot acts with Hermes's own tools under Hermes's own approval rules. The plugin adds no permission screen Hermes doesn't have (A-04, point 2).
+- The Internet access switch (A-01), the Data and Diagnostics grants and the WebRTC disclosure are unchanged by this entry.
+
+**Engineering status: the canvas-to-bot path is in progress, not qualified (A-06).**
+
+## A-06. Scope for the 4 PM turn-in (Nov 11, 2026)
+
+**North Star (Ife, comment 2151, verbatim).** "the North Star for this plugin is for the agent and user to have this space as persistent display for any dashboard, data, mini app etc. is that still what we are building? And also I want to be turning in the full polished app including the full capabilities and premium design."
+
+**Reading.** A Space is a persistent display the agent and the user share. The agent, with all of Hermes's tools and skills, builds it and keeps it current. The plugin hosts, persists and isolates, and adds no consent or sync layer that Hermes doesn't have.
+
+**Turn-in lanes, in priority order.** Each is its own lane, merged only when green and reviewed. None may hold the core candidate hostage. Not making a lane is acceptable; silently dropping it is not, and the README and catalog list whatever is left out.
+
+| Lane | Intent | Engineering status |
+|---|---|---|
+| Open internet in the frame | With Internet access on, the frame reaches web images, fonts, CDN libraries, embeds and WebSocket, matching what Hermes's own widget frame allows. `space.net.fetch` stays for CORS-less APIs. Off stays as it is. Default-on shipping waits on the credential-exposure question (backend headers attached by URL in Desktop's default session) and Ife's decision on the answer. | in progress, not qualified |
+| File-by-reference | Write tools accept a file value of `{"from_path": "<local file>"}` or `{"from_url": "https://..."}`, and the backend copies the bytes into the Space, so generated images, fonts and libraries go in with a one-line call. Space caps stay and are stated to the agent. No request, approve, resolve, verify or bundle lifecycle. | in progress, not qualified |
+| Canvas-to-bot | A control in a Space sends a request to the owning chat or a fresh agent turn, as native widgets do with `window.hermes.send`. The agent updates the Space with all its tools under Hermes's own approval rules. No per-tool plugin grants. | in progress, not qualified |
+| Premium design | Host-chrome fixes (no placeholder text such as "Not reported", edge-to-edge canvas, one Upkeep control, a real Internet switch) and an art-directed build skill, followed by regenerated demo Spaces through real chat. | in progress, not qualified |
+
+**Also in scope if small:** rename, pin and search on the Spaces index.
+
+**Constraint.** Native cron has its own toolset and approval policy. Removing the plugin's consent must not bypass or widen that. A linked job runs with what an ordinary chat-created cron job gets (A-03).
+
+**What the docs may claim.** Only what is shipped at the documented commit. The four lanes above are listed as in progress wherever they appear.
