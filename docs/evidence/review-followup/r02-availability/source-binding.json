@@ -1,0 +1,12 @@
+{
+ "base_commit": "59aef209f46cc38bf396f5807feb4fe5d6e11edf",
+ "scope": "Unaccepted R02 proposal, not composed into product branch. Replay patch applies to these three baseline files.",
+ "source_hashes": {
+  "src/living-spaces/living_spaces_core/grants.py": "2f1b239afd64a8d1e4f6e81381825441c86cb8a48ac920e5524a199f773f4164",
+  "src/living-spaces/living_spaces_core/runs.py": "bed17f49f66e6beeba15006ff06a10c3935d7ce386d4db45091704d981a4c9f0",
+  "src/living-spaces/living_spaces_core/schedules.py": "9314e5db40479a5a9401481a77fd49fa1892063cd60839e4fe1a5d34bcc94fbd"
+ },
+ "proposed_patch_sha256": "38b31468012c9395d2abc2fb76632a7250f4aa816b8d2285cfdab5f9e1dfdb0e",
+ "parent_author_receipt_sha256": "a7cf8a8ec0d18f788764e7f3cdcf9923756b499bd534f8a40d938e556d44a8c6",
+ "source_unchanged_during_probe_collection": true
+}

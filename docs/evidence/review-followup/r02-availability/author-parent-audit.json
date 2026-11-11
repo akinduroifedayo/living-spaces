@@ -1,0 +1,28 @@
+{
+ "seat": "r02-repair",
+ "thread_id": "01a1c98a-d2ea-7241-befd-b9e1df929c3b",
+ "requested": {
+  "model": "gpt-6.1-sol",
+  "effort": "xhigh",
+  "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-repair"
+ },
+ "recorded_model": "gpt-6.1-sol",
+ "recorded_effort": "xhigh",
+ "recorded_provider": "openai",
+ "effort_evidence": "client-configured, not wire proof",
+ "exit": 0,
+ "completed": true,
+ "errors": [],
+ "input_count": 51,
+ "missing_read_bodies": [],
+ "baseline_file_count": 451,
+ "changed_files": [
+  "src/living-spaces/living_spaces_core/grants.py",
+  "src/living-spaces/living_spaces_core/runs.py",
+  "src/living-spaces/living_spaces_core/schedules.py"
+ ],
+ "all_35_review_method_hashes_frozen": true,
+ "report_sha256": "81b9e8d872b0ef66217ad756d74352fcf1b726ab9e100ca60defd7ac12ebe49c",
+ "author_product_execution": "none claimed; parent owns product execution",
+ "parent_first_run": "35 methods, 6 R01 failure events only; all R02 methods pass; not integrated or accepted"
+}

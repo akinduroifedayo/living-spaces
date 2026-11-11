@@ -1,0 +1,14 @@
+{
+ "evidence_class": "Actual R02 grant/reconciliation and SQLite with synthetic native cron leaves. No model, live Desktop, concurrency, or actual native worker interruption.",
+ "terminal_executions": 501,
+ "all_terminal": true,
+ "required": "Regrant succeeds after complete terminal-only native history is reconciled, while schedule stays inactive.",
+ "observed": {
+  "granted": false,
+  "error": {
+   "code": "blocked",
+   "message": "Cannot grant Refresh until native interruption is confirmed",
+   "reason": "Native ledger boundary coverage for review-cron-1 is unconfirmed; native interruption unconfirmed"
+  }
+ }
+}

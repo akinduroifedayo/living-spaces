@@ -1,0 +1,21 @@
+{
+ "argv": [
+  "/Users/ifedayoakinduro/.hermes/tools/python-3.14.9+20261021-darwin-arm64/bin/python3",
+  "-I",
+  "-c",
+  "import os, sys, runpy; os.environ.pop('PYTHONHOME', None); os.environ.pop('PYTHONPATH', None); os.environ.pop('VIRTUAL_ENV', None); sys.path.insert(0, '/Users/ifedayoakinduro/.hermes/hermes-agent'); sys._hermes_pin_default_home = True; import hermes_bootstrap; os.environ.get('HERMES_HOME') or os.environ.__setitem__('HERMES_HOME', str(__import__('hermes_constants').get_default_hermes_root())); sys.argv=['unittest','discover','-s','tests/python','-t','.','-v'];runpy.run_module('unittest',run_name='__main__')"
+ ],
+ "direct_exit": 1,
+ "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-repair",
+ "environment_keys": [
+  "HERMES_HOME",
+  "HOME",
+  "LOGNAME",
+  "PATH",
+  "PYTHONDONTWRITEBYTECODE",
+  "SHELL",
+  "TMPDIR",
+  "USER"
+ ],
+ "scope": "Supported runtime full suite before R01 composition or legacy fixture migration. Red remains."
+}

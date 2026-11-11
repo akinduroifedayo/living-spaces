@@ -1,0 +1,59 @@
+{
+ "session_id": "local-112ebde6057a67c873a90c191a7bfbd130f61a13d6c46176200913751445992f",
+ "space": "sky-window",
+ "prompt": "Please repair the existing Sky Window Space in place, in this same chat. Do not create a replacement. Read the latest build-space skill, the current weather.js and relevant Space logs first. The actual failure is the mediated network response contract: space.net.fetch(url, {as: 'json'}) returns an object whose parsed payload is result.json, not result.body and not result.json(). Repair that handling while keeping mediated space.net.fetch as the only network route. Do not loosen permissions, add direct fetch, install anything, change the app's design, or touch any other Space. Preserve all saved cities and favourites and the Today, Week and Cities views. After inspecting, save exactly one repair revision, limited to the existing faulty application file or files. End with its Open Space card and state what you actually changed. Do not claim runtime weather or UI verification you did not perform.",
+ "clock": "2026-11-11T02:01:49.913166-06:00",
+ "before": {
+  "pair-play": {
+   "head_rev": 4,
+   "hashes": {
+    "spaces": "a84696d62e8b02d9df7b876720dbe3dcc94fa04ad2dff39843b3d7d57f455207",
+    "revisions": "155127c2d2c6f1c30cb922b8d604bc5d3660a63484c2fba0eafca7f6b2cb5529",
+    "records": "d277d27ec6bda4a853e6ab8b8037084d75eaedc0f834da56a17eb4bcd0f04f0a",
+    "grants": "2415ddb07a207ac0c10cc36cc7b16294747acee7024fc5ecd9c26b77fc2df40a",
+    "schedules": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   }
+  },
+  "public-trip-board": {
+   "head_rev": 1,
+   "hashes": {
+    "spaces": "66b25eb55017c33d32355d8899ce929d47032dc0eb6805121be43efec9758998",
+    "revisions": "7536e2f9ed263dff0937ef1b730d988b5cbd531787b2aaefe66d091991f40d59",
+    "records": "4aec40648c78104bd3853f41315ecedbd83c09e7853d6d65ff2017998a6f30a1",
+    "grants": "1e9ad2ba7cbde320441edb84e7e5053bfcb1bb1a3828b4ae17a7e62e8fe8592d",
+    "schedules": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   }
+  },
+  "research-desk": {
+   "head_rev": 7,
+   "hashes": {
+    "spaces": "d6ca6bb0ad2a3abc7d38ef40ae1cca749c413c84407b008bea8ec017ee4d89d6",
+    "revisions": "3cf6d216bc0753320382e7b0f75454c0fec70a46cfb545ae0500991ad49bd671",
+    "records": "7ac54d1df383ee41c5d85e9a55459f3460fdcf0396eea6de5f60bf03eef4099a",
+    "grants": "f5b1ba64f07ea4767f75c20977003813f6f0449c0b568cede73036ff16146fbc",
+    "schedules": "e0946ccfe007f285421026efe7e6092add78e26ed90f772ceb65a83f35d962ed"
+   }
+  },
+  "runtime-probe": {
+   "head_rev": 1,
+   "hashes": {
+    "spaces": "5bc6bf9bb233fc4006aa623e5dd71336149a91f21dbcdf19179d9c39556b4c9b",
+    "revisions": "e1932bae9ce1b223c0b3cda2729379e67a433a3cf680d356a9f10767ae8e9b85",
+    "records": "bd04419ab11679cbc4d742b1140588af76c36ddc37a14ea1e7906283ad4d9105",
+    "grants": "b10057f64b852eaece4d294fce8d40a5828485c4022a785825a1cddf255079c3",
+    "schedules": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   }
+  },
+  "sky-window": {
+   "head_rev": 3,
+   "hashes": {
+    "spaces": "c90f033b8d7929044e00937cdc46adff20bffdcf97c28fa71057d1d9b2c3e4cd",
+    "revisions": "f9608261aaa6b4a9602ebe62c66776f367a15731ab6fb9c99082c7b7810fe573",
+    "records": "c6307841780ff505eb81220110e5e4d091b574dda059e435e711b0897cda3bc9",
+    "grants": "b930ae3fc32c05a5cd1d68f15fdd88d85365b6e56cb56927626a8142c96383ed",
+    "schedules": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   }
+  }
+ },
+ "route": "existing Desktop chat composer, one turn, no failover"
+}

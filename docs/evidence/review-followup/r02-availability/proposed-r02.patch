@@ -1,0 +1,472 @@
+diff --git a/src/living-spaces/living_spaces_core/grants.py b/src/living-spaces/living_spaces_core/grants.py
+index 2874e73..2d896f8 100644
+--- a/src/living-spaces/living_spaces_core/grants.py
++++ b/src/living-spaces/living_spaces_core/grants.py
+@@ -32,8 +32,8 @@ def _grant(row):
+ def _audit(conn, sid, actor, action, capability, outcome, detail=None):
+     from .logs import redact_values
+ 
+-    conn.execute("INSERT INTO audit(space,at,actor,action,capability,outcome,detail) VALUES(?,?,?,?,?,?,?)",
+-                 (sid, db.now(), actor, action, capability, outcome, limits.dumps(redact_values(detail or {}))))
++    return conn.execute("INSERT INTO audit(space,at,actor,action,capability,outcome,detail) VALUES(?,?,?,?,?,?,?)",
++                        (sid, db.now(), actor, action, capability, outcome, limits.dumps(redact_values(detail or {})))).lastrowid
+ 
+ 
+ def _subset(needed, granted):
+@@ -161,6 +161,8 @@ def decide(sid, capability, decision, *, actor="user", scope=None, requested_sco
+     if decision not in ("grant", "deny", "revoke"):
+         raise SpacesError("invalid", "Decision must be grant, deny or revoke")
+     limits.text(actor, "actor")
++    refusal = None
++    withdrawal_id = None
+     with db.write() as conn:
+         db.space(conn, sid)
+         row = conn.execute("SELECT * FROM grants WHERE space=? AND capability=?", (sid, capability)).fetchone()
+@@ -175,26 +177,29 @@ def decide(sid, capability, decision, *, actor="user", scope=None, requested_sco
+         selected = _scope(capability, scope if scope is not None else current["requested_scope"] or current["scope"])
+         if decision == "grant" and not _subset(selected, current["requested_scope"] or current["scope"]):
+             raise SpacesError("invalid", "Grant scope exceeds the requested scope")
++        if capability == "refresh" and decision == "grant" and current["status"] != "granted":
++            from . import schedules
++            reconciliation = schedules.reconcile_refresh(conn, sid, actor=actor)
++            if (not reconciliation.schedule_fenced or not reconciliation.executions_quiescent
++                    or reconciliation.reason is not None):
++                refusal = reconciliation.reason or "Native interruption is unconfirmed"
++                _audit(conn, sid, actor, "grant.blocked", capability, "blocked", {"reason": refusal})
+         status = {"grant": "granted", "deny": "denied", "revoke": "revoked"}[decision]
+-        conn.execute("UPDATE grants SET status=?,scope=?,decided_at=?,decided_by=? WHERE space=? AND capability=?",
+-                     (status, limits.dumps(selected), db.now(), actor, sid, capability))
+-        _audit(conn, sid, actor, "decision", capability, status, {"scope": selected})
++        if refusal is None:
++            conn.execute("UPDATE grants SET status=?,scope=?,decided_at=?,decided_by=? WHERE space=? AND capability=?",
++                         (status, limits.dumps(selected), db.now(), actor, sid, capability))
++            decision_id = _audit(conn, sid, actor, "decision", capability, status, {"scope": selected})
++            if capability == "refresh" and decision in ("deny", "revoke"):
++                from . import runs, schedules
++                withdrawal_id = decision_id
++                schedules.on_refresh_revoked(sid, decision, actor=actor, conn=conn)
++                runs.cancel_pending(sid, "refresh revoked", conn=conn)
+         result = _grant(conn.execute("SELECT * FROM grants WHERE space=? AND capability=?", (sid, capability)).fetchone())
+-    if capability == "refresh" and decision in ("deny", "revoke"):
+-        try:
+-            from . import runs
+-            cancel = runs.cancel_pending
+-        except (ImportError, AttributeError):
+-            pass
+-        else:
+-            cancel(sid, "refresh revoked")
+-        try:
+-            from . import schedules
+-            pause = schedules.on_refresh_revoked
+-        except (ImportError, AttributeError):
+-            pass
+-        else:
+-            pause(sid, decision, actor=actor)
++    if refusal is not None:
++        raise SpacesError("blocked", "Cannot grant Refresh until native interruption is confirmed", reason=refusal)
++    if withdrawal_id is not None:
++        with db.write() as conn:
++            schedules.reconcile_refresh(conn, sid, actor=actor, expected_withdrawal_audit_id=withdrawal_id)
+     return result
+ 
+ 
+diff --git a/src/living-spaces/living_spaces_core/runs.py b/src/living-spaces/living_spaces_core/runs.py
+index 05db9e5..ac0d2e7 100644
+--- a/src/living-spaces/living_spaces_core/runs.py
++++ b/src/living-spaces/living_spaces_core/runs.py
+@@ -5,6 +5,7 @@ import json
+ import threading
+ import uuid
+ from datetime import datetime
++from typing import NamedTuple
+ 
+ from . import db, feeds
+ from .errors import SpacesError
+@@ -13,6 +14,12 @@ STALE_SECONDS = 120
+ HEARTBEAT_SECONDS = 10
+ 
+ 
++class NativeObservation(NamedTuple):
++    complete: bool
++    outstanding: frozenset[str]
++    reason: str | None = None
++
++
+ def _run(row):
+     result = dict(row)
+     result["changed"] = json.loads(result["changed"])
+@@ -58,32 +65,30 @@ def freshness(sid):
+     }
+ 
+ 
+-def cancel_pending(sid, reason):
++def _withdraw_pending(conn, sid, reason):
++    rows = conn.execute("SELECT * FROM runs WHERE space=? AND status IN ('queued','running')", (sid,)).fetchall()
++    for row in rows:
++        detail = json.loads(row["detail"])
++        detail.setdefault("cancel_reason", reason)
++        if row["handler"] == "agent":
++            detail["native_interruption"] = "unconfirmed; native terminal observation required"
++        if row["status"] == "queued" and row["handler"] != "agent":
++            conn.execute("UPDATE runs SET status='canceled',ended_at=?,detail=? WHERE id=?", (db.now(), json.dumps(detail), row["id"]))
++        else:
++            conn.execute("UPDATE runs SET detail=? WHERE id=?", (json.dumps(detail), row["id"]))
++    return len(rows)
++
++
++def cancel_pending(sid, reason, *, conn=None):
+     from . import schedules
+ 
++    if conn is not None:
++        return _withdraw_pending(conn, sid, reason)
+     with db.write() as conn:
+-        schedule = conn.execute("SELECT cron_job_id FROM schedules WHERE space=?", (sid,)).fetchone()
+-        if schedule and schedule["cron_job_id"]:
+-            schedules._cron().pause_job(schedule["cron_job_id"], reason=reason)
+         _sync_agent_runs(sid, conn=conn)
+-        rows = conn.execute("SELECT * FROM runs WHERE space=? AND status IN ('queued','running')", (sid,)).fetchall()
+-        canceled_jobs = set()
+-        for row in rows:
+-            detail = json.loads(row["detail"])
+-            detail["cancel_reason"] = reason
+-            if row["handler"] == "agent" and detail.get("cron_job_id") not in canceled_jobs and detail.get("cron_job_id"):
+-                canceled_jobs.add(detail["cron_job_id"])
+-                jobs = schedules._cron()
+-                if detail.get("one_shot"):
+-                    jobs.remove_job(detail["cron_job_id"])
+-                else:
+-                    jobs.pause_job(detail["cron_job_id"], reason=reason)
+-                    jobs.cancel_job_run(detail["cron_job_id"], reason=reason)
+-            if row["status"] == "queued" or row["handler"] == "agent":
+-                conn.execute("UPDATE runs SET status='canceled',ended_at=?,detail=? WHERE id=?", (db.now(), json.dumps(detail), row["id"]))
+-            else:
+-                conn.execute("UPDATE runs SET detail=? WHERE id=?", (json.dumps(detail), row["id"]))
+-    return len(rows)
++        count = _withdraw_pending(conn, sid, reason)
++        schedules.reconcile_refresh(conn, sid, actor="upkeep:cancel")
++    return count
+ 
+ 
+ def _timestamp(value):
+@@ -98,36 +103,91 @@ def _sync_agent_runs(sid, *, conn=None):
+             return _sync_agent_runs(sid, conn=conn)
+     schedule = conn.execute("SELECT cron_job_id FROM schedules WHERE space=?", (sid,)).fetchone()
+     pending = conn.execute("SELECT * FROM runs WHERE space=? AND handler='agent' AND status IN ('queued','running')", (sid,)).fetchall()
+-    job_ids = {json.loads(row["detail"]).get("cron_job_id") for row in pending}
++    details = [json.loads(row["detail"]) for row in pending]
++    job_ids = {detail.get("cron_job_id") for detail in details}
++    job_ids.update(row["jid"] for row in conn.execute("SELECT DISTINCT json_extract(detail,'$.cron_job_id') AS jid FROM runs WHERE space=? AND handler='agent' AND json_extract(detail,'$.one_shot')=1", (sid,)))
++    agent_ids = set(job_ids)
+     if schedule:
+         job_ids.add(schedule["cron_job_id"])
++        revision = conn.execute("SELECT r.manifest FROM revisions r JOIN spaces s ON s.id=r.space AND s.head_rev=r.rev WHERE s.id=?", (sid,)).fetchone()
++        if revision and (json.loads(revision["manifest"]).get("upkeep") or {}).get("handler") == "agent":
++            agent_ids.add(schedule["cron_job_id"])
+     job_ids.discard(None)
+     if not job_ids:
+-        return
+-    try:
+-        jobs = schedules._cron()
+-        agent_jobs = {jid: jobs.get_job(jid) for jid in job_ids}
+-        agent_jobs = {jid: job for jid, job in agent_jobs.items() if not job or job.get("no_agent") is False}
+-        if not agent_jobs:
+-            return
+-        ledger = importlib.import_module("cron.executions")
+-    except ImportError:
+-        return
+-    statuses = {"claimed": "queued", "running": "running", "completed": "succeeded", "failed": "failed", "unknown": "failed", "cancelled": "canceled", "missed": "blocked"}
+-    for jid, job in agent_jobs.items():
+-        executions = ledger.list_executions(job_id=jid, limit=500)
++        return NativeObservation(not pending, frozenset(), "Native job identity is missing" if pending else None)
++    failures = []
++    outstanding = set()
++    if any(not detail.get("cron_job_id") for detail in details):
++        failures.append("Native job identity is missing")
++    jobs, error = schedules._native_call(schedules._cron)
++    if error:
++        return NativeObservation(False, frozenset(job_ids), error)
++    ledger, error = schedules._native_call(importlib.import_module, "cron.executions")
++    if error:
++        return NativeObservation(False, frozenset(job_ids), error)
++    statuses = {"claimed": "queued", "running": "running", "completed": "succeeded", "failed": "failed", "cancelled": "canceled", "missed": "blocked"}
++    for jid in sorted(job_ids):
++        job, error = schedules._native_call(lambda: jobs.get_job(jid))
++        if error or (job is not None and (not isinstance(job, dict) or job.get("id") != jid)):
++            failures.append(error or f"Native job {jid} readback is malformed")
++            outstanding.add(jid)
++            continue
++        if job and (job.get("fire_claim") is not None or job.get("run_claim") is not None):
++            outstanding.add(jid)
++        executions, error = schedules._native_call(lambda: ledger.list_executions(job_id=jid, limit=500))
++        if error or not isinstance(executions, list):
++            failures.append(error or f"Native ledger for {jid} is malformed")
++            outstanding.add(jid)
++            continue
++        executions = list(executions)
+         page = executions
+         while len(page) == 500:
+-            page = ledger.list_executions(job_id=jid, limit=500, before_claimed_at=page[-1]["claimed_at"])
++            if not isinstance(page[-1], dict) or not isinstance(page[-1].get("claimed_at"), str):
++                failures.append(f"Native ledger coverage for {jid} is incomplete")
++                break
++            before = page[-1]["claimed_at"]
++            page, error = schedules._native_call(lambda: ledger.list_executions(job_id=jid, limit=500, before_claimed_at=before))
++            if error or not isinstance(page, list) or any(
++                    not isinstance(entry, dict) or not isinstance(entry.get("claimed_at"), str)
++                    or entry["claimed_at"] >= before for entry in page):
++                failures.append(error or f"Native ledger pagination for {jid} is incomplete")
++                break
++            # A timestamp-only cursor cannot prove coverage of ties across a full page.
++            failures.append(f"Native ledger boundary coverage for {jid} is unconfirmed")
+             executions.extend(page)
+         cleanup = False
+         if conn.execute("SELECT 1 FROM spaces WHERE id=?", (sid,)).fetchone() is None:
+             continue
+         for execution in reversed(executions):
+-            status = statuses.get(execution["status"])
+-            if status is None:
++            if (not isinstance(execution, dict) or not isinstance(execution.get("id"), str)
++                    or not execution["id"] or execution.get("job_id") != jid
++                    or not isinstance(execution.get("status"), str)
++                    or (execution.get("error") is not None and not isinstance(execution["error"], str))
++                    or (execution.get("scheduled_instant") is not None and not isinstance(execution["scheduled_instant"], str))):
++                failures.append(f"Native execution evidence for {jid} is malformed")
++                outstanding.add(jid)
++                continue
++            native_status = execution["status"]
++            status = statuses.get(native_status, "queued")
++            terminal = native_status in ("completed", "failed", "cancelled", "missed")
++            if not terminal:
++                outstanding.add(jid)
++            if native_status not in statuses:
++                failures.append(f"Native execution {execution['id']} has unconfirmed status {native_status}")
++            try:
++                claimed = _timestamp(execution.get("claimed_at"))
++                started = _timestamp(execution.get("started_at"))
++                finished = _timestamp(execution.get("finished_at"))
++            except (ValueError, TypeError, AttributeError, OverflowError):
++                failures.append(f"Native execution {execution['id']} has malformed timestamps")
++                outstanding.add(jid)
++                continue
++            if claimed is None or (terminal and finished is None):
++                failures.append(f"Native execution {execution['id']} has incomplete timestamps")
++                outstanding.add(jid)
++                continue
++            if (job is not None and job.get("no_agent") is not False) or (job is None and jid not in agent_ids):
+                 continue
+-            claimed = _timestamp(execution["claimed_at"])
+             row = conn.execute("SELECT * FROM runs WHERE space=? AND json_extract(detail,'$.cron_run_id')=?", (sid, execution["id"])).fetchone()
+             if row is None and execution["status"] != "missed":
+                 row = conn.execute("SELECT * FROM runs WHERE space=? AND handler='agent' AND status='queued' AND json_extract(detail,'$.cron_job_id')=? AND json_extract(detail,'$.cron_run_id') IS NULL AND queued_at<=? ORDER BY queued_at LIMIT 1", (sid, jid, claimed)).fetchone()
+@@ -136,25 +196,34 @@ def _sync_agent_runs(sid, *, conn=None):
+                 conn.execute("INSERT OR IGNORE INTO runs(id,space,trigger,handler,actor,status,queued_at) VALUES(?,?,'schedule','agent','upkeep:schedule','queued',?)", (rid, sid, claimed))
+                 row = conn.execute("SELECT * FROM runs WHERE id=?", (rid,)).fetchone()
+             detail = json.loads(row["detail"])
+-            if detail.get("cancel_reason"):
+-                continue
++            if native_status not in statuses:
++                status = row["status"]
++                detail["native_interruption"] = f"Native status {native_status} is unconfirmed"
+             if row["status"] in ("succeeded", "failed", "canceled", "blocked") and status in ("queued", "running"):
+                 continue
+             if detail.get("cron_status") == execution["status"]:
+                 continue
+             detail.update(cron_job_id=jid, cron_run_id=execution["id"], cron_status=execution["status"], changed_unavailable=True)
++            if terminal:
++                detail.pop("native_interruption", None)
+             if execution["status"] == "missed":
+                 detail["reason"] = execution.get("error") or "Scheduled occurrence missed"
+             if execution.get("scheduled_instant"):
+                 detail["scheduled_instant"] = execution["scheduled_instant"]
+             conn.execute("UPDATE runs SET status=?,started_at=?,ended_at=?,error=?,detail=?,heartbeat_at=? WHERE id=?", (
+-                status, _timestamp(execution.get("started_at")), _timestamp(execution.get("finished_at")), execution.get("error"), json.dumps(detail), db.now(), row["id"],
++                status, started, finished, execution.get("error"), json.dumps(detail), db.now(), row["id"],
+             ))
+             cleanup = cleanup or (detail.get("one_shot", False) and status in ("succeeded", "failed", "canceled"))
+-        if job is None:
+-            conn.execute("UPDATE runs SET status='failed',error='Native cron job is missing',ended_at=? WHERE space=? AND handler='agent' AND status IN ('queued','running') AND json_extract(detail,'$.cron_job_id')=?", (db.now(), sid, jid))
+-        if cleanup and job:
+-            jobs.remove_job(jid)
++        remaining = conn.execute("SELECT 1 FROM runs WHERE space=? AND handler='agent' AND status IN ('queued','running') AND json_extract(detail,'$.cron_job_id')=?", (sid, jid)).fetchone()
++        if remaining:
++            outstanding.add(jid)
++            if jid not in {entry.get("job_id") for entry in executions if isinstance(entry, dict) and entry.get("status") in ("claimed", "running")}:
++                failures.append(f"Native terminal evidence for {jid} is incomplete")
++        if cleanup and job and jid not in outstanding:
++            _, error = schedules._native_call(lambda: jobs.remove_job(jid))
++            if error:
++                failures.append(error)
++    return NativeObservation(not failures, frozenset(outstanding), "; ".join(dict.fromkeys(failures)) or None)
+ 
+ 
+ def _queue_agent(conn, sid, run_id, upkeep):
+diff --git a/src/living-spaces/living_spaces_core/schedules.py b/src/living-spaces/living_spaces_core/schedules.py
+index 3bd085d..1ccdff8 100644
+--- a/src/living-spaces/living_spaces_core/schedules.py
++++ b/src/living-spaces/living_spaces_core/schedules.py
+@@ -5,6 +5,7 @@ import json
+ import re
+ from datetime import datetime
+ from pathlib import Path
++from typing import NamedTuple
+ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+ 
+ from . import db
+@@ -14,6 +15,19 @@ CATCH_UP_POLICY = "Runs one current refresh when Hermes wakes. Missed intervals
+ PACKAGE = Path(__file__).resolve().parents[1]
+ 
+ 
++class Reconciliation(NamedTuple):
++    schedule_fenced: bool
++    executions_quiescent: bool
++    reason: str | None = None
++
++
++def _native_call(call, *args, **kwargs):
++    try:
++        return call(*args, **kwargs), None
++    except Exception as exc:
++        return None, f"Native cron unavailable or invocation failed ({type(exc).__name__}): {exc}"
++
++
+ def _cron():
+     return importlib.import_module("cron.jobs")
+ 
+@@ -123,13 +137,17 @@ def get_schedule(sid):
+             return None
+         if current["cron_job_id"] != schedule["cron_job_id"] or current["status"] not in ("active", "paused"):
+             return dict(current)
+-        try:
+-            job = _cron().get_job(current["cron_job_id"])
+-        except ImportError as exc:
+-            _disabled(conn, sid, f"Native cron is unavailable: {exc}", "upkeep:schedule")
++        job, error = _native_call(lambda: _cron().get_job(current["cron_job_id"]))
++        if error:
++            _disabled(conn, sid, error + "; native interruption unconfirmed", "upkeep:schedule")
+         else:
+             if job is None:
+                 _disabled(conn, sid, "Native cron job is missing; approve the schedule again", "upkeep:schedule")
++            elif not isinstance(job, dict) or job.get("id") != current["cron_job_id"]:
++                _disabled(conn, sid, "Native job readback is malformed; interruption unconfirmed", "upkeep:schedule")
++                job = None
++            elif current["status"] == "paused" and (job.get("enabled") is not False or job.get("state") != "paused"):
++                _disabled(conn, sid, "Native interruption unconfirmed; local upkeep remains inactive", "upkeep:schedule")
+             else:
+                 paused = job.get("state") == "paused" or not job.get("enabled", True)
+                 conn.execute("UPDATE schedules SET status=?,next_run_at=? WHERE space=?", (
+@@ -284,11 +302,110 @@ def pause_schedule(sid, paused, *, actor, reason="Space upkeep paused"):
+     return _schedule_row(sid)
+ 
+ 
+-def on_refresh_revoked(sid, decision, *, actor):
+-    schedule = _schedule_row(sid)
+-    if schedule and schedule["status"] in ("active", "paused"):
+-        reason = "Refresh permission " + ("denied" if decision == "deny" else "revoked") + "; approve Refresh and resume upkeep to restart."
+-        pause_schedule(sid, True, actor=actor, reason=reason)
++def on_refresh_revoked(sid, decision, *, actor, conn=None):
++    if conn is None:
++        with db.write() as conn:
++            on_refresh_revoked(sid, decision, actor=actor, conn=conn)
++        with db.write() as conn:
++            reconcile_refresh(conn, sid, actor=actor)
++        return
++    row = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
++    if row:
++        reason = "Refresh permission " + ("denied" if decision == "deny" else "revoked")
++        _disabled(conn, sid, reason + "; native interruption unconfirmed; approve Refresh and resume upkeep to restart.", actor)
++
++
++def reconcile_refresh(conn, sid, *, actor, expected_withdrawal_audit_id=None):
++    from . import runs
++
++    if expected_withdrawal_audit_id is not None:
++        latest = conn.execute("SELECT id FROM audit WHERE space=? AND capability='refresh' AND action='decision' ORDER BY id DESC LIMIT 1", (sid,)).fetchone()
++        grant = conn.execute("SELECT status FROM grants WHERE space=? AND capability='refresh'", (sid,)).fetchone()
++        if (latest is None or latest["id"] != expected_withdrawal_audit_id
++                or grant is None or grant["status"] not in ("revoked", "denied")):
++            return Reconciliation(False, False, "Refresh decision changed before native reconciliation")
++    schedule = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
++    retained = conn.execute("SELECT detail FROM runs WHERE space=? AND handler='agent' AND (status IN ('queued','running') OR json_extract(detail,'$.one_shot')=1)", (sid,)).fetchall()
++    identities = {}
++    for row in retained:
++        detail = json.loads(row["detail"])
++        if detail.get("cron_job_id"):
++            identities[detail["cron_job_id"]] = bool(detail.get("one_shot"))
++    if schedule and schedule["cron_job_id"]:
++        identities[schedule["cron_job_id"]] = False
++    if not identities and not retained:
++        return Reconciliation(True, True)
++    audit = conn.execute("SELECT detail FROM audit WHERE space=? AND action IN ('schedule.disabled','schedule.paused') ORDER BY id DESC LIMIT 1", (sid,)).fetchone()
++    reason = json.loads(audit["detail"])["reason"] if audit else "Space upkeep interrupted; approve Refresh and resume upkeep to restart."
++    grant = conn.execute("SELECT status FROM grants WHERE space=? AND capability='refresh'", (sid,)).fetchone()
++    if grant and grant["status"] in ("denied", "revoked"):
++        reason = f"Refresh permission {grant['status']}; approve Refresh and resume upkeep to restart."
++    jobs, error = _native_call(_cron)
++    failures = [error] if error else []
++    fenced = not error
++    if not error:
++        for jid, one_shot in identities.items():
++            job, error = _native_call(lambda: jobs.get_job(jid))
++            if error:
++                failures.append(error)
++                fenced = False
++                continue
++            if job is not None and (not isinstance(job, dict) or job.get("id") != jid):
++                failures.append(f"Native job {jid} readback is malformed")
++                fenced = False
++                continue
++            if job is not None:
++                if not one_shot:
++                    paused, error = _native_call(lambda: jobs.pause_job(jid, reason=reason))
++                    if error or (not isinstance(paused, dict) or paused.get("id") != jid
++                                 or paused.get("enabled") is not False or paused.get("state") != "paused"):
++                        failures.append(error or f"Native job {jid} pause acknowledgement is unconfirmed")
++                        fenced = False
++                _, error = _native_call(lambda: jobs.cancel_job_run(jid, reason=reason))
++                if error:
++                    failures.append(error)
++                if one_shot:
++                    removed, error = _native_call(lambda: jobs.remove_job(jid))
++                    if error or removed is not True:
++                        failures.append(error or f"Native job {jid} removal acknowledgement is unconfirmed")
++                        fenced = False
++            observed, error = _native_call(lambda: jobs.get_job(jid))
++            if error or (observed is not None and (
++                    not isinstance(observed, dict) or observed.get("id") != jid
++                    or observed.get("enabled") is not False or observed.get("state") != "paused"
++                    or observed.get("fire_claim") is not None or observed.get("run_claim") is not None)):
++                failures.append(error or f"Native job {jid} pause or retained claims are unconfirmed")
++                fenced = False
++    observation = runs._sync_agent_runs(sid, conn=conn)
++    quiescent = observation.complete and not observation.outstanding
++    if not quiescent:
++        failures.append(observation.reason or "Native executions remain outstanding; interruption unconfirmed")
++    runs._withdraw_pending(conn, sid, "refresh revoked")
++    if failures:
++        diagnostic = "; ".join(dict.fromkeys(failures)) + "; native interruption unconfirmed"
++        if schedule:
++            _disabled(conn, sid, diagnostic, actor)
++        conn.execute("INSERT INTO audit(space,at,actor,action,outcome,detail) VALUES(?,?,?,?,?,?)", (
++            sid, db.now(), actor, "refresh.interruption", "unconfirmed", json.dumps({"reason": diagnostic, "cron_job_ids": sorted(identities)}),
++        ))
++        return Reconciliation(fenced, quiescent, diagnostic)
++    if schedule and schedule["cron_job_id"]:
++        job, error = _native_call(lambda: jobs.get_job(schedule["cron_job_id"]))
++        if error or (job is not None and (
++                not isinstance(job, dict) or job.get("id") != schedule["cron_job_id"]
++                or job.get("enabled") is not False or job.get("state") != "paused"
++                or job.get("fire_claim") is not None or job.get("run_claim") is not None)):
++            diagnostic = error or "Native schedule interruption remains unconfirmed"
++            _disabled(conn, sid, diagnostic, actor)
++            return Reconciliation(False, quiescent, diagnostic)
++        if job is not None:
++            conn.execute("UPDATE schedules SET status='paused',next_run_at=NULL WHERE space=?", (sid,))
++            conn.execute("INSERT INTO audit(space,at,actor,action,outcome,detail) VALUES(?,?,?,?,?,?)", (
++                sid, db.now(), actor, "schedule.paused", "paused", json.dumps({"reason": reason}),
++            ))
++        else:
++            _disabled(conn, sid, "Native job is absent; approve the schedule again", actor)
++    return Reconciliation(True, True)
+ 
+ 
+ def on_archive(sid):

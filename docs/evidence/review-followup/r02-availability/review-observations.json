@@ -1,0 +1,31 @@
+{
+ "testsRun": 35,
+ "failures": [
+  {
+   "id": "tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (boundary='missing upkeep rejected at REST', handler='agent')",
+   "traceback": "Traceback (most recent call last):\n  File \"/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-repair/tests/python/test_review_customization.py\", line 478, in test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval\n    self.assertEqual(response.status_code, 400, response.text)\nAssertionError: 200 != 400 : {\"space\":\"review-space\",\"status\":\"active\",\"cadence\":\"0 7 1 * *\",\"timezone\":\"UTC\",\"purpose\":\"Monthly approved task\",\"cron_job_id\":\"review-cron-1\",\"catch_up\":\"one\",\"requested_at\":1794383870.874924,\"decided_at\":1794383870.883498,\"next_run_at\":1804809600.0}\n"
+  },
+  {
+   "id": "tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (boundary='no native creation', handler='agent')",
+   "traceback": "Traceback (most recent call last):\n  File \"/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-repair/tests/python/test_review_customization.py\", line 481, in test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval\n    self.assertEqual(fx.cron.calls, calls_before)\nAssertionError: Lists differ: [('create', 'review-cron-1')] != []\n\nFirst list contains 1 additional elements.\nFirst extra element 0:\n('create', 'review-cron-1')\n\n- [('create', 'review-cron-1')]\n+ []\n"
+  },
+  {
+   "id": "tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (boundary='request remains unapproved', handler='agent')",
+   "traceback": "Traceback (most recent call last):\n  File \"/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-repair/tests/python/test_review_customization.py\", line 487, in test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval\n    self.assertEqual(stored[\"status\"], \"requested\")\nAssertionError: 'active' != 'requested'\n- active\n+ requested\n\n"
+  },
+  {
+   "id": "tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (boundary='missing upkeep rejected at REST', handler='feed')",
+   "traceback": "Traceback (most recent call last):\n  File \"/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-repair/tests/python/test_review_customization.py\", line 478, in test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval\n    self.assertEqual(response.status_code, 400, response.text)\nAssertionError: 200 != 400 : {\"space\":\"review-space-2\",\"status\":\"active\",\"cadence\":\"0 7 1 * *\",\"timezone\":\"UTC\",\"purpose\":\"Monthly approved task\",\"cron_job_id\":\"review-cron-2\",\"catch_up\":\"one\",\"requested_at\":1794383870.897429,\"decided_at\":1794383870.90607,\"next_run_at\":1804809600.0}\n"
+  },
+  {
+   "id": "tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (boundary='no native creation', handler='feed')",
+   "traceback": "Traceback (most recent call last):\n  File \"/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-repair/tests/python/test_review_customization.py\", line 481, in test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval\n    self.assertEqual(fx.cron.calls, calls_before)\nAssertionError: Lists differ: [('create', 'review-cron-1'), ('create', 'review-cron-2')] != [('create', 'review-cron-1')]\n\nFirst list contains 1 additional elements.\nFirst extra element 1:\n('create', 'review-cron-2')\n\n- [('create', 'review-cron-1'), ('create', 'review-cron-2')]\n+ [('create', 'review-cron-1')]\n"
+  },
+  {
+   "id": "tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval (boundary='request remains unapproved', handler='feed')",
+   "traceback": "Traceback (most recent call last):\n  File \"/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-repair/tests/python/test_review_customization.py\", line 487, in test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval\n    self.assertEqual(stored[\"status\"], \"requested\")\nAssertionError: 'active' != 'requested'\n- active\n+ requested\n\n"
+  }
+ ],
+ "errors": [],
+ "skips": []
+}

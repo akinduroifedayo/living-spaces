@@ -1,0 +1,53 @@
+{
+ "evidence_class": "Actual R02 core, SQLite and native job/ledger adapters in a disposable home. No gateway ticker, cron worker or model run.",
+ "before_native_job": {
+  "id": "a2b39ce457b3",
+  "enabled": true,
+  "state": "scheduled",
+  "fire_claim": null,
+  "run_claim": null,
+  "manual_run_at": "2026-11-11T02:13:20.725593-06:00"
+ },
+ "after_native_job": null,
+ "native_executions": [],
+ "run_after_revoke": {
+  "id": "run_5df4b3524899411c",
+  "space": "unstarted-one-shot-probe",
+  "trigger": "manual",
+  "handler": "agent",
+  "actor": "harness-fixture",
+  "status": "queued",
+  "queued_at": 1794384800.7066948,
+  "started_at": null,
+  "ended_at": null,
+  "source_as_of": null,
+  "changed": {
+   "added": 0,
+   "updated": 0,
+   "unchanged": 0,
+   "removed": 0
+  },
+  "error": null,
+  "detail": {
+   "cron_job_id": "a2b39ce457b3",
+   "one_shot": true,
+   "changed_unavailable": true,
+   "cancel_reason": "refresh revoked",
+   "native_interruption": "unconfirmed; native terminal observation required"
+  },
+  "heartbeat_at": 1794384800.7066948
+ },
+ "regrant": {
+  "error": {
+   "code": "blocked",
+   "message": "Cannot grant Refresh until native interruption is confirmed",
+   "reason": "Native terminal evidence for a2b39ce457b3 is incomplete; native interruption unconfirmed"
+  }
+ },
+ "not_claimed": [
+  "Actual native process interruption",
+  "Concurrent removal/claim race",
+  "Desktop UI",
+  "Release acceptance"
+ ]
+}
