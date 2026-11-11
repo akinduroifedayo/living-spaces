@@ -1,0 +1,51 @@
+{
+  "captured_at": 1794401716.4763782,
+  "status": "blocked-provider-rate-limit",
+  "checks": {
+    "exact_user_prompt_recorded_once": true,
+    "host_reports_rate_limit": true,
+    "host_reports_request_not_processed": true,
+    "no_tools_called": true,
+    "sky_records_revisions_grants_unchanged": true
+  },
+  "source_commit": "72b626aba71067166e737feb95e9585df5262816",
+  "branch": "forge/r1-contracts",
+  "cdp": "http://127.0.0.1:9341",
+  "hermes_home": "/Volumes/Expansion/Development/Build/living-spaces-r1/home",
+  "skill_disk_sha256": "50851b36d8918428e882b9a0e1a132d7e4a7b9239d9a4447f2ab28879f1dde96",
+  "loaded_skill_evidence": "none; provider rejected request before any tool call",
+  "space_heads": [
+    {
+      "id": "pair-play",
+      "name": "Pair Play",
+      "head_rev": 5
+    },
+    {
+      "id": "research-desk",
+      "name": "Research Desk",
+      "head_rev": 8
+    },
+    {
+      "id": "sky-window",
+      "name": "Sky Window",
+      "head_rev": 4
+    }
+  ],
+  "research_desk_prompt_sent": false,
+  "pair_play_prompt_sent": false,
+  "live_functional_checks": "not reached; no regenerated artifact",
+  "provider_change": false,
+  "gateway_restart": false,
+  "data_provenance": "existing generic isolated demo data only; no fresh external data fetched in this attempt",
+  "source_memory_hash_attestation": "not available; no backend restart performed",
+  "artifacts": {
+    "sky-window-host-message.txt": "d04cab81dda5514260befeaa839d803016998cff025028a79a89744e9d9ceed7",
+    "README.md": "e5ba641c15e291a1c58f3474a4b0ec7daa345ba05f94b70b7df672aa4414618a",
+    "sky-window-trace.json": "6b36547cf822c6df38fc015d35fd7be6b06cca10c17200e19130a27a15a253af",
+    "sky-window-before.json": "94d91d42968a96e4ce9f2af2a2f62f87fff4f0567eefceb0ca61075cdd290435",
+    "capture-blocker.py": "8c54774f223f786a8f002011bfed9343799c5db870ce2ff57260d42a987842e9",
+    "sky-window-submission.json": "cf3c12b4428ba899e1c57db0441c586fe79027a806444cb245378767f252f0cf",
+    "sky-window-after.json": "94d91d42968a96e4ce9f2af2a2f62f87fff4f0567eefceb0ca61075cdd290435",
+    "sky-window-provider-blocked.png": "aeb5ba07b543c73a2c93d3949c8fbc0fe0875ff73f3889de790854d7183045d0"
+  }
+}
