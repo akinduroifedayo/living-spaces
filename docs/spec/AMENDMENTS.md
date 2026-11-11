@@ -2,9 +2,9 @@
 
 > **Definition (Ife, A-04).** "I see spaces as an open canvas for your bots that live in Hermes." The bot is the trusted author and the canvas is its surface. This supersedes the framing of SPEC v5.1, which treated a Space as an untrusted app to be permissioned.
 
-Order of authority: Ife's decisions in this file, then SPEC v6 when it lands, then `SPEC.md` (v5.1). Where SPEC v5.1 sections 2 and 3 (the capability and permission model, the upkeep model) conflict with an entry here, v5.1 does not apply.
+Authority: later explicit Ife decisions govern. `SPEC.md` is now Product's delivered v6 and replaces conflicting historical amendment and v5.1 wording. V5.1 is retained in `history/SPEC-v5.1.md`. Historical decisions below retain their attribution and status; they do not override v6's current open-frame target or acceptance checks.
 
-Each entry records the owner's decision, its date and the engineering status. Where an entry conflicts with SPEC.md, the entry governs.
+Each entry records the owner's decision, date and engineering status. Entries that precede v6 are historical where v6 supersedes them. Later explicit owner decisions still govern.
 ## A-01. Spaces reach the internet; isolation is unchanged (Nov 10, 2026)
 
 **Decision (Ife).** "Well why is internet restricted for spaces? It should be exposed to whatever Hermes's is exposed to. Whats the restriction?. Isn't that limiting?"

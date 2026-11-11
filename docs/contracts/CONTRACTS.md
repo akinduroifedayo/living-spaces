@@ -1,6 +1,6 @@
 # Living Spaces: frozen release-1 contracts
 
-Owner: Forge. Status: frozen for the release-1 swarm. Order of authority: Ife's decisions in `docs/spec/AMENDMENTS.md`, then SPEC v6 when it lands, then `docs/spec/SPEC.md` (v5.1), which is superseded where it conflicts. Experience direction comes from `docs/design/DIRECTION.md` (Miro, branch `miro/design-direction-v1`). Change this file only through Forge. Lanes that need a change post it to Forge instead of editing.
+Owner: Forge. Status: frozen for the release-1 swarm. Authority: later explicit Ife decisions govern, followed by `docs/spec/SPEC.md` v6. V6 replaces conflicting historical amendment and v5.1 wording. V5.1 is archived at `docs/spec/history/SPEC-v5.1.md`. Experience direction comes from `docs/design/DIRECTION.md` (Miro, branch `miro/design-direction-v1`). Change this file only through Forge. Lanes that need a change post it to Forge instead of editing.
 
 ## 0. Package layout (one installable plugin folder)
 
@@ -12,7 +12,7 @@ src/living-spaces/                    # the plugin package (plugin id: living-sp
 ├── living_spaces_core/               # pure Python. stdlib + httpx only. No hermes imports except optional get_hermes_home
 │   ├── __init__.py                   # re-exports the public API in section 3
 │   ├── db.py  projects.py  records.py  grants.py  sessions.py  logs.py  limits.py  errors.py  migrations.py
-│   ├── runs.py  feeds.py  schedules.py   # schedules.py: native-cron upkeep links (A-03)
+│   ├── runs.py  feeds.py  upkeep.py      # native-cron upkeep links (A-03)
 │   └── bridge.py                     # dispatch(space, session, op, args) -> reply  (the only frame entry point)
 ├── dashboard/manifest.json           # {"name":"living-spaces","label":"Spaces","api":"plugin_api.py","tab":{"path":"/spaces","hidden":true}}
 ├── dashboard/plugin_api.py           # FastAPI router. Loose module: loads core through ../_core.py by path
@@ -336,4 +336,4 @@ Native cron and Space SQLite are separate stores. The plugin keeps a link, not a
 
 ### Qualification runtime
 
-Stock unit tests use the documented test interpreter with disposable homes. A harness that calls native Hermes cron modules must use the supported Hermes runtime bootstrap from `hermes --print-runtime-command`. A bare legacy venv may lack `hermes_yaml`. Calling `get_schedule` under that incomplete import environment can persist a disabled reason, so it is not a harmless health probe. The consent harness's failed attempt and corrected runtime execution are retained in `docs/evidence/runs/consent/`.
+Stock unit tests use the documented test interpreter with disposable homes. A harness that calls native Hermes cron modules must use the supported Hermes runtime bootstrap from `hermes --print-runtime-command`. A bare legacy venv may lack `hermes_yaml`. Historical consent receipts predate A-03 and do not qualify the v6 flow.

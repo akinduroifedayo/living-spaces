@@ -1,4 +1,32 @@
-# Release 1 evidence status
+# Release 1 evidence status under spec v6
+
+Authority is `docs/spec/SPEC.md` v6, integrated byte-for-byte from Product's delivered file. Later explicit owner decisions govern. No candidate is accepted or pinned. Historical totals below are receipts for their own commits, not current v6 passes.
+
+## V6 qualification ledger
+
+The current integrated source includes A-03 native cron and the lifecycle transaction repair. The last complete parent gate was `9763748`, before that repair. Parent execution of the repaired lifecycle tree passed 308 Python tests after one explicit migration of the old hook-order assertion. Neither result is an acceptance pass.
+
+| ID | Current disposition | Evidence and remaining obligation |
+|---|---|---|
+| R1-01 | Partial historical evidence | Sandbox and mediated-network receipts exist. On/Off current-path lifecycle and open-frame checks need candidate-bound requalification. |
+| R1-02 | Partial real chat evidence | Original Research Desk chat trace exists. Working shared views need final running-candidate qualification. |
+| R1-03 | Partial | Durable data and conflict receipts exist. The complete selected-record chat/canvas return loop must be bound to the candidate. |
+| R1-04 | Partial | Sky Window same-session repair and multiple app types are observed. Evolution/recovery on final guidance remains unqualified. |
+| R1-05 | Partial, changed requirement | Removed Refresh grant and schedule approval. Native canvas-to-bot policy and open-frame credential questions remain unproven. |
+| R1-06 | Partial | Feed refresh and preservation receipts exist. Feed-to-agent escalation is blocked in source/unit probes; final real-Desktop replay remains. |
+| R1-07 | Unmet current end-to-end requirement | Core-created/feed fixtures are not a substitute for a new normal-chat-created native agent upkeep run under A-03. Historical agent-run receipts predate the cut. |
+| R1-08 | Partial | Isolated restart preservation and limit/failure receipts exist. Final candidate must repeat affected paths. |
+| R1-09 | Partial | Scoped diagnostics and repair receipts exist. No current candidate acceptance is asserted. |
+| R1-10 | Partial | Code restore, schema refusal and recovery receipts exist. Final integrity checks remain. |
+| R1-11 | Repair implemented, independent acceptance pending | New cross-process delete/refresh and archive-unavailability regressions pass in the private repair tree. Real native lifecycle replay and fresh review remain. |
+| R1-12 | Unmet design acceptance | Host chrome authored privately and automated tests green; combined real-app evidence and Design/Ife acceptance remain. |
+| R1-13 | Unmet | Current shipped CSP blocks direct networking. Source execution predicts ambient backend-header exposure for matching URLs. No positive live configured-header/native-widget parity proof or owner disposition yet. |
+| R1-14 | Unmet | File-reference implementation is private at `1e4233b`; independent review reproduced credential, path-race, URL-provenance and expansion-budget defects. It is not integrated. Real chat/import/restart/restore evidence remains. |
+| R1-15 | Unmet | No canvas-to-bot implementation or routing/spend qualification yet. Public native submission/injection seams were investigated only. |
+| R1-16 | Unmet | Updated design guidance and references are available from Miro. Three fresh normal-chat premium outputs and refinement/design evidence remain. |
+
+## Historical checkpoints, not v6 acceptance
+
 
 The goal is a real application built and evolved from normal Hermes chat, used in Desktop, with durable shared data and controlled upkeep. This report does not assert release acceptance.
 
