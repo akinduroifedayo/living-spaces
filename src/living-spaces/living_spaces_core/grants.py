@@ -165,6 +165,13 @@ def decide(sid, capability, decision, *, actor="user", scope=None):
             pass
         else:
             cancel(sid, "refresh revoked")
+        try:
+            from . import schedules
+            pause = schedules.on_refresh_revoked
+        except (ImportError, AttributeError):
+            pass
+        else:
+            pause(sid, decision, actor=actor)
     return result
 
 

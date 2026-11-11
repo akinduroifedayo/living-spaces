@@ -55,8 +55,8 @@ def _schedule_row(sid):
         if row is None:
             return None
         result = dict(row)
-        if result["status"] == "disabled":
-            audit = conn.execute("SELECT detail FROM audit WHERE space=? AND action='schedule.disabled' ORDER BY id DESC LIMIT 1", (sid,)).fetchone()
+        if result["status"] in ("disabled", "paused"):
+            audit = conn.execute("SELECT detail FROM audit WHERE space=? AND action=? ORDER BY id DESC LIMIT 1", (sid, "schedule." + result["status"])).fetchone()
             if audit:
                 result["reason"] = json.loads(audit["detail"])["reason"]
         return result
@@ -66,6 +66,7 @@ def get_schedule(sid):
     schedule = _schedule_row(sid)
     if schedule is None or not schedule["cron_job_id"] or schedule["status"] not in ("active", "paused"):
         return schedule
+    job = None
     with db.write() as conn:
         current = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
         if current is None:
@@ -84,7 +85,31 @@ def get_schedule(sid):
                 conn.execute("UPDATE schedules SET status=?,next_run_at=? WHERE space=?", (
                     "paused" if paused else "active", None if paused else _next(job), sid,
                 ))
-    return _schedule_row(sid)
+    result = _schedule_row(sid)
+    if result and job:
+        if job.get("last_dispatch"):
+            result["last_dispatch"] = job["last_dispatch"]
+        if result["status"] == "paused" and job.get("paused_reason"):
+            result["reason"] = job["paused_reason"]
+    return result
+
+
+def dispatch_detail(sid):
+    schedule = _schedule_row(sid)
+    if not schedule or not schedule["cron_job_id"]:
+        return None
+    try:
+        job = _cron().get_job(schedule["cron_job_id"])
+    except ImportError:
+        return None
+    if not job or job.get("manual_run_at"):
+        return None
+    dispatch = job.get("last_dispatch")
+    # A completed dispatch is history, not evidence for a new invocation of the shim.
+    if dispatch and (not job.get("last_run_at") or
+                     datetime.fromisoformat(dispatch["dispatched_at"]) > datetime.fromisoformat(job["last_run_at"])):
+        return dispatch
+    return None
 
 
 def request_schedule(sid, *, cadence, timezone, purpose, actor):
@@ -111,6 +136,9 @@ def request_schedule(sid, *, cadence, timezone, purpose, actor):
 def decide_schedule(sid, decision, *, actor="user"):
     if decision not in ("approve", "deny"):
         raise SpacesError("invalid", "Schedule decision must be approve or deny")
+    if decision == "approve":
+        from . import grants
+        grants.check(sid, "refresh")
     with db.write() as conn:
         space = _space(conn, sid)
         row = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
@@ -154,9 +182,12 @@ def decide_schedule(sid, decision, *, actor="user"):
     return _schedule_row(sid)
 
 
-def pause_schedule(sid, paused, *, actor):
+def pause_schedule(sid, paused, *, actor, reason="Space upkeep paused"):
     if not isinstance(paused, bool):
         raise SpacesError("invalid", "paused must be a boolean")
+    if not paused:
+        from . import grants
+        grants.check(sid, "refresh")
     with db.write() as conn:
         space = _space(conn, sid)
         if not paused and space["status"] == "archived":
@@ -171,12 +202,23 @@ def pause_schedule(sid, paused, *, actor):
         except ImportError as exc:
             _disabled(conn, sid, f"Native cron is unavailable: {exc}", actor)
         else:
-            job = jobs.pause_job(row["cron_job_id"], reason="Space upkeep paused") if paused else jobs.resume_job(row["cron_job_id"])
+            job = jobs.pause_job(row["cron_job_id"], reason=reason) if paused else jobs.resume_job(row["cron_job_id"])
             if job is None:
                 _disabled(conn, sid, "Native cron job is missing; approve the schedule again", actor)
             else:
                 conn.execute("UPDATE schedules SET status=?,next_run_at=? WHERE space=?", ("paused" if paused else "active", None if paused else _next(job), sid))
+                if paused:
+                    conn.execute("INSERT INTO audit(space,at,actor,action,outcome,detail) VALUES(?,?,?,?,?,?)", (
+                        sid, db.now(), actor, "schedule.paused", "paused", json.dumps({"reason": reason}),
+                    ))
     return _schedule_row(sid)
+
+
+def on_refresh_revoked(sid, decision, *, actor):
+    schedule = _schedule_row(sid)
+    if schedule and schedule["status"] in ("active", "paused"):
+        reason = "Refresh permission " + ("denied" if decision == "deny" else "revoked") + "; approve Refresh and resume upkeep to restart."
+        pause_schedule(sid, True, actor=actor, reason=reason)
 
 
 def on_archive(sid):

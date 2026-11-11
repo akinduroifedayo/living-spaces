@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import hashlib
-import http.server
 import json
 import os
 from pathlib import Path
@@ -13,7 +12,6 @@ import time
 import types
 import unittest
 from unittest.mock import Mock, patch
-from urllib.request import urlopen
 
 import httpx
 
@@ -128,35 +126,11 @@ class RunTests(UpkeepCase):
             self.assertIsInstance(json.loads(row["source"])["published"], float)
             self.assertGreater(row["created_at"], 0)
 
-    def test_manual_refresh_from_local_server_has_provenance_and_timestamps(self):
+    def test_manual_refresh_has_provenance_and_timestamps(self):
         body = (FIXTURES / "research.rss").read_bytes()
-
-        class Handler(http.server.BaseHTTPRequestHandler):
-            def do_GET(self):
-                self.send_response(200)
-                self.end_headers()
-                self.wfile.write(body)
-
-            def log_message(self, *args):
-                pass
-
-        try:
-            server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        except PermissionError as exc:
-            self.skipTest(f"Sandbox forbids binding the local HTTP fixture: {exc}")
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        try:
-            def local_fetch(sid, url):
-                with urlopen(f"http://127.0.0.1:{server.server_port}/feed", timeout=3) as response:
-                    return response.read()
-
-            self.fetch.side_effect = local_fetch
+        client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, content=body)))
+        with patch.object(feeds, "fetch", HTTP_FETCH), patch.object(feeds.httpx, "Client", return_value=client):
             run = self.refresh()
-        finally:
-            server.shutdown()
-            server.server_close()
-            thread.join()
         self.assertEqual(run["status"], "succeeded")
         self.assertEqual(run["changed"], {"added": 2, "updated": 0, "unchanged": 0, "removed": 0})
         row = self.stored()[0]
@@ -537,6 +511,101 @@ class ScheduleTests(UpkeepCase):
 
     def request(self):
         return schedules.request_schedule("research-desk", cadence="0 * * * *", timezone="America/Chicago", purpose="Public demo research", actor="agent:demo")
+
+    def test_catchup_dispatch_survives_in_run_history(self):
+        from datetime import datetime, timedelta, timezone
+
+        jobs = self.cron()
+        self.request()
+        with jobs.use_cron_store(self.home):
+            schedule = schedules.decide_schedule("research-desk", "approve")
+            past = (datetime.now(timezone.utc) - timedelta(days=3)).replace(minute=0, second=0, microsecond=0).isoformat()
+            jobs.update_job(schedule["cron_job_id"], {"next_run_at": past})
+            due = jobs.get_due_jobs()
+            self.assertEqual(len(due), 1)
+            dispatch = due[0]["last_dispatch"]
+            self.assertEqual(dispatch["kind"], "catch_up")
+            run = runs.start_refresh("research-desk", trigger="schedule", actor="upkeep:schedule", wait=True)
+            self.assertEqual(run["status"], "succeeded")
+            self.assertEqual(run["detail"].get("dispatch"), dispatch)
+            jobs.mark_job_run(schedule["cron_job_id"], success=True)
+            self.assertEqual(jobs.get_due_jobs(), [])
+            self.assertEqual(runs.list_runs("research-desk")[0]["detail"]["dispatch"], dispatch)
+            self.assertEqual(schedules.get_schedule("research-desk").get("last_dispatch"), dispatch)
+            manual = self.refresh()
+            self.assertNotIn("dispatch", manual["detail"])
+            stale = runs.start_refresh("research-desk", trigger="schedule", actor="upkeep:schedule", wait=True)
+            self.assertNotIn("dispatch", stale["detail"])
+            schedules.remove_schedule("research-desk")
+
+    def test_failed_catchup_keeps_dispatch_and_last_good_data(self):
+        jobs = self.cron()
+        self.request()
+        self.refresh()
+        before = self.stored()
+        with jobs.use_cron_store(self.home):
+            schedule = schedules.decide_schedule("research-desk", "approve")
+            dispatch = {"kind": "catch_up", "scheduled_at": "2026-01-01T00:00:00+00:00",
+                        "dispatched_at": "2026-01-04T00:00:00+00:00", "lateness_seconds": 259200}
+            jobs.update_job(schedule["cron_job_id"], {"last_dispatch": dispatch})
+            self.fetch.side_effect = TimeoutError("Feed unavailable")
+            run = runs.start_refresh("research-desk", trigger="schedule", actor="upkeep:schedule", wait=True)
+            self.assertEqual(run["status"], "failed")
+            self.assertEqual(run["detail"].get("dispatch"), dispatch)
+            self.assertEqual(self.stored(), before)
+            schedules.remove_schedule("research-desk")
+
+    def test_refresh_decisions_pause_native_job_until_explicit_resume(self):
+        import importlib
+        grants = importlib.import_module(core.__name__ + ".grants")
+        jobs = self.cron()
+        with jobs.use_cron_store(self.home), patch.object(core, "grants", grants):
+            for decision in ("deny", "revoke"):
+                with self.subTest(decision=decision):
+                    grants.request("research-desk", "refresh", scope={"hosts": ["research.example"]}, purpose="Demo", actor="user")
+                    grants.decide("research-desk", "refresh", "grant")
+                    self.request()
+                    schedule = schedules.decide_schedule("research-desk", "approve")
+                    job_id = schedule["cron_job_id"]
+                    with patch.object(runs.threading, "Thread"):
+                        pending = runs.start_refresh("research-desk", trigger="manual", actor="user")
+                    grants.decide("research-desk", "refresh", decision)
+                    job = jobs.get_job(job_id)
+                    self.assertEqual((job["state"], job["enabled"]), ("paused", False))
+                    paused = schedules.get_schedule("research-desk")
+                    self.assertEqual(paused["status"], "paused")
+                    self.assertIn("Refresh permission", paused["reason"])
+                    self.assertIn("denied" if decision == "deny" else "revoked", paused["reason"])
+                    self.assertIsNone(paused["next_run_at"])
+                    self.assertEqual(runs.get_run(pending["id"])["status"], "canceled")
+                    jobs.update_job(job_id, {"next_run_at": "2026-01-01T00:00:00+00:00"})
+                    self.assertEqual(jobs.get_due_jobs(), [])
+                    with self.assertRaises(SpacesError) as caught:
+                        schedules.pause_schedule("research-desk", False, actor="user")
+                    self.assertEqual(caught.exception.code, "not_granted")
+                    grants.decide("research-desk", "refresh", "grant")
+                    self.assertEqual(schedules.get_schedule("research-desk")["status"], "paused")
+                    self.assertFalse(jobs.get_job(job_id)["enabled"])
+                    resumed = schedules.pause_schedule("research-desk", False, actor="user")
+                    self.assertEqual(resumed["status"], "active")
+                    self.assertNotIn("reason", resumed)
+                    schedules.remove_schedule("research-desk")
+
+    def test_approval_and_resume_require_refresh_permission(self):
+        jobs = self.cron()
+        self.request()
+        with jobs.use_cron_store(self.home):
+            active = schedules.decide_schedule("research-desk", "approve")
+            schedules.pause_schedule("research-desk", True, actor="user")
+            self.grant_status = "revoked"
+            for action in (lambda: schedules.decide_schedule("research-desk", "approve"),
+                           lambda: schedules.pause_schedule("research-desk", False, actor="user")):
+                with self.subTest(action=action):
+                    with self.assertRaises(SpacesError) as caught:
+                        action()
+                    self.assertEqual(caught.exception.code, "not_granted")
+                    self.assertFalse(jobs.get_job(active["cron_job_id"])["enabled"])
+            schedules.remove_schedule("research-desk")
 
     def test_request_does_not_import_cron_create_job_or_write_shim(self):
         with patch.object(schedules, "_cron") as cron:

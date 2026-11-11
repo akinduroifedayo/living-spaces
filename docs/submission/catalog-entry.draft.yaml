@@ -1,0 +1,46 @@
+# Draft of plugin-catalog/living-spaces.yaml for NousResearch/hermes-agent.
+# Not submitted. Catalog submission needs separate owner approval (docs/evidence/R1-STATUS.md).
+# Forge replaces the placeholder only after validating the final candidate commit.
+# The repository is private. Publication and a catalog PR need Ife approval.
+name: living-spaces
+repo: https://github.com/akinduroifedayo/living-spaces
+sha: PIN_40_CHAR_SHA_AT_FINAL_COMMIT
+subdir: src/living-spaces
+title: Living Spaces
+description: Build persistent applications in the Spaces tab and keep their data current with approved refreshes.
+maintainer: akinduroifedayo
+tier: community
+category: desktop
+requires_hermes: ">=0.23.1"
+version: "0.1.0"
+# Qualification evidence covers macOS only; Linux and Windows are unqualified.
+platforms: [macos]
+known_issues:
+  - "Release 1 acceptance is incomplete. See docs/evidence/R1-STATUS.md in the repository for observed, partial and pending checks."
+  - "Schedules import the private cron.jobs API. Validation passes with a warning; compatibility and catalog maintainer review remain open."
+  - "Spaces block ordinary internet connections unless you approve a site or capability. This is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle."
+  - "Scheduled refresh runs only while Hermes is running. Catch-up policy: runs one current refresh when Hermes wakes; missed intervals are not replayed. Offline catch-up remains unqualified."
+# Pending Forge: capture final screenshots after Miro's design kit merges.
+# Add up to 6 GitHub-hosted screenshots pinned to the final candidate SHA.
+screenshots: []
+# plugin.yaml declares no host capabilities (capabilities: []).
+# The catalog schema below summarizes registrations, not host permissions.
+# Desktop surface: desktop/plugin.js; /spaces route, Spaces sidebar, living-space card.
+capabilities:
+  provides_tools:
+    - spaces_list
+    - spaces_get
+    - spaces_create
+    - spaces_read_file
+    - spaces_write_files
+    - spaces_edit_file
+    - spaces_query
+    - spaces_write_records
+    - spaces_read_logs
+    - spaces_revisions
+    - spaces_restore
+    - spaces_refresh
+    - spaces_request_schedule
+  provides_hooks: []
+  provides_middleware: []
+  requires_env: []

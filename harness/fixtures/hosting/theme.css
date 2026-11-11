@@ -1,0 +1,4 @@
+:root { --hosting-local-css: loaded; }
+body { font: 16px system-ui; background: #fff; color: #123; }
+#local-image { width: 32px; height: 32px; }
+nav { padding: 12px; }
