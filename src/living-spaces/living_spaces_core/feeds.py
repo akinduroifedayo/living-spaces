@@ -4,12 +4,10 @@ import hashlib
 import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urlsplit
 from xml.etree import ElementTree as ET
 
-import httpx
-
-from . import db, limits
+from . import db, limits, net
 from .errors import SpacesError
 
 MAX_BYTES = limits.FEED_BYTES
@@ -29,26 +27,17 @@ def fetch(sid, url):
     from . import grants
 
     host = source_host(url)
-    with httpx.Client(timeout=20.0, follow_redirects=False) as client:
-        for _ in range(6):
-            if source_host(url) != host:
-                raise SpacesError("not_granted", "Feed redirect changed host", capability="refresh")
-            grants.check(sid, "refresh", {"hosts": [host]})
-            with client.stream("GET", url) as response:
-                if response.is_redirect:
-                    location = response.headers.get("location")
-                    if not location:
-                        raise SpacesError("invalid", "Feed redirect has no location")
-                    url = urljoin(url, location)
-                    continue
-                response.raise_for_status()
-                body = bytearray()
-                for chunk in response.iter_bytes(chunk_size=64 * 1024):
-                    body.extend(chunk)
-                    if len(body) > MAX_BYTES:
-                        raise SpacesError("limit", "Feed exceeds 3 MB", limit=MAX_BYTES, actual=len(body))
-                return bytes(body)
-    raise SpacesError("invalid", "Too many feed redirects")
+
+    def authorize(request_url):
+        if source_host(request_url) != host:
+            raise SpacesError("not_granted", "Feed redirect changed host", capability="refresh")
+        grants.check(sid, "refresh", {"hosts": [host]})
+
+    response, body = net._fetch_public(url, authorize=authorize, max_bytes=MAX_BYTES)
+    if not 200 <= response["status"] < 300:
+        raise SpacesError("invalid", "Feed request failed", status=response["status"])
+    authorize(url)
+    return body
 
 
 def _text(node, path):
