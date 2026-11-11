@@ -12,10 +12,18 @@ from .errors import SpacesError
 
 RUNTIME = Path(__file__).parent.parent / "runtime"
 _LIBRARIES = {
-    "preact": "vendor/preact.mjs", "preact/hooks": "vendor/hooks.mjs",
-    "lightweight-charts": "vendor/lightweight-charts.mjs", "spaces-kit": "kit/spaces-kit.mjs",
+    "preact": {"files": ["vendor/preact.mjs"], "imports": {"preact": "vendor/preact.mjs"}},
+    "preact/hooks": {"files": ["vendor/hooks.mjs", "vendor/preact.mjs"],
+                     "imports": {"preact": "vendor/preact.mjs", "preact/hooks": "vendor/hooks.mjs"}},
+    "lightweight-charts": {"files": ["vendor/lightweight-charts.mjs"],
+                           "imports": {"lightweight-charts": "vendor/lightweight-charts.mjs"}},
+    "spaces-kit": {"files": ["kit/spaces-kit.mjs", "kit/spaces-kit.css", "vendor/preact.mjs", "vendor/hooks.mjs"],
+                   "imports": {"spaces-kit": "kit/spaces-kit.mjs", "preact": "vendor/preact.mjs",
+                               "preact/hooks": "vendor/hooks.mjs"}},
+    **json.loads((RUNTIME / "vendor/SHELF.json").read_text(encoding="utf-8"))["libraries"],
 }
 _ACCENTS = {"blue", "green", "amber", "purple", "teal", "rose", "orange", "grey"}
+_THEME_PRESETS = {"editorial", "terminal", "playful", "minimal", "data", "journal", "game"}
 _EMPTY_FRESHNESS = {"last_success_at": None, "last_attempt_at": None, "last_attempt_status": None,
                     "source_as_of": None, "next_run_at": None}
 
@@ -54,6 +62,26 @@ def _manifest(value, name, description):
     value["accent"] = accent if isinstance(accent, str) and accent in _ACCENTS else "blue"
     icon = value.get("icon", "layers")
     value["icon"] = icon if isinstance(icon, str) and re.fullmatch(r"[a-z][a-z0-9-]*", icon) else "layers"
+    if "theme" in value:
+        theme = value["theme"]
+        limits.object_json(theme, resource="theme")
+        if set(theme) - {"preset", "tokens"}:
+            raise SpacesError("invalid", "Unknown theme keys; expected preset or tokens")
+        if "preset" in theme:
+            if not isinstance(theme["preset"], str) or theme["preset"] not in _THEME_PRESETS:
+                raise SpacesError("invalid", "Unknown theme.preset")
+        if "tokens" in theme:
+            tokens = theme["tokens"]
+            limits.object_json(tokens, resource="theme.tokens")
+            if len(tokens) > 64:
+                raise SpacesError("invalid", "theme.tokens must contain at most 64 tokens")
+            for token, css in tokens.items():
+                if not re.fullmatch(r"[a-z][a-z0-9-]{0,39}", token):
+                    raise SpacesError("invalid", f"Invalid theme token name: {token}")
+                if (not isinstance(css, str) or len(css) > 200
+                        or any(char in css for char in ";{}<>\\")
+                        or any(part in css.lower() for part in ("url(", "@import", "expression("))):
+                    raise SpacesError("invalid", f"Invalid theme token value: {token}")
     value.setdefault("data", {})
     limits.object_json(value["data"])
     value["data"].setdefault("version", 1)
@@ -103,26 +131,23 @@ def _input_files(files, manifest):
     return prepared, manifest if manifest is not None else extracted
 
 
-def _libraries(files, manifest, libraries, warnings):
+def _libraries(files, manifest, libraries, warnings, existing=()):
     if not isinstance(libraries, (tuple, list)):
         raise SpacesError("invalid", "libraries must be an array")
     for library in libraries:
         if not isinstance(library, str) or library not in _LIBRARIES:
             raise SpacesError("invalid", "Unknown bundled library")
-        paths = [_LIBRARIES[library]]
-        if library == "preact/hooks":
-            paths.append(_LIBRARIES["preact"])
-        if library == "spaces-kit":
-            paths += ["kit/spaces-kit.css", _LIBRARIES["preact"], _LIBRARIES["preact/hooks"]]
-        for path in paths:
+        group = _LIBRARIES[library]
+        for path in group["files"]:
             source = RUNTIME / path
             if not source.is_file():
                 if path.startswith("kit/"):
                     warnings.append(f"Bundled file is not available yet: {path}")
                     continue
                 raise SpacesError("blocked", f"Bundled library file is unavailable: {path}", reason="no_handler")
-            files.setdefault(path, source.read_bytes())
-            for name, target in _LIBRARIES.items():
+            if path not in files and path not in existing:
+                files[path] = source.read_bytes()
+            for name, target in group.get("imports", {}).items():
                 if path == target:
                     manifest["imports"].setdefault(name, target)
 
@@ -311,7 +336,7 @@ def list_files(sid, rev=None):
                 for path, sha in sorted(revision["files"].items())]
 
 
-def _write(conn, sid, changed, supplied, author, summary, base_rev):
+def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=()):
     space = db.space(conn, sid, writable=True)
     if base_rev is not None:
         limits.integer(base_rev, "base_rev")
@@ -319,6 +344,8 @@ def _write(conn, sid, changed, supplied, author, summary, base_rev):
             raise SpacesError("conflict", "Project revision changed", current={"head_rev": space["head_rev"]})
     old = _revision(conn, sid)
     manifest = _manifest(supplied if supplied is not None else old["manifest"], space["name"], space["description"])
+    warnings = []
+    _libraries(changed, manifest, libraries, warnings, existing=old["files"])
     version = manifest["data"]["version"]
     if version < space["data_version"]:
         raise SpacesError("incompatible", "Project requires an older data version", from_version=space["data_version"], to_version=version)
@@ -331,7 +358,7 @@ def _write(conn, sid, changed, supplied, author, summary, base_rev):
         if version > space["data_version"]:
             migrations.apply(conn, sid, space["data_version"], version, manifest["data"].get("migrations", []), actor=author)
         info = _save_revision(conn, space, manifest, stored, kind="edit" if space["head_rev"] else "create", author=author, summary=summary)
-        info["warnings"] = _warnings(conn, manifest, stored)
+        info["warnings"] = warnings + _warnings(conn, manifest, stored)
     except Exception as exc:
         conn.execute("ROLLBACK TO revision_write")
         conn.execute("RELEASE revision_write")
@@ -344,12 +371,12 @@ def _write(conn, sid, changed, supplied, author, summary, base_rev):
     return info, None
 
 
-def write_files(sid, *, files, manifest=None, author, summary, base_rev=None):
+def write_files(sid, *, files, manifest=None, author, summary, base_rev=None, libraries=()):
     changed, supplied = _input_files(files, manifest)
     limits.text(author, "author")
     limits.text(summary, "summary", nonempty=False)
     with db.write() as conn:
-        info, error = _write(conn, sid, changed, supplied, author, summary, base_rev)
+        info, error = _write(conn, sid, changed, supplied, author, summary, base_rev, libraries)
     if error:
         raise error
     return info

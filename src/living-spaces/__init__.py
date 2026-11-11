@@ -1,6 +1,8 @@
 """Living Spaces: agent tools that build and maintain Spaces, plus the build-space skill (CONTRACTS.md §9)."""
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import posixpath
 import re
@@ -11,6 +13,7 @@ from . import _core
 TOOLSET = "living_spaces"
 EMOJI = "🪴"
 DEFAULT_LIBRARIES = ["preact", "preact/hooks", "spaces-kit"]
+LIBRARIES = [*DEFAULT_LIBRARIES, "lightweight-charts", "htm", "lucide", "font:inter", "font:dm-sans"]
 MANIFEST_PATH = "space.json"
 SKILL_PATH = Path(__file__).resolve().parent / "skills" / "build-space" / "SKILL.md"
 NEXT = "End your reply with the directive paragraph so the user gets an Open Space card."
@@ -18,10 +21,21 @@ NEXT = "End your reply with the directive paragraph so the user gets an Open Spa
 SPACE_ARG = {"type": "string", "description": "Space id or exact Space name, as shown by spaces_list."}
 FILES_ARG = {
     "type": "object",
-    "description": ("Map of relative path to full file text, e.g. {\"index.html\": \"...\", \"views/library.js\": "
-                    "\"...\"}. Include \"space.json\" to set the manifest. Every file is written whole."),
-    "additionalProperties": {"type": ["string", "null"]},
+    "description": ("Map of relative path to full UTF-8 text or {\"b64\":\"<base64>\",\"mime\":\"<optional>\"} "
+                    "for binary assets. null deletes a file on writes only. Include \"space.json\" to set the "
+                    "manifest. Every file is written whole; size limits count decoded bytes. MIME is inferred "
+                    "from the path, so use the correct file extension."),
+    "additionalProperties": {"anyOf": [
+        {"type": "string"}, {"type": "null"},
+        {"type": "object", "properties": {"b64": {"type": "string"}, "mime": {"type": "string"}},
+         "required": ["b64"], "additionalProperties": False},
+    ]},
 }
+LIBRARIES_ARG = {"type": "array", "items": {"type": "string", "enum": LIBRARIES},
+                 "description": "Copy selected bundled groups, including licenses, and add import aliases. "
+                                "Existing files and aliases are preserved unless explicitly replaced. "
+                                "Fonts copy to vendor/fonts/. [] copies nothing. Create defaults to preact, "
+                                "preact/hooks and spaces-kit; writes default to no additions."}
 
 
 def _schema(name, description, properties, required=()):
@@ -73,6 +87,27 @@ def _space(core, args):
     return core.resolve_space(_text(core, args, "space"))
 
 
+def _files(core, args, *, deleting=False):
+    prepared = {}
+    for path, value in _json_arg(core, args, "files", dict).items():
+        if isinstance(value, str) or (value is None and deleting):
+            prepared[path] = value
+        elif (isinstance(value, dict) and isinstance(value.get("b64"), str)
+              and set(value) <= {"b64", "mime"}
+              and ("mime" not in value or isinstance(value["mime"], str))):
+            try:
+                prepared[path] = base64.b64decode(value["b64"], validate=True)
+            except (ValueError, binascii.Error):
+                raise _invalid(core, f"{path}: invalid base64 file content") from None
+            core.limits.check(len(prepared[path]), core.limits.FILE_BYTES, "file bytes")
+            if base64.b64encode(prepared[path]).decode("ascii") != value["b64"]:
+                raise _invalid(core, f"{path}: invalid base64 padding or pad bits")
+        else:
+            raise _invalid(core, f"{path}: expected file text or a {{b64, mime?}} descriptor"
+                           + (" or null to delete" if deleting else ""))
+    return prepared
+
+
 def _open(sid):
     return {"directive": f'::living-space{{id="{sid}"}}', "route": f"/spaces?space={sid}"}
 
@@ -85,7 +120,7 @@ def _split_manifest(core, files, manifest):
     if manifest is not None:
         raise _invalid(core, "Pass the manifest once: either files['space.json'] or manifest, not both")
     raw = files.pop(MANIFEST_PATH)
-    if not isinstance(raw, str):
+    if not isinstance(raw, (str, bytes)):
         raise _invalid(core, "space.json cannot be deleted; write a new manifest instead")
     try:
         manifest = json.loads(raw)
@@ -155,8 +190,12 @@ def _change_result(core, sid, rev, extra_warnings=()):
                 "scope": g.get("requested_scope") or g.get("scope")}
                for g in core.list_grants(sid) if g.get("status") == "requested"]
     warnings = list(dict.fromkeys([*extra_warnings, *_warnings(texts, paths, project["manifest"])]))
+    notes = []
+    if "kit/spaces-kit.css" in paths:
+        notes.append('To use the kit styles, add <link rel="stylesheet" href="kit/spaces-kit.css"> '
+                     'to your HTML (adjust the relative path for a nested entry).')
     return {"space": sid, "rev": rev, "open": _open(sid), "grants_pending": pending, "warnings": warnings,
-            "next": NEXT}
+            "notes": notes, "next": NEXT}
 
 
 def spaces_list(core, args, owner):
@@ -175,14 +214,12 @@ def spaces_create(core, args, owner):
     description = args.get("description", "")
     if not isinstance(description, str):
         raise _invalid(core, "description must be a string")
-    files, manifest = _split_manifest(core, _json_arg(core, args, "files", dict),
+    files, manifest = _split_manifest(core, _files(core, args),
                                       _json_arg(core, args, "manifest", dict, required=False))
     libraries = _json_arg(core, args, "libraries", list, required=False)
     if libraries is None:
         libraries = list(DEFAULT_LIBRARIES)
-    if any(not isinstance(value, str) for value in files.values()):
-        raise _invalid(core, "create files must contain file text")
-    if any(value not in (*DEFAULT_LIBRARIES, "lightweight-charts") for value in libraries):
+    if any(value not in LIBRARIES for value in libraries):
         raise _invalid(core, "libraries contains an unsupported library")
     actor = f"agent:{owner}"
     detail = core.create_space(name, description=description, owner=owner, files=files, manifest=manifest,
@@ -199,12 +236,12 @@ def spaces_read_file(core, args, owner):
 
 def spaces_write_files(core, args, owner):
     sid = _space(core, args)
-    files, manifest = _split_manifest(core, _json_arg(core, args, "files", dict), None)
-    if any(value is not None and not isinstance(value, str) for value in files.values()):
-        raise _invalid(core, "files must contain file text or null to delete")
+    files, manifest = _split_manifest(core, _files(core, args, deleting=True), None)
+    libraries = _json_arg(core, args, "libraries", list, required=False)
     summary = _text(core, args, "summary")
     info = core.write_files(sid, files=files, manifest=manifest, author=f"agent:{owner}", summary=summary,
-                            base_rev=_int(core, args, "base_rev", required=False))
+                            base_rev=_int(core, args, "base_rev", required=False),
+                            **({"libraries": libraries} if libraries is not None else {}))
     return _change_result(core, sid, info.get("rev"), info.get("warnings") or ())
 
 
@@ -274,8 +311,12 @@ def spaces_request_schedule(core, args, owner):
 
 REF_NOTE = (" An ambiguous or unknown space fails with code ambiguous/not_found and lists candidates: ask the user "
             "which one they mean, never guess.")
-WRITE_NOTE = (" Returns {space, rev, open, grants_pending, warnings}. Fix every warning. End your reply with "
+WRITE_NOTE = (" Returns {space, rev, open, grants_pending, warnings, notes}. Fix every warning and follow notes "
+              "for stylesheet links. End your reply with "
               "open.directive on its own line and say what changed, the revision, and any pending grants.")
+BINARY_NOTE = (" Pass binary images, audio and fonts as {\"b64\":\"<base64>\",\"mime\":\"<optional>\"} "
+               "file values. Hermes's image generation output can be placed this way by base64-encoding the "
+               "generated file bytes. Use the correct path extension for MIME; limits count decoded bytes.")
 
 TOOLS = [
     (spaces_list, _schema(
@@ -293,15 +334,13 @@ TOOLS = [
         "Create a new Space (a multi-file sandboxed app in the Spaces tab) from a complete set of files. Read the "
         "build-space skill first. Include space.json (or pass manifest) declaring data collections and optional "
         "upkeep feeds. libraries defaults to preact, preact/hooks and spaces-kit, copied into the project and wired "
-        "into the import map; add lightweight-charts for charts." + WRITE_NOTE,
+        "into the import map. Select lightweight-charts, htm, lucide, font:inter or font:dm-sans as needed. "
+        "Kit selection returns the stylesheet link to add to your HTML." + BINARY_NOTE + WRITE_NOTE,
         {"name": {"type": "string", "description": "Display name, e.g. \"Research Desk\". The id is derived from it."},
          "description": {"type": "string", "description": "One plain sentence saying what the Space is for."},
          "files": FILES_ARG,
          "manifest": {"type": "object", "description": "The space.json manifest, if not given as a file."},
-         "libraries": {"type": "array", "items": {"type": "string",
-                                                   "enum": ["preact", "preact/hooks", "spaces-kit",
-                                                            "lightweight-charts"]},
-                       "description": "Vendored libraries to include. Default [\"preact\",\"preact/hooks\",\"spaces-kit\"]."}},
+         "libraries": LIBRARIES_ARG},
         ["name", "description", "files"])),
     (spaces_read_file, _schema(
         "spaces_read_file",
@@ -314,8 +353,10 @@ TOOLS = [
         "Write whole files as one new revision: add or replace files, delete a file by mapping its path to null, "
         "replace the manifest with a \"space.json\" entry. Pass base_rev (the head_rev you read) so a concurrent "
         "change fails with code conflict instead of being overwritten; on conflict re-read and retry. Prefer "
-        "spaces_edit_file for small changes. Saved records are never touched by code changes." + REF_NOTE + WRITE_NOTE,
-        {"space": SPACE_ARG, "files": FILES_ARG,
+        "spaces_edit_file for small changes. Select libraries to add bundled groups with the same semantics as "
+        "create; omitted libraries adds nothing. Saved records are never touched by code changes."
+        + BINARY_NOTE + REF_NOTE + WRITE_NOTE,
+        {"space": SPACE_ARG, "files": FILES_ARG, "libraries": LIBRARIES_ARG,
          "summary": {"type": "string", "description": "What changed, in a few words. Shown in revision history."},
          "base_rev": {"type": "integer", "description": "The head_rev this change is based on."}},
         ["space", "files", "summary"])),
