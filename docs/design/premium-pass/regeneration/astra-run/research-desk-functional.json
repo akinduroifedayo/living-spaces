@@ -1,0 +1,66 @@
+{
+  "space": "research-desk",
+  "rev": 18,
+  "verified_at": "2026-11-11T08:23-08:27 CST",
+  "host": "isolated Hermes Desktop (pid 27294, CDP 9341), real Space frame",
+  "data_provenance": "arXiv cs.AI public listing via the Space refresh/run path; in-Space Refresh at 08:26 CST succeeded (\"Last successful refresh Nov 11, 2026, 8:26 AM; Source as of Nov 10, 2026, 12:59 PM\"). The regeneration session itself ran one refresh that added 20 public papers (27 -> 47). Demo papers are labelled Demo; two harness probe records (e.g. \"R1 kit public save probe 032116\") pre-date this run and are retained as saved data.",
+  "checks": [
+    [
+      "overview renders feed, shortlist and counts",
+      "pass",
+      "In the queue 42 / Reading now 1 / Completed 4 at first load"
+    ],
+    [
+      "library search",
+      "pass",
+      "\"attention\" -> 2 of 47 papers"
+    ],
+    [
+      "open paper reading room",
+      "pass",
+      "abstract, source URL, demo-provenance note, status/priority/notes editor"
+    ],
+    [
+      "notes save persists",
+      "pass",
+      "store notes updated, UI \"\u2713 Saved\""
+    ],
+    [
+      "status + priority save persists",
+      "pass",
+      "store done/high -> reading/normal"
+    ],
+    [
+      "reading queue",
+      "pass",
+      "44 waiting, priority filter present, highest-first"
+    ],
+    [
+      "priority review",
+      "pass",
+      "Paper 1 of 1 high-priority unfinished, prev/next"
+    ],
+    [
+      "manual live refresh",
+      "pass",
+      "succeeded 08:26; 47 records retained, no duplicates"
+    ],
+    [
+      "phone 390px",
+      "pass",
+      "innerWidth == scrollWidth == 390 (research-phone-390.png)"
+    ],
+    [
+      "saved data preserved",
+      "pass",
+      "original 27 records byte-equal after regeneration; test edits restored (Attention paper done/high/empty notes, rev counter advanced)"
+    ]
+  ],
+  "not_verified": [
+    "incoming-records-while-editing draft retention independently (agent self-reported)",
+    "320px / 200% zoom independently",
+    "screen reader",
+    "automatic upkeep (paused before and after, by design)"
+  ],
+  "notes": "status/priority use native <select>; tested by setting value + change event in the Space realm, not by native picker UI."
+}
