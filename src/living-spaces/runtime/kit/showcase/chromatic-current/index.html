@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Chromatic Current</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<main>
+ <figure class="stage" aria-labelledby="work-title" aria-describedby="description"><canvas id="art" role="img" aria-label="An abstract woven field of cobalt, orange and lilac ribbons.">A moving colour study. Use the controls below to pause, vary and save the composition.</canvas><figcaption id="description" class="visually-hidden">Original mathematical artwork, not measured data. Broad ribbons pass across fine coloured threads. Motion can be paused; all controls work by keyboard.</figcaption></figure>
+ <section class="rail" aria-label="Artwork controls">
+  <div class="identity"><h1 id="work-title">Chromatic Current</h1><p>Procedural artwork · works offline</p></div>
+  <div class="actions"><button id="motion" type="button">Pause motion</button><button id="vary" type="button">New variation</button><button id="undo" type="button" disabled>Undo</button></div>
+  <fieldset class="palette"><legend>Colourway</legend><label><input type="radio" name="palette" value="tidal" checked><span class="swatch tidal" aria-hidden="true"></span>Tidal</label><label><input type="radio" name="palette" value="citrus"><span class="swatch citrus" aria-hidden="true"></span>Citrus</label><label><input type="radio" name="palette" value="ember"><span class="swatch ember" aria-hidden="true"></span>Ember</label></fieldset>
+  <div class="save-area"><div class="save-group"><button id="save" class="primary" type="button" aria-disabled="true">Keep composition</button><button id="restore" type="button" hidden>Restore saved</button><button id="retry" type="button" hidden>Retry loading</button></div><p id="status" role="status" aria-live="polite">Loading saved composition…</p></div>
+  <div class="foot"><span id="edition">Variation 42</span><span>One saved composition</span><span id="motion-note">Motion on</span></div>
+ </section>
+</main>
+<script type="module" src="app.js"></script></body></html>

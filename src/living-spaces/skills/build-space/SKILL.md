@@ -151,7 +151,12 @@ three-line brief for yourself (a comment in `styles.css` is enough):
 Then commit to it. Every colour, typeface, radius, icon and empty state should
 belong to that concept. When torn between safe and committed, commit. Two
 Spaces from the same bot should not look like siblings unless the user asked
-for that.
+for that. Do not turn the examples below into a house voice: cream paper,
+serif display type and repeated “A little…” headlines are one possible direction,
+not a premium default. Choose typography, density and colour from this Space's
+purpose; a saturated procedural canvas or a crisp sans-serif working board can
+be just as considered. Compare against other Spaces you made, and vary the
+composition as well as the palette when the briefs differ.
 
 ### 2. Build the world with real materials
 

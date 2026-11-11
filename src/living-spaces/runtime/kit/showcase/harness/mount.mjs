@@ -15,6 +15,8 @@ async function call(op,args){
   if(h.fail==='invalid')return ok({status:200,json:{}});
   return(await fetch('/net',{method:'POST',body:JSON.stringify(args)})).json();
  }
+ if(op==='data.get'&&h.fail==='get')return err('unavailable','Injected composition load failure');
+ if(op==='data.get'&&h.fail==='missing')return err('not_found','Injected missing composition');
  if(op==='data.query'&&h.fail==='query')return err('unavailable','Injected scorecard load failure');
  if(op==='data.put'&&h.fail==='save')return err('unavailable','Injected save failure');
  if(['data.query','data.put','data.get'].includes(op))return(await fetch('/records?name='+encodeURIComponent(name),{method:'POST',body:JSON.stringify({op,args})})).json();

@@ -9,7 +9,7 @@ if(!output?.startsWith('/Volumes/Expansion/'))throw Error('--out must be on /Vol
 await mkdir(output,{recursive:true});
 const root=resolve(import.meta.dirname,'../../../../../..'),showcase=resolve(import.meta.dirname,'..');
 const mime={'.html':'text/html','.css':'text/css','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.png':'image/png','.webp':'image/webp','.svg':'image/svg+xml','.woff2':'font/woff2','.md':'text/markdown'};
-const names=['sky-window','pair-play'];
+const names=['sky-window','pair-play','chromatic-current'];
 const valid=n=>{if(!names.includes(n))throw Error('Unknown reference');return n;};
 async function walk(dir){const all=[];for(const e of await readdir(dir,{withFileTypes:true})){const p=resolve(dir,e.name);if(e.isDirectory())all.push(...await walk(p));else all.push(p);}return all;}
 async function bundle(n){
@@ -26,17 +26,25 @@ async function records(n,op,a){
  if(op==='data.query')return ok({records:rows.filter(r=>r.collection===a.collection).slice(a.offset||0,(a.offset||0)+(a.limit||500)),total:rows.length,seq:rows.length});
  const current=rows.find(r=>r.collection===a.collection&&r.id===a.id);
  if(op==='data.get')return current?ok(current):err('not_found','Record not found');
- if(op!=='data.put'||a.collection!=='rounds'||typeof a.id!=='string')return err('invalid','Unsupported record operation');
+ if(op!=='data.put'||a.collection!==(n==='chromatic-current'?'compositions':'rounds')||typeof a.id!=='string')return err('invalid','Unsupported record operation');
  if((current?.rev||0)!==a.base_rev)return err('conflict','Record revision changed',{current});
  const r={collection:a.collection,id:a.id,data:a.data,rev:(current?.rev||0)+1,updated_at:Date.now()/1000};
  rows=[r,...rows.filter(x=>x!==current)];await writeFile(file+'.next',JSON.stringify(rows,null,2));await rename(file+'.next',file);return ok(r);
+}
+// Serialize operations per reference so the local file-backed CAS is atomic.
+// This is a verifier guarantee, not a substitute for production-store qualification.
+const recordQueues=new Map();
+function serializedRecords(name,op,args){
+ const n=valid(name),previous=recordQueues.get(n)||Promise.resolve();
+ const next=previous.catch(()=>{}).then(()=>records(n,op,args));
+ recordQueues.set(n,next);return next;
 }
 createServer(async(req,res)=>{
  const json=v=>res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'}).end(JSON.stringify(v));
  try{
   const u=new URL(req.url,'http://localhost');
   if(u.pathname==='/bundle')return json(await bundle(u.searchParams.get('name')));
-  if(u.pathname==='/records'){const{op,args}=await readBody(req);return json(await records(u.searchParams.get('name'),op,args));}
+  if(u.pathname==='/records'){const{op,args}=await readBody(req);return json(await serializedRecords(u.searchParams.get('name'),op,args));}
   if(u.pathname==='/net'){
    const{url,as}=await readBody(req),target=new URL(url);
    if(target.protocol!=='https:'||target.hostname!=='api.open-meteo.com'||target.pathname!=='/v1/forecast'||as!=='json')return json(err('not_granted','Reference harness allows only public Open-Meteo forecast JSON'));

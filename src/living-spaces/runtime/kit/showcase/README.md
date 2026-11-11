@@ -1,9 +1,21 @@
 # Live premium references
 
-Two code-led extensions of the existing Sky Window and Pair Play reference directions. These use the updated optional-kit design guidance and its material vocabulary, with app-owned CSS to demonstrate that the kit is not a mandatory house style. No framework, install, CDN, new generation provider or credentials.
+Two code-led extensions of the existing Sky Window and Pair Play reference directions, plus Chromatic Current, a procedural visual piece. These use the updated optional-kit design guidance, with app-owned CSS to demonstrate that the kit is not a mandatory house style. No framework, install, CDN, new generation provider or credentials.
 
 - **Sky Window — dashboard:** a dark viewing room, generated skyline masks, a forecast-derived sky, selectable cities and a shared °C domain for seven daily low–high intervals. Rain bars use a fixed 0–100% denominator. The exact table is keyboard accessible. Public live Open-Meteo forecasts are model output, not observed station weather. Retrieval time is UTC; city time comes from the source. Failure keeps last-good data; initial failure invents none. Synthetic exploration is explicit, not automatic.
 - **Pair Play — game:** green tabletop, cream/oxblood printed cards, authored SVG fruit and a complete twelve-card memory loop. Turns, mismatch, matching, win, redeal and recent-round scorecard all work. Finished rounds use create-only writes and a stable retry ID, then exact record readback before Saved. Failed results remain mounted. The local verifier uses an isolated file-backed store through the actual Space bridge, not production records.
+
+## Chromatic Current — visual piece
+
+A full-bleed procedural colour weave, not a dashboard or a game. Original Canvas mathematics draw the artwork; no image, remote font, service, API key or Internet grant is needed. Three colourways, keyboard-operable variation and one-step Undo, explicit motion pause and reduced-motion handling. Keep freezes the exact seed/colourway/phase in one record; Replace kept composition explicitly replaces that slot. Every successful write is read back, and uncertain writes/conflicts require reload before another explicit save. Restore is unavailable until the saved record is authoritative again. The drawing adapts to the viewport; stored parameters, not identical cross-device pixels, are preserved.
+
+Open `?name=chromatic-current` on the runner. Use a **fresh empty output store** for each full verifier run:
+
+```sh
+node src/living-spaces/runtime/kit/showcase/harness/verify-chromatic.mjs --port 8783 --out /Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/chromatic-evidence
+```
+
+Extra verifier-only faults: `get` (failed composition read), `missing` (injected not-found), and `save`; `delay=900` exposes in-flight work. These are explicit injected states. A sequential conflict and simultaneous compare-and-swap test use only the separate verifier store. The harness serializes operations per reference; that is not evidence of production-store concurrency. No raster artwork ships in this reference. Source art provenance: original authored `chromatic-current/art.js`, mathematical sine-based warp/weft drawing, no claimed physical simulation or measured data.
 
 ## Run and inspect
 
