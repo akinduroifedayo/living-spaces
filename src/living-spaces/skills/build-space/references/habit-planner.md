@@ -37,7 +37,7 @@ The selected day is UI state. Check-ins survive closing the app.
   <title>Daily Practice</title>
   <link rel="stylesheet" href="./kit/spaces-kit.css">
   <style>
-    main { max-width: 720px; margin: auto; }
+    main.space-app { max-width: 720px; margin: auto; }
     .practice-day { max-width: 240px; margin: 0; }
     .practice-add { padding-block: var(--space-4); border-block: 1px solid var(--space-line); }
     .practice-list label { margin: 0; }

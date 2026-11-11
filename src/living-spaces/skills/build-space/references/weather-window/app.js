@@ -19,7 +19,7 @@ function render(data,city,sample=false){
   const start=time(data.current.time).getTime();
   const values=data.hourly.time.map((t,i)=>({t,temp:data.hourly.temperature_2m?.[i],rain:data.hourly.precipitation_probability?.[i]})).filter(v=>time(v.t).getTime()>=start && Number.isFinite(v.temp)).slice(0,12);
   if(values.length!==12) throw new Error('Twelve hourly values are not available.');
-  last={data,city,sample};
+  last={data,city,sample,retrievedAt:last?.data === data ? last.retrievedAt : new Date().toLocaleTimeString('en-GB',{timeZone:'UTC'})};
   text('city',city.name);text('conditions',describe(data.current.weather_code));text('temperature',Math.round(data.current.temperature_2m));
   text('observed',(sample?'Synthetic sample · ':'Forecast valid · ')+hh(data.current.time)+' UTC');
   text('table-caption',`${city.name} · ${sample?'synthetic sample':'Open-Meteo forecast'} · ${data.current.time.slice(0,10)} · UTC`);
@@ -39,7 +39,7 @@ function render(data,city,sample=false){
   $('chart').replaceChildren(svg);
   $('provenance').replaceChildren();
   if(sample) text('provenance','Synthetic forecast sample · illustrative values, not current weather');
-  else {const a=document.createElement('a');a.href='https://open-meteo.com/';a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open-Meteo';$('provenance').append('Public forecast from ',a,' · retrieved '+new Date().toLocaleTimeString('en-GB',{timeZone:'UTC'})+' UTC');}
+  else {const a=document.createElement('a');a.href='https://open-meteo.com/';a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open-Meteo';$('provenance').append('Public forecast from ',a,' · retrieved '+last.retrievedAt+' UTC');}
 }
 async function load(){
   const id=++sequence,city=cities[selected];active?.abort();active=new AbortController();

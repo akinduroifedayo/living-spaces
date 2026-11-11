@@ -2,7 +2,7 @@
 .desk-header { align-items: start; }
 .desk-next { margin-top: var(--space-4); padding-block: var(--space-5); border-block: 1px solid var(--space-line); }
 .desk-next-title { font: 1.714rem/1.35 var(--space-heading-font); max-width: 48ch; text-wrap: balance; }
-.panel summary { cursor: pointer; min-height: 32px; }
+.panel summary { cursor: pointer; min-height: 44px; align-content: center; }
 .panel summary h3 { display: inline; font-size: 1rem; }
 .panel details p { margin-top: var(--space-2); color: var(--space-muted); }
 .desk-header .space-refresh { justify-content: end; max-width: 40%; }
