@@ -782,7 +782,7 @@ function UpkeepSheet({ ctx, space, onClose, onChanged, returnFocus }) {
       if (current?.error || current?.data?.error) throw new Error(`The action was submitted, but the current native state couldn't be loaded. ${errorText(current.error || current.data.error)}`);
       if (current?.data && (action === "pause" && current.data.job?.enabled !== false || action === "resume" && current.data.job?.enabled !== true || action === "remove" && current.data.link)) throw new Error("Hermes has not confirmed the requested state.");
       const next = toSeconds(current?.data?.job?.next_run_at);
-      setFeedback(action === "run" ? "Run started. Hermes is working on it." : action === "pause" ? "Paused. Future runs stop until you resume. Already-running work may finish." : action === "resume" ? `Resumed.${next != null ? ` Next run ${absolute(next)}.` : ""}` : `Upkeep removed. ${space.name} is unchanged.`);
+      setFeedback(action === "run" ? "Run requested. Check native execution history for progress." : action === "pause" ? "Paused. Future runs stop until you resume. Already-running work may finish." : action === "resume" ? `Resumed.${next != null ? ` Next run ${absolute(next)}.` : ""}` : `Upkeep removed. ${space.name} is unchanged.`);
     } catch (e) {
       setFeedback("");
       setError(`${action === "run" ? "Couldn't start the run." : action === "pause" ? "Couldn't pause upkeep." : action === "resume" ? "Couldn't resume upkeep." : "Couldn't remove upkeep."} ${errorText(e)} Review the current native state before trying again.`);

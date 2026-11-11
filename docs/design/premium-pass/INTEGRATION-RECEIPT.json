@@ -4,7 +4,7 @@
   "skill_prefix_unchanged_except_exact_optional_css_sentence": true,
   "skill_suffix_unchanged": true,
   "design_section_exact_at_import": true,
-  "post_import_correction": "Removed dangling references/showcase/README.md link because earlier branch references were intentionally excluded; no capability prose changed.",
+  "post_import_correction": "Removed dangling references/showcase/README.md link because earlier branch references were intentionally excluded. Percent-encoded the grain SVG's internal parentheses after the packaged-create test misidentified its nested url(%23n) as a missing project asset. Decoded CSS/SVG bytes remain identical; the two packaged integration tests pass. Source hashes below bind original imports, not post-import corrections. No capability prose changed.",
   "files": [
     {
       "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/CRITIQUE-AND-PROMPTS.md",

@@ -366,7 +366,7 @@ pre { max-width: 100%; overflow: auto; background: var(--space-card); padding: v
   --space-font: 'Newsreader', Georgia, serif; --space-radius: 2px; --space-radius-lg: 3px; --space-density: 1.15;
   --space-panel-border: #2b1d18; --space-panel-shadow: 0 8px 20px #2b1d181a;
   --space-hero-bg: linear-gradient(180deg, #e6d7ba 0%, #f3ead8 100%);
-  --space-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .2 0 0 0 0 .1 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  --space-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .2 0 0 0 0 .1 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url%28%23n%29'/%3E%3C/svg%3E");
   --space-background-image: var(--space-grain); --space-background-size: 160px 160px;
 }
 /* Blueprint: drafting grid, hairlines, monospaced labels. */
