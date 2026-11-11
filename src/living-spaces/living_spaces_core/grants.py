@@ -1,4 +1,3 @@
-"""Host-owned capability requests, decisions, scopes and audit history."""
 import json
 from urllib.parse import urlsplit
 

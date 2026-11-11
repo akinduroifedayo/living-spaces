@@ -155,7 +155,6 @@ def dispatch_detail(sid):
     if not job or job.get("manual_run_at"):
         return None
     dispatch = job.get("last_dispatch")
-    # A completed dispatch is history, not evidence for a new invocation of the shim.
     if dispatch and (not job.get("last_run_at") or
                      datetime.fromisoformat(dispatch["dispatched_at"]) > datetime.fromisoformat(job["last_run_at"])):
         return dispatch

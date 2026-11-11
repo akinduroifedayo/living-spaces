@@ -1,4 +1,3 @@
-"""Living Spaces: agent tools that build and maintain Spaces, plus the build-space skill (CONTRACTS.md §9)."""
 from __future__ import annotations
 
 import base64
@@ -69,7 +68,6 @@ def _int(core, args, name, *, required=True):
 
 
 def _json_arg(core, args, name, kind, *, required=True):
-    """Models sometimes send an object argument as a JSON string; accept both."""
     value = args.get(name)
     if value is None and not required:
         return None
@@ -113,7 +111,6 @@ def _open(sid):
 
 
 def _split_manifest(core, files, manifest):
-    """space.json is never a project file (CONTRACTS.md §3): pull it out into the revision manifest."""
     files = dict(files)
     if MANIFEST_PATH not in files:
         return files, manifest
@@ -153,7 +150,6 @@ def _refs(path, text):
 
 
 def _warnings(written, paths, manifest):
-    """Static checks the agent can act on before the user opens the Space. The sandbox enforces; this explains."""
     manifest = manifest or {}
     entry = manifest.get("entry") or "index.html"
     imports = set((manifest.get("imports") or {}).keys())

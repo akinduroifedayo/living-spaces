@@ -1,4 +1,3 @@
-"""Desktop REST adapter for the public Living Spaces core API."""
 from __future__ import annotations
 
 import importlib.util
