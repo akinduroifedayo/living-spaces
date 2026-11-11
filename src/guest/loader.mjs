@@ -179,6 +179,11 @@ export function spaceLoader(resolver) {
     batch: ops => send('data.batch', { ops }),
     refresh: () => send('refresh', {}),
     runs: () => send('runs.list', {}),
+    net: {
+      fetch: (url, { method, headers, body, as } = {}) => send('net.fetch', Object.fromEntries(
+        Object.entries({ url, method, headers, body, as }).filter(([, value]) => value !== undefined)
+      ))
+    },
     on(event, cb) {
       if (!listeners[event]) throw new TypeError(`Unknown Space event: ${event}`)
       listeners[event].add(cb)
@@ -215,6 +220,10 @@ export function spaceLoader(resolver) {
       const target = resolver.resolve(base, ref)
       if (!target || !urls.has(target.path)) return null
       return urls.get(target.path) + target.hash
+    }
+    api.asset = path => {
+      if (typeof path !== 'string') return null
+      try { return assetUrl('', path) } catch { return null }
     }
     const rewriteCss = (base, css) => css.replace(/url\(\s*(['"]?)([^'"\)]+)\1\s*\)/g, (match, quote, ref) => {
       const url = assetUrl(base, ref.trim())
@@ -261,6 +270,38 @@ export function spaceLoader(resolver) {
     map.type = 'importmap'
     map.textContent = JSON.stringify({ imports })
     document.head.append(map)
+    for (const { name, value } of doc.documentElement.attributes) {
+      if (['lang', 'dir', 'class', 'style'].includes(name) || name.startsWith('data-')) document.documentElement.setAttribute(name, value)
+    }
+    const theme = bundle.manifest.theme
+    if (theme !== undefined) {
+      const object = value => value !== null && typeof value === 'object' && !Array.isArray(value)
+      let invalid = !object(theme)
+      const declarations = []
+      if (!invalid) {
+        if (theme.preset !== undefined) {
+          if (['editorial', 'terminal', 'playful', 'minimal', 'data', 'journal', 'game'].includes(theme.preset)) document.documentElement.setAttribute('data-theme', theme.preset)
+          else invalid = true
+        }
+        if (theme.tokens !== undefined) {
+          if (!object(theme.tokens)) invalid = true
+          else for (const [index, [name, value]] of Object.entries(theme.tokens).entries()) {
+            if (index >= 64 || !/^[a-z][a-z0-9-]{0,39}$/.test(name) || typeof value !== 'string' || [...value].length > 200 || /[;{}<>\\]|url\(|@import|expression\(/i.test(value)) {
+              invalid = true
+              continue
+            }
+            declarations.push(`--space-${name}:${value};`)
+          }
+        }
+      }
+      if (declarations.length) {
+        const style = document.createElement('style')
+        style.setAttribute('data-space-theme', '')
+        style.textContent = `:root{${declarations.join('')}}`
+        document.head.append(style)
+      }
+      if (invalid) console.warn('Skipped invalid manifest theme settings')
+    }
     if (doc.title) document.title = doc.title
     for (const node of [...doc.head.childNodes]) document.head.append(document.importNode(node, true))
     for (const attribute of doc.body.attributes) document.body.setAttribute(attribute.name, attribute.value)
