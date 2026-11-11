@@ -51,7 +51,7 @@ def _call(sid, session, op, args):
         except (ImportError, AttributeError) as exc:
             raise SpacesError("blocked", "Upkeep handler is unavailable", reason="no_handler") from exc
         if op == "refresh":
-            return handler(sid, trigger="manual", actor="app")
+            return handler(sid, trigger="manual", actor="app", session=session)
         return handler(sid, **args)
     if op in ("data.put", "data.delete", "data.batch", "log"):
         return _mutate(sid, session, op, args)

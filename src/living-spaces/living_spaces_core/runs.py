@@ -63,8 +63,8 @@ def cancel_pending(sid, reason):
     return len(rows)
 
 
-def start_refresh(sid, *, trigger, actor, wait=False):
-    from . import grants, projects, schedules
+def start_refresh(sid, *, trigger, actor, wait=False, session=None):
+    from . import grants, projects, schedules, sessions
 
     if trigger not in ("manual", "schedule", "chat"):
         raise SpacesError("invalid", "Unknown refresh trigger")
@@ -74,8 +74,8 @@ def start_refresh(sid, *, trigger, actor, wait=False):
     reason = "archived" if space["status"] == "archived" else None
     if not reason and handler != "feed":
         reason = "no_handler"
+    hosts = set()
     if not reason:
-        hosts = set()
         for source in upkeep.get("sources", []):
             try:
                 hosts.add(feeds.source_host(source["url"]))
@@ -91,6 +91,10 @@ def start_refresh(sid, *, trigger, actor, wait=False):
     now = db.now()
     run_id = "run_" + uuid.uuid4().hex[:16]
     with db.write() as conn:
+        if session is not None:
+            sessions._require(conn, sid, session)
+            if not grants._check(conn, sid, "refresh", {"hosts": sorted(hosts)}):
+                raise SpacesError("not_granted", "Capability or requested scope is not granted", capability="refresh")
         current = conn.execute("SELECT status FROM spaces WHERE id=?", (sid,)).fetchone()
         if current is None:
             raise SpacesError("not_found", "Space not found")
@@ -161,8 +165,13 @@ def _work(run_id, upkeep):
                 raise
             except Exception as exc:
                 result["error"] = str(exc)
+                if isinstance(exc, SpacesError):
+                    result["error_detail"] = exc.to_dict()
+                    if "limit" in exc.extra and "actual" in exc.extra:
+                        result["error"] += f" (limit {exc.extra['limit']}, actual {exc.extra['actual']})"
                 status = "failed"
-                error = f"{result['id']}: {exc}" if error is None else error + f"; {result['id']}: {exc}"
+                message = f"{result['id']}: {result['error']}"
+                error = message if error is None else error + f"; {message}"
             for key in ("added", "updated", "unchanged"):
                 changed[key] += result[key]
             sources.append(result)

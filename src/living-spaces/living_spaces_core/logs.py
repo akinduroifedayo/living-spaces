@@ -1,13 +1,20 @@
 """Bounded Space diagnostics with secret redaction before persistence."""
+import json
 import re
 
 from . import db, limits
 from .errors import SpacesError
 
+_CREDENTIAL_KEY = re.compile(r"password|api_key|access_token|refresh_token|client_secret|authorization", re.IGNORECASE)
+_CREDENTIAL_ASSIGNMENT = re.compile(
+    r'''(?<![\w])(?P<prefix>(?P<key_quote>["']?)(?:''' + _CREDENTIAL_KEY.pattern
+    + r''')(?P=key_quote)\s*[:=]\s*)'''
+    r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s"'&,;{}\[\]<>]+)''',
+    re.IGNORECASE,
+)
 _SECRETS = re.compile(
     r'''\bsk-[A-Za-z0-9_-]+|\bgh[po]_[A-Za-z0-9_]+'''
     r'''|\bBearer\s+(?:"[^"]*"|'[^']*'|[^\s"'<>]+)'''
-    r'''|\bpassword\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'&<>]+)'''
     r'''|\b[A-Fa-f0-9]{32,}\b'''
     r'''|(?<![A-Za-z0-9_+/=-])[A-Za-z0-9_+/-]{32,}={0,2}(?![A-Za-z0-9_+/=-])''',
     re.IGNORECASE,
@@ -15,12 +22,21 @@ _SECRETS = re.compile(
 
 
 def redact(message):
-    return _SECRETS.sub("[REDACTED]", message)
+    try:
+        value = json.loads(message)
+    except (ValueError, RecursionError):
+        value = None
+    if isinstance(value, (dict, list)):
+        clean = redact_values(value)
+        return json.dumps(clean, ensure_ascii=False) if clean != value else message
+    message = _SECRETS.sub("[REDACTED]", message)
+    return _CREDENTIAL_ASSIGNMENT.sub(lambda match: match["prefix"] + '"[REDACTED]"', message)
 
 
 def redact_values(value):
     if isinstance(value, dict):
-        return {key: redact_values(item) for key, item in value.items()}
+        return {key: "[REDACTED]" if _CREDENTIAL_KEY.fullmatch(key) else redact_values(item)
+                for key, item in value.items()}
     if isinstance(value, list):
         return [redact_values(item) for item in value]
     return redact(value) if isinstance(value, str) else value
@@ -38,7 +54,9 @@ def _add_logs(conn, sid, session, entries):
         limits.text(entry["level"], "log level")
         limits.text(entry["msg"], "log message", nonempty=False)
         limits.check(len(entry["msg"]), limits.LOG_MESSAGE, "log message characters")
-        clean.append((entry["level"], redact(entry["msg"])))
+        message = redact(entry["msg"])
+        limits.check(len(message), limits.LOG_MESSAGE, "redacted log message characters")
+        clean.append((entry["level"], message))
     space = db.space(conn, sid)
     if session is not None:
         from .sessions import _require
