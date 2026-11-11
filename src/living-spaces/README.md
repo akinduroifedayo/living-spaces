@@ -1,225 +1,125 @@
 # Living Spaces
 
-> "I see spaces as an open canvas for your bots that live in Hermes." (Ife)
+An open canvas for your bots that live in Hermes. Build and change dashboards, data displays, games, documents, and multi-view apps in normal Hermes chat. Open them from chat or the Desktop **Spaces** tab, use them, and return to your saved work.
 
-The bot is the trusted author and the Space is its canvas. The sandbox protects
-the Desktop app and keeps one canvas from breaking another. Living Spaces gives
-your bots a persistent display, a shared one that you and the bot both use, for
-dashboards, data and mini apps.
+The bot is the trusted author. Living Spaces hosts its canvas and supplies local records, project files, revisions, and diagnostics. Chat and the canvas share the same records. Refresh preserves user-owned notes and choices. Code restore creates a new revision without rewinding saved records. The sandbox separates generated code from Desktop and other Spaces.
 
-Build persistent applications in normal Hermes chat and use them in the Desktop
-**Spaces** tab. An app can have multiple views, local modules, bundled libraries,
-and structured records. Chat and the app read and change the same records.
-Code revisions support repair and restore without rewinding saved data.
+## Experimental candidate
 
-Release 1 supports **Refresh now** for public RSS and Atom feeds, and upkeep that
-runs as an ordinary Hermes cron job. Ask in chat and Hermes creates the job. Your
-request is the consent, as for any Hermes cron job. The Space's **Upkeep** panel
-shows exactly what runs and lets you pause, resume, run or remove it. Refresh
-updates source fields while retaining user notes and status. Upkeep needs Hermes
-running.
+This candidate is **not release-ready**. `VALIDATOR-PASS` describes packaging evidence only. It does not establish product acceptance, catalog approval, or a new validation of this revision. The integrating maintainer owns final exact-head validation, installation checks, and publication.
 
-- **Feed upkeep** fetches a public feed with no model call.
-- **Agent upkeep** runs the full Hermes agent on a prompt, with the profile's
-  enabled tools. It uses model calls and can consume subscription quota. The
-  Upkeep panel shows the full prompt and says "Uses model calls".
-- Space code can trigger only the no-model feed refresh, never agent upkeep.
+The repository is public at [akinduroifedayo/living-spaces](https://github.com/akinduroifedayo/living-spaces). Public `main` still contains the seed; promotion of the reviewed candidate is pending. There is no catalog install-by-name route yet.
 
-**In progress, not qualified, and not shipped at this commit:** open internet in
-the frame (web images, fonts, CDN libraries and embeds), file-by-reference for
-generated images, fonts and libraries, a canvas-to-bot control that asks the owning
-bot to act, and the premium design pass. Today `space.net.fetch` mediates public
-HTTPS and binary files enter as base64 inside the tool call. The direction is in
-[AMENDMENTS](../../docs/spec/AMENDMENTS.md) A-04 to A-06.
+These capabilities have different qualification states:
 
-This is an unreleased candidate in a private repository. Package validation passed
-at `872480426c70fb7cfac1eda3d0837809a66e6955` with 16 checks and one private-import
-warning. That is not Release 1 acceptance. See [Evidence and open checks](#evidence-and-open-checks).
+- Normal-chat authoring, local records, revisions, and native cron upkeep have historical runtime evidence. That evidence belongs to the recorded revisions, not every later candidate.
+- File-by-reference imports are implemented. Final real-chat import, restart, and restore qualification remains pending.
+- Maintaining-bot controls are implemented in source. Native admission, activation, and retry safety remain open gates. The required interaction is one in-Space click, with no unattended model spend from mounting, timers, or retries. One-click safety is not yet proved.
+- Mediated public HTTPS works. Direct frame networking is **not enabled**. The Desktop credentials-forwarding repair is in flight. The goal remains open-frame networking on by default without native credentials; direct networking must stay off until credential exclusion works and is verified.
+- Known width bugs affect the combined Desktop host and generated canvas, including clipped content and compressed host controls. They remain open until real captures qualify the repaired candidate.
 
 ## Install and enable
 
-This folder is the plugin package. Use Hermes 0.23.1 or later. A complete package
-includes `plugin.yaml`, `__init__.py`, `_core.py`, `desktop/plugin.js`,
-`dashboard/`, `guest/`, `runtime/`, `scripts/`, `skills/`, and `living_spaces_core/`.
-Use the active Hermes profile's home wherever `<HERMES_HOME>` appears below.
-Only macOS has qualification evidence; Linux and Windows remain unqualified.
+Use Hermes 0.23.1 or later with Desktop. This folder is the plugin package. Copy the whole folder, including its Python modules, Desktop extension, dashboard, guest runtime, scripts, skills, and bundled assets.
 
-1. From an authorized checkout, copy the entire `src/living-spaces/` directory
-   into `<HERMES_HOME>/plugins/living-spaces/`. Copy the package, not the repository
-   root. Do not overwrite an existing installation without backing it up.
-   There is no published catalog entry to install by name yet.
-2. Run `hermes plugins enable living-spaces`. This adds `living-spaces` to
-   `plugins.enabled` for Python tools and the build skill. The equivalent config is:
+The manual copy route was exercised historically on macOS. Installation from the public URL has **not** been newly tested. Linux and Windows remain unqualified.
 
-   ```yaml
-   plugins:
-     enabled:
-       - living-spaces
+1. Clone the public repository into a new directory:
+
+   ```sh
+   git clone https://github.com/akinduroifedayo/living-spaces.git
+   cd living-spaces
    ```
 
-3. Enable **Living Spaces** in Desktop **Capabilities > Plugins**. This second
-   switch enables the Desktop extension. Both switches are required.
-4. Start a normal chat with the `living_spaces` toolset available. Ask
-   "Build Research Desk with an overview, searchable library, and reading queue."
-   The agent reads the bundled `build-space` skill and returns an **Open Space** card.
-5. Open the Space. To keep it current, ask in chat, for example "Update Research
-   Desk every morning at 7 with new papers." Hermes creates a cron job named
-   `living-spaces:<space-id>`. Open **Upkeep** in the Space to see what runs.
+2. Choose an explicit reviewed candidate commit supplied by the maintainer. Replace `<reviewed-commit>` before running:
 
-Enabling the plugin does not grant a Space anything beyond what is shown in
-**Permissions**: its own data, runtime logs and Internet access. Turning Internet
-access off makes feed refresh return `not_granted`.
+   ```sh
+   git checkout --detach <reviewed-commit>
+   ```
 
-## Permissions
+   Do not treat the seed `main` or an unreviewed branch tip as the candidate. If the reviewed commit is not published yet, wait for its promotion.
 
-Open a Space, select **Permissions**, then **Revoke** beside a granted capability.
-Read the confirmation and select **Revoke** again. Data already delivered to the
-Space cannot be recalled, and completed requests cannot be undone. To stop
-recurring upkeep, open **Upkeep** and select **Pause**, or **Remove** to delete the
-job. A job that is running when you pause or remove it finishes. Permissions
-control Internet access and data, not the cron job.
+3. Identify the Hermes profile that you intend to use. In this document, `<HERMES_HOME>` means that selected profile's home.
+4. Copy the entire `src/living-spaces` directory into `<HERMES_HOME>/plugins/living-spaces`. Do not overwrite or merge into an existing installation. Preserve the existing package and use an empty destination.
+5. In the selected profile's CLI context, enable the Python tools and bundled skill:
 
-At this commit a Space has no approved-site embeds, device access, arbitrary tool
-invocation, file access, or cross-Space access of its own. When a canvas needs more,
-the direction is that it asks its bot (A-05), which acts with Hermes's own tools under
-Hermes's own approval rules; that path is in progress, not qualified. Generated
-applications run inside a sandbox.
-The host supplies their own records, the no-model feed refresh, and scoped logs
-through `window.space`. Public feed retrieval runs on the host over HTTPS and
-needs Internet access on. Credentials are not required and must not enter projects.
-The Permissions panel shows the WebRTC network note in [Limits](#limits).
+   ```sh
+   hermes plugins enable living-spaces
+   ```
 
-## Disclosures
+6. Enable **Living Spaces** in Desktop **Capabilities > Plugins**. This enables the Desktop extension. Both switches are required.
 
-- **Network calls.** The Hermes host fetches feeds over HTTPS GET to public
-  addresses only, and checks the Space's Internet access setting on every request.
-  URLs must use `https` and must not contain credentials. Redirects
-  are followed only on the same host, for at most five redirects. A redirect to
-  another host fails. The timeout is 20 seconds. A response above 3 MB or 200
-  entries fails. Feeds with `DOCTYPE` or `ENTITY` declarations are rejected. The
-  Research Desk reference uses `export.arxiv.org`.
-- **Files written outside the plugin's own data.** Creating feed upkeep writes
-  `<HERMES_HOME>/scripts/living-spaces-refresh-<space-id>.py` and creates a Hermes
-  cron job named `living-spaces:<space-id>`. Agent upkeep creates the job only.
-  Removing upkeep or deleting the Space removes the job and any script. Refresh now
-  on an agent Space with no job creates a one-shot job named `living-spaces:<space-id>:once`.
-- **Reads outside the plugin's own data.** The Upkeep panel reads the native cron
-  job and its recent executions live. The plugin stores only a link to the job, not
-  a copy of its prompt or schedule. The owner label is derived from
-  the active profile name; the plugin also resolves that profile's home. Generated apps receive no general file access.
-- **Shell commands.** The plugin runs no shell commands and starts no subprocesses.
-  Hermes's cron scheduler runs feed upkeep's generated Python script without an
-  agent turn, and runs agent upkeep as a normal agent job.
-- **Model calls and cost.** Agent upkeep makes model and tool calls on the active
-  profile and can consume its quota. It is not a restricted sandbox. Feed upkeep
-  and the in-app Refresh now make no model call.
-- **Background work.** A refresh runs on a worker thread in the Hermes process and
-  ends when the fetch and write complete. Upkeep runs only while
-  Hermes's cron ticker is running. The plugin registers no startup schedule or
-  gateway hook.
-- **Credentials.** The plugin stores no credentials and needs none.
-- **Privacy.** Space data is local SQLite under the active profile at
-  `<HERMES_HOME>/plugin-data/living-spaces/spaces.db`. The plugin sends no telemetry
-  or usage reporting. Approved feed requests contact the declared host. When you
-  ask chat to read a Space, its records can enter the configured model's context.
-  The WebRTC disclosure below applies to data a generated app can read.
-- **Undocumented Hermes module.** Upkeep imports `cron.jobs` and `cron.executions`,
-  which are not on Hermes's public plugin API list, so `hermes plugins validate`
-  warns about them. The plugin calls `create_job`, `get_job`, `pause_job`,
-  `resume_job`, `trigger_job`, `remove_job` and `list_executions`, and patches nothing. The public automation blueprint API creates
-  user-scheduled agent jobs from a prompt. It cannot create a no-agent script job
-  or return a handle to pause or remove one. The Upkeep panel needs that handle so
-  pause, archive and delete control the same job. This private
-  API can break on a Hermes release. Catalog acceptance of the warning remains
-  open; Forge must resolve the public scheduling seam with maintainers before
-  claiming compliance with the public-surfaces requirement.
+## Build and use a Space
 
-## Limits
+Start a normal chat with the `living_spaces` toolset available. Ask, for example, "Build a reading desk with an overview, searchable library, and reading queue." The bot uses the bundled `build-space` skill and returns an **Open Space** card.
 
-A Space frame has no direct network access at this commit. Public HTTPS is mediated through `space.net.fetch` while the Space's Internet access is on. With it off the frame has no network path, but that is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle.
+Use the Space, save a note, and reopen it from **Spaces**. Ask in the same chat to change a view or add behavior to the existing Space. Record writes use revision checks; conflicts return the saved record for resolution. Multi-record batches commit together or not at all. Failed refreshes retain last-good records.
 
-- Upkeep needs Hermes running. The plugin supplies no cloud service.
-- Catch-up policy: "Runs one current refresh when Hermes wakes. Missed intervals aren't replayed."
-  If native cron is unavailable, the Upkeep panel shows the error.
-- Archiving pauses upkeep. Unarchiving does not resume it; resume it in the Upkeep panel.
-- Projects allow 25 MB, 600 files, and 8 MB per file.
-- A Space allows 50,000 records. Each record allows 256 KB of user data and 64 KB
-  of source data. A batch allows 500 operations.
-- Bridge messages allow 1 MB. A feed allows 3 MB and 1,000 entries per source.
-- Runtime logs retain the latest 2,000 entries. Code revisions remain available.
+Apps can use multiple files, custom CSS, modules, binary assets, and browser-compatible output from a framework. The kit and dependency shelf are optional. An installed design skill can guide the bot's design.
 
-An oversized bridge request with a usable request ID receives `limit`; a malformed
-request with a usable ID receives `invalid`. The host no longer silently drops
-those rejected requests. Unidentifiable envelopes cannot receive a correlated reply.
-Storage limit errors include the limit and actual value. Fetch failures retain last-good
-records. Last attempt, last success, and source timestamps are separate facts.
-Use `spaces_read_logs` after opening a Space to diagnose runtime errors.
-Use `spaces_revisions` and `spaces_restore` for code recovery.
+File-by-reference imports accept `from_path` for an absolute local file or `from_url` for a public HTTPS resource in a file descriptor. The backend copies bytes into project storage; it does not leave a dependency on a temporary source file. Local imports enforce allowed roots, file-size limits, and credential/store exclusions. These imports do not give canvas JavaScript arbitrary filesystem access. Native file and tool policy still applies.
 
-The plugin does not supply automatic code repair, general background code
-execution, or cross-profile delegation. Release 1 acceptance is not complete.
-The repository's [R1-STATUS](../../docs/evidence/R1-STATUS.md) is the acceptance ledger.
+## Keep a Space current
 
-## Data and recovery
+Ask in chat, for example, "Update this reading desk every morning at 7 with new papers." The bot creates an ordinary native Hermes cron job. Native cron is the sole truth for its prompt, cadence, timezone, enabled state, and executions. The plugin stores a link, with no second schedule, approval step, or synchronization layer.
 
-Record writes use revision checks. Conflicts preserve the current saved record
-and return it for resolution. Multi-record batches commit together or not at all.
-The observed repair and compatible code restore preserved records. Incompatible
-data-version restore and interrupted migration still need Desktop qualification.
+The **Upkeep** panel reads native state and offers **Pause**, **Resume**, **Run now**, and **Remove**. Changes made through native cron appear there without plugin reconciliation.
 
-To archive, open **More Space actions > Archive Space…** and confirm. This keeps
-records and revisions and pauses the upkeep job. From the archived Space, select
-**Delete…**, read the permanent-loss warning and confirm **Delete Space**. The
-host sends the Space ID confirmation; the current dialog does not ask you to
-type it. R1-11 observed deletion of a disposable Space, its native cron job and
-its feed script. Exported copies and backups are not recalled. Deletion is
-logical removal, not secure disk erasure; content-addressed project file blobs
-can remain in the profile database.
+- Feed upkeep fetches public RSS or Atom data without a model call.
+- Agent upkeep runs a normal Hermes agent job under native tool and approval policy. It makes model and tool calls and can consume subscription quota. The panel labels it **Uses model calls**.
+- Host **Refresh now** runs a feed handler or triggers agent work. For an agent handler, it runs the linked job or creates a native one-shot job if none is linked.
+- Guest `space.refresh()` is restricted to the no-model feed handler. Mounting or timer-driven feed refresh must not dispatch agent upkeep.
 
-## Uninstall and data
+Upkeep requires the Hermes cron runtime to be running. Native catch-up policy governs missed work; the plugin supplies no always-on cloud service. Archiving pauses linked upkeep and pending one-shot jobs. Unarchiving does not resume them. Pause and Remove stop future work; already-running native work may finish. A native failure must not be interpreted as a successful pause or removal.
 
-The database is `<HERMES_HOME>/plugin-data/living-spaces/spaces.db`.
-It contains projects, content-addressed file blobs, revisions, records, grants,
-sessions, feed run history, links to upkeep cron jobs, and runtime logs. SQLite uses WAL. Back up the
-database with a SQLite-aware backup or with the owning runtime stopped.
-`LIVING_SPACES_DB` overrides the path for isolated tests.
+## Internet and native authority
 
-Deleting a Space removes its cron job and its script under `<HERMES_HOME>/scripts/`.
-The plugin has no uninstall step of its own. Before you remove the plugin, remove
-each Space's upkeep in its Upkeep panel or delete the Space. A cron job left active after removal fails on each
-run because its script cannot load the plugin package.
+The per-Space **Internet access** setting is on by default for the implemented mediated path. `space.net.fetch` checks public HTTPS destinations and redirects. It forwards the Space's own `Cookie` and `Authorization` headers and removes them when a redirect changes origin. Hermes-specific and reserved transport headers remain blocked. Responses are limited to 5 MiB. With Internet access off, supported canvas fetches and feed retrieval are blocked. The switch does not disable the bot's normal native tools.
 
-After handling upkeep, disable the Desktop extension in **Capabilities > Plugins** and run `hermes plugins disable living-spaces`. To remove the package,
-run `hermes plugins remove living-spaces`. The current Hermes removal code removes
-the plugin tree and install/config metadata, not its separate `plugin-data`
-directory. Removal is not a data-erasure operation. Uninstall has not been
-rehearsed in Desktop; Forge must verify it before publication.
+`space.net.fetch(url, {as: 'json'})` returns an object with `status`, `url`, `headers`, and `json`. It is not a Fetch `Response`; use its `json` field instead of calling `.json()` or reading `.body`.
 
-## Evidence and open checks
+Direct remote images, fonts, CDN imports, embeds, and live connections in the frame remain blocked pending the credential-isolation repair. Bundled assets and mediated retrieval remain available. Open-frame capability is still a product goal, not a proved safe mode or a permanent mediated-only restriction.
 
-The [validation receipt](../../docs/evidence/runs/validate-8724804/raw.log)
-is for `8724804`, not the final submission commit. Forge must validate the final
-candidate again and set the catalog pin afterward. The
-[R1 ledger](../../docs/evidence/R1-STATUS.md) records these boundaries.
+Internet Off is not a promise of zero outbound data. WebRTC can still send data that the Space can read. Data already delivered to a Space cannot be recalled. Consider what data you put in an internet-enabled canvas.
 
-| Check | Evidence and remaining work |
-|---|---|
-| R1-01 | Pending integrated Desktop network/adversarial qualification and origin-check diagnosis. No complete network-isolation claim. |
-| R1-02 | Normal chat created Research Desk before packaging repair; requalification remains open. |
-| R1-03 | Save/reopen and chat-to-open-app updates observed; ambiguous-target non-mutation remains open. |
-| R1-04 | Research Desk evolution and Pair Play creation/evolution observed; broader acceptance review remains open. |
-| R1-05 | Rerun required under A-03 (shortened: Internet access, Data and Diagnostics grants, revocation and redaction; no Refresh grant). Earlier receipts covered the removed approval flow and do not count. |
-| R1-06 | Real arXiv retrieval retained notes; failure/recovery retained records. Rerun required under A-03. Stale concurrent edits during refresh remain open. |
-| R1-07 | Rerun required under A-03: a chat-created native job, the Upkeep panel, pause, resume, run now and remove. Earlier receipts covered the removed approval flow. Catch-up and final test-job cleanup remain open. |
-| R1-08 | Full isolated restart preserved projects, records, revisions and grants. Resource limits and interrupted-work recovery remain open. |
-| R1-09 | Repair passed 15/15 after a disclosed harness fault and a real chat repair; the model retried a call with wrong argument names. |
-| R1-10 | Compatible restore preserved records in the 18/18 failure/restore run. Incompatible data-version restore remains open. |
-| R1-11 | Lifecycle passed 23/23 before A-03, including typed rejections, session close/reopen, cross-Space confinement, deduplication and fixture archive/delete. Rerun required for upkeep link cleanup. In-place frame reload replay remains open. |
-| R1-12 | Miro's running-candidate usability qualification and return-use journey remain pending. |
+Maintaining-bot controls are intended to address the Space's own bot through a native turn and Hermes's existing policy. Source implementation does not prove correct admission or safe activation and retries in the running candidate. A submitted request is not a completed answer. The plugin adds no per-tool, per-site, per-device, or upkeep approval system.
 
-Upkeep follows [A-03](../../docs/spec/AMENDMENTS.md): the native cron job is the
-only truth, with no plugin-side approval step. Engineering status is in progress
-and not qualified.
+## Data, costs, and compatibility
 
-These counts are prior receipts summarized by R1-STATUS, not new runs performed
-while updating this README. Final screenshots follow Miro's design kit merge.
+Space data is local SQLite at `<HERMES_HOME>/plugin-data/living-spaces/spaces.db`. It includes projects, file blobs, revisions, records, grants, sessions, feed history, upkeep links, and runtime logs. Native cron retains agent execution history. The plugin sends no telemetry. Records can enter the configured model's context when a bot reads them, and internet requests contact their destination services.
+
+The plugin needs no new credentials. Do not put credentials in projects or records. This is separate from the unresolved Desktop credentials-forwarding gate for direct frame networking.
+
+Feed scheduling writes `<HERMES_HOME>/scripts/living-spaces-refresh-<space-id>.py` and creates a native cron job. Agent scheduling creates the native job without a feed script. Hermes executes the script or agent job under its normal runtime policy. Removing upkeep or deleting the Space removes associated future jobs and the feed script.
+
+Upkeep uses the private `cron.jobs` and `cron.executions` modules. Desktop session cleanup uses the raw `window.hermesDesktop` bridge to retain the original backend target. These integrations carry compatibility risk and catalog-review warnings. This is not an all-public-SDK or catalog-approved package.
+
+Projects allow 25 MiB, 600 files, and 8 MiB per file. A Space allows 50,000 records, with 256 KiB of user data and 64 KiB of source data per record. Batches allow 500 operations; bridge messages allow 1 MiB. Runtime logs retain the latest 2,000 entries. These limits do not promise a total cap on retained revision storage.
+
+## Recovery and removal
+
+Use chat to ask the bot to inspect scoped runtime logs and repair the Space. The tools include `spaces_read_logs`, `spaces_revisions`, and `spaces_restore`. Code restore and user-data recovery are separate. Incompatible schema restoration and interrupted migrations still need final candidate qualification.
+
+Back up the database with a SQLite-aware backup or with its owning runtime stopped. SQLite uses a write-ahead log, so copying only a live database file can omit recent writes.
+
+Before removing the plugin, remove each Space's upkeep through **Upkeep**, or delete the Space. Disabling the extension alone does not cancel native cron jobs. Unhandled jobs can remain scheduled and fail after package removal.
+
+After handling upkeep, disable **Living Spaces** in Desktop **Capabilities > Plugins**. In the selected profile's CLI context, run:
+
+```sh
+hermes plugins disable living-spaces
+hermes plugins remove living-spaces
+```
+
+Package removal does not erase the separate `plugin-data` directory. Space deletion is logical removal, not secure disk erasure; file blobs and external backups can remain. Uninstall has not been newly rehearsed for this candidate.
+
+## Repository documentation and license
+
+The following relative links refer to repository documentation and may be unavailable when this folder is copied alone:
+
+- [Specification](../../docs/spec/SPEC.md) and [amendments](../../docs/spec/AMENDMENTS.md). Later owner decisions govern.
+- [Evidence ledger](../../docs/evidence/R1-STATUS.md). Historical receipts apply to their recorded revisions; they are not fresh passes for this candidate.
+- [Interim design qualification](../../docs/design/premium-pass/qualification-addendum-20261111/QUALIFICATION-INTERIM.md). The inspected composed-width failures need repaired-candidate captures.
+- [MIT License](../../LICENSE). Copyright Living Spaces contributors.
+
+Vendored libraries and fonts retain their own licenses. The package's [third-party notices](THIRD-PARTY.md) describe the bundled shelf and remaining provenance gaps. The root MIT license does not replace those notices.
