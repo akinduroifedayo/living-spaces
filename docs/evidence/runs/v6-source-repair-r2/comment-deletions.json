@@ -1,0 +1,12 @@
+{
+  "reason": "Accepted exact Comment Sicko deletions, no assertion or executable code changed",
+  "deleted_complete_lines": [
+    "// This models transport and durable claims; it does not run native admissions or models.\n",
+    "    // The planned trusted-host seam records a refusal, never a fabricated native receipt.\n"
+  ],
+  "before_sha256": "487758dc6b198347bb83d92db6016d5accccb7373a93923c078ee936c413b46b",
+  "after_sha256": "0523c748347ce405a5970659db8c28f02b41c066f77495684bb0b570bc996a49",
+  "exact_two_line_projection_verified": true,
+  "original_red_and_green_receipts_retained": true,
+  "new_hash_requires_suite_rerun": true
+}

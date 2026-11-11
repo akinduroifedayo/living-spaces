@@ -1,0 +1,85 @@
+{
+  "correction": "Earlier tier scan checked only session_meta and turn_context. event_msg/thread_settings_applied reports priority. This is applied client runtime configuration, not provider-returned wire evidence.",
+  "seats": [
+    {
+      "seat": "combined-native-review-v6",
+      "thread": "01a1cab3-eb5b-7303-aafb-d5f08a842401",
+      "configured_model": "gpt-6-astra",
+      "runtime": [
+        {
+          "id": "01a1cab3-eb5b-7303-aafb-d5f08a842401",
+          "model_provider": "openai",
+          "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/combined-native-review-v6"
+        },
+        {
+          "model": "gpt-6-astra",
+          "effort": "high",
+          "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/combined-native-review-v6"
+        }
+      ],
+      "applied_thread_settings": [
+        {
+          "model": "gpt-6-astra",
+          "reasoning_effort": "high",
+          "service_tier": "priority"
+        },
+        {
+          "model": "gpt-6-astra",
+          "reasoning_effort": "high",
+          "service_tier": "priority"
+        }
+      ],
+      "provider_returned_tier": "unknown"
+    },
+    {
+      "seat": "v6-regressions-author-r2",
+      "thread": "01a1cac3-892f-7c20-81df-d2bd25e76ac7",
+      "configured_model": "gpt-6-astra",
+      "runtime": [
+        {
+          "id": "01a1cac3-892f-7c20-81df-d2bd25e76ac7",
+          "model_provider": "openai",
+          "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/v6-regressions-author-r2"
+        },
+        {
+          "model": "gpt-6-astra",
+          "effort": "high",
+          "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/v6-regressions-author-r2"
+        }
+      ],
+      "applied_thread_settings": [
+        {
+          "model": "gpt-6-astra",
+          "reasoning_effort": "high",
+          "service_tier": "priority"
+        }
+      ],
+      "provider_returned_tier": "unknown"
+    },
+    {
+      "seat": "canvas-review-repair-r2",
+      "thread": "01a1cace-166e-7943-acd6-edc454a20b73",
+      "configured_model": "gpt-6-astra",
+      "runtime": [
+        {
+          "id": "01a1cace-166e-7943-acd6-edc454a20b73",
+          "model_provider": "openai",
+          "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/canvas-review-repair-r2"
+        },
+        {
+          "model": "gpt-6-astra",
+          "effort": "high",
+          "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/canvas-review-repair-r2"
+        }
+      ],
+      "applied_thread_settings": [
+        {
+          "model": "gpt-6-astra",
+          "reasoning_effort": "high",
+          "service_tier": "priority"
+        }
+      ],
+      "provider_returned_tier": "unknown"
+    }
+  ]
+}

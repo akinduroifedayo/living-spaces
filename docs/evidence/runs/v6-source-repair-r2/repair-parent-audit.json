@@ -1,0 +1,22 @@
+{
+  "seat": "canvas-review-repair-r2",
+  "thread_id": "01a1cace-166e-7943-acd6-edc454a20b73",
+  "model": "gpt-6-astra",
+  "effort": "high",
+  "runtime_applied_service_tier": "priority",
+  "provider_returned_tier": "unknown",
+  "required_bodies_before_first_edit": 51,
+  "source_baseline_files": 621,
+  "changed_paths": [
+    "src/desktop/ui/actions.mjs",
+    "src/living-spaces/dashboard/plugin_api.py",
+    "src/living-spaces/living_spaces_core/__init__.py",
+    "src/living-spaces/living_spaces_core/actions.py",
+    "src/living-spaces/living_spaces_core/db.py",
+    "src/living-spaces/living_spaces_core/migrations.py"
+  ],
+  "tests_unchanged": true,
+  "worker_exit": 0,
+  "tests_run": false,
+  "startup_warning": "Skill description budget exceeded. Required packet bodies verified complete before first edit."
+}

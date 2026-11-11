@@ -1,0 +1,33 @@
+{
+  "kind": "Synthetic deliberate SQL mutation, not a naturally observed product defect",
+  "control_exit": 0,
+  "mutation_exit": 1,
+  "ordered_case_ids": [
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_admitted_work_cannot_be_relabelled_as_unadmitted",
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot",
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_legacy_schema_migrates_idempotently_without_losing_an_intent",
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_mismatched_identity_and_ambiguous_reason_leave_intent_unresolved",
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_observation_and_refusal_race_has_one_consistent_winner",
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_refusal_requires_a_live_session_for_the_same_space",
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_reject_endpoint_validates_fields_and_session",
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_repeated_refusal_is_idempotent_and_conflicting_reason_is_atomic",
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_saved_refusal_cannot_acquire_an_admission_after_reopen"
+  ],
+  "unique_failing_methods": [
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot",
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_legacy_schema_migrates_idempotently_without_losing_an_intent",
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_observation_and_refusal_race_has_one_consistent_winner",
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_repeated_refusal_is_idempotent_and_conflicting_reason_is_atomic",
+    "tests.python.test_canvas_refusals.CanvasRefusals.test_saved_refusal_cannot_acquire_an_admission_after_reopen"
+  ],
+  "subtest_failure_blocks": 10,
+  "errors": 0,
+  "skips": 0,
+  "mutation": {
+    "source_copy": "/Volumes/Expansion/Development/Build/living-spaces-r1/run/refusal-settlement-mutation-r2",
+    "file": "src/living-spaces/living_spaces_core/actions.py",
+    "before": "refusal_reason=?,settled=1",
+    "after": "refusal_reason=?,settled=0"
+  },
+  "earlier_failed_control": "execute_code subprocess had a pydantic_core import error; zero mutation was applied then. Retained control-green.log is an environment failure, not regression evidence. Actual terminal control passes nine unchanged cases."
+}

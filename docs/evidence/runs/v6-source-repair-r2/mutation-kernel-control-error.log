@@ -1,0 +1,42 @@
+test_admitted_work_cannot_be_relabelled_as_unadmitted (tests.python.test_canvas_refusals.CanvasRefusals.test_admitted_work_cannot_be_relabelled_as_unadmitted) ... ok
+test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) ... ok
+test_legacy_schema_migrates_idempotently_without_losing_an_intent (tests.python.test_canvas_refusals.CanvasRefusals.test_legacy_schema_migrates_idempotently_without_losing_an_intent) ... ok
+test_mismatched_identity_and_ambiguous_reason_leave_intent_unresolved (tests.python.test_canvas_refusals.CanvasRefusals.test_mismatched_identity_and_ambiguous_reason_leave_intent_unresolved) ... ok
+test_observation_and_refusal_race_has_one_consistent_winner (tests.python.test_canvas_refusals.CanvasRefusals.test_observation_and_refusal_race_has_one_consistent_winner) ... ok
+test_refusal_requires_a_live_session_for_the_same_space (tests.python.test_canvas_refusals.CanvasRefusals.test_refusal_requires_a_live_session_for_the_same_space) ... ok
+test_reject_endpoint_validates_fields_and_session (tests.python.test_canvas_refusals.CanvasRefusals.test_reject_endpoint_validates_fields_and_session) ... ERROR
+test_repeated_refusal_is_idempotent_and_conflicting_reason_is_atomic (tests.python.test_canvas_refusals.CanvasRefusals.test_repeated_refusal_is_idempotent_and_conflicting_reason_is_atomic) ... ok
+test_saved_refusal_cannot_acquire_an_admission_after_reopen (tests.python.test_canvas_refusals.CanvasRefusals.test_saved_refusal_cannot_acquire_an_admission_after_reopen) ... ok
+
+======================================================================
+ERROR: test_reject_endpoint_validates_fields_and_session (tests.python.test_canvas_refusals.CanvasRefusals.test_reject_endpoint_validates_fields_and_session)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Build/living-spaces-r1/run/refusal-settlement-mutation-r2/tests/python/test_canvas_refusals.py", line 126, in test_reject_endpoint_validates_fields_and_session
+    from fastapi import FastAPI
+  File "/Users/ifedayoakinduro/.hermes/installs/1897b41396ed1ac4/environments/a441d7ed8b5342979673ea9d2659a449/venv/lib/python3.14/site-packages/fastapi/__init__.py", line 7, in <module>
+    from .applications import FastAPI as FastAPI
+  File "/Users/ifedayoakinduro/.hermes/installs/1897b41396ed1ac4/environments/a441d7ed8b5342979673ea9d2659a449/venv/lib/python3.14/site-packages/fastapi/applications.py", line 10, in <module>
+    from fastapi import routing
+  File "/Users/ifedayoakinduro/.hermes/installs/1897b41396ed1ac4/environments/a441d7ed8b5342979673ea9d2659a449/venv/lib/python3.14/site-packages/fastapi/routing.py", line 31, in <module>
+    from fastapi import params
+  File "/Users/ifedayoakinduro/.hermes/installs/1897b41396ed1ac4/environments/a441d7ed8b5342979673ea9d2659a449/venv/lib/python3.14/site-packages/fastapi/params.py", line 7, in <module>
+    from fastapi.exceptions import FastAPIDeprecationWarning
+  File "/Users/ifedayoakinduro/.hermes/installs/1897b41396ed1ac4/environments/a441d7ed8b5342979673ea9d2659a449/venv/lib/python3.14/site-packages/fastapi/exceptions.py", line 5, in <module>
+    from pydantic import BaseModel, create_model
+  File "/Users/ifedayoakinduro/.hermes/installs/1897b41396ed1ac4/environments/a441d7ed8b5342979673ea9d2659a449/venv/lib/python3.14/site-packages/pydantic/__init__.py", line 5, in <module>
+    from ._migration import getattr_migration
+  File "/Users/ifedayoakinduro/.hermes/installs/1897b41396ed1ac4/environments/a441d7ed8b5342979673ea9d2659a449/venv/lib/python3.14/site-packages/pydantic/_migration.py", line 5, in <module>
+    from pydantic.warnings import PydanticDeprecatedSince20
+  File "/Users/ifedayoakinduro/.hermes/installs/1897b41396ed1ac4/environments/a441d7ed8b5342979673ea9d2659a449/venv/lib/python3.14/site-packages/pydantic/warnings.py", line 5, in <module>
+    from .version import version_short
+  File "/Users/ifedayoakinduro/.hermes/installs/1897b41396ed1ac4/environments/a441d7ed8b5342979673ea9d2659a449/venv/lib/python3.14/site-packages/pydantic/version.py", line 7, in <module>
+    from pydantic_core import __version__ as __pydantic_core_version__
+  File "/Users/ifedayoakinduro/.hermes/installs/1897b41396ed1ac4/environments/a441d7ed8b5342979673ea9d2659a449/venv/lib/python3.14/site-packages/pydantic_core/__init__.py", line 8, in <module>
+    from ._pydantic_core import (
+ImportError: cannot import name 'ArgsKwargs' from 'pydantic_core._pydantic_core' (unknown location)
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.694s
+
+FAILED (errors=1)

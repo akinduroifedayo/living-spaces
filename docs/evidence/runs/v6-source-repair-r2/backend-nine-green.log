@@ -1,0 +1,14 @@
+test_admitted_work_cannot_be_relabelled_as_unadmitted (tests.python.test_canvas_refusals.CanvasRefusals.test_admitted_work_cannot_be_relabelled_as_unadmitted) ... ok
+test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) ... ok
+test_legacy_schema_migrates_idempotently_without_losing_an_intent (tests.python.test_canvas_refusals.CanvasRefusals.test_legacy_schema_migrates_idempotently_without_losing_an_intent) ... ok
+test_mismatched_identity_and_ambiguous_reason_leave_intent_unresolved (tests.python.test_canvas_refusals.CanvasRefusals.test_mismatched_identity_and_ambiguous_reason_leave_intent_unresolved) ... ok
+test_observation_and_refusal_race_has_one_consistent_winner (tests.python.test_canvas_refusals.CanvasRefusals.test_observation_and_refusal_race_has_one_consistent_winner) ... ok
+test_refusal_requires_a_live_session_for_the_same_space (tests.python.test_canvas_refusals.CanvasRefusals.test_refusal_requires_a_live_session_for_the_same_space) ... ok
+test_reject_endpoint_validates_fields_and_session (tests.python.test_canvas_refusals.CanvasRefusals.test_reject_endpoint_validates_fields_and_session) ... ok
+test_repeated_refusal_is_idempotent_and_conflicting_reason_is_atomic (tests.python.test_canvas_refusals.CanvasRefusals.test_repeated_refusal_is_idempotent_and_conflicting_reason_is_atomic) ... ok
+test_saved_refusal_cannot_acquire_an_admission_after_reopen (tests.python.test_canvas_refusals.CanvasRefusals.test_saved_refusal_cannot_acquire_an_admission_after_reopen) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.584s
+
+OK

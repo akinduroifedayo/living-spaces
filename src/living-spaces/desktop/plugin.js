@@ -895,6 +895,7 @@ var routeFields = ["connectionId", "profile", "targetProfile", "mode"];
 var sameRoute = (a, b) => routeFields.every((key) => a?.[key] === b?.[key]);
 var publicStatus = (action, status, message, answer) => ({ activationId: action?.activation_id, status, message, ...answer ? { answer } : {} });
 var failure = (message, status = "failed") => Object.assign(new Error(message), { actionStatus: status });
+var refusalReasons = /* @__PURE__ */ new Set(["permission_denied", "invalid_params", "not_found", "profile_mismatch", "queue_full", "runtime_draining"]);
 function createBotActions({ host: host5, backend, post, onStatus, isActive, userActivation = () => globalThis.navigator?.userActivation?.isActive === true }) {
   let current = null;
   let binding = null;
@@ -902,6 +903,7 @@ function createBotActions({ host: host5, backend, post, onStatus, isActive, user
   let heldRoute = null;
   let timer = null;
   let closed = false;
+  let requestInFlight = null;
   let chain = Promise.resolve();
   const alive = () => {
     if (closed || !isActive()) throw failure("This Space view is closed", "unknown");
@@ -935,9 +937,13 @@ function createBotActions({ host: host5, backend, post, onStatus, isActive, user
     alive();
     const value = await host5.requestProfile(fresh, method, params).catch((error) => {
       const reason = error?.data?.reason;
-      if (["permission_denied", "invalid_params", "not_found", "profile_mismatch", "admission_conflict"].includes(reason)) {
+      if (method === "prompt.submit" && refusalReasons.has(reason)) {
+        throw Object.assign(failure(`Native request refused: ${reason}`), { refusalReason: reason });
+      }
+      if (["permission_denied", "invalid_params", "not_found", "profile_mismatch"].includes(reason)) {
         throw failure(`Native request refused: ${reason}`);
       }
+      if (reason === "admission_conflict") throw failure("Native admission identity is conflicted; admission may already exist", "unknown");
       if (reason === "runtime_draining") throw failure("The native runtime is busy shutting down", "busy");
       throw error;
     });
@@ -1031,6 +1037,7 @@ function createBotActions({ host: host5, backend, post, onStatus, isActive, user
     clearTimeout(timer);
     current = await context(current?.activation_id);
     if (!current) return null;
+    if (current.refusal_reason) return publish(publicStatus(current, "failed", `Native request refused: ${current.refusal_reason}. No request was admitted.`));
     const route = await connect(current.target);
     const resumed = await attach(route, current.target.session_id);
     if (resumed.session_id !== current.target.session_id) throw failure("The native activation target changed", "unknown");
@@ -1047,11 +1054,32 @@ function createBotActions({ host: host5, backend, post, onStatus, isActive, user
     if (identity.profile_id !== current.target.profile_id) throw failure("Maintaining profile changed before submission", "unknown");
     alive();
     publish(publicStatus(current, "submitted", "Requesting native admission. Uses model calls."));
-    const receipt = await rpc(route, "prompt.submit", {
-      session_id: current.target.session_id,
-      input_id: current.input_id,
-      text: current.text
-    });
+    let receipt;
+    try {
+      receipt = await rpc(route, "prompt.submit", {
+        session_id: current.target.session_id,
+        input_id: current.input_id,
+        text: current.text
+      });
+    } catch (error) {
+      if (!error.refusalReason) throw error;
+      alive();
+      try {
+        const recorded = await post("reject", {
+          activation_id: current.activation_id,
+          input_id: current.input_id,
+          reason: error.refusalReason
+        });
+        alive();
+        if (!recorded.recorded || !recorded.settled || !recorded.action?.settled || recorded.action.activation_id !== current.activation_id || recorded.action.input_id !== current.input_id || recorded.action.admission_id !== null || recorded.action.refusal_reason !== error.refusalReason) {
+          throw new Error("The refusal record did not match this activation");
+        }
+        current = recorded.action;
+      } catch (persistenceError) {
+        throw failure(`${error.message}. Refusal persistence could not be confirmed: ${persistenceError.message}`);
+      }
+      throw error;
+    }
     return observe(receipt);
   }
   return {
@@ -1059,6 +1087,12 @@ function createBotActions({ host: host5, backend, post, onStatus, isActive, user
     check: () => serial(check).catch(report),
     request(args) {
       if (!userActivation()) return Promise.resolve(publish(publicStatus(null, "failed", "Bot requests need a current user activation. No request was sent.")));
+      const payload = JSON.stringify({ text: args.text, records: args.records || [] }, ["text", "records", "collection", "id"]);
+      if (requestInFlight) {
+        const conflict = requestInFlight.activationId === args.activation_id && requestInFlight.payload !== payload;
+        return Promise.resolve(publish(publicStatus(args, conflict ? "failed" : "busy", conflict ? "This activation ID already belongs to a different request. No request was sent." : "An earlier request is already being handled. This activation did not send a new request.")));
+      }
+      requestInFlight = { activationId: args.activation_id, payload };
       return serial(async () => {
         clearTimeout(timer);
         current = await context();
@@ -1076,13 +1110,15 @@ function createBotActions({ host: host5, backend, post, onStatus, isActive, user
           return claim.coalesced ? publish({ ...status, message: `An earlier request is already pending or finished. This activation did not send a new request. ${status.message}` }) : status;
         }
         return submit(route);
-      }).catch(report);
+      }).catch(report).finally(() => {
+        requestInFlight = null;
+      });
     },
     retry() {
       if (!userActivation()) return Promise.resolve(publish(publicStatus(current, "failed", "Activate Retry to request native admission again.")));
       return serial(async () => {
-        await check();
-        if (!current || current.admission_id || current.settled) return;
+        const status = await check();
+        if (!current || current.admission_id || current.settled) return status;
         const route = await connect(current.target);
         return submit(route);
       }).catch(report);

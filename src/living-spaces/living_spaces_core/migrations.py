@@ -103,6 +103,11 @@ def grant_internet_access(conn):
         grants._audit(conn, row["id"], "user", "decision", "net", "granted", {"default_on_migration": True})
 
 
+def add_action_refusal_reason(conn):
+    if "refusal_reason" not in {row["name"] for row in conn.execute("PRAGMA table_info(action_intents)")}:
+        conn.execute("ALTER TABLE action_intents ADD COLUMN refusal_reason TEXT")
+
+
 def link_native_upkeep(conn):
     """Convert legacy schedules rows to upkeep links, then drop schedules and Refresh grants."""
     if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='schedules'").fetchone():

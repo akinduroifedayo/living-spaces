@@ -271,3 +271,12 @@ async def action_observe(space_id: str, body=Body(default=None)):
         _body(core, body, ("session", "activation_id", "receipt"), ("session", "activation_id", "receipt"))
         return core.observe_action(space_id, **body)
     return await _run(space_id, action)
+
+
+@router.post("/spaces/{space_id}/actions/reject")
+async def action_reject(space_id: str, body=Body(default=None)):
+    def action(core):
+        _body(core, body, ("session", "activation_id", "input_id", "reason"),
+              ("session", "activation_id", "input_id", "reason"))
+        return core.reject_action(space_id, **body)
+    return await _run(space_id, action)

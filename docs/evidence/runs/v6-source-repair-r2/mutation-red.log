@@ -1,0 +1,104 @@
+test_admitted_work_cannot_be_relabelled_as_unadmitted (tests.python.test_canvas_refusals.CanvasRefusals.test_admitted_work_cannot_be_relabelled_as_unadmitted) ... ok
+test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) ... 
+  test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) (reason='permission_denied') ... FAIL
+  test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) (reason='queue_full') ... FAIL
+  test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) (reason='invalid_params') ... FAIL
+  test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) (reason='not_found') ... FAIL
+  test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) (reason='profile_mismatch') ... FAIL
+  test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) (reason='runtime_draining') ... FAIL
+test_legacy_schema_migrates_idempotently_without_losing_an_intent (tests.python.test_canvas_refusals.CanvasRefusals.test_legacy_schema_migrates_idempotently_without_losing_an_intent) ... FAIL
+test_mismatched_identity_and_ambiguous_reason_leave_intent_unresolved (tests.python.test_canvas_refusals.CanvasRefusals.test_mismatched_identity_and_ambiguous_reason_leave_intent_unresolved) ... ok
+test_observation_and_refusal_race_has_one_consistent_winner (tests.python.test_canvas_refusals.CanvasRefusals.test_observation_and_refusal_race_has_one_consistent_winner) ... FAIL
+test_refusal_requires_a_live_session_for_the_same_space (tests.python.test_canvas_refusals.CanvasRefusals.test_refusal_requires_a_live_session_for_the_same_space) ... ok
+test_reject_endpoint_validates_fields_and_session (tests.python.test_canvas_refusals.CanvasRefusals.test_reject_endpoint_validates_fields_and_session) ... ok
+test_repeated_refusal_is_idempotent_and_conflicting_reason_is_atomic (tests.python.test_canvas_refusals.CanvasRefusals.test_repeated_refusal_is_idempotent_and_conflicting_reason_is_atomic) ... FAIL
+test_saved_refusal_cannot_acquire_an_admission_after_reopen (tests.python.test_canvas_refusals.CanvasRefusals.test_saved_refusal_cannot_acquire_an_admission_after_reopen) ... FAIL
+
+======================================================================
+FAIL: test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) (reason='permission_denied')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Build/living-spaces-r1/run/refusal-settlement-mutation-r2/tests/python/test_canvas_refusals.py", line 62, in test_each_definitive_reason_preserves_identity_and_releases_slot
+    self.assertEqual(self.context(key), expected)
+AssertionError: {'act[600 chars] None, 'settled': False, 'refusal_reason': 'permission_denied'} != {'act[600 chars] None, 'settled': True, 'refusal_reason': 'permission_denied'}
+Diff is 903 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) (reason='queue_full')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Build/living-spaces-r1/run/refusal-settlement-mutation-r2/tests/python/test_canvas_refusals.py", line 55, in test_each_definitive_reason_preserves_identity_and_releases_slot
+    self.assertTrue(claim["dispatch"])
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) (reason='invalid_params')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Build/living-spaces-r1/run/refusal-settlement-mutation-r2/tests/python/test_canvas_refusals.py", line 55, in test_each_definitive_reason_preserves_identity_and_releases_slot
+    self.assertTrue(claim["dispatch"])
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) (reason='not_found')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Build/living-spaces-r1/run/refusal-settlement-mutation-r2/tests/python/test_canvas_refusals.py", line 55, in test_each_definitive_reason_preserves_identity_and_releases_slot
+    self.assertTrue(claim["dispatch"])
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) (reason='profile_mismatch')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Build/living-spaces-r1/run/refusal-settlement-mutation-r2/tests/python/test_canvas_refusals.py", line 55, in test_each_definitive_reason_preserves_identity_and_releases_slot
+    self.assertTrue(claim["dispatch"])
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_each_definitive_reason_preserves_identity_and_releases_slot (tests.python.test_canvas_refusals.CanvasRefusals.test_each_definitive_reason_preserves_identity_and_releases_slot) (reason='runtime_draining')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Build/living-spaces-r1/run/refusal-settlement-mutation-r2/tests/python/test_canvas_refusals.py", line 55, in test_each_definitive_reason_preserves_identity_and_releases_slot
+    self.assertTrue(claim["dispatch"])
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_legacy_schema_migrates_idempotently_without_losing_an_intent (tests.python.test_canvas_refusals.CanvasRefusals.test_legacy_schema_migrates_idempotently_without_losing_an_intent)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Build/living-spaces-r1/run/refusal-settlement-mutation-r2/tests/python/test_canvas_refusals.py", line 123, in test_legacy_schema_migrates_idempotently_without_losing_an_intent
+    self.assertEqual(self.context(), saved)
+AssertionError: {'act[590 chars]on_id': None, 'settled': False, 'refusal_reason': 'queue_full'} != {'act[590 chars]on_id': None, 'settled': True, 'refusal_reason': 'queue_full'}
+Diff is 893 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_observation_and_refusal_race_has_one_consistent_winner (tests.python.test_canvas_refusals.CanvasRefusals.test_observation_and_refusal_race_has_one_consistent_winner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Build/living-spaces-r1/run/refusal-settlement-mutation-r2/tests/python/test_canvas_refusals.py", line 168, in test_observation_and_refusal_race_has_one_consistent_winner
+    self.assertTrue(state["settled"])
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_repeated_refusal_is_idempotent_and_conflicting_reason_is_atomic (tests.python.test_canvas_refusals.CanvasRefusals.test_repeated_refusal_is_idempotent_and_conflicting_reason_is_atomic)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Build/living-spaces-r1/run/refusal-settlement-mutation-r2/tests/python/test_canvas_refusals.py", line 73, in test_repeated_refusal_is_idempotent_and_conflicting_reason_is_atomic
+    self.assertEqual(self.context(), first["action"])
+AssertionError: {'act[597 chars] None, 'settled': False, 'refusal_reason': 'permission_denied'} != {'act[597 chars] None, 'settled': True, 'refusal_reason': 'permission_denied'}
+Diff is 900 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_saved_refusal_cannot_acquire_an_admission_after_reopen (tests.python.test_canvas_refusals.CanvasRefusals.test_saved_refusal_cannot_acquire_an_admission_after_reopen)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Build/living-spaces-r1/run/refusal-settlement-mutation-r2/tests/python/test_canvas_refusals.py", line 108, in test_saved_refusal_cannot_acquire_an_admission_after_reopen
+    self.assertEqual(self.context(), saved)
+AssertionError: {'act[597 chars] None, 'settled': False, 'refusal_reason': 'permission_denied'} != {'act[597 chars] None, 'settled': True, 'refusal_reason': 'permission_denied'}
+Diff is 900 characters long. Set self.maxDiff to None to see it.
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.546s
+
+FAILED (failures=10)

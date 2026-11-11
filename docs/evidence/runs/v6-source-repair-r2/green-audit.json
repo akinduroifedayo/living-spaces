@@ -1,0 +1,40 @@
+{
+  "ordered_node_ids": [
+    "a switched active chat/profile cannot replace the pinned owner and queued is not complete",
+    "native receipt alone determines busy and correlated completion with answer",
+    "unknown admission has no automatic resend; explicit retry preserves exact input and payload",
+    "reload observes a durable intent without submitting again",
+    "duplicate requests coalesce and changed same-key payload fails visibly",
+    "mount and timer actions without user activation never call native transport",
+    "a missing or ambiguous registered route fails offline without fallback",
+    "canonical profile mismatch prevents any native submission",
+    "route removed after resume fails the fresh registered-route check",
+    "an unrelated receipt cannot complete or release the activation",
+    "closing during admission suppresses late observation and delivery",
+    "native denial remains visible and never reports completion",
+    "Space action REST and cleanup stay on the captured backend after ambient switch",
+    "coalescing a different activation explicitly says no new request was sent",
+    "legacy runtime identity is refused without creating a replacement session",
+    "one activation burst cannot dispatch new inputs after coalesced work settles",
+    "a fresh activation after completed work admits a different input and payload",
+    "definitive permission_denied settles refusal across reload and permits a fresh intent",
+    "definitive queue_full settles refusal across reload and permits a fresh intent",
+    "ambiguous transport loss remains unresolved across reload until exact-ID explicit retry"
+  ],
+  "repaired_prior_failures": [
+    "one activation burst cannot dispatch new inputs after coalesced work settles",
+    "definitive permission_denied settles refusal across reload and permits a fresh intent",
+    "definitive queue_full settles refusal across reload and permits a fresh intent"
+  ],
+  "newly_passing_node_cases": 3,
+  "frozen_bytes_verified": {
+    "tests/python/test_file_refs_suffix.py": "6279a6d641b61250da2c391a3f1fbdd3dda89dfa5113e2f388bf031dc9906ed2",
+    "tests/js/ui/canvas-actions.test.mjs": "487758dc6b198347bb83d92db6016d5accccb7373a93923c078ee936c413b46b"
+  },
+  "node_exit": 0,
+  "python_focused_cases": 67,
+  "python_focused_exit": 0,
+  "additional_backend_cases": 9,
+  "additional_backend_exit": 0,
+  "scope": "Source fixtures and actual temporary SQLite/REST, not live native model admission."
+}

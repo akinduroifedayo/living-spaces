@@ -218,7 +218,6 @@ test('legacy runtime identity is refused without creating a replacement session'
 })
 
 
-// This models transport and durable claims; it does not run native admissions or models.
 function actionLifecycleFixture({ submitErrors = [], beforeSubmit = async () => {}, completeOnReceipt = false } = {}) {
   const intents = new Map(), keys = new Map(), admissions = new Map()
   const calls = [], posts = [], statuses = [], protocolErrors = [], adapters = []
@@ -305,7 +304,6 @@ function actionLifecycleFixture({ submitErrors = [], beforeSubmit = async () => 
       action.settled ||= receipt.status === 'terminal' && ['completed', 'cancelled', 'failed', 'interrupted'].includes(receipt.outcome)
       return { recorded: true, settled: action.settled }
     }
-    // The planned trusted-host seam records a refusal, never a fabricated native receipt.
     if (op === 'reject') {
       const action = intent(body.activation_id)
       assert.ok(action)

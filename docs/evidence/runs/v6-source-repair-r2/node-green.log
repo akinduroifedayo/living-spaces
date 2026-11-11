@@ -1,0 +1,28 @@
+✔ a switched active chat/profile cannot replace the pinned owner and queued is not complete (7.777584ms)
+✔ native receipt alone determines busy and correlated completion with answer (1.36275ms)
+✔ unknown admission has no automatic resend; explicit retry preserves exact input and payload (1.292708ms)
+✔ reload observes a durable intent without submitting again (0.743542ms)
+✔ duplicate requests coalesce and changed same-key payload fails visibly (0.491166ms)
+✔ mount and timer actions without user activation never call native transport (0.126125ms)
+✔ a missing or ambiguous registered route fails offline without fallback (0.189458ms)
+✔ canonical profile mismatch prevents any native submission (0.132791ms)
+✔ route removed after resume fails the fresh registered-route check (0.488ms)
+✔ an unrelated receipt cannot complete or release the activation (0.392084ms)
+✔ closing during admission suppresses late observation and delivery (0.858208ms)
+✔ native denial remains visible and never reports completion (0.205833ms)
+✔ Space action REST and cleanup stay on the captured backend after ambient switch (0.4045ms)
+✔ coalescing a different activation explicitly says no new request was sent (0.262625ms)
+✔ legacy runtime identity is refused without creating a replacement session (0.133041ms)
+✔ one activation burst cannot dispatch new inputs after coalesced work settles (0.666ms)
+✔ a fresh activation after completed work admits a different input and payload (1.087583ms)
+✔ definitive permission_denied settles refusal across reload and permits a fresh intent (0.928625ms)
+✔ definitive queue_full settles refusal across reload and permits a fresh intent (0.664667ms)
+✔ ambiguous transport loss remains unresolved across reload until exact-ID explicit retry (1.105792ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 178.223

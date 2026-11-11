@@ -1,0 +1,16 @@
+{
+  "seat": "repair-comments-r2",
+  "thread": "01a1cae3-93f8-7b43-8ea1-6a6580eee6f4",
+  "model": "gpt-6-astra",
+  "provider": "openai",
+  "effort": "high",
+  "runtime_service_tier": "priority",
+  "provider_returned_tier": "unknown",
+  "complete_required_bodies": 28,
+  "source_files_unchanged": 637,
+  "first_output_raw": "Yes... Ha ha ha... Yes!\n",
+  "report_words": 495,
+  "exit": 0,
+  "non_required_command_denial": "Heredoc temp creation refused; read-only replacement succeeded. No required input omitted.",
+  "initial_parent_auditor_error": "Exact string check rejected a final newline. Raw first output retained; required sentence is exact."
+}

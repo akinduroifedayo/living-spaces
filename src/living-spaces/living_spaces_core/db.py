@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS maintainers(space TEXT PRIMARY KEY REFERENCES spaces(
   binding TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS action_intents(space TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
   activation_id TEXT NOT NULL, input_id TEXT NOT NULL UNIQUE, target TEXT NOT NULL, text TEXT NOT NULL,
-  admission_id TEXT, settled INTEGER NOT NULL DEFAULT 0 CHECK(settled IN (0,1)), created_at REAL NOT NULL,
+  admission_id TEXT, refusal_reason TEXT, settled INTEGER NOT NULL DEFAULT 0 CHECK(settled IN (0,1)), created_at REAL NOT NULL,
   PRIMARY KEY(space, activation_id));
 CREATE UNIQUE INDEX IF NOT EXISTS one_unresolved_action ON action_intents(space) WHERE settled=0;
 CREATE TABLE IF NOT EXISTS action_keys(space TEXT NOT NULL, activation_id TEXT NOT NULL, request TEXT NOT NULL,
@@ -102,9 +102,10 @@ def connect() -> sqlite3.Connection:
             conn.executescript(DDL)
             conn.execute("BEGIN IMMEDIATE")
             try:
-                from .migrations import grant_internet_access, link_native_upkeep
+                from .migrations import grant_internet_access, link_native_upkeep, add_action_refusal_reason
                 grant_internet_access(conn)
                 link_native_upkeep(conn)
+                add_action_refusal_reason(conn)
                 conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 conn.execute("COMMIT")
             except BaseException:

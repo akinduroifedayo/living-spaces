@@ -8,6 +8,7 @@ from .errors import SpacesError
 TEXT_BYTES = 16 * 1024
 CONTEXT_BYTES = 64 * 1024
 MAX_RECORDS = 20
+REFUSAL_REASONS = frozenset({"permission_denied", "invalid_params", "not_found", "profile_mismatch", "queue_full", "runtime_draining"})
 
 
 def _text(value, name, maximum=1024):
@@ -45,7 +46,8 @@ def _intent(row):
         return None
     return {"activation_id": row["activation_id"], "input_id": row["input_id"],
             "target": json.loads(row["target"]), "text": row["text"],
-            "admission_id": row["admission_id"], "settled": bool(row["settled"])}
+            "admission_id": row["admission_id"], "settled": bool(row["settled"]),
+            "refusal_reason": row["refusal_reason"]}
 
 
 def action_context(sid, session, activation_id=None):
@@ -121,6 +123,27 @@ def claim_action(sid, session, *, activation_id, text, records, target):
         return {"dispatch": dispatch, "coalesced": not dispatch, "action": _intent(row)}
 
 
+def reject_action(sid, session, *, activation_id, input_id, reason):
+    _text(activation_id, "activation_id", 128)
+    _text(input_id, "input_id")
+    if not isinstance(reason, str) or reason not in REFUSAL_REASONS:
+        raise SpacesError("invalid", "A definitive pre-admission refusal reason is required")
+    with db.write() as conn:
+        sessions._require(conn, sid, session)
+        db.space(conn, sid, writable=True)
+        row = conn.execute("SELECT * FROM action_intents WHERE space=? AND activation_id=?", (sid, activation_id)).fetchone()
+        if row is None:
+            raise SpacesError("not_found", "Activation not found")
+        if row["input_id"] != input_id or row["admission_id"] is not None:
+            raise SpacesError("conflict", "Refusal does not match an unadmitted activation")
+        if row["refusal_reason"] is not None and row["refusal_reason"] != reason:
+            raise SpacesError("conflict", "This activation already has a different refusal")
+        conn.execute("UPDATE action_intents SET refusal_reason=?,settled=1 WHERE space=? AND activation_id=?",
+                     (reason, sid, activation_id))
+        return {"recorded": True, "settled": True,
+                "action": {**_intent(row), "refusal_reason": reason, "settled": True}}
+
+
 def observe_action(sid, session, *, activation_id, receipt):
     with db.write() as conn:
         sessions._require(conn, sid, session)
@@ -128,6 +151,8 @@ def observe_action(sid, session, *, activation_id, receipt):
         row = conn.execute("SELECT * FROM action_intents WHERE space=? AND activation_id=?", (sid, activation_id)).fetchone()
         if row is None:
             raise SpacesError("not_found", "Activation not found")
+        if row["refusal_reason"] is not None:
+            raise SpacesError("conflict", "A refused activation cannot acquire a native admission")
         target = json.loads(row["target"])
         if (not isinstance(receipt, dict) or receipt.get("ref") != {"profile_id": target["profile_id"], "session_id": target["session_id"]}
                 or receipt.get("status") not in ("queued", "started", "unknown", "terminal")):

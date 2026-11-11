@@ -1,0 +1,13 @@
+{
+  "src/desktop/ui/actions.mjs": "5a7ddc87a96c1690979964752185903a09adc1fc91b5792caaa0fc72be86a61a",
+  "src/living-spaces/dashboard/plugin_api.py": "d4c649423a9b83259c8d03069d0ae5b2fafa759f5b3b7a1b6d46d81b6e5124ec",
+  "src/living-spaces/desktop/plugin.js": "49417b80899191902cc4f6c0242a4545c77835238863104276d14562c26209b8",
+  "src/living-spaces/living_spaces_core/actions.py": "94c9e011495a9515c18f53c15c3cfdb4dde0a481cd0e3ebddb796b15cc0b671d",
+  "src/living-spaces/living_spaces_core/db.py": "bd3e11d608a7e05f1181d7613de818411bd67b22fef152bd5271fe78cf00c51a",
+  "src/living-spaces/living_spaces_core/migrations.py": "483cb910f549eee3e32cedf074501427ddb357dcd36c3b9ad87d00f1201e5726",
+  "src/living-spaces/living_spaces_core/__init__.py": "8ab2964b69b649c9648f9fcade260e9ea54f44290b9e99122942aff40f009b96",
+  "src/living-spaces/living_spaces_core/file_refs.py": "99f5cda277311c8dda6ad8e0ceee06dedd4444328965fde9573f93dcd13cb5f3",
+  "tests/js/ui/canvas-actions.test.mjs": "0523c748347ce405a5970659db8c28f02b41c066f77495684bb0b570bc996a49",
+  "tests/python/test_canvas_refusals.py": "3bb4046bbd2829db3393869cfb862735a877ed911a443ffd4fc3a910bfb78bd5",
+  "tests/python/test_file_refs_suffix.py": "6279a6d641b61250da2c391a3f1fbdd3dda89dfa5113e2f388bf031dc9906ed2"
+}

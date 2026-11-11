@@ -1,0 +1,38 @@
+[
+  {
+    "path": "src/desktop/ui/actions.mjs",
+    "outcome": "fast-forwarded",
+    "before": "6d6184de9def5154658aed768275d21f995559ddc881def2b16bd2e01e712acb",
+    "after": "5a7ddc87a96c1690979964752185903a09adc1fc91b5792caaa0fc72be86a61a"
+  },
+  {
+    "path": "src/living-spaces/dashboard/plugin_api.py",
+    "outcome": "fast-forwarded",
+    "before": "462464f76e2e355de7486bc219cf2200cd4a6ae1921de97248af96d3cac8ca03",
+    "after": "d4c649423a9b83259c8d03069d0ae5b2fafa759f5b3b7a1b6d46d81b6e5124ec"
+  },
+  {
+    "path": "src/living-spaces/living_spaces_core/__init__.py",
+    "outcome": "fast-forwarded",
+    "before": "fbccdbaad31e6bb984d79e855df831ab7aaf8f30c67c51757085f9bda854c8e9",
+    "after": "8ab2964b69b649c9648f9fcade260e9ea54f44290b9e99122942aff40f009b96"
+  },
+  {
+    "path": "src/living-spaces/living_spaces_core/actions.py",
+    "outcome": "fast-forwarded",
+    "before": "9cb82a1d33e6c593a2f1ee20eb22cb8d0092edb45100024a4b66ebe29cafcfcc",
+    "after": "94c9e011495a9515c18f53c15c3cfdb4dde0a481cd0e3ebddb796b15cc0b671d"
+  },
+  {
+    "path": "src/living-spaces/living_spaces_core/db.py",
+    "outcome": "fast-forwarded",
+    "before": "d9eec4e13ed3db7a0d67b7d9d556b25e1e38582e2a0da01c27d81a9bcc88cdcd",
+    "after": "bd3e11d608a7e05f1181d7613de818411bd67b22fef152bd5271fe78cf00c51a"
+  },
+  {
+    "path": "src/living-spaces/living_spaces_core/migrations.py",
+    "outcome": "fast-forwarded",
+    "before": "7357236f59df8ccbad0de0278add9ad0b1ad5618ad578913d61cbb9eeb6c7077",
+    "after": "483cb910f549eee3e32cedf074501427ddb357dcd36c3b9ad87d00f1201e5726"
+  }
+]
