@@ -227,6 +227,8 @@ html { scrollbar-color: #b4bdd3 #070a14; }
 .tools button:hover { background:#28344e; }
 .tools button[aria-disabled=true] { opacity:.7; cursor:progress; }
 #reload { margin:0; }
+.plot-hint { display:none; color:#b4bdd3; font-size:13px; margin:12px 0 0; }
+@media(max-width:680px) { .plot-hint { display:block; } }
 .plot-scroll { overflow-x:auto; margin-top:8px; }
 .ribbon { min-width:640px; }
 .values summary { min-height:44px; padding:12px 0; }
