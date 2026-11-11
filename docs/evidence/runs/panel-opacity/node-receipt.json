@@ -1,0 +1,51 @@
+[
+ {
+  "step": "stock-js",
+  "direct_exit": 1,
+  "counts": {
+   "tests": 132,
+   "pass": 130,
+   "fail": 2,
+   "skipped": 0,
+   "todo": 0
+  },
+  "argv": [
+   "node",
+   "--test",
+   "--test-reporter=tap",
+   "tests/js/sandbox/",
+   "tests/js/ui/"
+  ]
+ },
+ {
+  "step": "standalone-js",
+  "direct_exit": 0,
+  "counts": {
+   "tests": 148,
+   "pass": 148,
+   "fail": 0,
+   "skipped": 0,
+   "todo": 0
+  },
+  "argv": [
+   "node",
+   "--import",
+   "./tests/js/sandbox/env.mjs",
+   "--test",
+   "--test-reporter=tap",
+   "tests/js/sandbox/c-guest.test.mjs",
+   "tests/js/sandbox/document.test.mjs",
+   "tests/js/sandbox/hooks.test.mjs",
+   "tests/js/sandbox/host.test.mjs",
+   "tests/js/sandbox/hosting.test.mjs",
+   "tests/js/sandbox/html.test.mjs",
+   "tests/js/sandbox/loader.test.mjs",
+   "tests/js/sandbox/theme.test.mjs",
+   "tests/js/sandbox/wire.test.mjs",
+   "tests/js/ui/net-permissions.test.mjs",
+   "tests/js/ui/repair-components.test.mjs",
+   "tests/js/ui/repair-session.test.mjs",
+   "tests/js/ui/status.test.mjs"
+  ]
+ }
+]

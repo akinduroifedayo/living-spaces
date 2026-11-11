@@ -1,0 +1,25 @@
+{
+ "argv_runner": "unittest.defaultTestLoader plus stock unittest.TextTestRunner",
+ "direct_exit": 1,
+ "environment_keys": [
+  "HOME",
+  "LOGNAME",
+  "PATH",
+  "PYTHONDONTWRITEBYTECODE",
+  "SHELL",
+  "TMPDIR",
+  "USER"
+ ],
+ "cwd": "/Volumes/Expansion/Development/Projects/living-spaces",
+ "tests_run": 35,
+ "failure_events": 25,
+ "failing_methods": [
+  "tests.python.test_review_customization.ReviewCustomizationTests.test_r01_missing_upkeep_snapshot_refuses_agent_and_feed_rest_approval",
+  "tests.python.test_review_customization.ReviewCustomizationTests.test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant",
+  "tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed",
+  "tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant",
+  "tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest"
+ ],
+ "error_events": 0,
+ "skip_events": 0
+}

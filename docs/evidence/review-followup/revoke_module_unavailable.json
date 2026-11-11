@@ -1,0 +1,112 @@
+{
+  "classification": "counterexample",
+  "uncaught_error": "synthetic unavailable cron adapter",
+  "after_revoke": {
+    "space": "review-space",
+    "status": "active",
+    "cadence": "0 * * * *",
+    "timezone": "UTC",
+    "purpose": "Demo",
+    "cron_job_id": "review-cron-1",
+    "catch_up": "one",
+    "requested_at": 1794378087.283047,
+    "decided_at": 1794378087.2940521,
+    "next_run_at": 1804809600.0
+  },
+  "refresh_after_revoke": {
+    "space": "review-space",
+    "capability": "refresh",
+    "status": "revoked",
+    "scope": {
+      "hosts": [],
+      "upkeep": {
+        "handler": "agent",
+        "prompt": "Update public demo records."
+      }
+    },
+    "purpose": "Keep this Space's sources current",
+    "requested_scope": {
+      "hosts": [],
+      "upkeep": {
+        "handler": "agent",
+        "prompt": "Update public demo records."
+      }
+    },
+    "requested_at": 1794378087.2720268,
+    "decided_at": 1794378087.2969432,
+    "decided_by": "user"
+  },
+  "after_regrant": {
+    "space": "review-space",
+    "status": "active",
+    "cadence": "0 * * * *",
+    "timezone": "UTC",
+    "purpose": "Demo",
+    "cron_job_id": "review-cron-1",
+    "catch_up": "one",
+    "requested_at": 1794378087.283047,
+    "decided_at": 1794378087.2940521,
+    "next_run_at": 1804809600.0
+  },
+  "native_job": {
+    "prompt": "Maintain only the Living Space with id review-space. Use spaces_* tools for all Space reads and writes. Do not change any other Space or write the Space database/files directly. First use spaces_get to check that this Space is not archived and its refresh grant is granted; stop without writes if either check fails. Use the tools available in your Hermes configuration to complete the task, respecting their permissions. Do not call spaces_refresh or change schedules. Preserve user notes, statuses and other user-owned fields. For retrieved/generated records, use spaces_write_records with source_owned=true and source metadata; never put upkeep results in user data. If source-owned writes are unavailable, report that limitation without overwriting user fields.\n\nUpkeep task:\nUpdate public demo records.",
+    "no_agent": false,
+    "schedule": "0 * * * *",
+    "name": "living-spaces:review-space",
+    "deliver": "local",
+    "catch_up": true,
+    "timezone": "UTC",
+    "id": "review-cron-1",
+    "enabled": true,
+    "state": "scheduled",
+    "next_run_at": 1804809600.0
+  },
+  "calls": [
+    [
+      "create",
+      "review-cron-1"
+    ]
+  ],
+  "rest_status": 500,
+  "rest_body": "Internal Server Error",
+  "old_cancel_pending_control": {
+    "source": "e45e094:runs.cancel_pending",
+    "grant": {
+      "space": "review-space",
+      "capability": "refresh",
+      "status": "revoked",
+      "scope": {
+        "hosts": [],
+        "upkeep": {
+          "handler": "agent",
+          "prompt": "Update public demo records."
+        }
+      },
+      "purpose": "Keep this Space's sources current",
+      "requested_scope": {
+        "hosts": [],
+        "upkeep": {
+          "handler": "agent",
+          "prompt": "Update public demo records."
+        }
+      },
+      "requested_at": 1794378087.345974,
+      "decided_at": 1794378087.365109,
+      "decided_by": "user"
+    },
+    "schedule": {
+      "space": "review-space",
+      "status": "disabled",
+      "cadence": "0 * * * *",
+      "timezone": "UTC",
+      "purpose": "Demo",
+      "cron_job_id": "review-cron-1",
+      "catch_up": "one",
+      "requested_at": 1794378087.354796,
+      "decided_at": 1794378087.3671591,
+      "next_run_at": null,
+      "reason": "Native cron is unavailable: synthetic unavailable cron adapter"
+    }
+  },
+  "limit": "Only the old cancellation function is substituted in the control; not a full old-tree qualification."
+}

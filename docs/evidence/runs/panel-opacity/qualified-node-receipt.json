@@ -1,0 +1,33 @@
+{
+ "historical_stock_node25": {
+  "path": "/opt/homebrew/bin/node",
+  "version": "v25.9.0",
+  "direct_exit": 0,
+  "counts": {
+   "tests": 125,
+   "pass": 125,
+   "fail": 0,
+   "skipped": 0,
+   "todo": 0
+  }
+ },
+ "explicit_all_node26": {
+  "version": "v26.12.1",
+  "direct_exit": 0,
+  "counts": {
+   "tests": 148,
+   "pass": 148,
+   "fail": 0,
+   "skipped": 0,
+   "todo": 0
+  }
+ },
+ "directory_node26_without_preload": {
+  "direct_exit": 1,
+  "tests": 132,
+  "pass": 130,
+  "fail": 2,
+  "cause": "Newer Node discovers hooks.test.mjs and html.test.mjs which require the existing vendored-Preact preload. They both pass in the complete 148-case command with env.mjs. This failed invocation is retained, not a passing suite."
+ },
+ "counts_overlap": true
+}

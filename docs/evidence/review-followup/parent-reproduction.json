@@ -1,0 +1,16 @@
+{
+ "reviewed_sha": "47a75673b23feb2922df6da6429a26abf9371c5f",
+ "report_sha256": "c94163e5957e20b1f4d8dd7b10eace4205c4ede1d6cad153992673c806fa0d4e",
+ "repro_script_sha256": "1f7120b0627036b79d8e3297c864e7f679885aa3daf9c24e1e9582e917b6a335",
+ "parent_commands": [
+  "python -B .run/probes.py missing_upkeep",
+  "python -B .run/probes.py revoke_module_unavailable"
+ ],
+ "direct_exit": 0,
+ "observations": [
+  "REST accepted missing upkeep with HTTP 200 and enabled one synthetic native job",
+  "Cron loader ImportError left active schedule after durable revoke; regrant left synthetic native job enabled; REST revoke HTTP 500"
+ ],
+ "evidence_class": "actual core/REST/SQLite with injected synthetic adapter failure; not production outage or actual extra model calls",
+ "artifact_disposition": "Parent replay overwrote the two per-case JSON outputs in the reviewer private tree. Original reviewer probes.stdout remains retained. final-integrity is the reviewer pre-replay receipt, not a claim that those replay JSON files remain byte-identical."
+}

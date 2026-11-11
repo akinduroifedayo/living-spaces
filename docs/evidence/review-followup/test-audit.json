@@ -1,0 +1,108 @@
+{
+  "base": "e45e094b81c19e3cfc0950cb4148f7f7188cd06e",
+  "unchanged_test_method_bodies": 309,
+  "changed_test_method_bodies": 10,
+  "frozen_new_methods": 27,
+  "new_methods_match_pins": true,
+  "changed_methods": [
+    {
+      "path": "tests/python/test_agent_adapters.py",
+      "method": "RestTests.test_all_routes_success",
+      "old_sha256": "0ca1d493bcf6c98c57e0d7470b7e256d262b694654012db226ccb045ac32a45a",
+      "new_sha256": "6eaf753e6dbc57bcb290bba95edc845004fe65cebe279d7cce342bf70dd52330",
+      "removed_assertions": [
+        "self.core.decide_schedule.assert_called_once_with(SID, \"approve\", actor=\"user\")"
+      ],
+      "added_assertions": [
+        "self.core.decide_schedule.assert_called_once_with(SID, \"approve\", actor=\"user\", requested_schedule=snapshot)"
+      ]
+    },
+    {
+      "path": "tests/python/test_agent_upkeep.py",
+      "method": "AgentIntegrationSeamTests.test_manifest_hooks_in_integrated_tree",
+      "old_sha256": "448e743284b008f62db766a625dd8538a897990aea33d12a2b8311a8452ea301",
+      "new_sha256": "b7aa5d2adbbacc524e9b0241a989f33b1cb91aa546a645eab3f9d6e33c409b9a",
+      "removed_assertions": [],
+      "added_assertions": []
+    },
+    {
+      "path": "tests/python/test_agent_upkeep.py",
+      "method": "AgentIntegrationSeamTests.test_host_approval_snapshot_reaches_core_in_integrated_tree",
+      "old_sha256": "f1fec5f9ffdd14573fff20eef7333bef681c22492069b3b2d2b67787f2d4dbd9",
+      "new_sha256": "2d14f5584487c65dbf4870323aa35f9758ad484272d5f7e98b54f06d848d3b7d",
+      "removed_assertions": [],
+      "added_assertions": []
+    },
+    {
+      "path": "tests/python/test_core_limits.py",
+      "method": "FeedLimitTests.test_feed_stream_byte_limit_stops_without_writes_and_recovers",
+      "old_sha256": "ed1b99dbc451f4469edb5b2ad727694a423b75c1b349c18322835317caf30c19",
+      "new_sha256": "3b1478a1d4d11f59196c553e3c8b1b3e413a8d773bf5d4d7399d927e040c45a9",
+      "removed_assertions": [],
+      "added_assertions": []
+    },
+    {
+      "path": "tests/python/test_upkeep_runs.py",
+      "method": "RunTests.test_manual_refresh_through_injected_https_transport_has_provenance",
+      "old_sha256": "9ea2288c8725e58ac02282c9eab3895d76aa6ff91296959adef72367ceea0379",
+      "new_sha256": "f31eead968ebfaee2b52a77db929ef5307f4c2372df383abc511176de896692a",
+      "removed_assertions": [],
+      "added_assertions": []
+    },
+    {
+      "path": "tests/python/test_upkeep_runs.py",
+      "method": "RunTests.test_manual_refresh_has_provenance_and_timestamps",
+      "old_sha256": "8147d7a9200324f08165de4e23c40ce74c68d8e51cca870e5df44f14792cd68b",
+      "new_sha256": "77066d9ebd185bb2ade1c54c955b9fe52e1e4dceae3a486e9780ce09afdd42e5",
+      "removed_assertions": [],
+      "added_assertions": []
+    },
+    {
+      "path": "tests/python/test_upkeep_runs.py",
+      "method": "FeedTests.test_production_fetch_uses_streaming_timeout_and_per_request_grants",
+      "old_sha256": "a3b08c9c4abf3d9280302fb34ce7caf3391b18fbe569530a75f9f9dcd3ccc65a",
+      "new_sha256": "25ec963f1dd1eea0e8dc7da003a50a56e03c675240198184572932533bab7e33",
+      "removed_assertions": [
+        "factory.assert_called_once_with(timeout=20.0, follow_redirects=False)",
+        "self.assertEqual(check.call_count, 2)"
+      ],
+      "added_assertions": [
+        "self.assertEqual(len(transport.connections), 2)",
+        "self.assertEqual([request[\"target\"] for request in requests], [\"/feed\", \"/current\"])",
+        "self.assertLess(redirect, next_connection)",
+        "self.assertIn(grant, transport.events[redirect + 1:next_connection])",
+        "self.assertEqual((host, port, ip), (\"research.example\", 443, PUBLIC))",
+        "self.assertGreater(timeout, 0)",
+        "self.assertLessEqual(timeout, 20)",
+        "self.assertGreater(index, 0)",
+        "self.assertEqual(transport.events[index - 1], grant)",
+        "self.assertEqual(event[1][\"headers\"][\"Host\"], \"research.example\")"
+      ]
+    },
+    {
+      "path": "tests/python/test_upkeep_runs.py",
+      "method": "FeedTests.test_off_host_redirect_is_refused_even_if_other_host_is_also_granted",
+      "old_sha256": "6be7778db650c8e2c915bf202ff561d906ed9e6b21d0f5cf42c7ef7e84ddd0ae",
+      "new_sha256": "f46477d1c70189f58c5f8a638f1efd3b877d6807106deea349bcdb5cdc43adc0",
+      "removed_assertions": [],
+      "added_assertions": []
+    },
+    {
+      "path": "tests/python/test_upkeep_runs.py",
+      "method": "FeedTests.test_http_and_credentialed_sources_are_refused_before_request",
+      "old_sha256": "a6e286a54f1e8e9aa00aedaff53a73da162e377eb0905b9a633ee3ac74fdba9c",
+      "new_sha256": "1762a07ea5c5781f5ce28bb3448fd0935e4657271c9ef82610cc7a9dd039365b",
+      "removed_assertions": [],
+      "added_assertions": []
+    },
+    {
+      "path": "tests/python/test_upkeep_runs.py",
+      "method": "FeedTests.test_streaming_body_limit",
+      "old_sha256": "3f4c69353ee8ffd2af23f74063e984ddbfee3fcce9a888276e004876f505db62",
+      "new_sha256": "c23c3a822f751ac70a7f5e84b5d6e48c6d39611676533dbea1c7994af4fc479a",
+      "removed_assertions": [],
+      "added_assertions": []
+    }
+  ],
+  "removed_assertions_exactly_authorized": true
+}
