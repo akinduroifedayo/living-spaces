@@ -1,0 +1,47 @@
+{
+ "source_commit": "47a75673b23feb2922df6da6429a26abf9371c5f",
+ "deletions": 7,
+ "exact_line_deletion_verified": true,
+ "keeps": [
+  {
+   "path": "src/living-spaces/living_spaces_core/bridge.py",
+   "kind": "docstring",
+   "text": "The frame's sole backend entry point. Identity comes from the bound session."
+  },
+  {
+   "path": "src/living-spaces/living_spaces_core/feeds.py",
+   "kind": "comment",
+   "text": "# Removing NULs also catches declarations in UTF-16 and UTF-32 XML."
+  },
+  {
+   "path": "src/living-spaces/living_spaces_core/net.py",
+   "kind": "docstring",
+   "text": "Public HTTPS requests with hostname TLS and a pinned, vetted destination."
+  },
+  {
+   "path": "src/living-spaces/living_spaces_core/net.py",
+   "kind": "comment",
+   "text": "# libc DNS has no deadline. A late answer is discarded and never opens a socket."
+  }
+ ],
+ "restored": 0,
+ "rejected_naming_flags": {
+  "_json_arg": "Existing small private boundary helper explicitly branches on string and parses JSON. Removing narration exposes no hidden state or workaround. Renaming would be unrelated churn.",
+  "dispatch_detail": "The public name describes the returned metadata. The local timestamp predicate is explicit and tested. The review labels this a naming preference rather than a reproduced defect."
+ },
+ "architect_for_shape_changes": "not triggered; no code-shape flags accepted",
+ "encodings": [],
+ "unenforced_constraints": [],
+ "new_hashes": {
+  "src/desktop/ui/permissions.jsx": "1b5129495eeec4fc1771e6859dc46373046aad16738a56c1e90b53c9cb24901f",
+  "src/desktop/ui/schedule.jsx": "84e40985585f8ec709c5058336f4feac85faf33775aad12e7fa1905f783f1f30",
+  "src/living-spaces/__init__.py": "a6e1733265d6cc43b99fae6810e157bb68991a52502726d4e59bdc86eb4f5d54",
+  "src/living-spaces/dashboard/plugin_api.py": "67c671f3aff9b8754d0b6097c5b9ff19eadbf66c013530b0f31e99f8f0e9879a",
+  "src/living-spaces/living_spaces_core/bridge.py": "eaf69ac942a294616561cf39fd8c330e68f1f798e315b84f3bd7676c2c1b1e76",
+  "src/living-spaces/living_spaces_core/feeds.py": "9b52d0888644abe40f46dd0bb70d4536ee8b8c6e202e8dde12d69e88c796a4b2",
+  "src/living-spaces/living_spaces_core/grants.py": "7c9ddd546efefc6ec6719834742e318dbaa7a7deb3c4676b397b0113c13d2dc6",
+  "src/living-spaces/living_spaces_core/net.py": "eae55020012ec54ba68a3bd71f1bd19cc0ba55f22a8ed434edf24b10a9fcea20",
+  "src/living-spaces/living_spaces_core/runs.py": "f2934073bb16209420a97b1a04270a05f449d8b3e7cbb03f09f151c9abaf2bfc",
+  "src/living-spaces/living_spaces_core/schedules.py": "5def7f13cddd84bf4da2e294421b7727f5b8c42029103967b750868c6972ab02"
+ }
+}

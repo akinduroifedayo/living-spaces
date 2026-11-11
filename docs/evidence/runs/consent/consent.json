@@ -1,0 +1,144 @@
+{
+ "checks": [
+  {
+   "name": "agent task starts with Refresh requested",
+   "passed": true,
+   "observed": "requested",
+   "expected": "requested"
+  },
+  {
+   "name": "host displays exact agent prompt before Refresh approval",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "host discloses model calls before approval",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "host displays schedule cadence and timezone before approval",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "Refresh grant binds exact displayed task",
+   "passed": true,
+   "observed": {
+    "handler": "agent",
+    "prompt": "Maintain only the public demo record with the title Aster."
+   },
+   "expected": {
+    "handler": "agent",
+    "prompt": "Maintain only the public demo record with the title Aster."
+   }
+  },
+  {
+   "name": "native schedule preserves displayed cadence and timezone",
+   "passed": true,
+   "observed": [
+    "0 0 1 1 *",
+    "UTC"
+   ],
+   "expected": [
+    "0 0 1 1 *",
+    "UTC"
+   ]
+  },
+  {
+   "name": "native agent job is far in the future, not a model invocation",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "changed prompt requests fresh Refresh consent",
+   "passed": true,
+   "observed": "requested",
+   "expected": "requested"
+  },
+  {
+   "name": "changed prompt pauses the existing native job",
+   "passed": true,
+   "observed": false,
+   "expected": false
+  },
+  {
+   "name": "real guest cannot start changed unapproved task",
+   "passed": true,
+   "observed": [
+    false,
+    "not_granted"
+   ],
+   "expected": [
+    false,
+    "not_granted"
+   ]
+  },
+  {
+   "name": "host now presents new exact task",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "reapproval grants only the new task",
+   "passed": true,
+   "observed": {
+    "handler": "agent",
+    "prompt": "Maintain only the public demo record with the title Birch."
+   },
+   "expected": {
+    "handler": "agent",
+    "prompt": "Maintain only the public demo record with the title Birch."
+   }
+  },
+  {
+   "name": "schedule denial removes the prior native job",
+   "passed": true,
+   "observed": null,
+   "expected": null
+  },
+  {
+   "name": "no model run was queued or executed",
+   "passed": true,
+   "observed": [],
+   "expected": []
+  },
+  {
+   "name": "disposable fixture deleted",
+   "passed": true,
+   "observed": false,
+   "expected": false
+  },
+  {
+   "name": "protected demo code and records unchanged",
+   "passed": true,
+   "observed": "bf168d15fc6c1c349499a359ecdb493c3a975f6a8681c3592bb9ecdd948bab5e",
+   "expected": "bf168d15fc6c1c349499a359ecdb493c3a975f6a8681c3592bb9ecdd948bab5e"
+  }
+ ],
+ "completed": true,
+ "evidence_class": "Real isolated Desktop, host mouse decisions and native cron storage. No model execution or concurrent-approval race injection.",
+ "fixture_space": "consent-qualification",
+ "first_permissions": "Permissions \u00b7 Consent Qualification\nClose\n\nReview this Space's access and schedule requests.\n\nInternet access\nOn\n\nThis Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.\n\nGranted to Consent Qualification\nOwn data\nAllowed\nScope\nThis Space's records only. Cannot see other Spaces.\nPurpose\nSave and use this Space's data\nData leaves device\nThis grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off.\nAccess\nContinuing\nRevoke\nDiagnostics\nAllowed\nScope\nError logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.\nPurpose\nDiagnose and repair this Space\nData leaves device\nNo ordinary network access. The owner can read these logs in chat.\nAccess\nContinuing\nRevoke\nWaiting for your decision\nRefresh\nNeeds your decision\nScope\nRun the exact Hermes agent task below, on request or through separately approved scheduled upkeep.\nPurpose\nKeep this Space's sources current\nData leaves device\nYes \u00b7 model calls and the tools enabled for native cron jobs can send data.\nAccess\nContinuing\n\nUses model calls. Runs a Hermes agent with the tools enabled for native cron jobs.\n\nThe agent is instructed to update only this Space through spaces_* tools and preserve user notes and statuses.\n\nUpkeep prompt\n\nMaintain only the public demo record with the title Aster.\n\nApprove\nDeny\nScheduled upkeep\nNeeds your decision\nCadence\n0 0 1 1 *\nTimezone\nUTC\nPurpose\nPublic demo annual task\nOwner\nPublic demo\nCost\n\nUses model calls. Runs a Hermes agent with the tools enabled for native cron jobs.\n\nThe agent is instructed to update only this Space through spaces_* tools and preserve user notes and statuses.\n\nUpkeep prompt\n\nMaintain only the public demo record with the title Aster.\n\nRuns one current refresh when Hermes wakes. Missed intervals aren't replayed.\n\nApprove\nDeny\nComing in release 2 \u2014 not available yet\nApproved sites\nNot available yet\nCamera\nNot available yet\nMicrophone\nNot available yet\nLocation\nNot available yet\nHermes tools (per tool)\nNot available yet\nFiles and folders\nNot available yet\nCross-Space access\nNot available yet\nAgent requests\nNot available yet\n\nCamera, microphone and location will start off and also follow Hermes and macOS permission prompts. Release 2 will revisit what Spaces can read before tool and file access is offered.\n\nOwner\nP\nPublic demo\nAudit\nNov 11, 2026, 12:09 AM CST \u00b7 harness \u00b7 request refresh \u00b7 requested\nNov 11, 2026, 12:09 AM CST \u00b7 user \u00b7 decision net \u00b7 granted\nNov 11, 2026, 12:09 AM CST \u00b7 harness \u00b7 request net \u00b7 requested\nNov 11, 2026, 12:09 AM CST \u00b7 user \u00b7 decision logs \u00b7 granted\nNov 11, 2026, 12:09 AM CST \u00b7 harness \u00b7 request logs \u00b7 requested\nNov 11, 2026, 12:09 AM CST \u00b7 user \u00b7 decision data \u00b7 granted\nNov 11, 2026, 12:09 AM CST \u00b7 harness \u00b7 request data \u00b7 requested",
+ "approved_job": {
+  "id": "ef1cda7a73c0",
+  "no_agent": false,
+  "schedule": {
+   "kind": "cron",
+   "expr": "0 0 1 1 *",
+   "display": "0 0 1 1 *"
+  },
+  "timezone": "UTC",
+  "next_run_at": "2027-01-01T00:00:00+00:00"
+ },
+ "refused_refresh": {
+  "ok": false,
+  "code": "not_granted",
+  "message": "Capability or requested scope is not granted"
+ }
+}

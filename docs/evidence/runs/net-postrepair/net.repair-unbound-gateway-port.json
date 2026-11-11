@@ -1,0 +1,125 @@
+{
+ "evidence_class": "real Space realm and bridge; native mouse input for host permissions",
+ "checks": [
+  {
+   "name": "new Space defaults to Internet access On",
+   "passed": true,
+   "observed": "granted",
+   "expected": "granted"
+  },
+  {
+   "name": "integrated guest exposes space.net.fetch",
+   "passed": true,
+   "observed": {
+    "ok": true,
+    "value": "function"
+   },
+   "expected": {
+    "ok": true,
+    "value": "function"
+   }
+  },
+  {
+   "name": "real guest fetch reaches public HTTPS",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "gateway is blocked through the real bridge",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "loopback on allowed port is blocked through the real bridge",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "LAN is blocked through the real bridge",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "ordinary guest fetch remains network-off",
+   "passed": true,
+   "observed": {
+    "ok": true,
+    "value": "blocked"
+   },
+   "expected": {
+    "ok": true,
+    "value": "blocked"
+   }
+  },
+  {
+   "name": "Internet access is the first permission row",
+   "passed": true,
+   "observed": "internet-access",
+   "expected": "internet-access"
+  },
+  {
+   "name": "On hides the WebRTC Off note",
+   "passed": true,
+   "observed": 0,
+   "expected": 0
+  },
+  {
+   "name": "Off shows the exact WebRTC note",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "revoked guest fetch returns not_granted",
+   "passed": true,
+   "observed": "not_granted",
+   "expected": "not_granted"
+  },
+  {
+   "name": "host reapproval restores public HTTPS",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  }
+ ],
+ "completed": true,
+ "fixture_space": "internet-qualification",
+ "public_fetch": {
+  "ok": true,
+  "value": {
+   "status": 200,
+   "url": "https://example.com/",
+   "bytes": 577
+  }
+ },
+ "gateway": {
+  "ok": true,
+  "value": {
+   "code": "blocked",
+   "reason": "port"
+  }
+ },
+ "loopback on allowed port": {
+  "ok": true,
+  "value": {
+   "code": "blocked",
+   "reason": "private_address"
+  }
+ },
+ "LAN": {
+  "ok": true,
+  "value": {
+   "code": "blocked",
+   "reason": "private_address"
+  }
+ },
+ "fixture_removed": true,
+ "passed": 12,
+ "total": 12,
+ "verdict": "PASS",
+ "parent_disposition": "INVALID FOR GATEWAY CLAIM. Parent passed port 1 instead of the actual isolated gateway port. Retained as harness binding failure; do not count this run toward release qualification."
+}

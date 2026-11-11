@@ -17,7 +17,7 @@ src/living-spaces/                    # the plugin package (plugin id: living-sp
 ├── dashboard/manifest.json           # {"name":"living-spaces","label":"Spaces","api":"plugin_api.py","tab":{"path":"/spaces","hidden":true}}
 ├── dashboard/plugin_api.py           # FastAPI router. Loose module: loads core through ../_core.py by path
 ├── desktop/plugin.js                 # BUILT artifact (esbuild) from src/desktop/**. Committed so the package loads from git
-├── runtime/vendor/                   # preact.mjs, hooks.mjs, lightweight-charts.mjs (htm pending dependency approval) (copied into Spaces on request)
+├── runtime/vendor/                   # optional pinned Preact, hooks, lightweight-charts, htm, Lucide and fonts; copied on request
 ├── runtime/kit/                      # spaces-kit.mjs + spaces-kit.css (copied into Spaces on request)
 ├── scripts/refresh_space.py          # cron shim template (section 6)
 └── skills/build-space/SKILL.md       # teaches the agent to build Spaces
@@ -287,3 +287,43 @@ Nested srcdoc frames, `sandbox="allow-scripts"` only (opaque origin), the CSP be
 - **A1 (upkeep → core):** "one transaction per source" can't be built from a single-record `upsert_source`. Core adds `records.upsert_sources(sid, collection, entries: list[(rid, source, source_meta)], *, actor) -> {"added","updated","unchanged"}`, which runs in one IMMEDIATE transaction. Upkeep calls it when present and falls back to per-record calls.
 - **A2 (upkeep → schema):** `schedules` gains `reason TEXT` so `disabled` can carry a visible reason (e.g. "Hermes cron is unavailable in this process"). Migration: `ALTER TABLE schedules ADD COLUMN reason TEXT` when missing.
 - **A3 (admission, Forge):** The REST bundle response in section 8 gains `sandbox: {format: 1, shell_srcdoc: string}`. Only the fixed installed backend producer supplies it from the deterministic packaged guest document. Core `bundle()` and persisted project/revision data stay unchanged. Renderer-private parsing rejects malformed or unsupported sandbox wire data. Section 12 mounting becomes `mountSpace(container, {bundle, grants, call, onEvent})`; the session remains only in the host REST closure. The section 7 boot envelope drops `session` and receives only the existing project-bundle fields, grants, and port. Neither session nor sandbox wire metadata reaches the guest. Both opaque frames and section 11's exact CSP remain unchanged. Guest producers move out of renderer dependencies into build-time modules and one reviewed static package asset. Format changes when the boot/bridge schema or immutable policy floor becomes incompatible. Unsupported formats fail closed with session cleanup and an actionable reinstall message. See `docs/architecture/SANDBOX-ADMISSION.md` for the selected refinement shape, required repairs, test migrations, and unexecuted runtime gates. This amendment authorizes implementation, not release acceptance.
+
+## 14. Integrated customization and authority amendments
+
+This section supersedes conflicting original-contract text. The owner decisions are in `docs/spec/AMENDMENTS.md`. Implementation does not imply release acceptance.
+
+### Binary files, themes, and libraries
+
+Agent file maps accept text or binary descriptors of the form `{b64, mime?}`. Existing size, path, file-count, and atomicity rules still apply. `space.asset(path)` resolves the runtime URL of a project asset. It does not expose a host filesystem path.
+
+`manifest.theme` accepts `preset` and `tokens`. Theme presets are the seven optional kit themes. The original eight `accent` values remain accepted for the compatible host tile. Kit CSS loads before manifest tokens, and app CSS loads afterward. Apps can supply their own design rather than use the kit.
+
+`spaces_create(..., libraries?)` defaults to Preact, hooks, and the kit. An explicit empty list copies none. `spaces_write_files(..., libraries?)` adds requested groups without replacing existing files or import aliases implicitly. Current extra groups are `htm`, `lucide`, `font:inter`, and `font:dm-sans`. The full proposal in `docs/design/DEPENDENCY-SHELF.md` is not the shipped registry. `runtime/vendor/SHELF.json` records payload hashes, source integrity, and licenses. `scripts/check-shelf.py` checks those installed bytes.
+
+### Mediated internet
+
+New Spaces receive host-owned `net` permission in the granted state. The Permissions panel displays Internet access first. Reapproval remains a host decision. The ordinary frame CSP is unchanged.
+
+The guest calls `space.net.fetch(url, {method?, headers?, body?, as?})`. The bridge supplies the bound Space and session. Guest input cannot override session identity or internal transport authorization.
+
+Responses include `status`, `url`, and `headers`. Text mode adds `text`. JSON mode adds `json`. Bytes mode adds `b64` and `mime`. This is not a browser Fetch Response. It has no `.body` or `.json()` method.
+
+The host permits public HTTPS, checks every DNS answer, pins the socket destination, and rechecks redirects. Net checks the bound session and grant before new sends and delivery. Feed retrieval uses the same public-address transport under Refresh host authority. Revoking Net does not revoke separately approved feed Refresh. Neither path attaches Hermes credentials or cookies.
+
+Direct CDN imports, frames, and ordinary guest networking stay blocked. The WebRTC disclosure remains required. A closed session or revoked grant cannot recall bytes already sent before revocation.
+
+### Agent upkeep and exact approval
+
+Upkeep supports `handler: 'feed'` or `handler: 'agent'`. Agent upkeep supplies an exact prompt. Refresh approval scope for an agent task includes `{hosts, upkeep: {handler: 'agent', prompt}}`. Feed-only approval contains hosts without an agent task. Switching modes or changing the exact prompt requires new Refresh approval, including for manual and guest calls.
+
+Agent upkeep uses normal Hermes native cron jobs, model calls, and enabled native tools. It is not an independently restricted agent runtime. The host shows the exact prompt, model-call cost, and access consequence before approval.
+
+REST schedule approval requires `requested_schedule` containing the displayed `cadence`, `timezone`, `purpose`, and `requested_at`. Agent approval also supplies the displayed `requested_upkeep`. The backend compares the snapshot inside the activation transaction. Denial needs no approval snapshot. Activation and Resume recheck current Refresh authority in that transaction.
+
+`spaces_write_records(..., source_owned: true)` requires current Refresh authority. A supplied `base_rev` must match, and a conflict rolls back the whole batch. Source-owned omission retains idempotent upsert behavior without a revision check. User-owned data keeps its existing revision rules.
+
+Before native job pointers disappear, retained executions synchronize into durable Space history. Revoke discovers unmirrored running work before cancellation. History pagination follows the installed native API's timestamp cursor. Equal timestamps across a page boundary remain an upstream cursor limitation, not a claim of complete import under that condition. Native cron and Space SQLite are separate stores. These changes do not claim distributed crash atomicity.
+
+### Qualification runtime
+
+Stock unit tests use the documented test interpreter with disposable homes. A harness that calls native Hermes cron modules must use the supported Hermes runtime bootstrap from `hermes --print-runtime-command`. A bare legacy venv may lack `hermes_yaml`. Calling `get_schedule` under that incomplete import environment can persist a disabled reason, so it is not a harmless health probe. The consent harness's failed attempt and corrected runtime execution are retained in `docs/evidence/runs/consent/`.

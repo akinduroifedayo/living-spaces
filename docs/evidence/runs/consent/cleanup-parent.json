@@ -1,0 +1,13 @@
+{
+ "remaining_jobs": [
+  [
+   "living-spaces:research-desk",
+   false
+  ]
+ ],
+ "actual_isolated_gateway_pid": 91722,
+ "actual_isolated_gateway_port": 64005,
+ "shared_gateway_pid_62318_alive": true,
+ "fixture_shim_absent": true,
+ "fixture_space_absent": true
+}
