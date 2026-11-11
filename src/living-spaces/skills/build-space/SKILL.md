@@ -304,7 +304,7 @@ under these paths. Do not send filesystem paths as file contents.
 
 The app starts with an honest empty state. Create a clearly labeled demo record
 through its form or `spaces_write_records` if the user wants sample content.
-Do not label fixtures as fetched research. Public refresh needs approval.
+Do not label fixtures as fetched research.
 
 For a different application, read the [habit planner](references/habit-planner.md).
 It stores daily check-ins without a feed or schedule.
@@ -335,33 +335,47 @@ Supported operations are `rename_field`, `set_default`, `delete_field`,
 Preview destructive schema changes for user approval. Never reset collections
 to make new code fit old data. Code and records have separate lifecycles.
 
-## Keep public data current
+## Keep the Space current
 
-Declare `upkeep: {handler:'feed', sources:[{id,url,collection,purpose}]}` in the
-manifest. Use public HTTPS RSS or Atom feeds. Put credentials nowhere in files,
-records, tool results, or logs. Release 1 supports the host-owned `feed` handler,
-not arbitrary background Python or tool calls from the app.
+Declare upkeep in the manifest. Two handlers exist:
 
-The manifest requests a scoped Refresh grant. The user approves it in the
-Space's Permissions. Until then, say Refresh is pending. Changing source hosts
-requests approval again. A tool cannot grant its own request.
+- `upkeep: {handler:'feed', sources:[{id,url,collection,purpose}]}` reads public
+  HTTPS RSS or Atom feeds in-process with no model calls. It needs Internet access,
+  which is on by default; the user can turn it off in Permissions.
+- `upkeep: {handler:'agent', prompt:'...'}` runs a Hermes agent turn that uses
+  `spaces_*` tools, writes results with `source_owned=true`, and preserves user
+  fields. Each run uses model calls; tell the user so.
 
-`spaces_refresh` invokes the same handler as the app's Refresh button.
-Read its result and check `spaces_get` recent runs. `queued` and `running` mean
-in progress. Report success only for `succeeded`. A successful no-change run is
-valid. On `blocked`, explain the reason and the action needed. On `failed`, keep
-last-good records visible and describe the error. Show last attempt, last success,
-and source-as-of separately. None implies either of the others.
+Put credentials nowhere in files, records, tool results, or logs.
+
+`spaces_refresh` is Refresh now. A feed Space returns a run: `queued` and
+`running` mean in progress; check `spaces_get` recent runs and report success
+only for `succeeded`. A successful no-change run is valid. On `blocked`, explain
+the reason and the action needed. On `failed`, keep last-good records visible and
+describe the error. Show last attempt, last success, and source-as-of separately.
+None implies either of the others. An agent Space returns
+`{kind:'cron', cron_job_id, triggered:true}`: it triggers the linked Hermes cron
+job, or starts a one-time Hermes cron agent run when none is linked. Read the
+outcome with `spaces_upkeep` action `status`.
+The app's `space.refresh()` runs only the feed handler. For an agent Space it
+returns `blocked` with reason `agent_from_guest`; agent upkeep runs from Refresh
+now in Hermes, from chat, or from the linked cron job.
 The frame has `space.runs()`, not a freshness-summary method. Research Desk uses
 recent runs and labels that limited window. If no success appears there, say
 "No success in recent history", not "Never refreshed". Keep last-good collection
 records and mounted editors visible through refresh or query errors.
 
-For a requested cadence, call `spaces_request_schedule` with cadence, IANA
-timezone, and purpose. It requests approval in the tab. It does not activate a
-schedule. Never create cron jobs yourself. Never claim a schedule is active
-until a tool result reports `active`. Scheduled refresh needs Hermes available.
-Catch-up runs one current refresh when Hermes wakes, without replaying missed intervals.
+When the user asks for scheduled upkeep, call `spaces_schedule_upkeep` with
+`kind`, `cadence`, an IANA `timezone`, and for `agent` the `prompt`. It creates an
+ordinary Hermes cron job now; the user's request is the consent, as for any cron
+job. It replaces any existing upkeep job for the Space. The result is the native
+job: report its prompt, schedule, and next run exactly as returned. Changing the
+manifest prompt later does not change the job; schedule again when the user asks.
+Use `spaces_upkeep` with `status`, `pause`, `resume`, `run`, or `remove` to read
+or control the job. `missing: true` means the linked job no longer exists.
+Archiving pauses the job and unarchiving does not resume it. Scheduled upkeep
+needs Hermes available. Catch-up runs one current refresh when Hermes wakes,
+without replaying missed intervals.
 
 ## Check and repair
 
@@ -377,8 +391,8 @@ instead of forcing a restore. Do not claim a sandbox or restart test you did not
 
 ## Finish the chat reply
 
-State exactly what changed, the returned revision, and which grants or schedule
-approvals remain pending. Mention any unresolved warnings or unverified behavior.
+State exactly what changed, the returned revision, any grants that are off, and
+any upkeep job you scheduled with its prompt, schedule, and next run. Mention any unresolved warnings or unverified behavior.
 Use the actual returned `open.directive`. End create and update replies with
 this directive paragraph on its own line, replacing the example ID:
 

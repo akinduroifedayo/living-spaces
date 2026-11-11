@@ -20,7 +20,6 @@ ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "src/living-spaces"
 PUBLIC = "93.184.216.34"
 AGENT_PROMPT = "Update public demo records."
-SCHEDULE_FIELDS = ("cadence", "timezone", "purpose", "requested_at")
 
 
 def deny_network(*args, **kwargs):
@@ -39,13 +38,18 @@ class SyntheticCron:
         jid = "review-cron-" + str(self.serial)
         job = dict(kwargs, id=jid, enabled=not kwargs.get("paused", False),
                    state="paused" if kwargs.get("paused") else "scheduled",
-                   next_run_at=1804809600.0)
+                   schedule={"kind": "cron", "expr": kwargs["schedule"], "display": kwargs["schedule"]},
+                   schedule_display=kwargs["schedule"], next_run_at="2027-03-12T00:00:00+00:00",
+                   last_run_at=None, last_status=None, last_error=None)
         self.jobs[jid] = job
         self.calls.append(("create", jid))
         return copy.deepcopy(job)
 
     def get_job(self, jid):
         return copy.deepcopy(self.jobs.get(jid))
+
+    def list_jobs(self, include_disabled=False):
+        return [copy.deepcopy(job) for job in self.jobs.values() if include_disabled or job["enabled"]]
 
     def remove_job(self, jid):
         self.calls.append(("remove", jid))
@@ -163,7 +167,7 @@ class CustomizationFixture:
         parent = types.ModuleType("cron")
         parent.__path__ = []
         jobs = types.ModuleType("cron.jobs")
-        for name in ("create_job", "get_job", "remove_job", "pause_job", "resume_job",
+        for name in ("create_job", "get_job", "list_jobs", "remove_job", "pause_job", "resume_job",
                      "trigger_job", "cancel_job_run"):
             setattr(jobs, name, getattr(self.cron, name))
         ledger = types.ModuleType("cron.executions")
@@ -174,9 +178,10 @@ class CustomizationFixture:
         self.core = self.load("_review_customization_core", PACKAGE / "living_spaces_core/__init__.py")
         self.db = self.core.db
         stack.enter_context(patch.object(self.db, "hermes_home", return_value=self.home))
-        for name in ("bridge", "feeds", "grants", "net", "projects", "records", "runs", "schedules", "sessions"):
+        for name in ("bridge", "feeds", "grants", "net", "projects", "records", "runs", "sessions", "upkeep"):
             setattr(self, name, importlib.import_module(self.core.__name__ + "." + name))
-        stack.enter_context(patch.object(self.schedules, "_cron", return_value=self.cron))
+        stack.enter_context(patch.object(self.upkeep, "_cron", return_value=self.cron))
+        stack.enter_context(patch.object(self.upkeep, "_ledger", return_value=self.cron))
 
     def _install_module(self, name, module):
         missing = object()
@@ -214,22 +219,11 @@ class CustomizationFixture:
         sid = self.projects.create_space("Review Space", owner="Review", author="agent:review",
                                         files={"index.html": "<h1>Demo</h1>"},
                                         manifest={"upkeep": upkeep})["id"]
-        self.approve_refresh(sid)
         return sid
 
-    def refresh_grant(self, sid):
-        return next(row for row in self.grants.list_grants(sid) if row["capability"] == "refresh")
-
-    def approve_refresh(self, sid):
-        row = self.refresh_grant(sid)
-        displayed = row["requested_scope"] if row["requested_scope"] is not None else row["scope"]
-        return self.grants.decide(sid, "refresh", "grant", requested_scope=copy.deepcopy(displayed))
-
-    def approve_schedule(self, sid):
-        self.schedules.request_schedule(sid, cadence="0 * * * *", timezone="UTC",
-                                        purpose="Demo", actor="agent:review")
-        return self.schedules.decide_schedule(
-            sid, "approve", requested_upkeep=self.projects.bundle(sid)["manifest"]["upkeep"])
+    def schedule(self, sid, kind="agent", prompt=AGENT_PROMPT, cadence="0 * * * *"):
+        return self.upkeep.schedule_upkeep(sid, kind=kind, cadence=cadence, timezone="UTC",
+                                           prompt=prompt if kind == "agent" else None, actor="agent:review")
 
     def change_upkeep(self, sid, upkeep):
         manifest = self.projects.bundle(sid)["manifest"]

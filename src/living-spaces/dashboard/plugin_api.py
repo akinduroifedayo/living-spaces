@@ -23,7 +23,7 @@ _sandbox = importlib.util.module_from_spec(_sandbox_spec)
 _sandbox_spec.loader.exec_module(_sandbox)
 SPACE_ID = re.compile(r"[a-z0-9][a-z0-9-]{1,47}\Z")
 SUMMARY_FIELDS = {"id", "name", "description", "owner", "status", "head_rev", "accent", "icon", "pinned",
-                  "updated_at", "last_opened_at", "freshness", "schedule", "attention"}
+                  "updated_at", "last_opened_at", "freshness", "upkeep", "attention"}
 
 
 class SpacesRoute(APIRoute):
@@ -174,30 +174,16 @@ async def grant_decide(space_id: str, cap: str, body=Body(default=None)):
     return await _run(space_id, action)
 
 
-@router.get("/spaces/{space_id}/schedule")
-async def schedule_get(space_id: str):
-    return await _run(space_id, lambda core: core.get_schedule(space_id))
+@router.get("/spaces/{space_id}/upkeep")
+async def upkeep_get(space_id: str):
+    return await _run(space_id, lambda core: core.get_upkeep(space_id))
 
 
-@router.post("/spaces/{space_id}/schedule")
-async def schedule_update(space_id: str, body=Body(default=None)):
+@router.post("/spaces/{space_id}/upkeep")
+async def upkeep_update(space_id: str, body=Body(default=None)):
     def action(core):
-        _body(core, body, ("decision", "paused", "requested_upkeep", "requested_schedule"))
-        if "decision" in body and set(body) <= {"decision", "requested_upkeep", "requested_schedule"} and body["decision"] in ("approve", "deny"):
-            kwargs = {}
-            if body["decision"] == "approve":
-                snapshot = body.get("requested_schedule")
-                if not isinstance(snapshot, dict) or set(snapshot) != {"cadence", "timezone", "purpose", "requested_at"}:
-                    _invalid(core, "Approval requires the displayed requested_schedule with cadence, timezone, purpose and requested_at.")
-                kwargs["requested_schedule"] = snapshot
-            if body["decision"] == "approve" or "requested_upkeep" in body:
-                if not isinstance(body.get("requested_upkeep"), dict):
-                    _invalid(core, "requested_upkeep must be an object")
-                kwargs["requested_upkeep"] = body["requested_upkeep"]
-            return core.decide_schedule(space_id, body["decision"], actor="user", **kwargs)
-        if set(body) == {"paused"} and isinstance(body["paused"], bool):
-            return core.pause_schedule(space_id, body["paused"], actor="user")
-        _invalid(core, "Supply decision approve/deny or a boolean paused.")
+        _body(core, body, ("action",), ("action",))
+        return core.upkeep_action(space_id, body["action"], actor="user")
     return await _run(space_id, action)
 
 

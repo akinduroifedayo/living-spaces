@@ -44,10 +44,9 @@ CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY, space TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('queued','running','succeeded','failed','canceled','blocked')),
   queued_at REAL NOT NULL, started_at REAL, ended_at REAL, source_as_of REAL,
   changed TEXT NOT NULL DEFAULT '{}', error TEXT, detail TEXT NOT NULL DEFAULT '{}', heartbeat_at REAL);
-CREATE TABLE IF NOT EXISTS schedules(space TEXT PRIMARY KEY REFERENCES spaces(id) ON DELETE CASCADE,
-  status TEXT NOT NULL CHECK(status IN ('requested','active','paused','disabled')),
-  cadence TEXT NOT NULL, timezone TEXT NOT NULL, purpose TEXT NOT NULL DEFAULT '',
-  cron_job_id TEXT, catch_up TEXT NOT NULL DEFAULT 'one', requested_at REAL, decided_at REAL, next_run_at REAL, reason TEXT);
+CREATE TABLE IF NOT EXISTS upkeep_links(space TEXT NOT NULL REFERENCES spaces(id), cron_job_id TEXT NOT NULL UNIQUE,
+  kind TEXT NOT NULL CHECK(kind IN ('agent','feed')), created_at REAL NOT NULL, created_by TEXT NOT NULL,
+  PRIMARY KEY(space, cron_job_id));
 CREATE TABLE IF NOT EXISTS logs(id INTEGER PRIMARY KEY AUTOINCREMENT, space TEXT NOT NULL, session TEXT, rev INTEGER,
   at REAL NOT NULL, level TEXT NOT NULL, msg TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS changes_space_seq ON changes(space, seq);
@@ -93,10 +92,9 @@ def connect() -> sqlite3.Connection:
             conn.executescript(DDL)
             conn.execute("BEGIN IMMEDIATE")
             try:
-                if "reason" not in {row["name"] for row in conn.execute("PRAGMA table_info(schedules)")}:
-                    conn.execute("ALTER TABLE schedules ADD COLUMN reason TEXT")
-                from .migrations import grant_internet_access
+                from .migrations import grant_internet_access, link_native_upkeep
                 grant_internet_access(conn)
+                link_native_upkeep(conn)
                 conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 conn.execute("COMMIT")
             except BaseException:

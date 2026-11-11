@@ -1,5 +1,5 @@
 """The frame's sole backend entry point. Identity comes from the bound session."""
-from . import db, grants, limits, logs, net, records, sessions
+from . import db, grants, limits, logs, net, records, runs, sessions
 from .errors import SpacesError
 
 _OPS = {
@@ -10,7 +10,7 @@ _OPS = {
     "data.put": ("data", {"collection", "data"}, {"id", "base_rev", "merge"}),
     "data.delete": ("data", {"collection", "id"}, {"base_rev"}),
     "data.batch": ("data", {"ops"}, set()),
-    "refresh": ("refresh", set(), set()),
+    "refresh": (None, set(), set()),
     "runs.list": (None, set(), {"limit"}),
     "log": ("logs", {"entries"}, set()),
 }
@@ -49,15 +49,10 @@ def _call(sid, session, op, args):
             space = {"id": sid, "name": row["name"], "rev": row["head_rev"]}
         return {"space": space, "grants": [row["capability"] for row in grants.list_grants(sid) if row["status"] == "granted"],
                 "limits": limits.LIMITS.copy()}
-    if op in ("refresh", "runs.list"):
-        try:
-            from . import runs
-            handler = runs.start_refresh if op == "refresh" else runs.list_runs
-        except (ImportError, AttributeError) as exc:
-            raise SpacesError("blocked", "Upkeep handler is unavailable", reason="no_handler") from exc
-        if op == "refresh":
-            return handler(sid, trigger="manual", actor="app", session=session)
-        return handler(sid, **args)
+    if op == "refresh":
+        return runs.start_refresh(sid, trigger="manual", actor="app", session=session)
+    if op == "runs.list":
+        return runs.list_runs(sid, **args)
     if op in ("data.put", "data.delete", "data.batch", "log"):
         return _mutate(sid, session, op, args)
     if op == "data.query":

@@ -30,8 +30,8 @@ def fetch(sid, url):
 
     def authorize(request_url):
         if source_host(request_url) != host:
-            raise SpacesError("not_granted", "Feed redirect changed host", capability="refresh")
-        grants.check(sid, "refresh", {"hosts": [host]})
+            raise SpacesError("not_granted", "Feed redirect changed host", capability="net")
+        grants.check(sid, "net")
 
     response, body = net._fetch_public(url, authorize=authorize, max_bytes=MAX_BYTES)
     if not 200 <= response["status"] < 300:
@@ -115,8 +115,8 @@ def parse(payload):
 def refresh_source(sid, source, *, actor, before_write, fetcher=None, counts=None):
     from . import grants, records
 
-    host = source_host(source["url"])
-    grants.check(sid, "refresh", {"hosts": [host]})
+    source_host(source["url"])
+    grants.check(sid, "net")
     entries = parse((fetcher or fetch)(sid, source["url"]))
     fetched_at = db.now()
     source_as_of = max((fields["updated"] or fetched_at for _, fields in entries), default=fetched_at)
@@ -127,7 +127,7 @@ def refresh_source(sid, source, *, actor, before_write, fetcher=None, counts=Non
         }) for rid, fields in entries
     ]
     before_write()
-    grants.check(sid, "refresh", {"hosts": [host]})
+    grants.check(sid, "net")
     result = records.upsert_sources(sid, source["collection"], source_entries, actor=actor)
     if counts is None:
         counts = {"added": 0, "updated": 0, "unchanged": 0}

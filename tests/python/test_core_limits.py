@@ -69,8 +69,6 @@ class LimitCase(unittest.TestCase):
 
     def refresh_setup(self):
         source = {"id": "public", "url": "https://example.org/feed", "collection": "papers"}
-        grants.request(self.sid, "refresh", scope={"hosts": ["example.org"]}, purpose="Public feed", actor="agent:demo")
-        grants.decide(self.sid, "refresh", "grant", actor="user")
         return source
 
     def refresh(self, source, payload):
