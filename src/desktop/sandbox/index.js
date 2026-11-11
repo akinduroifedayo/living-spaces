@@ -2,6 +2,7 @@ export const BRIDGE_VERSION = 1
 export const WEBRTC_NOTE = 'Spaces block ordinary internet connections unless you approve a site or capability. This is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle.'
 export const OP_GRANT = Object.freeze({
   meta: null,
+  'net.fetch': 'net',
   'data.query': 'data',
   'data.get': 'data',
   'data.put': 'data',

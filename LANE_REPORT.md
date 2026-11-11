@@ -1,252 +1,104 @@
-# w2-submission lane report
+# c-netfetch lane report
 
-Ife needs the submission drafts to describe the current Living Spaces candidate
-without turning partial R1 evidence into release acceptance. This lane updates
-only submission documentation, the package README and a catalog consistency
-checker. No product code, manifest, contract or R1 status file changed.
+Spaces need internet access through Hermes while their frame and private-network isolation stay intact. This lane adds the mediated `net.fetch` backend, default `net` grant, and host permission switch. The frame CSP stays unchanged.
 
-**Verdict: ISSUES.** Requested artifacts and offline verification are complete.
-Staging and committing are blocked by the sandbox. Catalog/publication gates and
-R1 acceptance remain open as detailed below. No push was attempted.
+**Verdict: ISSUES.** The lane's 32 Python and 7 JS tests pass. The final full suites pass 249/250 Python and 185/186 JS tests. Both remaining failures are frozen expectations in files outside this lane. Real Desktop qualification is written and compiled, not executed. Git refused both staging and committing with `Operation not permitted`; all changes remain unstaged in this worktree. Nothing was pushed.
 
-## Files changed
+## Scope and implementation
 
-- `docs/submission/catalog-entry.draft.yaml` matches manifest name, description,
-  version, Hermes floor and the 13 registered tools. Hooks, middleware and env
-  declarations remain empty. Documents the distinct empty host-capability list
-  and Desktop surface. Uses macOS-only qualification metadata. Keeps the private
-  URL and literal `PIN_40_CHAR_SHA_AT_FINAL_COMMIT`.
-- `scripts/check-catalog-draft.py` reads two YAML mappings using stdlib and PyYAML.
-  It rejects name/version/floor or registration drift, a changed host-capability
-  declaration, an invalid pin, missing required descriptive fields, incorrect
-  package/category or a missing Desktop entrypoint. Optional file arguments let
-  reviewers test malformed drafts without changing the real one.
-- `src/living-spaces/README.md` documents package placement, both enable switches,
-  grant revocation, archive/delete, local profile SQLite, no telemetry, chat/model
-  context, the exact WebRTC disclosure and the private scheduling import/reason.
-  Corrects the typed-ID deletion instruction. Separates historical validation,
-  observed paths and open R1 checks. Explains logical deletion and uninstall
-  retention without claiming secure erasure or an uninstall rehearsal.
-- `docs/submission/PR-DESCRIPTION.draft.md` carries the same disclosures, install
-  and lifecycle instructions, validation receipt and remaining acceptance work.
-  Removes stale validator TODO and false Claude Code attribution.
-- `docs/submission/DEMO-SCRIPT.md` retains 11 shots totaling 83 seconds, uses public
-  arXiv/Research Desk and Pair Play content, accepts truthful no-change refresh,
-  and defers final footage/screenshots until Miro's design kit merges.
-- `docs/submission/CHECKLIST.md` covers preflight, entry schema, all 18 admission
-  rules, PR/CI/reviewer stages and the separate publication/demo/Typeform gates.
-- `LANE_REPORT.md` is this requested handoff, explicitly authorized outside the
-  lane's normal owned paths.
+Base `7febcd8`, branch `forge/r1-c-netfetch`.
 
-## Verification and exact commands
+| File | Change |
+|---|---|
+| `src/living-spaces/living_spaces_core/net.py` | Stdlib HTTPS broker. Validates scheme, ports, all resolved A/AAAA destinations, legacy IPv4 literals and IPv6 transition forms. Connects a numeric socket to one vetted IP, sends the original hostname as SNI/Host, and uses the default certificate-verifying TLS context. Revalidates up to five redirects. Strips credential, proxy, Hermes and connection/framing request headers. Caps request bodies at `BRIDGE_BYTES` and response bodies at 5 MiB. Shares one 20-second network deadline across DNS, connect, TLS, headers, bodies and redirects. Returns text, JSON or base64 bytes. Audits only bounded host/status/byte fields. |
+| `src/living-spaces/living_spaces_core/bridge.py` | Registers `net.fetch` and translates the bridge `as` argument to Python `as_`. Existing session/grant checks apply before and after dispatch. Network work runs outside SQLite transactions. |
+| `src/living-spaces/living_spaces_core/grants.py` | Exact requested capability label/description, data-leaves-device flag and default grant. Existing revoke/request/host-decision flows apply. |
+| `src/living-spaces/living_spaces_core/migrations.py` | Idempotent backfill for Spaces missing `net`. Existing granted/requested/denied/revoked rows remain untouched. Records the default grant in audit. |
+| `src/living-spaces/living_spaces_core/db.py` | Runs that backfill inside the existing initialization transaction. Preserves schema version 1 and the existing DDL. |
+| `src/desktop/sandbox/index.js` | Adds only `OP_GRANT['net.fetch'] = 'net'`. |
+| `src/desktop/ui/permissions.jsx` | Internet access is first. Accessible On/Off switch uses the existing host grant route, disables during writes, and displays muted state copy. Requested access also offers host Approve/Deny. Exact requested WebRTC note appears only while Off. Other grant controls remain. |
+| `tests/python/test_net.py` | 32 tests, fake resolver and connection seams, no real network. Includes the real stdlib HTTPResponse parser over BytesIO for truncated-response handling. |
+| `tests/js/ui/net-permissions.test.mjs` | Seven React/JSDOM and operation-map cases. |
+| `harness/qualify_net.py` | Forge-only real-frame qualification with native host mouse input and disposable fixture cleanup. |
+| `LANE_REPORT.md` | This handoff. |
 
-Commands ran from this worktree. Test homes and generated artifacts are under
-`.run/`. Nothing was installed. No Desktop, gateway, Chrome, scheduler service,
-HTTP server or other listener was started. The unit tests exercise cron functions
-only against temporary test homes; this is not a running cron scheduler.
+The Model the Domain principle informed the choice to keep destination policy and the pinned transport in one `net` module, using the existing capability registry and result shapes. No additional network library or grant system was introduced.
 
-### Catalog checker
+## Behavior and limits
 
-```sh
-~/.hermes/hermes-agent/venv/bin/python scripts/check-catalog-draft.py
-```
+- Only HTTPS on 443 or 8443 is admitted. Every resolved address must pass. Literal forms including `2130706433`, `0x7f.1`, shortened IPv4 and octal IPv4 are classified before any DNS query.
+- Loopback, private, link-local, CGNAT, multicast, unspecified, reserved and documentation addresses are denied. IPv4-mapped, 6to4, standard NAT64 and local-use NAT64 forms cannot hide private targets. Teredo and reserved transition space are conservatively refused, including some public embedded destinations.
+- No proxy environment, cookie jar, URL credentials or Hermes credentials are used. Caller-supplied `authorization`, `cookie`, `proxy-*`, `host`, and `x-hermes*` headers are removed. Framing and hop-by-hop headers are also removed so the caller cannot control HTTP framing.
+- The socket never resolves the hostname a second time. TLS retains hostname verification, SNI and Host. The first vetted answer is used; there is no connection retry or automatic fallback that could replay a write.
+- GET/HEAD/POST/PUT/PATCH/DELETE work. GET/HEAD bodies are invalid. Direct Python bodies may be text or bytes; the JSON bridge uses text. Text responses decode as UTF-8 with replacement; JSON must be JSON-safe, including finite numbers. No decompression is performed; the request asks for identity encoding.
+- Redirects use standard method behavior: POST becomes GET on 301/302; 303 becomes GET except for HEAD; 307/308 preserve method/body. Redirect bodies are not consumed. Each target gets fresh validation and grant checks.
+- DNS uses a daemon resolver thread because libc resolution has no timeout interface. The caller stops waiting at the shared deadline; a late DNS answer cannot initiate a connection. A stuck libc lookup may outlive the call. A deadline timer shuts down/closes the pinned transport to interrupt slow headers or body reads.
+- Revocation prevents subsequent hops and result delivery. Already-sent external effects cannot be undone; an in-flight request may finish before its result is suppressed. Closed sessions suppress bridge results.
+- Audit entries contain host, status and downloaded body byte count, with no URL query, path, headers or body. They use the existing audit store and redaction. No new audit-history retention policy was added.
 
-- Red, before draft edits: exit **1**, `FAIL: sha must be
-  PIN_40_CHAR_SHA_AT_FINAL_COMMIT or a 40-hex SHA` against the old
-  `PIN_AT_SUBMISSION` value.
-- Green, after draft edits and again after final review: exit **0**, `PASS:
-  catalog draft matches plugin.yaml (13 tools); pin syntax accepted`.
-- This is a draft consistency check, not the Hermes validator and not permission
-  to submit a placeholder as a real catalog pin.
+## Red and green evidence
 
-```sh
-~/.hermes/hermes-agent/venv/bin/python .run/w2-submission/check-draft-cases.py
-PYTHONPYCACHEPREFIX="$PWD/.run/w2-submission/pycache" ~/.hermes/hermes-agent/venv/bin/python -m py_compile scripts/check-catalog-draft.py
-```
+Logs are local ignored files under `.run/`. The commands below ran from this worktree; none drove Desktop or opened a listener.
 
-The local temporary verification driver passed **24/24**, exit **0**. It invokes
-the checker in subprocesses against YAML copies in a temporary directory. Cases
-cover the placeholder, two valid full SHAs, eight invalid pins, name/version/floor
-drift, each of four registration lists, three invalid capability mappings,
-category/subdir drift and a newly declared manifest host capability. The real
-manifest was never edited. Receipt is `.run/w2-submission/catalog-cases.log`.
-Compilation exited **0**. No product fix was made, so a product red/green run is
-not applicable; the existing bridge fix is reported only from R1 evidence.
+| Change or check | Exact command | Observed result |
+|---|---|---|
+| Backend initial red | `~/.hermes/hermes-agent/venv/bin/python -m unittest tests.python.test_net` | 28 tests: 1 failure, 27 errors. Missing default grant, missing grant rows and absent net module. `.run/net-red.log`. |
+| Backend first implementation | Same command | 27 pass, 1 failure in the test helper: it incorrectly expected an empty connection history after an earlier successful fetch. `.run/net-green.log` was subsequently replaced by the successful run. |
+| Backend initial green | Same command | 28/28 pass after correcting the helper to compare the connection count before/after the blocked request. `.run/net-green.log`. |
+| UI/host-map red | `node --test tests/js/ui/net-*.test.mjs` | 7 tests: 1 pass, 6 failures. Existing other-grant control case passed; new switch/disclosure/route/map cases failed. `.run/net-ui-red.log`. |
+| UI/host-map green | Same command | 7/7 pass. `.run/net-ui-green.log`. |
+| Truncated-response regression red | `~/.hermes/hermes-agent/venv/bin/python -m unittest tests.python.test_net` | 32 tests: 31 pass, 1 failure. Advertised 10 bytes with only 5 delivered incorrectly succeeded. `.run/net-review-red.log`. |
+| Final backend focused green | Same command | 32/32 pass after rejecting an incomplete response. `.run/net-review-green.log`. |
+| Final UI focused green | `node --import ./tests/js/sandbox/env.mjs --test tests/js/ui/net-*.test.mjs` | 7/7 pass. `.run/net-ui-final.log`. |
+| Initial stock Python | `~/.hermes/hermes-agent/venv/bin/python -m unittest discover -s tests/python -t .` | 246 tests: 244 pass, 2 failures. Stale default-grant assertion and an unnecessary schema-version bump. `.run/net-python-suite.log`. |
+| Schema version preserved | Same command | 246 tests: 245 pass, 1 failure. Only stale default-grant assertion remained. `.run/net-python-suite-final.log`. |
+| Final stock Python | Same command | 250 tests: 249 pass, 1 failure. `.run/net-python-final.log`. |
+| Literal stock JS invocation | `node --test tests/js/sandbox/*.test.mjs tests/js/ui/*.test.mjs tests/js/reference/*.test.mjs` | 122 reported tests: 116 pass, 6 failures. Three modules could not resolve `preact`; renderer metafile was absent; old grant map assertion and one host timing assertion failed. `.run/net-js-suite.log`. |
+| Prepared stock JS | `node --import ./tests/js/sandbox/env.mjs --experimental-vm-modules --test tests/js/sandbox/*.test.mjs tests/js/ui/*.test.mjs tests/js/reference/*.test.mjs` | 156 tests: 154 pass, 2 failures. Old grant map assertion and host timing assertion. `.run/net-js-suite-ready.log`. |
+| Final serialized JS, including existing UI index | `node --import ./tests/js/sandbox/env.mjs --experimental-vm-modules --test --test-concurrency=1 tests/js/sandbox/*.test.mjs tests/js/ui/*.test.mjs tests/js/ui/index.js tests/js/reference/*.test.mjs` | 186 tests: 185 pass, 1 failure. Only old grant map assertion. `.run/net-js-final.log`. |
 
-### Python
+No skips or cancellations were reported in the final suites. The parallel host timing failure was `mount binds boot to host session, forwards replies and emits versioned events`, expecting one call after a fixed 20 ms wait but observing zero. That unchanged test passed in the final serialized run. It was not edited or claimed fixed.
 
-The stock discovery includes
-`tests.python.test_upkeep_runs.RunTests.test_manual_refresh_from_local_server_has_provenance_and_timestamps`,
-which constructs `ThreadingHTTPServer(("127.0.0.1", 0), ...)`. The hard lane
-boundary forbids listeners, so the runner marked exactly that method skipped
-before running the discovered suite. It did not try to bind and did not fabricate
-a sandbox error. Test files remain unchanged.
-
-```sh
-HERMES_HOME="$PWD/.run/w2-submission/home" LIVING_SPACES_DB="$PWD/.run/w2-submission/home/spaces.db" PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD" ~/.hermes/hermes-agent/venv/bin/python .run/w2-submission/run-python.py > .run/w2-submission/python.log 2>&1
-```
-
-Exit **0**. **151 discovered/run, 150 passed, 0 failures, 0 errors, 1 skipped**.
-The runner used `unittest.defaultTestLoader.discover('tests/python',
-top_level_dir='.')`, set the named method's `__unittest_skip__` and
-`__unittest_skip_why__`, then ran `unittest.TextTestRunner(verbosity=2)`.
-The runner and raw log are local ignored artifacts, not committed product files.
-
-Forge's full stock command outside the no-listener lane is:
-
-```sh
-~/.hermes/hermes-agent/venv/bin/python -m unittest discover -s tests/python -t .
-```
-
-### JavaScript and rendering
-
-Generated the dependency-graph prerequisite into `.run/`, leaving the shipped
-bundle untouched:
+Build/check commands, all successful:
 
 ```sh
 esbuild src/desktop/plugin.src.js --bundle --format=esm --jsx=automatic --external:@hermes/plugin-sdk --external:react --external:react/jsx-runtime --outfile=.run/package/plugin.js --metafile=.run/package/desktop-metafile.json
-```
-
-Exit **0**. The UI unit entry is `tests/js/ui/index.js`; no `ui/*.test.mjs` files
-exist, so the stock glob was adjusted.
-
-```sh
-node --test tests/js/sandbox/*.test.mjs tests/js/ui/index.js tests/js/reference/*.test.mjs > .run/w2-submission/node.log 2>&1
-```
-
-Initial attempt reported **97 tests, 94 passed, 3 failed file starts**.
-`hooks.test.mjs`, `html.test.mjs` and `compatibility.test.mjs` could not resolve
-`preact`. Exact error was `Error [ERR_MODULE_NOT_FOUND]: Cannot find package
-'preact' imported from .../src/living-spaces/runtime/vendor/hooks.mjs`. The tool
-wrapper ended with `tail`, so its shell exit 0 was not a passing Node test run.
-
-```sh
-node --import ./tests/js/sandbox/env.mjs --test tests/js/sandbox/*.test.mjs tests/js/ui/index.js tests/js/reference/*.test.mjs > .run/w2-submission/node-with-env.log 2>&1
-```
-
-With the existing resolver preloaded, exit **1**, **113 tests, 112 passed,
-1 failed file start**. Exact error was `SyntaxError: The requested module
-'node:vm' does not provide an export named 'SourceTextModule'` in the reference
-suite. That suite needs Node's VM modules flag. No source or test edits were made.
-
-```sh
-node --experimental-vm-modules --import ./tests/js/sandbox/env.mjs --test tests/js/sandbox/*.test.mjs tests/js/ui/index.js tests/js/reference/*.test.mjs > .run/w2-submission/node-final.log 2>&1
-node tests/js/ui/render-smoke.mjs > .run/w2-submission/render.log 2>&1
 node scripts/check-renderer-graph.mjs .run/package/desktop-metafile.json
-```
-
-Final Node exit **0**, **131 tests passed, 0 failed, 0 skipped**. Static rendering
-exited **0** with **40 assertions** and 12 HTML fixtures. Graph gate exited **0**,
-`Renderer graph excludes guest code and guest HTML`. Rendering is not real
-Desktop acceptance. No app-driving harness was written or executed in this lane.
-
-### Documentation and whitespace
-
-A read-only `python3 -` assertion pass checked the following against actual files:
-
-- The spec section 2 disclosure is verbatim in README, PR draft and catalog draft.
-- All **21** relative Markdown file links resolve.
-- All **11** shot budgets sum to **83 seconds**, below 90.
-- Checklist includes all **18** numbered admission rules and all four separate
-  Ife approval gates.
-- The obsolete `PIN_AT_SUBMISSION` placeholder is absent.
-
-All five groups passed, exit **0**. The sources of current behavior were the
-manifest, spec, frozen contracts, R1 ledger, committed validator receipt, current
-host controls and read-only Hermes install/removal implementation. The GBrain
-context pack supplied no current implementation authority.
-
-```sh
+~/.hermes/hermes-agent/venv/bin/python -m py_compile harness/qualify_net.py
+~/.hermes/hermes-agent/venv/bin/python -m py_compile src/living-spaces/living_spaces_core/net.py src/living-spaces/living_spaces_core/bridge.py src/living-spaces/living_spaces_core/grants.py src/living-spaces/living_spaces_core/migrations.py src/living-spaces/living_spaces_core/db.py harness/qualify_net.py
 git diff --check
-git diff --cached --check
 ```
 
-Both exited **0** before the attempted commit. The cached check was empty because
-staging failed. The final working-tree check also exited **0**.
+The renderer graph check reported `Renderer graph excludes guest code and guest HTML`. Only a local `.run/package/plugin.js` was built. The committed generated plugin and guest HTML were not changed. No package was installed.
 
-```sh
-node tests/js/sandbox/check.mjs
-```
+## Integration issues
 
-Exit **0**. Syntax passed for **18 JavaScript files**; whitespace passed for
-**24 lane files** including this report and the working-tree diff.
-
-## Git handoff failure
-
-Attempted the small verified catalog/checker commit with:
-
-```sh
-git add scripts/check-catalog-draft.py docs/submission/catalog-entry.draft.yaml
-git diff --cached --check
-git commit -m 'Align catalog draft with manifest and check metadata drift'
-```
-
-Both staging and commit failed with:
-
-```text
-fatal: Unable to create '<shared-repo>/.git/worktrees/w2-submission/index.lock': Operation not permitted
-```
-
-The shared Git metadata path is sandbox-denied despite being listed as a writable
-root. Approval escalation is disabled. Changes remain **unstaged**, not committed.
-No alternate index, direct Git-object write or permission bypass was attempted.
-Forge can stage and commit these seven owned/requested files from an authorized
-shell after reviewing them. Do not push as part of this lane.
-
-## Not done and proven issues
-
-1. No final package validator run or final SHA pin. Historical receipt remains
-   `docs/evidence/runs/validate-8724804/raw.log`, exit 0, 16 passed checks, one
-   private `cron.jobs` warning. The checker does not replace that run.
-2. Private API admission remains unresolved. The guide requires public surfaces;
-   it warns on this import even when `no core override` passes. README/PR explain
-   the missing public no-agent job creation/control seam. Forge must settle it
-   with maintainers before claiming catalog compliance.
-3. R1-01 and R1-12 are pending. R1-02 is pre-packaging evidence; R1-03 through
-   R1-11 remain partial. All specific missing observations from the current
-   ledger are listed in README/PR/checklist. No acceptance status was changed.
-4. Existing schedule/lifecycle/repair evidence includes disclosed fixtures and
-   harness accommodations. The demo does not use injected source divergence as
-   live retrieval, and does not claim a fixture is an unedited user journey.
-5. Final screenshots/video are not captured. They follow Miro's design kit merge
-   and Forge's qualification. No test schedule was created by this lane; cleanup
-   of existing qualification jobs remains Forge's release-end work.
-6. Linux/Windows are unqualified. Catalog `platforms: []` previously implied all
-   platforms; the draft now limits its claim to macOS.
-7. The prior README described an unverified local-directory installer and typed
-   deletion ID. Current docs use whole-package placement and the actual host
-   confirmation. The current Hermes removal implementation leaves profile plugin
-   data; no uninstall runtime rehearsal was performed.
-8. `projects.delete_space` removes records/revisions and dependent Space rows but
-   does not garbage-collect `blobs`. Docs now disclose that project file blobs can
-   remain; deletion is not secure erasure. A general data-erasure guarantee would
-   require a separately scoped design and tests.
-9. Raw Node commands lacked two existing test prerequisites. Corrected invocation
-   passed without code edits or package installation. One Python listener case
-   remains for Forge, as stated above.
-10. Staging and commit are sandbox-blocked. No commits or pushes were created.
-11. Public repo, catalog PR, demo-video publication and Typeform submission still
-    need separate Ife approval. No external publication, issue, PR, message or
-    submission was performed. Final name/lineage audit and catalog CI are pending.
+1. `tests/python/test_core_store.py:434` expects exactly `{"data":"granted","logs":"granted"}`. The observed extra `net: granted` is required by frozen decision 3. Forge should update that owned expectation to include `net`.
+2. `tests/js/sandbox/host.test.mjs:28` asserts the old exact operation map. Forge should add `'net.fetch': 'net'` to that expectation.
+3. `src/guest/loader.mjs` and the generated guest document on this branch do not expose `space.net.fetch`. This is c-guest's explicit ownership. Integrate that lane and rebuild once before running the harness.
+4. The current registered tools in `src/living-spaces/__init__.py` do not include a general capability-request tool. Core `grants.request(..., 'net', ...)` and subsequent host Approve are implemented and tested. If agent re-request must be available through a normal plugin tool, Forge/c-tools must expose that route. This lane did not edit tool registration or manifests.
+5. `src/living-spaces/__init__.py` still emits its general network-blocked warning. Forge/c-tools should distinguish direct guest networking from mediated `space.net.fetch` in that copy.
+6. No real TLS, DNS, public retrieval, guest integration, native switch, visual/keyboard, or isolation acceptance is claimed. Unit transport seams verify numeric connection and hostname TLS setup, not a live handshake.
+7. Staging and committing are unavailable in this sandbox. `git add ...` and `git commit -m 'Add permissioned HTTPS fetch with pinned public destinations'` both failed with `fatal: Unable to create '/Volumes/Expansion/Development/Projects/living-spaces/.git/worktrees/c-netfetch/index.lock': Operation not permitted`. No commit was created, and the changes could not be left staged. Forge must stage and commit them outside this sandbox.
 
 ## Contract issues and spec gaps
 
-- Spec section 2 permits granting a narrower scope. The frozen R1 contract and
-  UI expose approve/deny/revoke for the requested scope, with no narrower choice.
-  R1-STATUS already discloses the gap. Proposed resolution is for Forge/Product
-  to decide whether to amend R1's accepted scope explicitly or commission narrow
-  grants with tests. Docs cannot silently mark this requirement complete.
-- Catalog and manifest both use the name `capabilities` for different shapes.
-  The catalog has a registration mapping; the manifest has a host-permission
-  list. The checker compares registration fields and separately rejects changes
-  from the disclosed empty host-permission list. No invented catalog field or
-  manifest edit was used. Desktop is an entrypoint/category, not a manifest key.
-- No new bridge-contract disagreement was found. Typed `limit`/`invalid`
-  responses require a usable request ID; docs preserve that qualification.
-- The spec requires explicit deletion and loss disclosure, not typed-ID input or
-  secure media erasure. The README's typed-ID claim was corrected to the actual
-  host control. Product should specify any future stronger erasure guarantee
-  separately, including retained blobs and backups.
-- No contract/spec files were edited. No new app harness needs a Forge command.
-  Forge owns the remaining existing R1 harness runs serially under the shared
-  isolated app protocol; this lane does not instruct parallel app execution.
+- The task's frozen decision 3 adds a default-granted external capability to both new and existing Spaces. SPEC §2 still says creation grants no outside capabilities and external capabilities need consent. Apply an explicit decision-3 amendment; do not infer that the old default-off acceptance wording still governs mediated fetching.
+- CONTRACTS §§4, 5 and 7 omit `net` and `net.fetch`, and §10 lists a 1 MiB bridge message limit without distinguishing requests from larger responses. Add the frozen input/result shapes, 1 MiB request-envelope/body limit, 5 MiB downloaded-response-body limit, 20-second network deadline and the existing error-code mappings. Base64 responses can exceed 5 MiB on the wire.
+- CONTRACTS §12 says the permissions UI renders the exact old `WEBRTC_NOTE` export. The task now requires the exact new Off-only note. This lane renders the requested new text locally in Permissions and leaves the old exported string intact for other consumers/tests. Forge should reconcile that documented single-source contract.
+- Broad direct networking and arbitrary remote embeds remain unavailable. Mediated retrieval satisfies the commissioned option (b), not those broader interpretations of internet access. Keep acceptance scoped accordingly while retaining the existing isolation checks.
+- Permission revocation is not retrospective cancellation of a completed external POST/PUT/PATCH/DELETE. The existing spec's limitation still applies. Re-request requires a host decision; code changes do not silently restore a revoked `net` row.
+
+## Forge harness command
+
+Compile passed. Execution was deliberately not attempted under this lane's hard boundary. After integrating c-guest, rebuilding the package, and attaching the shared isolated app to that integrated code, Forge should run this serially. Set the variable to the actual isolated gateway port, not the CDP port:
+
+```sh
+~/.hermes/hermes-agent/venv/bin/python harness/qualify_net.py --gateway-port "${LS_GATEWAY_PORT:?Set the isolated gateway port}" --public-url https://example.com/ --lan-url https://192.168.1.1/
+```
+
+`--run-root` and `LS_CDP_PORT` allow the existing isolated harness setup to be selected. The run root defaults to the existing external `living-spaces-r1` directory. The harness refuses a live Hermes home, requires an existing isolated database, creates only its own public fixture, records `evidence/net/net.json` and two screenshots, and deletes its fixture afterward. It does not start or stop any app, gateway or listener. It checks public HTTPS, blocked gateway/loopback/LAN targets, unchanged ordinary-fetch blocking, the On/Off disclosure, revocation and host reapproval.
+
+No full Hermes plugin validator was invoked because Desktop admission can require prohibited app-driving work. Forge owns final package validation and real-app acceptance.
+
+GBrain tool discovery exposed no callable GBrain context-pack tool. No GBrain history informed the implementation and no knowledge writeback was made.

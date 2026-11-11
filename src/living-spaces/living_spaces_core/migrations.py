@@ -89,3 +89,15 @@ def _collection(conn, sid, op, actor):
         records._change(conn, sid, op["to"], row["id"], "put", rev, actor, at)
         if op["op"] == "rename_collection":
             records._delete(conn, sid, op["from"], row["id"], actor=actor, base_rev=row["rev"])
+
+
+def grant_internet_access(conn):
+    from . import grants
+
+    purpose = grants.CAPABILITIES["net"]["default_purpose"]
+    missing = conn.execute("""SELECT id FROM spaces WHERE NOT EXISTS
+        (SELECT 1 FROM grants WHERE grants.space=spaces.id AND capability='net')""").fetchall()
+    for row in missing:
+        conn.execute("""INSERT INTO grants(space,capability,status,scope,purpose,decided_at,decided_by)
+            VALUES(?,'net','granted','{}',?,?,'user')""", (row["id"], purpose, db.now()))
+        grants._audit(conn, row["id"], "user", "decision", "net", "granted", {"default_on_migration": True})

@@ -6,6 +6,8 @@ from . import db, limits
 from .errors import SpacesError
 
 CAPABILITIES = {
+    "net": {"label": "Internet access", "description": "This Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.",
+            "default_purpose": "Load and send internet content", "data_leaves_device": True, "continuing_access": True},
     "data": {"label": "Own data", "description": "Read and change this Space's own records.",
              "default_purpose": "Save and use this Space's data", "data_leaves_device": False, "continuing_access": True},
     "logs": {"label": "Diagnostics", "description": "Submit bounded runtime logs for this Space.",
@@ -53,7 +55,7 @@ def _scope(capability, scope):
             raise SpacesError("invalid", "Refresh hosts must be exact lowercase hostnames")
         return {"hosts": sorted(set(scope.get("hosts", [])))}
     if scope:
-        raise SpacesError("invalid", "Own-data and log capabilities have no external scope")
+        raise SpacesError("invalid", "This capability has no external scope")
     return {}
 
 
@@ -73,7 +75,7 @@ def _request(conn, sid, capability, *, scope, purpose, actor):
 
 
 def _seed(conn, sid, manifest, actor):
-    for capability in ("data", "logs"):
+    for capability in ("data", "logs", "net"):
         purpose = CAPABILITIES[capability]["default_purpose"]
         _request(conn, sid, capability, scope={}, purpose=purpose, actor=actor)
         conn.execute("UPDATE grants SET status='granted',scope='{}',decided_at=?,decided_by='user' WHERE space=? AND capability=?",
