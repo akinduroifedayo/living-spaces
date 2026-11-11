@@ -15,7 +15,7 @@ These capabilities have different qualification states:
 - Normal-chat authoring, local records, revisions, and native cron upkeep have historical runtime evidence. That evidence belongs to the recorded revisions, not every later candidate.
 - File-by-reference imports are implemented. Final real-chat import, restart, and restore qualification remains pending.
 - Maintaining-bot controls are implemented in source. Native admission, activation, and retry safety remain open gates. The required interaction is one in-Space click, with no unattended model spend from mounting, timers, or retries. One-click safety is not yet proved.
-- Mediated public HTTPS works. Direct frame networking is **not enabled**. The Desktop credentials-forwarding repair is in flight. The goal remains open-frame networking on by default without native credentials; direct networking must stay off until credential exclusion works and is verified.
+- Release 1 uses mediated public HTTPS, including keyed APIs with the Space's own credentials. Image-by-URL support through `space.net.blob` is integrated and under final qualification. Direct frame internet is deferred by owner decision to the next release.
 - Known width bugs affect the combined Desktop host and generated canvas, including clipped content and compressed host controls. They remain open until real captures qualify the repaired candidate.
 
 ## Install and enable
@@ -78,7 +78,9 @@ The per-Space **Internet access** setting is on by default for the implemented m
 
 `space.net.fetch(url, {as: 'json'})` returns an object with `status`, `url`, `headers`, and `json`. It is not a Fetch `Response`; use its `json` field instead of calling `.json()` or reading `.body`.
 
-Direct remote images, fonts, CDN imports, embeds, and live connections in the frame remain blocked pending the credential-isolation repair. Bundled assets and mediated retrieval remain available. Open-frame capability is still a product goal, not a proved safe mode or a permanent mediated-only restriction.
+Load an image URL through `space.net.blob(url)`, then assign `URL.createObjectURL(blob)` to the image. Revoke that object URL when the image is no longer needed. The helper returns a Blob, rejects non-success HTTP status, and follows the same Internet setting as `space.net.fetch`. It does not permit a direct remote `<img src>` request.
+
+Live embeds, streams, WebSockets, and libraries loaded from the web at runtime are not supported in release 1. Bundled assets and libraries remain available. Direct frame internet is deferred, not silently enabled.
 
 Internet Off is not a promise of zero outbound data. WebRTC can still send data that the Space can read. Data already delivered to a Space cannot be recalled. Consider what data you put in an internet-enabled canvas.
 
@@ -88,7 +90,7 @@ Maintaining-bot controls are intended to address the Space's own bot through a n
 
 Space data is local SQLite at `<HERMES_HOME>/plugin-data/living-spaces/spaces.db`. It includes projects, file blobs, revisions, records, grants, sessions, feed history, upkeep links, and runtime logs. Native cron retains agent execution history. The plugin sends no telemetry. Records can enter the configured model's context when a bot reads them, and internet requests contact their destination services.
 
-The plugin needs no new credentials. Do not put credentials in projects or records. This is separate from the unresolved Desktop credentials-forwarding gate for direct frame networking.
+The plugin needs no new credentials. Do not put credentials in projects or records. Direct frame networking is deferred to the next release and must not expose Hermes credentials.
 
 Feed scheduling writes `<HERMES_HOME>/scripts/living-spaces-refresh-<space-id>.py` and creates a native cron job. Agent scheduling creates the native job without a feed script. Hermes executes the script or agent job under its normal runtime policy. Removing upkeep or deleting the Space removes associated future jobs and the feed script.
 

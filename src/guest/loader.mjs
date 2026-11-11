@@ -136,6 +136,21 @@ export function spaceLoader(resolver) {
     pending.set(id, { resolve, reject })
     port.postMessage({ v: 1, id, op, args })
   })
+  const responseBlob = reply => {
+    if (closed) throw new SpaceError({ code: 'session_invalid', message: 'Space session is closed' })
+    const invalid = () => new SpaceError({ code: 'invalid', message: 'Malformed network byte response' })
+    if (!reply || !Number.isInteger(reply.status) || typeof reply.url !== 'string' ||
+        !reply.headers || typeof reply.headers !== 'object' || Array.isArray(reply.headers) ||
+        Object.values(reply.headers).some(value => typeof value !== 'string')) throw invalid()
+    if (reply.status < 200 || reply.status >= 300) {
+      throw new SpaceError({ code: 'http_status', message: `HTTP ${reply.status}`, status: reply.status, url: reply.url, headers: reply.headers })
+    }
+    if (typeof reply.b64 !== 'string' || typeof reply.mime !== 'string' ||
+        reply.b64.length % 4 !== 0 || /[^A-Za-z0-9+/=]/.test(reply.b64)) throw invalid()
+    let decoded
+    try { decoded = atob(reply.b64) } catch { throw invalid() }
+    return new Blob([Uint8Array.from(decoded, char => char.charCodeAt(0))], { type: reply.mime })
+  }
   const safeText = value => {
     try {
       return value instanceof Error ? value.stack || String(value) : typeof value === 'string' ? value : JSON.stringify(value)
@@ -183,7 +198,10 @@ export function spaceLoader(resolver) {
     net: {
       fetch: (url, { method, headers, body, as } = {}) => send('net.fetch', Object.fromEntries(
         Object.entries({ url, method, headers, body, as }).filter(([, value]) => value !== undefined)
-      ))
+      )),
+      blob: (url, { method, headers, body } = {}) => send('net.fetch', Object.fromEntries(
+        Object.entries({ url, method, headers, body, as: 'bytes' }).filter(([, value]) => value !== undefined)
+      )).then(responseBlob)
     },
     on(event, cb) {
       if (!listeners[event]) throw new TypeError(`Unknown Space event: ${event}`)
