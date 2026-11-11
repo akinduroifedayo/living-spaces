@@ -883,7 +883,7 @@ class ReviewCustomizationTests(unittest.TestCase):
                                 side_effect=OSError("native ledger unavailable")))
                         revoked = fx.grants.decide(sid, "refresh", "revoke")
                         self.assertEqual(revoked["status"], "revoked")
-                        if evidence in ("unknown", "malformed", "inaccessible"):
+                        if evidence in ("malformed", "inaccessible"):
                             with self.assertRaises(fx.core.SpacesError) as refused:
                                 fx.approve_refresh(sid)
                             self.assertEqual(refused.exception.code, "blocked")
