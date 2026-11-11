@@ -497,7 +497,7 @@ class AuthorityTests(CoreCase):
         session = sessions.open_session(self.sid)["session"]
         logs.add_logs(self.sid, session, [{"level": "info", "msg": "Demo"}])
         calls = []
-        with patch.object(projects.upkeep, "on_archive", lambda sid: calls.append(("archive", sid))), \
+        with patch.object(projects.upkeep, "pause_for_archive", lambda conn, sid: calls.append(("archive", sid))), \
                 patch.object(projects.upkeep, "on_delete", lambda sid: calls.append(("delete", sid)) or False), \
                 patch.object(projects.runs, "cancel_pending", lambda sid, reason: calls.append(("cancel", reason))):
             projects.set_status(self.sid, "archived", actor="user")

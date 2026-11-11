@@ -270,7 +270,7 @@ Errors use HTTP 4xx with `{"error":{"code","message",...}}` (404 not_found, 400 
 
 ## 10. Limits (limits.py; errors are visible `limit` with numbers, never silent truncation)
 
-Project ≤ 25 MB total, ≤ 600 files, file ≤ 8 MB. Record `data` ≤ 256 KB serialized, `source` ≤ 64 KB. ≤ 50,000 records per Space. Batch ≤ 500 ops. Logs keep the last 2,000 per Space. Bridge message ≤ 1 MB. Feed ≤ 3 MB, ≤ 200 entries per source. Revisions are kept forever in release 1, and blobs are deduplicated.
+Project ≤ 25 MB total, ≤ 600 files, file ≤ 8 MB. Record `data` ≤ 256 KB serialized, `source` ≤ 64 KB. ≤ 50,000 records per Space. Batch ≤ 500 ops. Logs keep the last 2,000 per Space. Bridge message ≤ 1 MB. Feed ≤ 3 MB, ≤ 1,000 entries per source. Revisions are kept forever in release 1, and blobs are deduplicated.
 
 ## 11. Sandbox (carried from the spike, `src/desktop/sandbox`)
 

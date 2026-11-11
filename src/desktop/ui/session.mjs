@@ -1,5 +1,7 @@
 import { spacePath } from './model.mjs'
 
+const errorCode = error => [error?.error?.code, error?.body?.error?.code, error?.message, String(error)].filter(Boolean).join(' ')
+
 export function createSpaceSession({ rest, backend, sid, container, mount, onEvent, onWrite = () => {}, onCloseError = error => console.warn('Space session cleanup failed', error) }) {
   const base = spacePath(sid)
   const { api, connectionId, profile } = backend || {}
@@ -20,6 +22,8 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
         try {
           return await lifecycleRest(`${base}/sessions/${encodeURIComponent(session)}`, { method: 'DELETE' })
         } catch (error) {
+          // Archive and delete close sessions on the server first, so the session is already gone.
+          if (/session_invalid/.test(errorCode(error))) return { closed: true }
           onCloseError(error)
           if (attempt === 3) throw error
           await new Promise(resolve => setTimeout(resolve, 250 * attempt))

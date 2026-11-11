@@ -643,7 +643,7 @@ import { ErrorState as ErrorState4, Skeleton as Skeleton4, useQuery as useQuery4
 import { useRef as useRef3, useState as useState5 } from "react";
 import { Fragment as Fragment4, jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
 function UpkeepCost({ job, kind }) {
-  return kind === "agent" ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
+  return (job ? job.uses_model : kind === "agent") ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
     /* @__PURE__ */ jsx5("p", { children: "Uses model calls. Runs a Hermes agent with the tools enabled for native cron jobs." }),
     /* @__PURE__ */ jsxs5("div", { children: [
       /* @__PURE__ */ jsx5("strong", { children: "Upkeep prompt" }),
@@ -709,7 +709,7 @@ function UpkeepSheet({ ctx, space, onClose, onChanged, returnFocus }) {
       /* @__PURE__ */ jsxs5("dl", { className: "ls-facts", children: [
         /* @__PURE__ */ jsxs5("div", { children: [
           /* @__PURE__ */ jsx5("dt", { children: "Kind" }),
-          /* @__PURE__ */ jsx5("dd", { children: link.kind === "agent" ? "Agent" : "Feed" })
+          /* @__PURE__ */ jsx5("dd", { children: job.uses_model ? "Agent" : "Feed" })
         ] }),
         /* @__PURE__ */ jsxs5("div", { children: [
           /* @__PURE__ */ jsx5("dt", { children: "Schedule" }),
@@ -767,10 +767,17 @@ function UpkeepSheet({ ctx, space, onClose, onChanged, returnFocus }) {
       /* @__PURE__ */ jsx5(Executions, { executions: data.executions })
     ] })
   ] });
+  const oneShots = data?.one_shots || [];
+  const refreshes = oneShots.length > 0 && /* @__PURE__ */ jsxs5("section", { className: "ls-section", "data-testid": "one-shots", children: [
+    /* @__PURE__ */ jsx5("h2", { className: "ls-section-title", children: "Refresh now runs" }),
+    /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "One-time Hermes agent runs started with Refresh now. Each uses model calls." }),
+    /* @__PURE__ */ jsx5(Executions, { executions: oneShots.flatMap((shot) => shot.executions) })
+  ] });
   return /* @__PURE__ */ jsxs5(Fragment4, { children: [
     /* @__PURE__ */ jsxs5(Drawer, { title: `Upkeep \xB7 ${space.name}`, description: "The Hermes cron job that keeps this Space current", onClose, returnFocus, children: [
       error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: error }),
-      body
+      body,
+      refreshes
     ] }),
     confirm && /* @__PURE__ */ jsx5(DecisionDialog, { danger: true, title: `Remove upkeep for ${space.name}?`, description: "This deletes the Hermes cron job. The Space and its data are kept.", confirmLabel: "Remove", onClose: () => setConfirm(false), onConfirm: async () => {
       await ctx.rest(`${base}/upkeep`, { method: "POST", body: { action: "remove" } });
@@ -780,6 +787,7 @@ function UpkeepSheet({ ctx, space, onClose, onChanged, returnFocus }) {
 }
 
 // src/desktop/ui/session.mjs
+var errorCode = (error) => [error?.error?.code, error?.body?.error?.code, error?.message, String(error)].filter(Boolean).join(" ");
 function createSpaceSession({ rest, backend, sid, container, mount, onEvent, onWrite = () => {
 }, onCloseError = (error) => console.warn("Space session cleanup failed", error) }) {
   const base = spacePath(sid);
@@ -801,6 +809,7 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, onW
         try {
           return await lifecycleRest(`${base}/sessions/${encodeURIComponent(session)}`, { method: "DELETE" });
         } catch (error) {
+          if (/session_invalid/.test(errorCode(error))) return { closed: true };
           onCloseError(error);
           if (attempt === 3) throw error;
           await new Promise((resolve) => setTimeout(resolve, 250 * attempt));

@@ -128,7 +128,7 @@ Spaces block ordinary internet connections unless you approve a site or capabili
 - Projects allow 25 MB, 600 files, and 8 MB per file.
 - A Space allows 50,000 records. Each record allows 256 KB of user data and 64 KB
   of source data. A batch allows 500 operations.
-- Bridge messages allow 1 MB. A feed allows 3 MB and 200 entries per source.
+- Bridge messages allow 1 MB. A feed allows 3 MB and 1,000 entries per source.
 - Runtime logs retain the latest 2,000 entries. Code revisions remain available.
 
 An oversized bridge request with a usable request ID receives `limit`; a malformed

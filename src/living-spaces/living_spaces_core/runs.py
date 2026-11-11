@@ -72,7 +72,9 @@ def start_refresh(sid, *, trigger, actor, wait=False, session=None):
     space = projects.get_space(sid)
     manifest_upkeep = projects.bundle(sid)["manifest"].get("upkeep") or {}
     handler = manifest_upkeep.get("handler", "")
-    if handler == "agent":
+    if handler == "agent" and trigger != "schedule":
+        # A schedule trigger comes from a feed job's no-model shim; it must never start model work, so a
+        # handler later changed to agent falls through and records a blocked no_handler run instead.
         if session is not None:
             raise SpacesError("blocked", "Agent upkeep runs from Refresh now in Hermes or from chat", reason="agent_from_guest")
         return upkeep.refresh_now(sid, manifest_upkeep, actor=actor)

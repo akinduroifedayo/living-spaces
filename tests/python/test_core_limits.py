@@ -82,7 +82,7 @@ class ProjectLimitTests(LimitCase):
             "project_bytes": 25 * 1024 * 1024, "project_files": 600, "file_bytes": 8 * 1024 * 1024,
             "data_bytes": 256 * 1024, "source_bytes": 64 * 1024, "records": 50_000,
             "batch_ops": 500, "log_entries": 50, "log_message": 4000, "log_history": 2000,
-            "bridge_bytes": 1024 * 1024, "feed_bytes": 3 * 1024 * 1024, "feed_entries": 200,
+            "bridge_bytes": 1024 * 1024, "feed_bytes": 3 * 1024 * 1024, "feed_entries": 1000,
         })
 
     def test_file_limit_counts_utf8_bytes_and_retry_at_boundary(self):
@@ -267,11 +267,11 @@ class FeedLimitTests(LimitCase):
         source = self.refresh_setup()
         self.refresh(source, feed_xml(title="Original"))
         for maximum, actual, payload in ((limits.FEED_BYTES, limits.FEED_BYTES + 1, b" " * (limits.FEED_BYTES + 1)),
-                                         (limits.FEED_ENTRIES, limits.FEED_ENTRIES + 1, feed_xml(201))):
+                                         (limits.FEED_ENTRIES, limits.FEED_ENTRIES + 1, feed_xml(limits.FEED_ENTRIES + 1))):
             with self.subTest(maximum=maximum):
                 self.rejected(maximum, actual, lambda: self.refresh(source, payload))
                 self.assertEqual(self.refresh(source, feed_xml(title=f"Recovered {maximum}"))[0]["updated"], 1)
-        self.assertEqual(len(feeds.parse(feed_xml(200))), 200)
+        self.assertEqual(len(feeds.parse(feed_xml(limits.FEED_ENTRIES))), limits.FEED_ENTRIES)
         payload = feed_xml()
         self.assertEqual(len(feeds.parse(payload + b" " * (limits.FEED_BYTES - len(payload)))), 1)
 

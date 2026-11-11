@@ -80,7 +80,7 @@ def parse(payload):
     else:
         raise SpacesError("invalid", "Expected an RSS 2.0 or Atom feed")
     if len(entries) > MAX_ENTRIES:
-        raise SpacesError("limit", "Feed exceeds 200 entries", limit=MAX_ENTRIES, actual=len(entries))
+        raise SpacesError("limit", f"Feed exceeds {MAX_ENTRIES} entries", limit=MAX_ENTRIES, actual=len(entries))
     mapped = []
     for entry in entries:
         if atom:

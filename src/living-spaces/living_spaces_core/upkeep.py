@@ -15,6 +15,7 @@ PACKAGE = Path(__file__).resolve().parents[1]
 KINDS = ("agent", "feed")
 ACTIONS = ("pause", "resume", "run", "remove")
 EXECUTION_LIMIT = 20
+ONE_SHOT_LIMIT = 5
 
 
 def _cron():
@@ -40,8 +41,8 @@ def validate_upkeep(upkeep):
 
 
 def _prompt(prompt):
-    if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 4000:
-        raise SpacesError("invalid", "Agent upkeep requires a nonempty prompt of at most 4000 characters")
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise SpacesError("invalid", "Agent upkeep requires a nonempty prompt")
     return prompt
 
 
@@ -95,9 +96,13 @@ def _cadence(job):
     return schedule
 
 
+def _once_name(sid):
+    return f"living-spaces:{sid}:once"
+
+
 def _job(job):
     return {
-        "id": job.get("id"), "name": job.get("name"),
+        "id": job.get("id"), "name": job.get("name"), "uses_model": not job.get("no_agent"),
         "prompt": None if job.get("no_agent") else job.get("prompt"),
         "schedule_display": job.get("schedule_display"), "cadence": _cadence(job),
         "timezone": job.get("timezone"), "enabled": job.get("enabled"), "state": job.get("state"),
@@ -115,16 +120,27 @@ def _execution(entry):
     }
 
 
+def _one_shots(sid, jobs, ledger):
+    found = [job for job in jobs.list_jobs(include_disabled=True) if job.get("name") == _once_name(sid)]
+    found.sort(key=lambda job: str(job.get("created_at") or ""), reverse=True)
+    return [dict(_job(job), executions=[_execution(entry) for entry in ledger.list_executions(job_id=job["id"], limit=5)])
+            for job in found[:ONE_SHOT_LIMIT]]
+
+
 def _read(sid, *, executions=True):
     with db.read() as conn:
         _space(conn, sid)
         link = _link(conn, sid)
-    result = {"link": link, "job": None, "executions": [], "missing": False, "error": None}
-    if link is None:
-        return result
+    result = {"link": link, "job": None, "executions": [], "one_shots": [], "missing": False, "error": None}
     try:
-        job = _cron().get_job(link["cron_job_id"])
-        entries = _ledger().list_executions(job_id=link["cron_job_id"], limit=EXECUTION_LIMIT) if executions else []
+        jobs = _cron()
+        ledger = _ledger() if executions else None
+        if executions:
+            result["one_shots"] = _one_shots(sid, jobs, ledger)
+        if link is None:
+            return result
+        job = jobs.get_job(link["cron_job_id"])
+        entries = ledger.list_executions(job_id=link["cron_job_id"], limit=EXECUTION_LIMIT) if executions else []
     except Exception as exc:
         result["error"] = f"Native Hermes cron is unavailable ({type(exc).__name__}): {exc}"
         return result
@@ -143,7 +159,8 @@ def summary(sid):
     if state["link"] is None:
         return None
     job = state["job"] or {}
-    return {"cron_job_id": state["link"]["cron_job_id"], "kind": state["link"]["kind"],
+    kind = state["link"]["kind"] if state["job"] is None else ("agent" if job["uses_model"] else "feed")
+    return {"cron_job_id": state["link"]["cron_job_id"], "kind": kind,
             "enabled": job.get("enabled"), "state": job.get("state"),
             "next_run_at": job.get("next_run_at"), "missing": state["missing"]}
 
@@ -223,24 +240,26 @@ def upkeep_action(sid, action, *, actor):
 
 def refresh_now(sid, upkeep, *, actor):
     jobs = _jobs()
-    with db.read() as conn:
+    # Held under the write lock so archive and delete, which take the same lock, cannot interleave
+    # between the status check and the native job this creates.
+    with db.write() as conn:
         if _space(conn, sid)["status"] == "archived":
             raise SpacesError("archived", "Unarchive the Space before refreshing")
         link = _link(conn, sid)
-    if link and link["kind"] == "agent":
-        if jobs.trigger_job(link["cron_job_id"]) is None:
-            raise SpacesError("blocked", "The linked Hermes job no longer exists", reason="missing")
-        return {"kind": "cron", "cron_job_id": link["cron_job_id"], "triggered": True}
-    # Created paused, then triggered: a paused job has no pending slot, so run-now fires exactly once.
-    job = jobs.create_job(prompt=agent_prompt(sid, upkeep.get("prompt")), schedule="in 1m", repeat=1,
-                          name=f"living-spaces:{sid}:once", no_agent=False, deliver="local",
-                          catch_up=True, paused=True)
-    try:
-        if jobs.trigger_job(job["id"]) is None:
-            raise SpacesError("blocked", "Hermes cron could not start the refresh", reason="native_refused")
-    except Exception:
-        jobs.remove_job(job["id"])
-        raise
+        if link and link["kind"] == "agent":
+            if jobs.trigger_job(link["cron_job_id"]) is None:
+                raise SpacesError("blocked", "The linked Hermes job no longer exists", reason="missing")
+            return {"kind": "cron", "cron_job_id": link["cron_job_id"], "triggered": True}
+        # Created paused, then triggered: a paused job has no pending slot, so run-now fires exactly once.
+        job = jobs.create_job(prompt=agent_prompt(sid, upkeep.get("prompt")), schedule="in 1m", repeat=1,
+                              name=_once_name(sid), no_agent=False, deliver="local",
+                              catch_up=True, paused=True)
+        try:
+            if jobs.trigger_job(job["id"]) is None:
+                raise SpacesError("blocked", "Hermes cron could not start the refresh", reason="native_refused")
+        except Exception:
+            jobs.remove_job(job["id"])
+            raise
     return {"kind": "cron", "cron_job_id": job["id"], "triggered": True}
 
 
@@ -262,14 +281,29 @@ def dispatch_detail(sid):
     return None
 
 
-def on_archive(sid):
-    with db.read() as conn:
-        link = _link(conn, sid)
-    if link:
-        try:
-            _cron().pause_job(link["cron_job_id"], reason="Living Space archived")
-        except Exception:
-            pass  # get_upkeep shows the native job still enabled, which is the truth.
+def pause_for_archive(conn, sid):
+    """Pause the linked job and pending one-shots inside the archiving transaction; any failure aborts it."""
+    link = _link(conn, sid)
+    try:
+        jobs = _cron()
+    except ImportError:
+        if link is None:
+            return  # No native scheduler is importable, so nothing of this Space's can run.
+        raise SpacesError("blocked", "Could not pause this Space's upkeep, so it was not archived",
+                          reason="Native Hermes cron is unavailable")
+    pending = [job["id"] for job in jobs.list_jobs(include_disabled=True)
+               if job.get("name") == _once_name(sid) and job.get("enabled")]
+    targets = ([link["cron_job_id"]] if link else []) + pending
+    try:
+        for jid in targets:
+            paused = jobs.pause_job(jid, reason="Living Space archived")
+            if link and jid == link["cron_job_id"] and paused is None:
+                continue  # Missing linked job: nothing can run, and the panel shows it as missing.
+            if paused is not None and paused.get("enabled"):
+                raise RuntimeError(f"job {jid} is still enabled")
+    except Exception as exc:
+        raise SpacesError("blocked", "Could not pause this Space's upkeep, so it was not archived",
+                          reason=f"{type(exc).__name__}: {exc}") from exc
 
 
 def on_delete(sid):
@@ -280,7 +314,7 @@ def on_delete(sid):
         if link:
             jobs.remove_job(link["cron_job_id"])
         for job in jobs.list_jobs(include_disabled=True):
-            if job.get("name") == f"living-spaces:{sid}:once":
+            if job.get("name") == _once_name(sid):
                 jobs.remove_job(job["id"])
         _shim(sid).unlink(missing_ok=True)
         conn.execute("DELETE FROM upkeep_links WHERE space=?", (sid,))

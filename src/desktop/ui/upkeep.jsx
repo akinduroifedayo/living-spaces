@@ -4,7 +4,7 @@ import { Action, Banner, CopyPrompt, DecisionDialog, Drawer, StatusPill, Time } 
 import { CATCH_UP, errorText, executionLabel, spacePath, toSeconds } from './model.mjs'
 
 export function UpkeepCost({ job, kind }) {
-  return kind === 'agent'
+  return (job ? job.uses_model : kind === 'agent')
     ? <><p>Uses model calls. Runs a Hermes agent with the tools enabled for native cron jobs.</p><div><strong>Upkeep prompt</strong><p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{job?.prompt}</p></div></>
     : <p>No model calls. Refreshes use the declared public-source handler and approved hosts.</p>
 }
@@ -45,7 +45,7 @@ export function UpkeepSheet({ ctx, space, onClose, onChanged, returnFocus }) {
     {data.missing ? <><Banner kind="blocked" title="The linked Hermes job no longer exists" actions={removeButton}>Nothing will run. Ask {space.owner} in chat to schedule upkeep again.</Banner><div className="ls-section"><CopyPrompt text={`${space.owner}, the Hermes cron job for ${space.name} no longer exists. Please schedule upkeep again.`} label="Ask in chat" /></div></> : job && <>
       <StatusPill status={job.enabled ? 'ready' : 'paused'} label={job.enabled ? 'Active' : 'Paused'} />
       <dl className="ls-facts">
-        <div><dt>Kind</dt><dd>{link.kind === 'agent' ? 'Agent' : 'Feed'}</dd></div>
+        <div><dt>Kind</dt><dd>{job.uses_model ? 'Agent' : 'Feed'}</dd></div>
         <div><dt>Schedule</dt><dd>{job.schedule_display || job.cadence}</dd></div>
         <div><dt>Cadence</dt><dd>{job.cadence}</dd></div>
         <div><dt>Timezone</dt><dd>{job.timezone}</dd></div>
@@ -64,8 +64,11 @@ export function UpkeepSheet({ ctx, space, onClose, onChanged, returnFocus }) {
     </>}
     <section className="ls-section"><h2 className="ls-section-title">Executions</h2><Executions executions={data.executions} /></section>
   </>
+  const oneShots = data?.one_shots || []
+  const refreshes = oneShots.length > 0 && <section className="ls-section" data-testid="one-shots"><h2 className="ls-section-title">Refresh now runs</h2><p className="ls-secondary">One-time Hermes agent runs started with Refresh now. Each uses model calls.</p><Executions executions={oneShots.flatMap(shot => shot.executions)} /></section>
   return <><Drawer title={`Upkeep · ${space.name}`} description="The Hermes cron job that keeps this Space current" onClose={onClose} returnFocus={returnFocus}>
     {error && <Banner kind="failed" title={error} />}
     {body}
+    {refreshes}
   </Drawer>{confirm && <DecisionDialog danger title={`Remove upkeep for ${space.name}?`} description="This deletes the Hermes cron job. The Space and its data are kept." confirmLabel="Remove" onClose={() => setConfirm(false)} onConfirm={async () => { await ctx.rest(`${base}/upkeep`, { method: 'POST', body: { action: 'remove' } }); await Promise.all([query.refetch(), onChanged?.()]) }} />}</>
 }
