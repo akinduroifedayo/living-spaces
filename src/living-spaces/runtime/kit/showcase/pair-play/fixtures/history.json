@@ -1,0 +1,6 @@
+[
+  {"collection": "rounds", "id": "demo-1", "data": {"turns": 14, "seconds": 71, "finished_at": "2026-11-04T19:10:00Z"}},
+  {"collection": "rounds", "id": "demo-2", "data": {"turns": 11, "seconds": 58, "finished_at": "2026-11-06T20:02:00Z"}},
+  {"collection": "rounds", "id": "demo-3", "data": {"turns": 9, "seconds": 44, "finished_at": "2026-11-08T18:30:00Z"}},
+  {"collection": "rounds", "id": "demo-4", "data": {"turns": 12, "seconds": 63, "finished_at": "2026-11-10T21:15:00Z"}}
+]

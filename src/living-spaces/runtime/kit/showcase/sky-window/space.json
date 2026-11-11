@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "name": "Sky Window",
+  "description": "Three city skies, drawn from live public weather and each city's local hour.",
+  "entry": "index.html",
+  "imports": {},
+  "accent": "indigo",
+  "icon": "globe",
+  "data": {"version": 1, "collections": {}, "migrations": []}
+}

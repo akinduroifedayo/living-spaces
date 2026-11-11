@@ -317,7 +317,7 @@ start from, not as an art direction. `accent` colours the Space's tile in the
 Spaces tab; pick the hue closest to your concept.
 
 References: [Weather Window](references/weather-window/index.html) uses its
-own visual language without kit CSS. [Showcase sources](references/showcase/README.md)
+own visual language without kit CSS. [Showcase sources](../../runtime/kit/showcase/README.md)
 are further technique references, not proof of chat generation or qualification;
 consult their verification receipts before claiming live behaviour. Read them
 for ambition and technique, not to copy their look.

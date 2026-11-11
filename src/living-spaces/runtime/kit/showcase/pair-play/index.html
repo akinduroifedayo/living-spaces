@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pair Play</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<main class="table">
+  <section class="play" aria-labelledby="title">
+    <header class="head">
+      <h1 id="title">Pair Play</h1>
+      <p class="sub" id="instructions">Find the six pairs. Fewer turns is better. Tab to a card; Enter or Space to turn.</p>
+    </header>
+    <div id="board" class="board" role="group" aria-label="Twelve cards. Use Tab to choose, Enter or Space to turn."></div>
+    <div id="win" class="win" aria-labelledby="win-title" hidden>
+      <div class="win-card">
+        <p class="win-best" id="win-best"></p>
+        <h2 id="win-title">All six pairs</h2>
+        <p id="win-line" class="win-line"></p>
+        <button id="again" type="button" class="primary">Deal again</button>
+      </div>
+    </div>
+  </section>
+
+  <aside class="scorecard" aria-labelledby="score-title">
+    <h2 id="score-title">Scorecard</h2>
+    <dl class="now">
+      <div><dt>Pairs found</dt><dd><span id="pairs">0</span><small> of 6</small></dd></div>
+      <div><dt>Turns</dt><dd id="turns">0</dd></div>
+      <div><dt>Best round</dt><dd id="best">—</dd></div>
+    </dl>
+    <div class="pips" id="pips" role="img" aria-label="0 of 6 pairs found"></div>
+    <h3>Past rounds <span class="h-note">turns per round</span></h3>
+    <ol id="history" class="history"></ol>
+    <p id="history-empty" class="empty">Finished rounds land here, so you can try to beat your best.</p>
+    <p id="save" class="save" role="status" aria-live="polite"></p>
+    <button id="retry" type="button" class="quiet" hidden>Retry scorecard</button>
+    <button id="restart" type="button" class="quiet">Shuffle and restart</button>
+  </aside>
+</main>
+<footer class="credits">Decorative card backs: previously generated illustration. Fruit faces: authored SVG. Scores are real play in this reference’s isolated demo store.</footer>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
