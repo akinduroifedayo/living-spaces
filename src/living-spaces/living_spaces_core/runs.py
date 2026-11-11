@@ -139,22 +139,46 @@ def _sync_agent_runs(sid, *, conn=None):
             failures.append(error or f"Native ledger for {jid} is malformed")
             outstanding.add(jid)
             continue
-        executions = list(executions)
         page = executions
-        while len(page) == 500:
-            if not isinstance(page[-1], dict) or not isinstance(page[-1].get("claimed_at"), str):
-                failures.append(f"Native ledger coverage for {jid} is incomplete")
-                break
-            before = page[-1]["claimed_at"]
-            page, error = schedules._native_call(lambda: ledger.list_executions(job_id=jid, limit=500, before_claimed_at=before))
-            if error or not isinstance(page, list) or any(
-                    not isinstance(entry, dict) or not isinstance(entry.get("claimed_at"), str)
-                    or entry["claimed_at"] >= before for entry in page):
-                failures.append(error or f"Native ledger pagination for {jid} is incomplete")
-                break
-            # A timestamp-only cursor cannot prove coverage of ties across a full page.
-            failures.append(f"Native ledger boundary coverage for {jid} is unconfirmed")
+        executions = []
+        before_key = None
+        while True:
             executions.extend(page)
+            page_keys = []
+            page_ids = set()
+            for entry in page:
+                if (not isinstance(entry, dict) or not isinstance(entry.get("claimed_at"), str)
+                        or not isinstance(entry.get("id"), str) or not entry["id"]
+                        or entry.get("job_id") != jid):
+                    break
+                # Use the native SQLite key, including its millisecond rounding and text tie-break.
+                instant = conn.execute("SELECT julianday(?)", (entry["claimed_at"],)).fetchone()[0]
+                if instant is None:
+                    break
+                key = (instant, entry["claimed_at"], entry["id"])
+                if ((before_key is not None and key[:2] >= before_key)
+                        or (page_keys and key >= page_keys[-1]) or entry["id"] in page_ids):
+                    break
+                page_keys.append(key)
+                page_ids.add(entry["id"])
+            if len(page_keys) != len(page) or len(page) > 500:
+                failures.append(f"Native ledger pagination for {jid} is incomplete")
+                outstanding.add(jid)
+                break
+            if len(page) < 500:
+                break
+            # Only the oldest timestamp group may be truncated. Re-read it in the next page.
+            before_key = next((key[:2] for key in reversed(page_keys) if key[:2] > page_keys[-1][:2]), None)
+            if before_key is None:
+                failures.append(f"Native ledger boundary coverage for {jid} is unconfirmed")
+                outstanding.add(jid)
+                break
+            before = before_key[1]
+            page, error = schedules._native_call(lambda: ledger.list_executions(job_id=jid, limit=500, before_claimed_at=before))
+            if error or not isinstance(page, list):
+                failures.append(error or f"Native ledger pagination for {jid} is incomplete")
+                outstanding.add(jid)
+                break
         cleanup = False
         if conn.execute("SELECT 1 FROM spaces WHERE id=?", (sid,)).fetchone() is None:
             continue
@@ -214,6 +238,18 @@ def _sync_agent_runs(sid, *, conn=None):
                 status, started, finished, execution.get("error"), json.dumps(detail), db.now(), row["id"],
             ))
             cleanup = cleanup or (detail.get("one_shot", False) and status in ("succeeded", "failed", "canceled"))
+        if job is None and not executions:
+            for row, detail in zip(pending, details):
+                if (row["status"] != "queued" or row["started_at"] is not None
+                        or detail.get("cron_job_id") != jid or detail.get("one_shot") is not True
+                        or not detail.get("cancel_reason") or detail.get("cron_run_id") is not None
+                        or detail.get("cron_status") is not None):
+                    continue
+                # Managed dispatch persists an execution before worker launch. Close only local intent.
+                detail["native_interruption"] = "Not admitted; withdrawn before native execution"
+                conn.execute("UPDATE runs SET status='canceled',ended_at=?,detail=? WHERE id=?", (
+                    db.now(), json.dumps(detail), row["id"],
+                ))
         remaining = conn.execute("SELECT 1 FROM runs WHERE space=? AND handler='agent' AND status IN ('queued','running') AND json_extract(detail,'$.cron_job_id')=?", (sid, jid)).fetchone()
         if remaining:
             outstanding.add(jid)

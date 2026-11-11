@@ -142,6 +142,8 @@ class AgentUpkeepTests(UpkeepCase):
 
     def test_missing_native_job_fails_pending_run(self):
         run = self.refresh()
+        failure = self.execution(run["detail"]["cron_job_id"], status="failed")
+        failure["error"] = "Synthetic native failure: job missing before execution."
         self.jobs.clear()
         observed = runs.get_run(run["id"])
         self.assertEqual(observed["status"], "failed")
@@ -363,7 +365,8 @@ class AgentIntegrationSeamTests(unittest.TestCase):
         cron = Mock()
         cron.create_job.side_effect = lambda **kw: {**kw, "id": "demo-cron", "next_run_at": db.now() + 3600}
         cron.get_job.return_value = {"id": "demo-cron", "no_agent": False, "enabled": False, "state": "paused"}
-        with patch.object(core.schedules, "_cron", return_value=cron), patch.object(core.runs, "_sync_agent_runs"):
+        cron.pause_job.return_value = copy.deepcopy(cron.get_job.return_value)
+        with patch.object(core.schedules, "_cron", return_value=cron), patch.object(core.runs, "_sync_agent_runs", return_value=core.runs.NativeObservation(True, frozenset())):
             core.request_schedule(sid, cadence="0 * * * *", timezone="UTC", purpose="Demo", actor="agent:demo")
             self.assertEqual(core.decide_schedule(sid, "approve")["status"], "active")
             revised = copy.deepcopy(manifest)
