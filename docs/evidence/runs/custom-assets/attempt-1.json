@@ -1,0 +1,21 @@
+{
+ "checks": [
+  {
+   "name": "binary create stores exact PNG bytes",
+   "passed": true,
+   "observed": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
+   "expected": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+  },
+  {
+   "name": "binary read then write retains bytes",
+   "passed": true,
+   "observed": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
+   "expected": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+  }
+ ],
+ "evidence_class": "Direct real plugin tool handlers, actual isolated Desktop guest, no model generation",
+ "commit": "234134b6fd2a8553041664d8ad7cbf827a6df230",
+ "fixture_removed": true,
+ "passed": 2,
+ "total": 2
+}

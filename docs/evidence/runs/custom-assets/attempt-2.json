@@ -1,0 +1,45 @@
+{
+ "checks": [
+  {
+   "name": "binary create stores exact PNG bytes",
+   "passed": true,
+   "observed": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
+   "expected": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+  },
+  {
+   "name": "binary read then write retains bytes",
+   "passed": true,
+   "observed": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
+   "expected": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+  },
+  {
+   "name": "manifest preset wins over html preset",
+   "passed": true,
+   "observed": "journal",
+   "expected": "journal"
+  },
+  {
+   "name": "vetted root lang copied",
+   "passed": true,
+   "observed": "en",
+   "expected": "en"
+  },
+  {
+   "name": "html event handler dropped",
+   "passed": true,
+   "observed": false,
+   "expected": false
+  },
+  {
+   "name": "manifest token applied on root",
+   "passed": false,
+   "observed": "light-dark(#fff4e9, #251e1a)",
+   "expected": "#112233"
+  }
+ ],
+ "evidence_class": "Direct real plugin tool handlers, actual isolated Desktop guest, no model generation",
+ "commit": "234134b6fd2a8553041664d8ad7cbf827a6df230",
+ "fixture_removed": true,
+ "passed": 5,
+ "total": 6
+}

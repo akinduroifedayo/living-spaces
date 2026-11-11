@@ -1,0 +1,88 @@
+{
+ "checks": [
+  {
+   "name": "binary create stores exact PNG bytes",
+   "passed": true,
+   "observed": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
+   "expected": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+  },
+  {
+   "name": "binary read then write retains bytes",
+   "passed": true,
+   "observed": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
+   "expected": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+  },
+  {
+   "name": "manifest preset wins over html preset",
+   "passed": true,
+   "observed": "journal",
+   "expected": "journal"
+  },
+  {
+   "name": "vetted root lang copied",
+   "passed": true,
+   "observed": "en",
+   "expected": "en"
+  },
+  {
+   "name": "html event handler dropped",
+   "passed": true,
+   "observed": false,
+   "expected": false
+  },
+  {
+   "name": "manifest token applied on root",
+   "passed": true,
+   "observed": "#112233",
+   "expected": "#112233"
+  },
+  {
+   "name": "app CSS overrides manifest tokens",
+   "passed": true,
+   "observed": "rgb(7, 8, 9)",
+   "expected": "rgb(7, 8, 9)"
+  },
+  {
+   "name": "htm renders through offline import map",
+   "passed": true,
+   "observed": "An htm module rendered this.",
+   "expected": "An htm module rendered this."
+  },
+  {
+   "name": "Lucide creates SVG inside actual frame",
+   "passed": true,
+   "observed": 1,
+   "expected": 1
+  },
+  {
+   "name": "dynamic space.asset PNG decodes in Chromium",
+   "passed": true,
+   "observed": 1,
+   "expected": 1
+  },
+  {
+   "name": "asset URLs are frame-local blobs",
+   "passed": true,
+   "observed": true,
+   "expected": true
+  },
+  {
+   "name": "WOFF2 loads through guest asset resolver",
+   "passed": true,
+   "observed": 1,
+   "expected": 1
+  },
+  {
+   "name": "font face is loaded",
+   "passed": true,
+   "observed": "loaded",
+   "expected": "loaded"
+  }
+ ],
+ "evidence_class": "Direct real plugin tool handlers, actual isolated Desktop guest, no model generation",
+ "commit": "234134b6fd2a8553041664d8ad7cbf827a6df230",
+ "completed": true,
+ "fixture_removed": true,
+ "passed": 13,
+ "total": 13
+}
