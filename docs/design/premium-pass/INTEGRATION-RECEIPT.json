@@ -3,7 +3,8 @@
   "receiving_base": "cd5a6ae463bbb3e5a3e66ceff3bb89319a8fdbfd",
   "skill_prefix_unchanged_except_exact_optional_css_sentence": true,
   "skill_suffix_unchanged": true,
-  "design_section_exact": true,
+  "design_section_exact_at_import": true,
+  "post_import_correction": "Removed dangling references/showcase/README.md link because earlier branch references were intentionally excluded; no capability prose changed.",
   "files": [
     {
       "source": "/Volumes/Expansion/Development/Build/premium-baseline-t_c75659a7/CRITIQUE-AND-PROMPTS.md",
