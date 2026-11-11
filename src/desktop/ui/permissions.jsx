@@ -2,16 +2,27 @@ import { Badge, ErrorState, Skeleton, useQuery } from '@hermes/plugin-sdk'
 import { useRef, useState } from 'react'
 import { Action, Banner, DecisionDialog, Drawer, Icon, OwnerChip, StatusPill, Time } from './components.jsx'
 import { CATCH_UP, errorText, spacePath } from './model.mjs'
-import { WEBRTC_NOTE } from '../sandbox/index.js'
 
+const NET_DESCRIPTION = "This Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces."
+const NET_OFF_DESCRIPTION = "This Space can't load content from or send data to the internet through Internet access."
+const NET_OFF_NOTE = "Off is not a complete block. A browser feature called WebRTC can still send data this Space can read. It still can't reach Hermes, your credentials, your files or other Spaces."
 const CAPABILITIES = {
-  data: { name: 'Own data', icon: 'folder', scope: "This Space's records only. Cannot see other Spaces.", purpose: 'Store your records, notes and statuses.', leaves: 'No ordinary network access. Space-readable data is subject to the WebRTC limit above.' },
+  data: { name: 'Own data', icon: 'folder', scope: "This Space's records only. Cannot see other Spaces.", purpose: 'Store your records, notes and statuses.', leaves: 'This grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off.' },
   refresh: { name: 'Refresh', icon: 'refresh', purpose: 'Keep public-source records current.', leaves: 'Yes · requests the approved public sources through Hermes.' },
   logs: { name: 'Diagnostics', icon: 'info', scope: 'Error logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.', purpose: 'Let the owner see crashes and repair them.', leaves: 'No ordinary network access. The owner can read these logs in chat.' }
 }
 const FUTURE = ['Approved sites', 'Camera', 'Microphone', 'Location', 'Hermes tools (per tool)', 'Files and folders', 'Cross-Space access', 'Agent requests']
 export function WebRTCNote() {
-  return <div className="ls-disclosure" data-testid="webrtc-note"><strong><Icon name="info" /> Before you approve anything</strong><p>{WEBRTC_NOTE}</p></div>
+  return <div className="ls-disclosure" data-testid="webrtc-note"><strong><Icon name="info" /> Before you approve anything</strong><p>{NET_OFF_NOTE}</p></div>
+}
+function InternetAccess({ grant, onDecide, busy }) {
+  const enabled = grant.status === 'granted'
+  return <section className="ls-section"><article className="ls-grant" data-testid="internet-access">
+    <div className="ls-row-top"><strong>Internet access</strong><Action role="switch" aria-label="Internet access" aria-checked={enabled} aria-describedby="ls-net-description" disabled={busy} onClick={() => onDecide(grant, enabled ? 'revoke' : 'grant')}>{enabled ? 'On' : 'Off'}</Action></div>
+    <p id="ls-net-description" className="ls-secondary">{enabled ? NET_DESCRIPTION : NET_OFF_DESCRIPTION}</p>
+    {grant.status === 'requested' && <div className="ls-actions"><Action primary disabled={busy} onClick={() => onDecide(grant, 'grant')}>Approve</Action><Action disabled={busy} onClick={() => onDecide(grant, 'deny')}>Deny</Action></div>}
+    {!enabled && <WebRTCNote />}
+  </article></section>
 }
 export function GrantCard({ grant, onDecide, busy }) {
   const model = CAPABILITIES[grant.capability]
@@ -24,9 +35,11 @@ export function GrantCard({ grant, onDecide, busy }) {
   </article>
 }
 export function PermissionsContent({ space, grants, audit = [], schedule, onDecide, onSchedule, busy = false }) {
-  const pending = grants.filter(g => g.status === 'requested')
-  const settled = grants.filter(g => g.status !== 'requested')
+  const net = grants.find(g => g.capability === 'net')
+  const pending = grants.filter(g => g.capability !== 'net' && g.status === 'requested')
+  const settled = grants.filter(g => g.capability !== 'net' && g.status !== 'requested')
   return <>
+    {net && <InternetAccess grant={net} onDecide={onDecide} busy={busy} />}
     <section className="ls-section"><h2 className="ls-section-title">Granted to {space.name}</h2>{settled.map(g => <GrantCard key={g.capability} grant={g} onDecide={onDecide} busy={busy} />)}{!settled.length && <p>No grants approved yet.</p>}</section>
     <section className="ls-section"><h2 className="ls-section-title">Waiting for your decision</h2>{pending.map(g => <GrantCard key={g.capability} grant={g} onDecide={onDecide} busy={busy} />)}
       {schedule?.status === 'requested' && <article className="ls-grant ls-pending"><div className="ls-row-top"><strong><Icon name="watch" />Scheduled upkeep</strong><StatusPill status="requested" /></div><dl className="ls-facts"><div><dt>Cadence</dt><dd>{schedule.cadence}</dd></div><div><dt>Timezone</dt><dd>{schedule.timezone}</dd></div><div><dt>Purpose</dt><dd>{schedule.purpose}</dd></div><div><dt>Owner</dt><dd>{space.owner}</dd></div><div><dt>Cost</dt><dd>No model calls</dd></div></dl><p>{CATCH_UP}</p><div className="ls-actions"><Action primary disabled={busy} onClick={() => onSchedule('approve')}>Approve</Action><Action disabled={busy} onClick={() => onSchedule('deny')}>Deny</Action></div></article>}
@@ -45,7 +58,7 @@ export function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }
   const [error, setError] = useState('')
   const lock = useRef(false)
   async function decide(grant, decision) {
-    if (decision === 'revoke') { setRevoke(grant); return }
+    if (decision === 'revoke' && grant.capability !== 'net') { setRevoke(grant); return }
     await change(`${base}/grants/${grant.capability}`, { decision, ...(decision === 'grant' ? { requested_scope: grant.requested_scope ?? grant.scope ?? {} } : {}) })
   }
   async function change(path, body) {
@@ -61,7 +74,7 @@ export function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }
     }
     finally { lock.current = false; setBusy(false) }
   }
-  return <><Drawer title={`Permissions · ${space.name}`} description="Review this Space's access and schedule requests." onClose={onClose} note={<WebRTCNote />} returnFocus={returnFocus}>
+  return <><Drawer title={`Permissions · ${space.name}`} description="Review this Space's access and schedule requests." onClose={onClose} returnFocus={returnFocus}>
     {error && <Banner kind="failed" title={error} />}
     {query.error || schedule.error ? <ErrorState title="Permissions could not be loaded" description={errorText(query.error || schedule.error)}><Action onClick={() => { query.refetch(); schedule.refetch() }}>Try again</Action></ErrorState> : query.isLoading ? <Skeleton style={{ height: 180 }} /> : <PermissionsContent space={space} grants={query.data?.grants || []} audit={query.data?.audit || []} schedule={schedule.data} onDecide={decide} onSchedule={decision => change(`${base}/schedule`, { decision })} busy={busy} />}
   </Drawer>{revoke && <DecisionDialog danger title={`Revoke ${CAPABILITIES[revoke.capability].name} for ${space.name}?`} description={revoke.capability === 'refresh' ? "Scheduled upkeep pauses and manual refreshes stop. Approve Refresh in Permissions, then resume upkeep to restart scheduled refreshes. Data already delivered to the Space can't be recalled, and completed requests can't be undone." : `The Space loses ${CAPABILITIES[revoke.capability].name.toLowerCase()} access. Data already delivered to the Space can't be recalled, and completed requests can't be undone.`} cancelLabel="Keep access" confirmLabel="Revoke" onClose={() => setRevoke(null)} onConfirm={async () => { await ctx.rest(`${base}/grants/${revoke.capability}`, { method: 'POST', body: { decision: 'revoke' } }); await query.refetch(); await onChanged() }} />}</>

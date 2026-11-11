@@ -1,9 +1,10 @@
 """The frame's sole backend entry point. Identity comes from the bound session."""
-from . import db, grants, limits, logs, records, sessions
+from . import db, grants, limits, logs, net, records, sessions
 from .errors import SpacesError
 
 _OPS = {
     "meta": (None, set(), set()),
+    "net.fetch": ("net", {"url"}, {"method", "headers", "body", "as"}),
     "data.query": ("data", {"collection"}, {"where", "order", "limit", "offset"}),
     "data.get": ("data", {"collection", "id"}, set()),
     "data.put": ("data", {"collection", "data"}, {"id", "base_rev", "merge"}),
@@ -38,6 +39,10 @@ def _mutate(sid, session, op, args):
 
 
 def _call(sid, session, op, args):
+    if op == "net.fetch":
+        clean = args.copy()
+        clean["as_"] = clean.pop("as", "text")
+        return net.fetch(sid, **clean)
     if op == "meta":
         with db.read() as conn:
             row = db.space(conn, sid)

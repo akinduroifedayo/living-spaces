@@ -95,6 +95,8 @@ def connect() -> sqlite3.Connection:
             try:
                 if "reason" not in {row["name"] for row in conn.execute("PRAGMA table_info(schedules)")}:
                     conn.execute("ALTER TABLE schedules ADD COLUMN reason TEXT")
+                from .migrations import grant_internet_access
+                grant_internet_access(conn)
                 conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 conn.execute("COMMIT")
             except BaseException:
