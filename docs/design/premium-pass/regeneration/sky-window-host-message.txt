@@ -1,0 +1,35 @@
+ut I haven't run it. I haven't loaded a live forecast or checked the UI, and the Space logs were empty both before and after the edit.
+
+The cause: unwrap() only returned a payload when the response had a body property. The real response has json instead, so the function handed the whole {status, url, headers, json} object back. The shape check then saw no current or daily data and reported "incomplete forecast".
+
+What changed: I saved one revision, 4, touching only weather.js. unwrap() now does this:
+
+It rejects a response that isn't an object with a numeric status.
+It treats any status outside 200–299 as an HTTP error, and includes Open-Meteo's reason text when there is one.
+It returns res.json as a property, not a method call.
+
+Unchanged:
+
+Network: space.net.fetch(..., {as:'json'}) is still the only network route.
+Saved data: the three cities and their favourite flags are untouched.
+Permissions: no grants changed, and none are pending.
+App: the Today, Week and Cities views and the design are untouched, and no other Space was touched.
+
+The edit tool flagged weather.js and the bundled lightweight-charts file for containing a network URL. In weather.js that is the Open-Meteo address passed to space.net.fetch. The warning is expected and doesn't change how it runs.
+
+Please reload Sky Window. If any city still shows an error, send me the message and I'll read the logs again.
+
+Sky Window
+H
+Hermes
+Ready
+Revision 4
+Open Space
+2:02 AM
+Give my Sky Window Space a fresh, polished design that you'd enjoy leaving open. Keep live Open-Meteo weather for Chicago, Lisbon and Tokyo, current conditions, today's range and a seven-day forecast, plus adding, removing and favouriting cities. Keep my saved cities and preferences. Make it work well on my phone too. You choose the visual direction.
+6:52 AM
+Claude Subscription DirectSDK (Experimental) is busy right now
+You've hit Claude Subscription DirectSDK (Experimental)'s rate limit. Wait a moment, then retry.
+Retry
+View error details
+Your request was not processed. Send it again if you still want me to carry it out.

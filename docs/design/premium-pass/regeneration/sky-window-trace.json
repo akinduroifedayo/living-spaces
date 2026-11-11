@@ -1,0 +1,20 @@
+[
+  {
+    "role": "user",
+    "content": "Give my Sky Window Space a fresh, polished design that you'd enjoy leaving open. Keep live Open-Meteo weather for Chicago, Lisbon and Tokyo, current conditions, today's range and a seven-day forecast, plus adding, removing and favouriting cities. Keep my saved cities and preferences. Make it work well on my phone too. You choose the visual direction.",
+    "tool_calls": null,
+    "tool_call_id": null,
+    "tool_name": null,
+    "timestamp": 1794401531.674031,
+    "finish_reason": null
+  },
+  {
+    "role": "assistant",
+    "content": "Your request was not processed. Send it again if you still want me to carry it out.",
+    "tool_calls": null,
+    "tool_call_id": null,
+    "tool_name": null,
+    "timestamp": 1794401545.5708811,
+    "finish_reason": null
+  }
+]
