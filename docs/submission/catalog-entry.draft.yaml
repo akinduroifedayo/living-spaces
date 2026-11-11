@@ -1,41 +1,31 @@
 # Draft of plugin-catalog/living-spaces.yaml for NousResearch/hermes-agent.
 # Not submitted. Catalog submission needs separate owner approval (docs/evidence/R1-STATUS.md).
-# Before submission: replace PIN_AT_SUBMISSION with the full 40-character commit SHA,
-# delete these comment lines, and run `hermes plugins validate <checkout> --install-deps`
-# against that exact commit.
+# Forge replaces the placeholder only after validating the final candidate commit.
+# The repository is private. Publication and a catalog PR need Ife approval.
 name: living-spaces
 repo: https://github.com/akinduroifedayo/living-spaces
-sha: PIN_AT_SUBMISSION
+sha: PIN_40_CHAR_SHA_AT_FINAL_COMMIT
 subdir: src/living-spaces
 title: Living Spaces
-description: >-
-  Build persistent multi-view applications from normal Hermes chat and use them in a Desktop
-  Spaces tab. Chat and the app read and change the same structured records. Code revisions
-  can be restored without rewinding saved data. Spaces can refresh records from public RSS or
-  Atom feeds, manually or on a schedule the user approves per Space. Provides 13 spaces_*
-  tools, the build-space skill, dashboard API routes and a Desktop route, sidebar entry and
-  Open Space transcript card. Disclosure: the Hermes host fetches feeds over HTTPS GET only
-  from hosts the user approves for that Space, follows redirects only on the same host,
-  caps a response at 3 MB and 200 entries, and sends no credentials; approving a schedule
-  writes <HERMES_HOME>/scripts/living-spaces-refresh-<space-id>.py and creates a native no-agent
-  Hermes cron job that runs it while Hermes is running; schedules import the undocumented
-  cron.jobs module (validator warning); data is stored in
-  <HERMES_HOME>/plugin-data/living-spaces/spaces.db; the plugin runs no shell commands, stores
-  no credentials and sends no telemetry; generated apps block ordinary network paths, but
-  WebRTC can still send data a Space can read.
+description: Build persistent applications in the Spaces tab and keep their data current with approved refreshes.
 maintainer: akinduroifedayo
 tier: community
 category: desktop
 requires_hermes: ">=0.23.1"
 version: "0.1.0"
-# TODO(verify): qualification evidence covers macOS only. Confirm Linux and Windows before
-# leaving platforms empty, or list [macos].
-platforms: []
+# Qualification evidence covers macOS only; Linux and Windows are unqualified.
+platforms: [macos]
 known_issues:
+  - "Release 1 acceptance is incomplete. See docs/evidence/R1-STATUS.md in the repository for observed, partial and pending checks."
+  - "Schedules import the private cron.jobs API. Validation passes with a warning; compatibility and catalog maintainer review remain open."
   - "Spaces block ordinary internet connections unless you approve a site or capability. This is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle."
-  - "Scheduled refresh runs only while Hermes is running. Runs one current refresh when Hermes wakes. Missed intervals aren't replayed."
-# TODO(verify): add up to 6 screenshots pinned to the submission SHA on raw.githubusercontent.com.
+  - "Scheduled refresh runs only while Hermes is running. Catch-up policy: runs one current refresh when Hermes wakes; missed intervals are not replayed. Offline catch-up remains unqualified."
+# Pending Forge: capture final screenshots after Miro's design kit merges.
+# Add up to 6 GitHub-hosted screenshots pinned to the final candidate SHA.
 screenshots: []
+# plugin.yaml declares no host capabilities (capabilities: []).
+# The catalog schema below summarizes registrations, not host permissions.
+# Desktop surface: desktop/plugin.js; /spaces route, Spaces sidebar, living-space card.
 capabilities:
   provides_tools:
     - spaces_list

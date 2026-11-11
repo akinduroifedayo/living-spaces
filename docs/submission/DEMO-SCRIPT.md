@@ -13,9 +13,11 @@ These rules come from SPEC section 6 and `docs/evidence/R1-STATUS.md`.
   retrieval.
 - Model turns take longer than their shot budget. Cut the wait and show an on-screen
   caption, "Time compressed", on every cut shot. List every cut in the video description.
-- Shots 6 to 8 depend on checks that R1-STATUS lists as pending: R1-05 (grant panel) and
-  R1-06 (real public retrieval). Record them only from a verified run. If a check is still
-  unverified at recording time, remove the shot or caption it as a known limitation.
+- R1-05 and R1-06 now have partial evidence for host grants and real arXiv retrieval.
+  Record shots 6 to 8 from a verified final-candidate run; these shots do not pass
+  the remaining authority/concurrency checks. R1-01 and R1-12 remain pending.
+- Final footage and screenshots follow Miro's design kit merge and Forge's serial
+  qualification. The demo is planned, not recorded. Publication needs Ife approval.
 - If the arXiv feed has no new entries at recording time, show the truthful no-change
   result. Do not edit records to manufacture an update.
 - Do not use the schedule qualification harness for footage. It overwrites a source title
@@ -32,9 +34,9 @@ These rules come from SPEC section 6 and `docs/evidence/R1-STATUS.md`.
 | 5 | 0:30 to 0:39 | 9 s | Split view: chat on one side, the open Space on the other. Chat: "Mark the paper with my demo note as completed." The paper's status in the open app changes to completed without a reload. Caption: "Time compressed". | "Chat changes the same record while the app stays open." |
 | 6 | 0:39 to 0:47 | 8 s | Open **Permissions**. Hold on the "Before you approve anything" note with the full WebRTC text, then the Refresh card showing `export.arxiv.org` and its purpose. | "Permissions belong to the host. This note states the network limit plainly." |
 | 7 | 0:47 to 0:52 | 5 s | Click **Approve** on the Refresh grant. Status changes to granted. | "I approve refresh for one public feed host." |
-| 8 | 0:52 to 1:00 | 8 s | Click **Refresh now**. The run result shows the count of added records. Open the paper from shot 4 in Library: the demo note and completed status are still there. | "New arXiv papers arrive. My note and status stay." |
+| 8 | 0:52 to 1:00 | 8 s | Click **Refresh now**. Show the actual run status and changed counts, including zero if unchanged. Open the paper from shot 4 in Library: the demo note and completed status are still there. | "Refresh checks arXiv. The result is recorded, and my note and status stay." |
 | 9 | 1:00 to 1:08 | 8 s | Open the schedule sheet. A model-requested daily schedule shows cadence, timezone and next eligible run. Click **Approve**, then show the **Pause upkeep** control. | "A schedule runs only after I approve it, and I can pause it." |
-| 10 | 1:08 to 1:15 | 7 s | Open **History**. Show the run list with trigger, status and changed counts, then the code revisions tab. | "History shows every run and every code revision." |
+| 10 | 1:08 to 1:15 | 7 s | Open **History**. Show the run list with trigger, status and changed counts, then the code revisions tab. | "I can inspect refresh runs and code revisions here." |
 | 11 | 1:15 to 1:23 | 8 s | Return to the Spaces index. Open Pair Play, play two cards, then open its Progress view. | "The same path builds other apps, like this memory game." |
 
 Total: 83 seconds.
@@ -50,14 +52,19 @@ Total: 83 seconds.
 - Shot 6: the WebRTC note must be readable on screen for the full shot. Do not crop it.
 - Shot 8: if the run shows zero added records, change the voiceover to "No new papers
   today. The run is recorded, and my note stays."
-- Shot 9: R1-STATUS records approval and pause through the host controls. The next run time
-  in the sheet comes from the native cron job.
+- Shot 9: show the copy that schedules need Hermes running. R1-STATUS records
+  approval and pause through host controls; catch-up remains unobserved. Show the
+  next eligible time from the native job, not a fabricated countdown. Forge must
+  pause/remove the demo schedule after recording.
 - Shot 11: R1-STATUS records Pair Play's Progress view working after a restart. Do not
   claim the restart in voiceover unless it is shown.
 
 ## Screenshot capture list
 
-Capture these stills from the same recording for the PR description:
+Capture these stills only after Miro's design kit merges and Forge verifies the
+final candidate. The catalog gallery permits at most six images; use the Open
+Space card, Library with demo note, Permissions, refresh result, schedule and Pair
+Play stills there. Extra stills may go in the PR description. Capture list:
 `chat-request-open-space-card`, `research-desk-library`, `research-desk-queue-with-note`,
 `permissions-panel-webrtc-note`, `refresh-run-result`, `schedule-approved-pause-control`,
 `history-runs`, `pair-play-memory-game`.
