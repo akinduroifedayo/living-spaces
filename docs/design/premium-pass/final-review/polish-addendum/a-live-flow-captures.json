@@ -1,0 +1,735 @@
+[
+  {
+    "route": "#/spaces?space=research-desk",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [
+      {
+        "title": "Space: Research Desk",
+        "rect": {
+          "x": 273,
+          "y": 114.5,
+          "width": 1404,
+          "height": 710.5,
+          "top": 114.5,
+          "right": 1677,
+          "bottom": 825,
+          "left": 273
+        }
+      }
+    ],
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 50 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "#/library",
+      "w": 1404,
+      "h": 711,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence\nPUBLIC RESEARCH \u00b7 cs.AI\nRefresh\nOverview\nLibrary\nReading queue\nPriority review\nLibrary\nAdd a paper\nSearch papers\n(title, summary, authors, notes)\n\n2 of 47 papers match your search\n\nLogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQueued\nNormal priority\nAttention Is All You Need\nCompleted\nHigh priority\nDemo\nREADING ROOM\nDemo paper\nAttention Is All You Need\n\nVaswani et al.\n\nABSTRACT\n\nIntroduces the Transformer, a sequence model built entirely on attention instead of recurrence or convolution. It trains faster and set new translation benchmarks at the time.\n\nSOURCE URL\nhttps://arxiv.org/abs/1706.03762\n\nDemonstration paper; summary written by Hermes, not fetched from the feed.\n\nYour reading record\nStatus\nQueued\nReading\nCompleted\nPriority\nHigh\nNormal\nLow\nNotes\nCtrl / Cmd + Enter to save\nSave changes\n\u25cb Ready\nRESEARCH DESK / arXiv cs.AI\nPublic sources. Your own perspective.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        },
+        {
+          "text": "",
+          "label": null
+        },
+        {
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQueued\nNormal priority",
+          "label": null
+        },
+        {
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "label": null
+        },
+        {
+          "text": "Save changes",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-research-detail-desktop.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  },
+  {
+    "route": "#/spaces?space=research-desk",
+    "w": 390,
+    "h": 844,
+    "dpr": 1,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "frames": [
+      {
+        "title": "Space: Research Desk",
+        "rect": {
+          "x": 101.640625,
+          "y": 174.5,
+          "width": 275.34375,
+          "height": 636.5,
+          "top": 174.5,
+          "right": 376.984375,
+          "bottom": 811,
+          "left": 101.640625
+        }
+      }
+    ],
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 50 min. ago \u00b7 Source data from 20 hr. ago\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "#/library",
+      "w": 275,
+      "h": 637,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence\nRefresh\nOverview\nLibrary\nReading queue\nPriority review\nLibrary\nAdd a paper\nSearch papers\n(title, summary, authors, notes)\n\n2 of 47 papers match your search\n\nLogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQueued\nNormal priority\nAttention Is All You Need\nCompleted\nHigh priority\nDemo\nREADING ROOM\nDemo paper\nAttention Is All You Need\n\nVaswani et al.\n\nABSTRACT\n\nIntroduces the Transformer, a sequence model built entirely on attention instead of recurrence or convolution. It trains faster and set new translation benchmarks at the time.\n\nSOURCE URL\nhttps://arxiv.org/abs/1706.03762\n\nDemonstration paper; summary written by Hermes, not fetched from the feed.\n\nYour reading record\nStatus\nQueued\nReading\nCompleted\nPriority\nHigh\nNormal\nLow\nNotes\nCtrl / Cmd + Enter to save\nSave changes\n\u25cb Ready\nRESEARCH DESK / arXiv cs.AI\nPublic sources. Your own perspective.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        },
+        {
+          "text": "",
+          "label": null
+        },
+        {
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQueued\nNormal priority",
+          "label": null
+        },
+        {
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "label": null
+        },
+        {
+          "text": "Save changes",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-research-detail-390.png",
+    "crop": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 778
+    }
+  },
+  {
+    "route": "#/spaces?space=research-desk",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [
+      {
+        "title": "Space: Research Desk",
+        "rect": {
+          "x": 273,
+          "y": 114.5,
+          "width": 1404,
+          "height": 710.5,
+          "top": 114.5,
+          "right": 1677,
+          "bottom": 825,
+          "left": 273
+        }
+      }
+    ],
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 50 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+    "panels": [
+      "History & revisions\nClose\n\nHistory and code revisions for Research Desk\n\nRun history\nRevisions\nRefresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 11, 2026, 8:26 AM CST \u00b7 0.1 s\n\nno change \u00b7 20 unchanged\n\nRefresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 11, 2026, 7:57 AM CST \u00b7 0.1 s\n\n20 added \u00b7 0 updated \u00b7 0 unchanged\n\nRefresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 10, 2026, 7:46 PM CST \u00b7 0.1 s\n\nno change \u00b7 20 unchanged\n\nRefresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 10, 2026, 7:46 PM CST \u00b7 0.1 s\n\nno change \u00b7 20 unchanged\n\nRefresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 10, 2026, 7:26 PM CST \u00b7 0.1 s\n\nno change \u00b7 20 unchanged\n\nRefresh failed\nFailed\n\nmanual \u00b7 Nov 10, 2026, 7:26 PM CST \u00b7 0.3 s\n\narxiv-ai: Server error '503 Service Unavailable' for url 'https://export.arxiv.org/api/living-spaces-acceptance-missing-path' For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503\n\nRefresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 10, 2026, 7:26 PM CST \u00b7 0.4 s\n\nno change \u00b7 20 unchanged\n\nRefresh failed\nFailed\n\nmanual \u00b7 Nov 10, 2026, 7:26 PM CST \u00b7 0.7 s\n\narxiv-ai: Server error '503 Service Unavailable' for url 'https://export.arxiv.org/api/living-spaces-acceptance-missing-path' For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503\n\nRefresh failed\nFailed\n\nmanual \u00b7 Nov 10, 2026, 7:25 PM CST \u00b7 0.4 s\n\narxiv-ai: Server error '503 Service Unavailable' for url 'https://export.arxiv.org/api/living-spaces-acceptance-missing-path' For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:19 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:18 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:17 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:16 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:13 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:12 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:11 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:10 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:09 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:08 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:07 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:05 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:04 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:03 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:02 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:01 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:00 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 6:58 PM CST"
+    ],
+    "guest": {
+      "hash": "#/library",
+      "w": 1404,
+      "h": 711,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence\nPUBLIC RESEARCH \u00b7 cs.AI\nRefresh\nOverview\nLibrary\nReading queue\nPriority review\nLibrary\nAdd a paper\nSearch papers\n(title, summary, authors, notes)\n\n2 of 47 papers match your search\n\nLogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQueued\nNormal priority\nAttention Is All You Need\nCompleted\nHigh priority\nDemo\nREADING ROOM\nDemo paper\nAttention Is All You Need\n\nVaswani et al.\n\nABSTRACT\n\nIntroduces the Transformer, a sequence model built entirely on attention instead of recurrence or convolution. It trains faster and set new translation benchmarks at the time.\n\nSOURCE URL\nhttps://arxiv.org/abs/1706.03762\n\nDemonstration paper; summary written by Hermes, not fetched from the feed.\n\nYour reading record\nStatus\nQueued\nReading\nCompleted\nPriority\nHigh\nNormal\nLow\nNotes\nCtrl / Cmd + Enter to save\nSave changes\n\u25cb Ready\nRESEARCH DESK / arXiv cs.AI\nPublic sources. Your own perspective.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        },
+        {
+          "text": "",
+          "label": null
+        },
+        {
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQueued\nNormal priority",
+          "label": null
+        },
+        {
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "label": null
+        },
+        {
+          "text": "Save changes",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-research-desk-revisions.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  },
+  {
+    "route": "#/spaces?space=sky-window",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [
+      {
+        "title": "Space: Sky Window",
+        "rect": {
+          "x": 273,
+          "y": 114.5,
+          "width": 1404,
+          "height": 710.5,
+          "top": 114.5,
+          "right": 1677,
+          "bottom": 825,
+          "left": 273
+        }
+      }
+    ],
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "",
+      "w": 1404,
+      "h": 711,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "Sky Window\n\nPUBLIC WEATHER, SEVEN DAYS AHEAD\n\nToday\nWeek\nCities\n3 of 3 live \u00b7 retrieved 09:16 AM\nRefresh\nNEAR, FAR & EVERYWHERE\nYour places, under one sky.\nManage cities\nChicago\nOvercast\n9\u00b0\nLisbon\nOvercast\n18\u00b0\nTokyo\nMostly clear night\n10\u00b0\nA LITTLE PERSPECTIVE.\nDAYLIGHT \u00b7 09:15 GMT-6\nChicago\n\n41.88\u00b0 N / 87.63\u00b0 W\n\n9\n\u00b0C\nOvercast\n\n\u2191 11\u00b0\n\u2193 4\u00b0\nToday's range\n\nFeels like\n8\u00b0\nWind\n4 km/h\nHumidity\n88%\nRain today\n7.1 mm\n\nNov 11 \u00b7 Conditions as of 09:15 GMT-6 \u00b7 Retrieved 09:16 AM\n\nTHE DAYS AHEAD\nA week in Chicago\nDaily range \u00b7 \u00b0C\nToday\nNov 11\nRain\n4\u00b0\n11\u00b0\n74%\n\u00b7 7.1 mm\nThu\nNov 12\nSnow\n0\u00b0\n7\u00b0\n60%\n\u00b7 24.2 mm\nFri\nNov 13\nOvercast\n0\u00b0\n6\u00b0\n60%\n\u00b7 0.0 mm\nSat\nNov 14\nOvercast\n1\u00b0\n6\u00b0\n21%\n\u00b7 0.0 mm\nSun\nNov 15\nDrizzle\n4\u00b0\n8\u00b0\n3%\n\u00b7 0.2 mm\nMon\nNov 16\nOvercast\n6\u00b0\n9\u00b0\n2%\n\u00b7 0.0 mm\nTue\nNov 17\nClear sky\n4\u00b0\n11\u00b0\n0%\n\u00b7 0.0 mm\n\nLow to high, on a shared temperature scale. Rain chance and daily total below.\n\nWeather by Open-Meteo \u00b7 Local dates for every city.\n\u00b0C \u00b7 km/h \u00b7 mm \u00b7 Updates every 15 minutes while open.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        },
+        {
+          "text": "Chicago\nOvercast\n9\u00b0",
+          "label": null
+        },
+        {
+          "text": "Lisbon\nOvercast\n18\u00b0",
+          "label": null
+        },
+        {
+          "text": "Tokyo\nMostly clear night\n10\u00b0",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-loaded-desktop.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  },
+  {
+    "route": "#/spaces?space=sky-window",
+    "w": 390,
+    "h": 844,
+    "dpr": 1,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "frames": [
+      {
+        "title": "Space: Sky Window",
+        "rect": {
+          "x": 101.640625,
+          "y": 174.5,
+          "width": 275.34375,
+          "height": 636.5,
+          "top": 174.5,
+          "right": 376.984375,
+          "bottom": 811,
+          "left": 101.640625
+        }
+      }
+    ],
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "",
+      "w": 275,
+      "h": 637,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "Sky Window\nToday\nWeek\nCities\n3 of 3 live \u00b7 retrieved 09:16 AM\nRefresh\nYour places, under one sky.\nManage cities\nChicago\nOvercast\n9\u00b0\nLisbon\nOvercast\n18\u00b0\nTokyo\nMostly clear night\n10\u00b0\nDAYLIGHT \u00b7 09:15 GMT-6\nChicago\n\n41.88\u00b0 N / 87.63\u00b0 W\n\n9\n\u00b0C\nOvercast\n\n\u2191 11\u00b0\n\u2193 4\u00b0\nToday's range\n\nFeels like\n8\u00b0\nWind\n4 km/h\nHumidity\n88%\nRain today\n7.1 mm\n\nNov 11 \u00b7 Conditions as of 09:15 GMT-6 \u00b7 Retrieved 09:16 AM\n\nTHE DAYS AHEAD\nA week in Chicago\nDaily range \u00b7 \u00b0C\nToday\nNov 11\nRain\n4\u00b0\n11\u00b0\n74%\n\u00b7 7.1 mm\nThu\nNov 12\nSnow\n0\u00b0\n7\u00b0\n60%\n\u00b7 24.2 mm\nFri\nNov 13\nOvercast\n0\u00b0\n6\u00b0\n60%\n\u00b7 0.0 mm\nSat\nNov 14\nOvercast\n1\u00b0\n6\u00b0\n21%\n\u00b7 0.0 mm\nSun\nNov 15\nDrizzle\n4\u00b0\n8\u00b0\n3%\n\u00b7 0.2 mm\nMon\nNov 16\nOvercast\n6\u00b0\n9\u00b0\n2%\n\u00b7 0.0 mm\nTue\nNov 17\nClear sky\n4\u00b0\n11\u00b0\n0%\n\u00b7 0.0 mm\n\nLow to high, on a shared temperature scale. Rain chance and daily total below.\n\nWeather by Open-Meteo \u00b7 Local dates for every city.\n\u00b0C \u00b7 km/h \u00b7 mm \u00b7 Updates every 15 minutes while open.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        },
+        {
+          "text": "Chicago\nOvercast\n9\u00b0",
+          "label": null
+        },
+        {
+          "text": "Lisbon\nOvercast\n18\u00b0",
+          "label": null
+        },
+        {
+          "text": "Tokyo\nMostly clear night\n10\u00b0",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-loaded-390.png",
+    "crop": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 778
+    }
+  },
+  {
+    "route": "#/spaces?space=sky-window",
+    "w": 320,
+    "h": 844,
+    "dpr": 1,
+    "root": {
+      "x": 72.71875,
+      "y": 34,
+      "width": 247.265625,
+      "height": 790,
+      "top": 34,
+      "right": 319.984375,
+      "bottom": 824,
+      "left": 72.71875
+    },
+    "frames": [
+      {
+        "title": "Space: Sky Window",
+        "rect": {
+          "x": 85.71875,
+          "y": 212.5,
+          "width": 221.265625,
+          "height": 598.5,
+          "top": 212.5,
+          "right": 306.984375,
+          "bottom": 811,
+          "left": 85.71875
+        }
+      }
+    ],
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "",
+      "w": 221,
+      "h": 599,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "Sky Window\nToday\nWeek\nCities\n3 of 3 live \u00b7 retrieved 09:16 AM\nRefresh\nYour places, under one sky.\nManage cities\nChicago\nOvercast\n9\u00b0\nLisbon\nOvercast\n18\u00b0\nTokyo\nMostly clear night\n10\u00b0\nDAYLIGHT \u00b7 09:15 GMT-6\nChicago\n\n41.88\u00b0 N / 87.63\u00b0 W\n\n9\n\u00b0C\nOvercast\n\n\u2191 11\u00b0\n\u2193 4\u00b0\nToday's range\n\nFeels like\n8\u00b0\nWind\n4 km/h\nHumidity\n88%\nRain today\n7.1 mm\n\nNov 11 \u00b7 Conditions as of 09:15 GMT-6 \u00b7 Retrieved 09:16 AM\n\nTHE DAYS AHEAD\nA week in Chicago\nDaily range \u00b7 \u00b0C\nToday\nNov 11\nRain\n4\u00b0\n11\u00b0\n74%\n\u00b7 7.1 mm\nThu\nNov 12\nSnow\n0\u00b0\n7\u00b0\n60%\n\u00b7 24.2 mm\nFri\nNov 13\nOvercast\n0\u00b0\n6\u00b0\n60%\n\u00b7 0.0 mm\nSat\nNov 14\nOvercast\n1\u00b0\n6\u00b0\n21%\n\u00b7 0.0 mm\nSun\nNov 15\nDrizzle\n4\u00b0\n8\u00b0\n3%\n\u00b7 0.2 mm\nMon\nNov 16\nOvercast\n6\u00b0\n9\u00b0\n2%\n\u00b7 0.0 mm\nTue\nNov 17\nClear sky\n4\u00b0\n11\u00b0\n0%\n\u00b7 0.0 mm\n\nLow to high, on a shared temperature scale. Rain chance and daily total below.\n\nWeather by Open-Meteo \u00b7 Local dates for every city.\n\u00b0C \u00b7 km/h \u00b7 mm \u00b7 Updates every 15 minutes while open.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        },
+        {
+          "text": "Chicago\nOvercast\n9\u00b0",
+          "label": null
+        },
+        {
+          "text": "Lisbon\nOvercast\n18\u00b0",
+          "label": null
+        },
+        {
+          "text": "Tokyo\nMostly clear night\n10\u00b0",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-loaded-320.png",
+    "crop": {
+      "x": 72.71875,
+      "y": 34,
+      "width": 247.265625,
+      "height": 778
+    }
+  },
+  {
+    "route": "#/spaces?space=sky-window",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [
+      {
+        "title": "Space: Sky Window",
+        "rect": {
+          "x": 273,
+          "y": 114.5,
+          "width": 1404,
+          "height": 710.5,
+          "top": 114.5,
+          "right": 1677,
+          "bottom": 825,
+          "left": 273
+        }
+      }
+    ],
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+    "panels": [
+      "History & revisions\nClose\n\nHistory and code revisions for Sky Window\n\nRun history\nRevisions\nNo refresh runs yet."
+    ],
+    "guest": {
+      "hash": "",
+      "w": 1404,
+      "h": 711,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "Sky Window\n\nPUBLIC WEATHER, SEVEN DAYS AHEAD\n\nToday\nWeek\nCities\n3 of 3 live \u00b7 retrieved 09:16 AM\nRefresh\nNEAR, FAR & EVERYWHERE\nYour places, under one sky.\nManage cities\nChicago\nOvercast\n9\u00b0\nLisbon\nOvercast\n18\u00b0\nTokyo\nMostly clear night\n10\u00b0\nA LITTLE PERSPECTIVE.\nDAYLIGHT \u00b7 09:15 GMT-6\nChicago\n\n41.88\u00b0 N / 87.63\u00b0 W\n\n9\n\u00b0C\nOvercast\n\n\u2191 11\u00b0\n\u2193 4\u00b0\nToday's range\n\nFeels like\n8\u00b0\nWind\n4 km/h\nHumidity\n88%\nRain today\n7.1 mm\n\nNov 11 \u00b7 Conditions as of 09:15 GMT-6 \u00b7 Retrieved 09:16 AM\n\nTHE DAYS AHEAD\nA week in Chicago\nDaily range \u00b7 \u00b0C\nToday\nNov 11\nRain\n4\u00b0\n11\u00b0\n74%\n\u00b7 7.1 mm\nThu\nNov 12\nSnow\n0\u00b0\n7\u00b0\n60%\n\u00b7 24.2 mm\nFri\nNov 13\nOvercast\n0\u00b0\n6\u00b0\n60%\n\u00b7 0.0 mm\nSat\nNov 14\nOvercast\n1\u00b0\n6\u00b0\n21%\n\u00b7 0.0 mm\nSun\nNov 15\nDrizzle\n4\u00b0\n8\u00b0\n3%\n\u00b7 0.2 mm\nMon\nNov 16\nOvercast\n6\u00b0\n9\u00b0\n2%\n\u00b7 0.0 mm\nTue\nNov 17\nClear sky\n4\u00b0\n11\u00b0\n0%\n\u00b7 0.0 mm\n\nLow to high, on a shared temperature scale. Rain chance and daily total below.\n\nWeather by Open-Meteo \u00b7 Local dates for every city.\n\u00b0C \u00b7 km/h \u00b7 mm \u00b7 Updates every 15 minutes while open.",
+      "buttons": [
+        {
+          "text": "Refresh",
+          "label": null
+        },
+        {
+          "text": "Chicago\nOvercast\n9\u00b0",
+          "label": null
+        },
+        {
+          "text": "Lisbon\nOvercast\n18\u00b0",
+          "label": null
+        },
+        {
+          "text": "Tokyo\nMostly clear night\n10\u00b0",
+          "label": null
+        }
+      ]
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-window-revisions.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  },
+  {
+    "route": "#/spaces?space=pair-play",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [
+      {
+        "title": "Space: Pair Play",
+        "rect": {
+          "x": 273,
+          "y": 114.5,
+          "width": 1404,
+          "height": 710.5,
+          "top": 114.5,
+          "right": 1677,
+          "bottom": 825,
+          "left": 273
+        }
+      }
+    ],
+    "header": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "#/history",
+      "w": 1404,
+      "h": 711,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "\u2733\nPair Play\nA LITTLE MOMENT OF FOCUS\nPlay\nProgress\nHistory\nHistory\nNo finished rounds yet\n\nMatch all six pairs on the Play view and your result will show up here.\n\nOnly completed rounds are recorded. Starting a new round mid-game does not add an entry.\n\nTWELVE CARDS. SIX CONNECTIONS.\nTake your time. Find your rhythm.",
+      "buttons": []
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-pair-history-desktop.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  },
+  {
+    "route": "#/spaces?space=pair-play",
+    "w": 390,
+    "h": 844,
+    "dpr": 1,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "frames": [
+      {
+        "title": "Space: Pair Play",
+        "rect": {
+          "x": 101.640625,
+          "y": 174.5,
+          "width": 275.34375,
+          "height": 636.5,
+          "top": 174.5,
+          "right": 376.984375,
+          "bottom": 811,
+          "left": 101.640625
+        }
+      }
+    ],
+    "header": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+    "panels": [],
+    "guest": {
+      "hash": "#/history",
+      "w": 275,
+      "h": 637,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "\u2733\nPair Play\nPlay\nProgress\nHistory\nHistory\nNo finished rounds yet\n\nMatch all six pairs on the Play view and your result will show up here.\n\nOnly completed rounds are recorded. Starting a new round mid-game does not add an entry.\n\nTWELVE CARDS. SIX CONNECTIONS.\nTake your time. Find your rhythm.",
+      "buttons": []
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-pair-history-390.png",
+    "crop": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 778
+    }
+  },
+  {
+    "route": "#/spaces?space=pair-play",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [
+      {
+        "title": "Space: Pair Play",
+        "rect": {
+          "x": 273,
+          "y": 114.5,
+          "width": 1404,
+          "height": 710.5,
+          "top": 114.5,
+          "right": 1677,
+          "bottom": 825,
+          "left": 273
+        }
+      }
+    ],
+    "header": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+    "panels": [
+      "History & revisions\nClose\n\nHistory and code revisions for Pair Play\n\nRun history\nRevisions\nNo refresh runs yet."
+    ],
+    "guest": {
+      "hash": "#/history",
+      "w": 1404,
+      "h": 711,
+      "scroll": [
+        0,
+        0
+      ],
+      "text": "\u2733\nPair Play\nA LITTLE MOMENT OF FOCUS\nPlay\nProgress\nHistory\nHistory\nNo finished rounds yet\n\nMatch all six pairs on the Play view and your result will show up here.\n\nOnly completed rounds are recorded. Starting a new round mid-game does not add an entry.\n\nTWELVE CARDS. SIX CONNECTIONS.\nTake your time. Find your rhythm.",
+      "buttons": []
+    },
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-pair-play-revisions.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  },
+  {
+    "route": "#/spaces?space=research-desk",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [
+      {
+        "title": "Space: Research Desk",
+        "rect": {
+          "x": 273,
+          "y": 114.5,
+          "width": 1404,
+          "height": 710.5,
+          "top": 114.5,
+          "right": 1677,
+          "bottom": 825,
+          "left": 273
+        }
+      }
+    ],
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 51 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+    "panels": [
+      "Permissions \u00b7 Research Desk\nClose\n\nReview this Space's access.\n\nInternet access\nOn\n\nThis Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.\n\nGranted to Research Desk\nOwn data\nAllowed\nScope\nThis Space's records only. Cannot see other Spaces.\nPurpose\nSave and use this Space's data\nData leaves device\nThis grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off.\nAccess\nContinuing\nRevoke\nDiagnostics\nAllowed\nScope\nError logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.\nPurpose\nDiagnose and repair this Space\nData leaves device\nNo ordinary network access. The owner can read these logs in chat.\nAccess\nContinuing\nRevoke\nWaiting for your decision\n\nNothing waiting for your decision.\n\nYour canvas and its bot\n\nAsk Hermes in a normal Hermes chat to build or change this canvas, use connected tools, or bring in files. Bot actions follow Hermes's native rules, not extra per-site, per-tool or device permissions here.\n\nCanvas controls that ask their maintaining bot need a working native bot connection. This panel does not submit a bot request.\n\nOwner\nH\nHermes\nAudit\nNov 10, 2026, 10:37 PM CST \u00b7 user \u00b7 decision net \u00b7 granted\nNov 10, 2026, 7:26 PM CST \u00b7 upkeep:schedule \u00b7 schedule.disabled \u00b7 disabled\nNov 10, 2026, 6:20 PM CST \u00b7 user \u00b7 decision refresh \u00b7 granted\nNov 10, 2026, 6:20 PM CST \u00b7 acceptance:trusted-host-fixture \u00b7 request refresh \u00b7 requested\nNov 10, 2026, 6:17 PM CST \u00b7 user \u00b7 decision refresh \u00b7 denied\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request refresh \u00b7 requested\nNov 10, 2026, 4:00 PM CST \u00b7 user \u00b7 decision logs \u00b7 granted\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request logs \u00b7 requested\nNov 10, 2026, 4:00 PM CST \u00b7 user \u00b7 decision data \u00b7 granted\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request data \u00b7 requested"
+    ],
+    "guest": null,
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-permissions-desktop.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  },
+  {
+    "route": "#/spaces?space=research-desk",
+    "w": 1690,
+    "h": 858,
+    "dpr": 1,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "frames": [
+      {
+        "title": "Space: Research Desk",
+        "rect": {
+          "x": 273,
+          "y": 114.5,
+          "width": 1404,
+          "height": 710.5,
+          "top": 114.5,
+          "right": 1677,
+          "bottom": 825,
+          "left": 273
+        }
+      }
+    ],
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 51 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+    "panels": [
+      "Upkeep \u00b7 Research Desk\nClose\n\nThe Hermes cron job that keeps this Space current\n\nPaused\n\nRefreshes from public sources. No model calls.\n\nRuns\n0 7 * * *\nAmerica/Chicago\nNext run\nPaused. Future runs stop until resumed. Already-running work may finish.\nLast result\nSucceeded \u00b7 Nov 10, 2026, 7:19 PM CST\n\nIf Hermes is asleep at run time, it runs once when it wakes. Missed runs aren't replayed.\n\nRun now\nResume\nRemove\nExecutions\nNov 10, 2026, 7:19 PM CST \u00b7 completed\nNov 10, 2026, 7:18 PM CST \u00b7 completed\nNov 10, 2026, 7:17 PM CST \u00b7 completed\nNov 10, 2026, 7:16 PM CST \u00b7 completed\nNov 10, 2026, 7:13 PM CST \u00b7 completed\nNov 10, 2026, 7:12 PM CST \u00b7 completed\nNov 10, 2026, 7:11 PM CST \u00b7 completed\nNov 10, 2026, 7:10 PM CST \u00b7 completed\nNov 10, 2026, 7:09 PM CST \u00b7 completed\nNov 10, 2026, 7:08 PM CST \u00b7 completed\nNov 10, 2026, 7:07 PM CST \u00b7 completed\nNov 10, 2026, 7:05 PM CST \u00b7 completed\nNov 10, 2026, 7:04 PM CST \u00b7 completed\nNov 10, 2026, 7:03 PM CST \u00b7 completed\nNov 10, 2026, 7:02 PM CST \u00b7 completed\nNov 10, 2026, 7:01 PM CST \u00b7 completed\nNov 10, 2026, 7:00 PM CST \u00b7 completed\nNov 10, 2026, 6:58 PM CST \u00b7 completed\nNov 10, 2026, 6:57 PM CST \u00b7 completed\nNov 10, 2026, 6:56 PM CST \u00b7 completed"
+    ],
+    "guest": null,
+    "image": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-upkeep-desktop.png",
+    "crop": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 792
+    }
+  }
+]

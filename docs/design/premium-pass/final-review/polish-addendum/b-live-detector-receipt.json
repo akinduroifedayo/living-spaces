@@ -1,0 +1,97 @@
+{
+  "command": "impeccable detect --cdp 9341 --target 'dist/index.html#/spaces' --json",
+  "exitCode": 2,
+  "counts": {
+    "low-contrast": 2,
+    "repeating-stripes-gradient": 1
+  },
+  "scope": [
+    {
+      "selector": "span.shrink-0.text-\\[0\\.64rem\\]",
+      "matches": [
+        {
+          "tag": "SPAN",
+          "inLivingSpaces": false,
+          "isDocumentBody": false
+        }
+      ]
+    },
+    {
+      "selector": "span.truncate.text-muted-foreground\\/80",
+      "matches": [
+        {
+          "tag": "SPAN",
+          "inLivingSpaces": false,
+          "isDocumentBody": false
+        }
+      ]
+    },
+    {
+      "selector": "body",
+      "matches": [
+        {
+          "tag": "BODY",
+          "inLivingSpaces": false,
+          "isDocumentBody": true
+        }
+      ]
+    }
+  ],
+  "finalState": {
+    "hash": "#/spaces?space=research-desk",
+    "w": 1690,
+    "h": 858,
+    "scroll": [
+      0,
+      0
+    ],
+    "theme": "dark",
+    "dialogs": 0,
+    "guest": {
+      "hash": "#/library",
+      "scroll": [
+        0,
+        0
+      ],
+      "search": "attention"
+    }
+  },
+  "finalStateMatchesOriginal": true,
+  "overflowVsInnerWidth": {
+    "b-live-sky-window-ready-900": -15,
+    "b-live-sky-window-ready-390": -15,
+    "b-live-sky-window-ready-320": 25,
+    "b-live-pair-play-ready-900": -15,
+    "b-live-pair-play-ready-390": -15,
+    "b-live-pair-play-ready-320": -14,
+    "b-live-research-desk-ready-900": -15,
+    "b-live-research-desk-ready-390": -15,
+    "b-live-research-desk-ready-320": 33
+  },
+  "screenshotFiles": [
+    "b-live-history.png",
+    "b-live-index-320.png",
+    "b-live-index-390.png",
+    "b-live-index-900.png",
+    "b-live-pair-play-native.png",
+    "b-live-pair-play-ready-320.png",
+    "b-live-pair-play-ready-390.png",
+    "b-live-pair-play-ready-900.png",
+    "b-live-permissions-390.png",
+    "b-live-permissions-after.png",
+    "b-live-permissions.png",
+    "b-live-research-320.png",
+    "b-live-research-390.png",
+    "b-live-research-900.png",
+    "b-live-research-desk-ready-320.png",
+    "b-live-research-desk-ready-390.png",
+    "b-live-research-desk-ready-900.png",
+    "b-live-revisions.png",
+    "b-live-sky-window-native.png",
+    "b-live-sky-window-ready-320.png",
+    "b-live-sky-window-ready-390.png",
+    "b-live-sky-window-ready-900.png",
+    "b-live-upkeep.png"
+  ],
+  "screenshotCount": 23
+}

@@ -1,0 +1,75 @@
+[
+  {
+    "space": "sky-window",
+    "revision_before": 11,
+    "revision_after": 12,
+    "record_count": 3,
+    "records_byte_equal_snapshot": true,
+    "grants_equal": true,
+    "manifest_equal": true,
+    "prompt_occurrences": 1,
+    "terminal_finish": "stop",
+    "session_route": {
+      "model": "gpt-6-astra",
+      "billing_provider": "openai-codex"
+    },
+    "picker": [
+      "GPT-6-astra \u00b7 Fast"
+    ],
+    "loaded_guidance": "existing session; not the source-only6e0f7b7 update",
+    "changed_project_files": [
+      "styles.css"
+    ],
+    "skill_manage_called": false,
+    "source_trace_sha256": "d3fe612d07cfb254e0e3209df0ee9817bc541d6f06db11ec2c789dd385526236"
+  },
+  {
+    "space": "research-desk",
+    "revision_before": 18,
+    "revision_after": 19,
+    "record_count": 47,
+    "records_byte_equal_snapshot": true,
+    "grants_equal": true,
+    "manifest_equal": true,
+    "prompt_occurrences": 1,
+    "terminal_finish": "stop",
+    "session_route": {
+      "model": "gpt-6-astra",
+      "billing_provider": "openai-codex"
+    },
+    "picker": [
+      "GPT-6-astra \u00b7 Fast"
+    ],
+    "loaded_guidance": "existing session; not the source-only6e0f7b7 update",
+    "changed_project_files": [
+      "views/library.js"
+    ],
+    "skill_manage_called": false,
+    "source_trace_sha256": "e2b60a80c3bfaa22251aaeec7eefea12e9d308eb974e7520dc5d7e0ff8387242"
+  },
+  {
+    "space": "pair-play",
+    "revision_before": 10,
+    "revision_after": 11,
+    "record_count": 2,
+    "records_byte_equal_snapshot": true,
+    "grants_equal": true,
+    "manifest_equal": true,
+    "prompt_occurrences": 1,
+    "terminal_finish": "stop",
+    "session_route": {
+      "model": "gpt-6-astra",
+      "billing_provider": "openai-codex"
+    },
+    "picker": [
+      "GPT-6-astra \u00b7 Fast"
+    ],
+    "loaded_guidance": "existing session; not the source-only6e0f7b7 update",
+    "changed_project_files": [
+      "fit.css",
+      "views/history.js"
+    ],
+    "skill_manage_called": false,
+    "source_trace_sha256": "02b71141c922ef3c464179a04bafc9410e9a77fca133d24918f5961377c10a24"
+  }
+]

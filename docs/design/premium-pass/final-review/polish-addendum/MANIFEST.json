@@ -1,0 +1,320 @@
+{
+  "createdAt": "2026-11-11T15:40:53.731Z",
+  "task": "t_e020f8d4",
+  "sourceInspectorTask": "t_b3b306df",
+  "destination": "docs/design/premium-pass/final-review/polish-addendum/",
+  "fileCount": 41,
+  "pngCount": 25,
+  "manifestSelfExcluded": true,
+  "entries": [
+    {
+      "path": "a-live-captures.json",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-captures.json",
+      "sha256": "d3f338b7c92d0a372807318c876958c18b7d75d54529efb0793b2b6a3a72ea54",
+      "bytes": 44138
+    },
+    {
+      "path": "a-live-final-captures.json",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-final-captures.json",
+      "sha256": "e321c84b0d6df67f5ac4b8653550586e4b6a036c2b3bce60034e0a0f01f6df35",
+      "bytes": 7075
+    },
+    {
+      "path": "a-live-flow-captures.json",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-flow-captures.json",
+      "sha256": "bdd3cbb00a8afd72151ab40f7b5be98c1b68e02a5944845d198474be297feeaa",
+      "bytes": 33226
+    },
+    {
+      "path": "a-live-index-390.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-index-390.png",
+      "sha256": "53e8269ddcbc49de6539b961c04f24d3afd51cb453e60b15730df77e15b60487",
+      "bytes": 60285,
+      "width": 301,
+      "height": 778
+    },
+    {
+      "path": "a-live-index-desktop.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-index-desktop.png",
+      "sha256": "ccf8a5875e77bab4a5b107546b773d2a8de05b044a8de66ee64e554f33fe54f5",
+      "bytes": 107814,
+      "width": 1430,
+      "height": 792
+    },
+    {
+      "path": "a-live-original.json",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-original.json",
+      "sha256": "ad3308953eda1c18c8ed1e319baf3708b36b32bfd54d6f3378f2437323d1b073",
+      "bytes": 226
+    },
+    {
+      "path": "a-live-pair-history-390.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-pair-history-390.png",
+      "sha256": "488207da1a3ced38613ccc192c582865e46c64d39ecf02dd1de0e56bd35ead65",
+      "bytes": 43310,
+      "width": 301,
+      "height": 778
+    },
+    {
+      "path": "a-live-pair-play-320.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-pair-play-320.png",
+      "sha256": "1aa764bee9e40e6d1d2262dd68bbe722f598759f9885f896394db8d909bcd284",
+      "bytes": 48236,
+      "width": 247,
+      "height": 778
+    },
+    {
+      "path": "a-live-pair-play-390.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-pair-play-390.png",
+      "sha256": "49894c3203999b2028674fea6861128e12f485011409827ee8963aad85f277fb",
+      "bytes": 54874,
+      "width": 301,
+      "height": 778
+    },
+    {
+      "path": "a-live-pair-play-desktop.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-pair-play-desktop.png",
+      "sha256": "090e8dcac9144fa6fd9320b49226a8fbf1f5ccc27221bb51193bd7e849ddb866",
+      "bytes": 116554,
+      "width": 1430,
+      "height": 792
+    },
+    {
+      "path": "a-live-pair-play-revision-proof.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-pair-play-revision-proof.png",
+      "sha256": "0b2f58e2a8f7699657a857c03b09e96fe3c84e8411806b750e9f2698b6c39315",
+      "bytes": 70669,
+      "width": 460,
+      "height": 858
+    },
+    {
+      "path": "a-live-permissions-desktop.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-permissions-desktop.png",
+      "sha256": "39a60f445176ba378071ab11c10987527ce2ad8933158e1d41e086171f538d16",
+      "bytes": 101050,
+      "width": 1430,
+      "height": 792
+    },
+    {
+      "path": "a-live-release.json",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-release.json",
+      "sha256": "ad3308953eda1c18c8ed1e319baf3708b36b32bfd54d6f3378f2437323d1b073",
+      "bytes": 226
+    },
+    {
+      "path": "a-live-research-desk-320.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-research-desk-320.png",
+      "sha256": "705588e9b2ee070ac5e1a877cd17763ad5afda4169200c08089527f2209102ad",
+      "bytes": 42924,
+      "width": 247,
+      "height": 778
+    },
+    {
+      "path": "a-live-research-desk-390.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-research-desk-390.png",
+      "sha256": "7851398374720970d89a407fa61ab2193c285014dcd75660662ad2c70f23c830",
+      "bytes": 52520,
+      "width": 301,
+      "height": 778
+    },
+    {
+      "path": "a-live-research-desk-desktop.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-research-desk-desktop.png",
+      "sha256": "2fd1bd0e99c88b6d1f3c9c1863996cad93515b3d1aa08aa97e4e7a65c8a09e4b",
+      "bytes": 130021,
+      "width": 1430,
+      "height": 792
+    },
+    {
+      "path": "a-live-research-desk-revision-proof.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-research-desk-revision-proof.png",
+      "sha256": "0be99b7f5d2e65425ce8b729a365d82dfbfcd6af0e1fdaada43a6c7e30134f95",
+      "bytes": 70804,
+      "width": 460,
+      "height": 858
+    },
+    {
+      "path": "a-live-research-detail-390.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-research-detail-390.png",
+      "sha256": "59efdf48c661466692fe079be73d260d885a5e3ec1e6e97f2abfedf927beca4a",
+      "bytes": 51587,
+      "width": 301,
+      "height": 778
+    },
+    {
+      "path": "a-live-research-detail-desktop.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-research-detail-desktop.png",
+      "sha256": "15179e20721bfe373611cdd0616ec1d60052dbf9bc74978b064dac0ff56e9461",
+      "bytes": 109440,
+      "width": 1430,
+      "height": 792
+    },
+    {
+      "path": "a-live-revision-receipts.json",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-revision-receipts.json",
+      "sha256": "07caa6c3c1d59bf7d92f9fe1974eed37616bb4115192c06d6c74fd92e6499cd7",
+      "bytes": 7009
+    },
+    {
+      "path": "a-live-sky-cities-390.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-cities-390.png",
+      "sha256": "4549c07c28d1042b8a416188f8910ccabaf0439728f7cb9ce69b135e33e2d89f",
+      "bytes": 75972,
+      "width": 301,
+      "height": 778
+    },
+    {
+      "path": "a-live-sky-loaded-320.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-loaded-320.png",
+      "sha256": "1f30257d56505940a7de956323eaa2c0b2de4582a54dc675a03c3d457153d5d8",
+      "bytes": 85229,
+      "width": 247,
+      "height": 778
+    },
+    {
+      "path": "a-live-sky-loaded-390.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-loaded-390.png",
+      "sha256": "784ead15152bb1e3113def89c9f30c4bb41fc9a9abf2c6f83c83f9ed10145ce6",
+      "bytes": 108621,
+      "width": 301,
+      "height": 778
+    },
+    {
+      "path": "a-live-sky-loaded-desktop.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-loaded-desktop.png",
+      "sha256": "348950db67d6299fc8932486830f06c545c918ca733468e603ad3206e14d7aa0",
+      "bytes": 394254,
+      "width": 1430,
+      "height": 792
+    },
+    {
+      "path": "a-live-sky-week-390.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-week-390.png",
+      "sha256": "cb5c141b939e8a33f101edac6c007161abf9f57922563641f559d9f966611bcb",
+      "bytes": 104046,
+      "width": 301,
+      "height": 778
+    },
+    {
+      "path": "a-live-sky-week-desktop.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-week-desktop.png",
+      "sha256": "8864d8663760450f09184ed15026da8b334e2efca8dc730e232613409df581c9",
+      "bytes": 300976,
+      "width": 1430,
+      "height": 792
+    },
+    {
+      "path": "a-live-sky-window-revision-proof.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-sky-window-revision-proof.png",
+      "sha256": "4ac67d12a6fce887b16ec2bbee3e2cdc03bed47190a56ad85d62adf0360ddcbb",
+      "bytes": 69912,
+      "width": 460,
+      "height": 858
+    },
+    {
+      "path": "a-live-upkeep-desktop.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live-upkeep-desktop.png",
+      "sha256": "b6a8d56047d13ded376ab22a31d6d7e099413c018b36cb2e7c2cda59ac030e1d",
+      "bytes": 133038,
+      "width": 1430,
+      "height": 792
+    },
+    {
+      "path": "a-live.md",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/a-live.md",
+      "sha256": "e2550b8c82a7edbff86f75092f4f957b557bd2560f0ad9621a37f30ac17a90e5",
+      "bytes": 15518
+    },
+    {
+      "path": "b-live-detector-receipt.json",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/b-live-detector-receipt.json",
+      "sha256": "78c1a6e83f0aef2f4be485918c9b34aa513287c4e55dfb6a86fbbd4db2b011ab",
+      "bytes": 2374
+    },
+    {
+      "path": "b-live-detector.json",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/b-live-detector.json",
+      "sha256": "4b2a04562b049106119d39d3310769cdba268e1ab2964bec6ed359a7edb902c8",
+      "bytes": 1703
+    },
+    {
+      "path": "b-live-evidence.json",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/b-live-evidence.json",
+      "sha256": "6b6f6fea16092bdeaa47256f77b388f14719b345326d90275ff70776eba786b7",
+      "bytes": 78114
+    },
+    {
+      "path": "b-live-final-receipt.json",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/b-live-final-receipt.json",
+      "sha256": "8461f83ac6649db2366a7121419c76ba7d5dad5767075e8409c3c26baf33a906",
+      "bytes": 34941
+    },
+    {
+      "path": "b-live-followup.json",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/b-live-followup.json",
+      "sha256": "bd73e1dcbb6f96d1ee3c74d6ea8eb970617e7789276409cbbaf9c867dbbd2167",
+      "bytes": 87099
+    },
+    {
+      "path": "b-live-permissions-390.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/b-live-permissions-390.png",
+      "sha256": "41af5c351685db9442bba6924e519a02a8ebe6a6e1562fadfd8ec42100f8ea63",
+      "bytes": 65746,
+      "width": 390,
+      "height": 788
+    },
+    {
+      "path": "b-live-research-900.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/b-live-research-900.png",
+      "sha256": "70f3465a198e5e242c68b538580d3edcde40f445e4d2f99300135e052996917e",
+      "bytes": 66196,
+      "width": 640,
+      "height": 788
+    },
+    {
+      "path": "b-live-research-desk-ready-320.png",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/b-live-research-desk-ready-320.png",
+      "sha256": "56cfffab0469dd04646bc0e231d61220b6abbcf5b1aacec4b42fbfb6d29dd566",
+      "bytes": 42924,
+      "width": 247,
+      "height": 788
+    },
+    {
+      "path": "b-live.md",
+      "source": "/Volumes/Expansion/Development/Build/r1-qualification-t_b3b306df/addendum/b-live.md",
+      "sha256": "8631c3298e3d37230de70fe11a66215bb4fc2cb716de1b36bd24262532cf614b",
+      "bytes": 13737
+    },
+    {
+      "path": "FINAL-POLISH-REVIEW.md",
+      "source": "Miro run1067 authored offline synthesis",
+      "sha256": "703d35dc5d5b5a82d5017793d94915044d3521ea59d951eae07793fbd7a86af5",
+      "bytes": 19874
+    },
+    {
+      "path": "polish-provenance-readback.json",
+      "source": "/Volumes/Expansion/Development/Projects/living-spaces-wt/.tmp/premium-review/polish-provenance-readback.json",
+      "sha256": "ef13e2372ae8009fc569afa1a0d25c57f0e6feb9feb3d5ce5aa5833d29c58563",
+      "bytes": 2093
+    },
+    {
+      "path": "README.md",
+      "source": "Miro run1067 authored offline synthesis",
+      "sha256": "bae362a4680b44dfd9ee3bb74a4cd96a75dfc77a9f145b8ced20bba4e897f123",
+      "bytes": 4101
+    }
+  ],
+  "checks": {
+    "copiedBytesMatchSources": true,
+    "pngSignaturesAndDimensionsValid": true,
+    "loadedRendererNormalizedMatch": true,
+    "recordGrantManifestPreservation": true,
+    "onePromptEach": true,
+    "finalStateRestored": true
+  },
+  "limits": [
+    "No new runtime execution by run1067",
+    "Functional mutation gaps remain",
+    "Superseded/uninspected auxiliary captures are not delivery images; original JSON references retained transparently"
+  ]
+}

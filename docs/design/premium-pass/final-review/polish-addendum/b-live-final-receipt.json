@@ -1,0 +1,1143 @@
+{
+  "research-desk": {
+    "currentRevision": "Revision 19\nCurrent",
+    "grants": {
+      "switches": [
+        {
+          "label": null,
+          "labelledby": "ls-net-title",
+          "checked": "true",
+          "rect": {
+            "x": 1608,
+            "y": 105,
+            "width": 44,
+            "height": 40,
+            "top": 105,
+            "right": 1652,
+            "bottom": 145,
+            "left": 1608
+          }
+        }
+      ],
+      "text": "Permissions \u00b7 Research Desk\nClose\n\nReview this Space's access.\n\nInternet access\nOn\n\nThis Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.\n\nGranted to Research Desk\nOwn data\nAllowed\nScope\nThis Space's records only. Cannot see other Spaces.\nPurpose\nSave and use this Space's data\nData leaves device\nThis grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off.\nAccess\nContinuing\nRevoke\nDiagnostics\nAllowed\nScope\nError logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.\nPurpose\nDiagnose and repair this Space\nData leaves device\nNo ordinary network access. The owner can read these logs in chat.\nAccess\nContinuing\nRevoke\nWaiting for your decision\n\nNothing waiting for your decision.\n\nYour canvas and its bot\n\nAsk Hermes in a normal Hermes chat to build or change this canvas, use connected tools, or bring in files. Bot actions follow Hermes's native rules, not extra per-site, per-tool or device permissions here.\n\nCanvas controls that ask their maintaining bot need a working native bot connection. This panel does not submit a bot request.\n\nOwner\nH\nHermes\nAudit\nNov 10, 2026, 10:37 PM CST \u00b7 user \u00b7 decision net \u00b7 granted\nNov 10, 2026, 7:26 PM CST \u00b7 upkeep:schedule \u00b7 schedule.disabled \u00b7 disabled\nNov 10, 2026, 6:20 PM CST \u00b7 user \u00b7 decision refresh \u00b7 granted\nNov 10, 2026, 6:20 PM CST \u00b7 acceptance:trusted-host-fixture \u00b7 request refresh \u00b7 requested\nNov 10, 2026, 6:17 PM CST \u00b7 user \u00b7 decision refresh \u00b7 denied\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request refresh \u00b7 requested\nNov 10, 2026, 4:00 PM CST \u00b7 user \u00b7 decision logs \u00b7 granted\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request logs \u00b7 requested\nNov 10, 2026, 4:00 PM CST \u00b7 user \u00b7 decision data \u00b7 granted\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request data \u00b7 requested"
+    },
+    "semantics": {
+      "controls": [
+        {
+          "tag": "A",
+          "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 56.15625,
+            "y": 33.1875,
+            "width": 293.859375,
+            "height": 64,
+            "top": 33.1875,
+            "right": 350.015625,
+            "bottom": 97.1875,
+            "left": 56.15625
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 1246.25,
+            "y": 56.390625,
+            "width": 86.59375,
+            "height": 44,
+            "top": 56.390625,
+            "right": 1332.84375,
+            "bottom": 100.390625,
+            "left": 1246.25
+          }
+        },
+        {
+          "tag": "A",
+          "text": "Overview",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 56.15625,
+            "y": 127.390625,
+            "width": 63.46875,
+            "height": 53,
+            "top": 127.390625,
+            "right": 119.625,
+            "bottom": 180.390625,
+            "left": 56.15625
+          }
+        },
+        {
+          "tag": "A",
+          "text": "Library",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 147.625,
+            "y": 127.390625,
+            "width": 48.0625,
+            "height": 53,
+            "top": 127.390625,
+            "right": 195.6875,
+            "bottom": 180.390625,
+            "left": 147.625
+          }
+        },
+        {
+          "tag": "A",
+          "text": "Reading queue",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 223.6875,
+            "y": 127.390625,
+            "width": 100.734375,
+            "height": 53,
+            "top": 127.390625,
+            "right": 324.421875,
+            "bottom": 180.390625,
+            "left": 223.6875
+          }
+        },
+        {
+          "tag": "A",
+          "text": "Priority review",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 352.421875,
+            "y": 127.390625,
+            "width": 97.984375,
+            "height": 53,
+            "top": 127.390625,
+            "right": 450.40625,
+            "bottom": 180.390625,
+            "left": 352.421875
+          }
+        },
+        {
+          "tag": "SUMMARY",
+          "text": "Add a paper",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 56.15625,
+            "y": 304.125,
+            "width": 101.671875,
+            "height": 44,
+            "top": 304.125,
+            "right": 157.828125,
+            "bottom": 348.125,
+            "left": 56.15625
+          }
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "aria": null,
+          "labelledby": null,
+          "labels": [
+            ""
+          ],
+          "rect": {
+            "x": 56.15625,
+            "y": 376.125,
+            "width": 1136.828125,
+            "height": 46,
+            "top": 376.125,
+            "right": 1192.984375,
+            "bottom": 422.125,
+            "left": 56.15625
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 1206.984375,
+            "y": 378.125,
+            "width": 125.859375,
+            "height": 44,
+            "top": 378.125,
+            "right": 1332.84375,
+            "bottom": 422.125,
+            "left": 1206.984375
+          }
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "aria": null,
+          "labelledby": null,
+          "labels": [
+            "Search papers\n(title, summary, authors, notes)"
+          ],
+          "rect": {
+            "x": 56.15625,
+            "y": 421.125,
+            "width": 488.65625,
+            "height": 46,
+            "top": 421.125,
+            "right": 544.8125,
+            "bottom": 467.125,
+            "left": 56.15625
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adapt",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 56.15625,
+            "y": 517.234375,
+            "width": 488.65625,
+            "height": 127.609375,
+            "top": 517.234375,
+            "right": 544.8125,
+            "bottom": 644.84375,
+            "left": 56.15625
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 56.15625,
+            "y": 645.84375,
+            "width": 488.65625,
+            "height": 103.84375,
+            "top": 645.84375,
+            "right": 544.8125,
+            "bottom": 749.6875,
+            "left": 56.15625
+          }
+        }
+      ],
+      "motion": [
+        "@media (prefers-reduced-motion: reduce) {\n  *, ::before, ::after { animation: auto ease 0s 1 normal none running none !important; transition: none !important; scroll-behavior: auto !important; }\n}"
+      ],
+      "animations": []
+    },
+    "ax": [
+      {
+        "role": "link",
+        "name": "Research Desk A field journal for artificial intelligence",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Refresh",
+        "ignored": false
+      },
+      {
+        "role": "link",
+        "name": "Overview",
+        "ignored": false
+      },
+      {
+        "role": "link",
+        "name": "Library",
+        "ignored": false
+      },
+      {
+        "role": "link",
+        "name": "Reading queue",
+        "ignored": false
+      },
+      {
+        "role": "link",
+        "name": "Priority review",
+        "ignored": false
+      },
+      {
+        "role": "heading",
+        "name": "Library",
+        "ignored": false
+      },
+      {
+        "role": "DisclosureTriangle",
+        "name": "Add a paper",
+        "ignored": false
+      },
+      {
+        "role": "searchbox",
+        "name": "Search papers (title, summary, authors, notes)",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion Queued Normal priority",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Attention Is All You Need Completed High priority Demo",
+        "ignored": false
+      }
+    ],
+    "focus": {
+      "tag": "A",
+      "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+      "active": true,
+      "outline": "rgb(154, 61, 35) solid 3px",
+      "boxShadow": "none"
+    }
+  },
+  "sky-window": {
+    "currentRevision": "Revision 12\nCurrent",
+    "grants": {
+      "switches": [
+        {
+          "label": null,
+          "labelledby": "ls-net-title",
+          "checked": "true",
+          "rect": {
+            "x": 1608,
+            "y": 105,
+            "width": 44,
+            "height": 40,
+            "top": 105,
+            "right": 1652,
+            "bottom": 145,
+            "left": 1608
+          }
+        }
+      ],
+      "text": "Permissions \u00b7 Sky Window\nClose\n\nReview this Space's access.\n\nInternet access\nOn\n\nThis Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.\n\nGranted to Sky Window\nOwn data\nAllowed\nScope\nThis Space's records only. Cannot see other Spaces.\nPurpose\nSave and use this Space's data\nData leaves device\nThis grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off.\nAccess\nContinuing\nRevoke\nDiagnostics\nAllowed\nScope\nError logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.\nPurpose\nDiagnose and repair this Space\nData leaves device\nNo ordinary network access. The owner can read these logs in chat.\nAccess\nContinuing\nRevoke\nWaiting for your decision\n\nNothing waiting for your decision.\n\nYour canvas and its bot\n\nAsk Hermes in a normal Hermes chat to build or change this canvas, use connected tools, or bring in files. Bot actions follow Hermes's native rules, not extra per-site, per-tool or device permissions here.\n\nCanvas controls that ask their maintaining bot need a working native bot connection. This panel does not submit a bot request.\n\nOwner\nH\nHermes\nAudit\nNov 11, 2026, 9:27 AM CST \u00b7 app \u00b7 net.fetch net \u00b7 succeeded\nNov 11, 2026, 9:27 AM CST \u00b7 app \u00b7 net.fetch net \u00b7 succeeded\nNov 11, 2026, 9:27 AM CST \u00b7 app \u00b7 net.fetch net \u00b7 succeeded\nNov 11, 2026, 9:26 AM CST \u00b7 app \u00b7 net.fetch net \u00b7 succeeded\nNov 11, 2026, 9:26 AM CST \u00b7 app \u00b7 net.fetch net \u00b7 succeeded\nNov 11, 2026, 9:26 AM CST \u00b7 app \u00b7 net.fetch net \u00b7 succeeded\nNov 11, 2026, 9:19 AM CST \u00b7 app \u00b7 net.fetch net \u00b7 succeeded\nNov 11, 2026, 9:19 AM CST \u00b7 app \u00b7 net.fetch net \u00b7 succeeded\nNov 11, 2026, 9:19 AM CST \u00b7 app \u00b7 net.fetch net \u00b7 succeeded\nNov 11, 2026, 9:18 AM CST \u00b7 app \u00b7 net.fetch net \u00b7 succeeded"
+    },
+    "semantics": {
+      "controls": [
+        {
+          "tag": "A",
+          "text": "Today",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 842.515625,
+            "y": 33,
+            "width": 92.6875,
+            "height": 44,
+            "top": 33,
+            "right": 935.203125,
+            "bottom": 77,
+            "left": 842.515625
+          }
+        },
+        {
+          "tag": "A",
+          "text": "Week",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 938.203125,
+            "y": 33,
+            "width": 90.671875,
+            "height": 44,
+            "top": 33,
+            "right": 1028.875,
+            "bottom": 77,
+            "left": 938.203125
+          }
+        },
+        {
+          "tag": "A",
+          "text": "Cities",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 1031.875,
+            "y": 33,
+            "width": 90.203125,
+            "height": 44,
+            "top": 33,
+            "right": 1122.078125,
+            "bottom": 77,
+            "left": 1031.875
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 1253.328125,
+            "y": 50,
+            "width": 75.3125,
+            "height": 30,
+            "top": 50,
+            "right": 1328.640625,
+            "bottom": 80,
+            "left": 1253.328125
+          }
+        },
+        {
+          "tag": "A",
+          "text": "Manage cities",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 1230.765625,
+            "y": 174.59375,
+            "width": 97.875,
+            "height": 44,
+            "top": 174.59375,
+            "right": 1328.640625,
+            "bottom": 218.59375,
+            "left": 1230.765625
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Chicago\nOvercast\n9\u00b0",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 60.359375,
+            "y": 241.59375,
+            "width": 414.75,
+            "height": 89,
+            "top": 241.59375,
+            "right": 475.109375,
+            "bottom": 330.59375,
+            "left": 60.359375
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Lisbon\nOvercast\n18\u00b0",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 487.109375,
+            "y": 241.59375,
+            "width": 414.765625,
+            "height": 89,
+            "top": 241.59375,
+            "right": 901.875,
+            "bottom": 330.59375,
+            "left": 487.109375
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Tokyo\nMostly clear night\n10\u00b0",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 913.875,
+            "y": 241.59375,
+            "width": 414.75,
+            "height": 89,
+            "top": 241.59375,
+            "right": 1328.625,
+            "bottom": 330.59375,
+            "left": 913.875
+          }
+        }
+      ],
+      "motion": [
+        "@media (prefers-reduced-motion: no-preference) {\n  .weather-content { animation: 0.45s ease-out 0s 1 normal none running arrive; }\n  .forecast-day { animation: 0.4s ease-out 0s 1 normal both running arrive; }\n  .forecast-day:nth-child(2) { animation-delay: 0.03s; }\n  .forecast-day:nth-child(3) { animation-delay: 0.06s; }\n  .forecast-day:nth-child(4) { animation-delay: 0.09s; }\n  .forecast-day:nth-child(5) { animation-delay: 0.12s; }\n  .forecast-day:nth-child(6) { animation-delay: 0.15s; }\n  .forecast-day:nth-child(7) { animation-delay: 0.18s; }\n  @keyframes arrive { \n  0% { opacity: 0.35; transform: translateY(7px); }\n  100% { opacity: 1; transform: translateY(0px); }\n}\n}",
+        "@media (prefers-reduced-motion: reduce) {\n  *, ::before, ::after { animation: auto ease 0s 1 normal none running none !important; transition: none !important; scroll-behavior: auto !important; }\n}"
+      ],
+      "animations": [
+        {
+          "playState": "finished",
+          "timing": {
+            "delay": 0,
+            "direction": "normal",
+            "duration": 400,
+            "easing": "linear",
+            "endDelay": 0,
+            "fill": "both",
+            "iterationStart": 0,
+            "iterations": 1
+          }
+        },
+        {
+          "playState": "finished",
+          "timing": {
+            "delay": 30,
+            "direction": "normal",
+            "duration": 400,
+            "easing": "linear",
+            "endDelay": 0,
+            "fill": "both",
+            "iterationStart": 0,
+            "iterations": 1
+          }
+        },
+        {
+          "playState": "finished",
+          "timing": {
+            "delay": 60,
+            "direction": "normal",
+            "duration": 400,
+            "easing": "linear",
+            "endDelay": 0,
+            "fill": "both",
+            "iterationStart": 0,
+            "iterations": 1
+          }
+        },
+        {
+          "playState": "finished",
+          "timing": {
+            "delay": 90,
+            "direction": "normal",
+            "duration": 400,
+            "easing": "linear",
+            "endDelay": 0,
+            "fill": "both",
+            "iterationStart": 0,
+            "iterations": 1
+          }
+        },
+        {
+          "playState": "finished",
+          "timing": {
+            "delay": 120,
+            "direction": "normal",
+            "duration": 400,
+            "easing": "linear",
+            "endDelay": 0,
+            "fill": "both",
+            "iterationStart": 0,
+            "iterations": 1
+          }
+        },
+        {
+          "playState": "finished",
+          "timing": {
+            "delay": 150,
+            "direction": "normal",
+            "duration": 400,
+            "easing": "linear",
+            "endDelay": 0,
+            "fill": "both",
+            "iterationStart": 0,
+            "iterations": 1
+          }
+        },
+        {
+          "playState": "finished",
+          "timing": {
+            "delay": 180,
+            "direction": "normal",
+            "duration": 400,
+            "easing": "linear",
+            "endDelay": 0,
+            "fill": "both",
+            "iterationStart": 0,
+            "iterations": 1
+          }
+        }
+      ]
+    },
+    "ax": [
+      {
+        "role": "heading",
+        "name": "Sky Window",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Refresh",
+        "ignored": false
+      },
+      {
+        "role": "link",
+        "name": "Today",
+        "ignored": false
+      },
+      {
+        "role": "link",
+        "name": "Week",
+        "ignored": false
+      },
+      {
+        "role": "link",
+        "name": "Cities",
+        "ignored": false
+      },
+      {
+        "role": "heading",
+        "name": "Your places, under one sky.",
+        "ignored": false
+      },
+      {
+        "role": "link",
+        "name": "Manage cities",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Chicago Overcast 9\u00b0",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Lisbon Overcast 18\u00b0",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Tokyo Mostly clear night 10\u00b0",
+        "ignored": false
+      },
+      {
+        "role": "heading",
+        "name": "A week in Chicago",
+        "ignored": false
+      },
+      {
+        "role": "heading",
+        "name": "Chicago",
+        "ignored": false
+      }
+    ],
+    "focus": {
+      "tag": "A",
+      "text": "Today",
+      "active": true,
+      "outline": "rgb(233, 187, 126) solid 3px",
+      "boxShadow": "none"
+    }
+  },
+  "pair-play": {
+    "currentRevision": "Revision 11\nCurrent",
+    "grants": {
+      "switches": [
+        {
+          "label": null,
+          "labelledby": "ls-net-title",
+          "checked": "true",
+          "rect": {
+            "x": 1608,
+            "y": 105,
+            "width": 44,
+            "height": 40,
+            "top": 105,
+            "right": 1652,
+            "bottom": 145,
+            "left": 1608
+          }
+        }
+      ],
+      "text": "Permissions \u00b7 Pair Play\nClose\n\nReview this Space's access.\n\nInternet access\nOn\n\nThis Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.\n\nGranted to Pair Play\nOwn data\nAllowed\nScope\nThis Space's records only. Cannot see other Spaces.\nPurpose\nSave and use this Space's data\nData leaves device\nThis grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off.\nAccess\nContinuing\nRevoke\nDiagnostics\nAllowed\nScope\nError logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.\nPurpose\nDiagnose and repair this Space\nData leaves device\nNo ordinary network access. The owner can read these logs in chat.\nAccess\nContinuing\nRevoke\nWaiting for your decision\n\nNothing waiting for your decision.\n\nYour canvas and its bot\n\nAsk Hermes in a normal Hermes chat to build or change this canvas, use connected tools, or bring in files. Bot actions follow Hermes's native rules, not extra per-site, per-tool or device permissions here.\n\nCanvas controls that ask their maintaining bot need a working native bot connection. This panel does not submit a bot request.\n\nOwner\nH\nHermes\nAudit\nNov 10, 2026, 10:37 PM CST \u00b7 user \u00b7 decision net \u00b7 granted\nNov 10, 2026, 5:02 PM CST \u00b7 user \u00b7 decision logs \u00b7 granted\nNov 10, 2026, 5:02 PM CST \u00b7 agent:Hermes \u00b7 request logs \u00b7 requested\nNov 10, 2026, 5:02 PM CST \u00b7 user \u00b7 decision data \u00b7 granted\nNov 10, 2026, 5:02 PM CST \u00b7 agent:Hermes \u00b7 request data \u00b7 requested"
+    },
+    "semantics": {
+      "controls": [
+        {
+          "tag": "A",
+          "text": "\u2733\nPair Play\nA LITTLE MOMENT OF FOCUS",
+          "aria": "Pair Play home",
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 160.65625,
+            "y": 18.5,
+            "width": 220.9375,
+            "height": 51,
+            "top": 18.5,
+            "right": 381.59375,
+            "bottom": 69.5,
+            "left": 160.65625
+          }
+        },
+        {
+          "tag": "A",
+          "text": "Play",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 963,
+            "y": 22,
+            "width": 69.234375,
+            "height": 44,
+            "top": 22,
+            "right": 1032.234375,
+            "bottom": 66,
+            "left": 963
+          }
+        },
+        {
+          "tag": "A",
+          "text": "Progress",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 1037.234375,
+            "y": 22,
+            "width": 95.484375,
+            "height": 44,
+            "top": 22,
+            "right": 1132.71875,
+            "bottom": 66,
+            "left": 1037.234375
+          }
+        },
+        {
+          "tag": "A",
+          "text": "History",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 1137.71875,
+            "y": 22,
+            "width": 86.625,
+            "height": 44,
+            "top": 22,
+            "right": 1224.34375,
+            "bottom": 66,
+            "left": 1137.71875
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "01\n\u2605\nPAIR PLAY\n\ud83c\udf4a\nOrange",
+          "aria": "Card 1, face down",
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 160.65625,
+            "y": 279.75,
+            "width": 175.125,
+            "height": 103.65625,
+            "top": 279.75,
+            "right": 335.78125,
+            "bottom": 383.40625,
+            "left": 160.65625
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "02\n\u2605\nPAIR PLAY\n\ud83c\udf53\nStrawberry",
+          "aria": "Card 2, face down",
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 350.78125,
+            "y": 279.75,
+            "width": 175.125,
+            "height": 103.65625,
+            "top": 279.75,
+            "right": 525.90625,
+            "bottom": 383.40625,
+            "left": 350.78125
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "03\n\u2605\nPAIR PLAY\n\ud83c\udf49\nWatermelon",
+          "aria": "Card 3, face down",
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 540.90625,
+            "y": 279.75,
+            "width": 175.125,
+            "height": 103.65625,
+            "top": 279.75,
+            "right": 716.03125,
+            "bottom": 383.40625,
+            "left": 540.90625
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "04\n\u2605\nPAIR PLAY\n\ud83c\udf53\nStrawberry",
+          "aria": "Card 4, face down",
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 731.03125,
+            "y": 279.75,
+            "width": 175.125,
+            "height": 103.65625,
+            "top": 279.75,
+            "right": 906.15625,
+            "bottom": 383.40625,
+            "left": 731.03125
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "05\n\u2605\nPAIR PLAY\n\ud83c\udf47\nGrapes",
+          "aria": "Card 5, face down",
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 160.65625,
+            "y": 398.40625,
+            "width": 175.125,
+            "height": 103.65625,
+            "top": 398.40625,
+            "right": 335.78125,
+            "bottom": 502.0625,
+            "left": 160.65625
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "06\n\u2605\nPAIR PLAY\n\ud83c\udf4e\nApple",
+          "aria": "Card 6, face down",
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 350.78125,
+            "y": 398.40625,
+            "width": 175.125,
+            "height": 103.65625,
+            "top": 398.40625,
+            "right": 525.90625,
+            "bottom": 502.0625,
+            "left": 350.78125
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "07\n\u2605\nPAIR PLAY\n\ud83c\udf49\nWatermelon",
+          "aria": "Card 7, face down",
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 540.90625,
+            "y": 398.40625,
+            "width": 175.125,
+            "height": 103.65625,
+            "top": 398.40625,
+            "right": 716.03125,
+            "bottom": 502.0625,
+            "left": 540.90625
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "08\n\u2605\nPAIR PLAY\n\ud83c\udf4a\nOrange",
+          "aria": "Card 8, face down",
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 731.03125,
+            "y": 398.40625,
+            "width": 175.125,
+            "height": 103.65625,
+            "top": 398.40625,
+            "right": 906.15625,
+            "bottom": 502.0625,
+            "left": 731.03125
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "09\n\u2605\nPAIR PLAY\n\ud83c\udf4e\nApple",
+          "aria": "Card 9, face down",
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 160.65625,
+            "y": 517.0625,
+            "width": 175.125,
+            "height": 103.65625,
+            "top": 517.0625,
+            "right": 335.78125,
+            "bottom": 620.71875,
+            "left": 160.65625
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "10\n\u2605\nPAIR PLAY\n\ud83c\udf4c\nBanana",
+          "aria": "Card 10, face down",
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 350.78125,
+            "y": 517.0625,
+            "width": 175.125,
+            "height": 103.65625,
+            "top": 517.0625,
+            "right": 525.90625,
+            "bottom": 620.71875,
+            "left": 350.78125
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "11\n\u2605\nPAIR PLAY\n\ud83c\udf47\nGrapes",
+          "aria": "Card 11, face down",
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 540.90625,
+            "y": 517.0625,
+            "width": 175.125,
+            "height": 103.65625,
+            "top": 517.0625,
+            "right": 716.03125,
+            "bottom": 620.71875,
+            "left": 540.90625
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "12\n\u2605\nPAIR PLAY\n\ud83c\udf4c\nBanana",
+          "aria": "Card 12, face down",
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 731.03125,
+            "y": 517.0625,
+            "width": 175.125,
+            "height": 103.65625,
+            "top": 517.0625,
+            "right": 906.15625,
+            "bottom": 620.71875,
+            "left": 731.03125
+          }
+        },
+        {
+          "tag": "A",
+          "text": "Your completed rounds\n\u2197",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 1005.34375,
+            "y": 502.515625,
+            "width": 223,
+            "height": 44,
+            "top": 502.515625,
+            "right": 1228.34375,
+            "bottom": 546.515625,
+            "left": 1005.34375
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "text": "\u21bb New round",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 1005.34375,
+            "y": 566.515625,
+            "width": 223,
+            "height": 44,
+            "top": 566.515625,
+            "right": 1228.34375,
+            "bottom": 610.515625,
+            "left": 1005.34375
+          }
+        },
+        {
+          "tag": "SUMMARY",
+          "text": "Make it yours\n\uff0b",
+          "aria": null,
+          "labelledby": null,
+          "labels": [],
+          "rect": {
+            "x": 1005.34375,
+            "y": 631.515625,
+            "width": 223,
+            "height": 50,
+            "top": 631.515625,
+            "right": 1228.34375,
+            "bottom": 681.515625,
+            "left": 1005.34375
+          }
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "aria": null,
+          "labelledby": null,
+          "labels": [
+            ""
+          ],
+          "rect": {
+            "x": 1009.34375,
+            "y": 775.515625,
+            "width": 20,
+            "height": 20,
+            "top": 775.515625,
+            "right": 1029.34375,
+            "bottom": 795.515625,
+            "left": 1009.34375
+          }
+        }
+      ],
+      "motion": [
+        "@media (prefers-reduced-motion: reduce) {\n  *, ::before, ::after { animation: auto ease 0s 1 normal none running none !important; transition: none !important; scroll-behavior: auto !important; }\n  .pp-card:hover { transform: none !important; }\n}"
+      ],
+      "animations": []
+    },
+    "ax": [
+      {
+        "role": "link",
+        "name": "Pair Play home",
+        "ignored": false
+      },
+      {
+        "role": "heading",
+        "name": "Good things come in pairs.",
+        "ignored": false
+      },
+      {
+        "role": "link",
+        "name": "Play",
+        "ignored": false
+      },
+      {
+        "role": "link",
+        "name": "Progress",
+        "ignored": false
+      },
+      {
+        "role": "link",
+        "name": "History",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Card 1, face down",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Card 2, face down",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Card 3, face down",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Card 4, face down",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Card 5, face down",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Card 6, face down",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Card 7, face down",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Card 8, face down",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Card 9, face down",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Card 10, face down",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Card 11, face down",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "Card 12, face down",
+        "ignored": false
+      },
+      {
+        "role": "heading",
+        "name": "Little by little",
+        "ignored": false
+      },
+      {
+        "role": "link",
+        "name": "Your completed rounds",
+        "ignored": false
+      },
+      {
+        "role": "button",
+        "name": "\u21bb New round",
+        "ignored": false
+      },
+      {
+        "role": "DisclosureTriangle",
+        "name": "Make it yours",
+        "ignored": false
+      }
+    ],
+    "focus": {
+      "tag": "A",
+      "text": "\u2733\nPair Play\nA LITTLE MOMENT OF FOCUS",
+      "active": true,
+      "outline": "rgb(163, 72, 39) solid 3px",
+      "boxShadow": "none"
+    }
+  },
+  "restored": {
+    "hash": "#/spaces?space=research-desk",
+    "w": 1690,
+    "h": 858,
+    "scroll": [
+      0,
+      0
+    ],
+    "theme": "dark",
+    "dialogs": 0,
+    "guest": {
+      "hash": "#/library",
+      "scroll": [
+        0,
+        0
+      ],
+      "search": "attention"
+    }
+  },
+  "restorationEqual": true,
+  "time": "2026-11-11T09:27:14.937053-06:00",
+  "researchGrantsTextUnchanged": true
+}

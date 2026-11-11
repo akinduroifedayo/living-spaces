@@ -1,0 +1,2850 @@
+{
+  "original": {
+    "hash": "#/spaces?space=research-desk",
+    "w": 1690,
+    "h": 858,
+    "scroll": [
+      0,
+      0
+    ],
+    "theme": "dark",
+    "dialogs": 0,
+    "guest": {
+      "hash": "#/library",
+      "scroll": [
+        0,
+        0
+      ],
+      "search": "attention"
+    }
+  },
+  "identity": [
+    {
+      "id": "348",
+      "url": "blob:file:///f33b4c09-f0fc-4a8f-b965-6a58f8bad4dc",
+      "bytes": 107646,
+      "sha256": "bbc79222e10e20c8ebe01fd16c133fa62f5a9f2fe69cfe30949d1dd4948f28f0",
+      "normalizedMatchInstalled": true,
+      "installedSha256": "9b703959096f80de81ac28245bdd0bb3303f51f87bf340b6434dce1605e6c536",
+      "normalizedLoadedSha256": "d6a1b3cde7a6258b3ab94c9573898ce6aebea217e47cb4c8c5594372d352945d",
+      "normalizedInstalledSha256": "d6a1b3cde7a6258b3ab94c9573898ce6aebea217e47cb4c8c5594372d352945d"
+    }
+  ],
+  "b-live-permissions": {
+    "w": 1690,
+    "h": 858,
+    "docW": 1690,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 260,
+          "y": 34,
+          "width": 1430,
+          "height": 67.5,
+          "top": 34,
+          "right": 1690,
+          "bottom": 101.5,
+          "left": 260
+        },
+        "scrollWidth": 1430,
+        "clientWidth": 1430
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 272,
+          "y": 51.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 51.25,
+          "right": 363.375,
+          "bottom": 83.25,
+          "left": 272
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Research Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago",
+        "label": null,
+        "rect": {
+          "x": 373.375,
+          "y": 46,
+          "width": 787.59375,
+          "height": 42.5,
+          "top": 46,
+          "right": 1160.96875,
+          "bottom": 88.5,
+          "left": 373.375
+        },
+        "scrollWidth": 788,
+        "clientWidth": 788
+      },
+      {
+        "text": "Research Desk",
+        "label": null,
+        "rect": {
+          "x": 415.375,
+          "y": 46,
+          "width": 110.765625,
+          "height": 24,
+          "top": 46,
+          "right": 526.140625,
+          "bottom": 70,
+          "left": 415.375
+        },
+        "scrollWidth": 111,
+        "clientWidth": 111
+      },
+      {
+        "text": "Upkeep: paused",
+        "label": null,
+        "rect": {
+          "x": 1176.96875,
+          "y": 51.25,
+          "width": 146.421875,
+          "height": 32,
+          "top": 51.25,
+          "right": 1323.390625,
+          "bottom": 83.25,
+          "left": 1176.96875
+        },
+        "scrollWidth": 146,
+        "clientWidth": 146
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 1329.390625,
+          "y": 51.25,
+          "width": 68.84375,
+          "height": 32,
+          "top": 51.25,
+          "right": 1398.234375,
+          "bottom": 83.25,
+          "left": 1329.390625
+        },
+        "scrollWidth": 69,
+        "clientWidth": 69
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 1404.234375,
+          "y": 51.25,
+          "width": 99.015625,
+          "height": 32,
+          "top": 51.25,
+          "right": 1503.25,
+          "bottom": 83.25,
+          "left": 1404.234375
+        },
+        "scrollWidth": 99,
+        "clientWidth": 99
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 1509.25,
+          "y": 51.25,
+          "width": 122.75,
+          "height": 32,
+          "top": 51.25,
+          "right": 1632,
+          "bottom": 83.25,
+          "left": 1509.25
+        },
+        "scrollWidth": 123,
+        "clientWidth": 123
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 1638,
+          "y": 51.25,
+          "width": 40,
+          "height": 32,
+          "top": 51.25,
+          "right": 1678,
+          "bottom": 83.25,
+          "left": 1638
+        },
+        "scrollWidth": 40,
+        "clientWidth": 40
+      }
+    ],
+    "dialogs": [
+      {
+        "text": "Permissions \u00b7 Research Desk\nClose\n\nReview this Space's access.\n\nInternet access\nOn\n\nThis Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.\n\nGranted to Research Desk\nOwn data\nAllowed\nScope\nThis Space's records only. Cannot see other Spaces.\nPurpose\nSave and use this Space's data\nData leaves device\nThis grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off.\nAccess\nContinuing\nRevoke\nDiagnostics\nAllowed\nScope\nError logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.\nPurpose\nDiagnose and repair this Space\nData leaves device\nNo ordinary network access. The owner can read these logs in chat.\nAccess\nContinuing\nRevoke\nWaiting for your decision\n\nNothing waiting for your decision.\n\nYour canvas and its bot\n\nAsk Hermes in a normal Hermes chat to build or change this canvas, use connected tools, or bring in files. Bot actions follow Hermes's native rules, not extra per-site, per-tool or device permissions here.\n\nCanvas controls that ask their maintaining bot need a working native bot connection. This panel does not submit a bot request.\n\nOwner\nH\nHermes\nAudit\nNov 10, 2026, 10:37 PM CST \u00b7 user \u00b7 decision net \u00b7 granted\nNov 10, 2026, 7:26 PM CST \u00b7 upkeep:schedule \u00b7 schedule.disabled \u00b7 disabled\nNov 10, 2026, 6:20 PM CST \u00b7 user \u00b7 decision refresh \u00b7 granted\nNov 10, 2026, 6:20 PM CST \u00b7 acceptance:trusted-host-fixture \u00b7 request refresh \u00b7 requested\nNov 10, 2026, 6:17 PM CST \u00b7 user \u00b7 decision refresh \u00b7 denied\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request refresh \u00b7 requested\nNov 10, 2026, 4:00 PM CST \u00b7 user \u00b7 decision logs \u00b7 granted\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request logs \u00b7 requested\nNov 10, 2026, 4:00 PM CST \u00b7 user \u00b7 decision data \u00b7 granted\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request data \u00b7 requested",
+        "label": "radix-_r_53r_",
+        "modal": null,
+        "rect": {
+          "x": 1230,
+          "y": 0,
+          "width": 460,
+          "height": 858,
+          "top": 0,
+          "right": 1690,
+          "bottom": 858,
+          "left": 1230
+        }
+      }
+    ],
+    "guest": {
+      "w": 1404,
+      "h": 711,
+      "docW": 1389,
+      "bodyW": 1389,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Overview",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Library",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading queue",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Priority review",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQu",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "keyboard-Permissions": {
+    "initial": {
+      "tag": "BUTTON",
+      "text": "Close",
+      "label": null,
+      "inDialog": true,
+      "outline": "color(srgb 0.901961 0.929412 0.952941 / 0.74) none 3px"
+    },
+    "tabs": [
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Revoke",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Revoke",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Close",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Revoke",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Revoke",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Close",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Revoke",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Revoke",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Close",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Revoke",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      }
+    ],
+    "shiftTab": {
+      "tag": "BUTTON",
+      "text": "",
+      "label": null,
+      "inDialog": true,
+      "outline": "rgb(74, 132, 254) solid 2px"
+    },
+    "afterEscape": {
+      "tag": "BUTTON",
+      "text": "Permissions",
+      "label": null,
+      "inDialog": false,
+      "outline": "rgb(74, 132, 254) solid 2px"
+    },
+    "dialogsAfterEscape": 0
+  },
+  "b-live-history": {
+    "w": 1690,
+    "h": 858,
+    "docW": 1690,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 260,
+          "y": 34,
+          "width": 1430,
+          "height": 67.5,
+          "top": 34,
+          "right": 1690,
+          "bottom": 101.5,
+          "left": 260
+        },
+        "scrollWidth": 1430,
+        "clientWidth": 1430
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 272,
+          "y": 51.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 51.25,
+          "right": 363.375,
+          "bottom": 83.25,
+          "left": 272
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Research Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago",
+        "label": null,
+        "rect": {
+          "x": 373.375,
+          "y": 46,
+          "width": 787.59375,
+          "height": 42.5,
+          "top": 46,
+          "right": 1160.96875,
+          "bottom": 88.5,
+          "left": 373.375
+        },
+        "scrollWidth": 788,
+        "clientWidth": 788
+      },
+      {
+        "text": "Research Desk",
+        "label": null,
+        "rect": {
+          "x": 415.375,
+          "y": 46,
+          "width": 110.765625,
+          "height": 24,
+          "top": 46,
+          "right": 526.140625,
+          "bottom": 70,
+          "left": 415.375
+        },
+        "scrollWidth": 111,
+        "clientWidth": 111
+      },
+      {
+        "text": "Upkeep: paused",
+        "label": null,
+        "rect": {
+          "x": 1176.96875,
+          "y": 51.25,
+          "width": 146.421875,
+          "height": 32,
+          "top": 51.25,
+          "right": 1323.390625,
+          "bottom": 83.25,
+          "left": 1176.96875
+        },
+        "scrollWidth": 146,
+        "clientWidth": 146
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 1329.390625,
+          "y": 51.25,
+          "width": 68.84375,
+          "height": 32,
+          "top": 51.25,
+          "right": 1398.234375,
+          "bottom": 83.25,
+          "left": 1329.390625
+        },
+        "scrollWidth": 69,
+        "clientWidth": 69
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 1404.234375,
+          "y": 51.25,
+          "width": 99.015625,
+          "height": 32,
+          "top": 51.25,
+          "right": 1503.25,
+          "bottom": 83.25,
+          "left": 1404.234375
+        },
+        "scrollWidth": 99,
+        "clientWidth": 99
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 1509.25,
+          "y": 51.25,
+          "width": 122.75,
+          "height": 32,
+          "top": 51.25,
+          "right": 1632,
+          "bottom": 83.25,
+          "left": 1509.25
+        },
+        "scrollWidth": 123,
+        "clientWidth": 123
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 1638,
+          "y": 51.25,
+          "width": 40,
+          "height": 32,
+          "top": 51.25,
+          "right": 1678,
+          "bottom": 83.25,
+          "left": 1638
+        },
+        "scrollWidth": 40,
+        "clientWidth": 40
+      }
+    ],
+    "dialogs": [
+      {
+        "text": "History & revisions\nClose\n\nHistory and code revisions for Research Desk\n\nRun history\nRevisions\nRefresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 11, 2026, 8:26 AM CST \u00b7 0.1 s\n\nno change \u00b7 20 unchanged\n\nRefresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 11, 2026, 7:57 AM CST \u00b7 0.1 s\n\n20 added \u00b7 0 updated \u00b7 0 unchanged\n\nRefresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 10, 2026, 7:46 PM CST \u00b7 0.1 s\n\nno change \u00b7 20 unchanged\n\nRefresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 10, 2026, 7:46 PM CST \u00b7 0.1 s\n\nno change \u00b7 20 unchanged\n\nRefresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 10, 2026, 7:26 PM CST \u00b7 0.1 s\n\nno change \u00b7 20 unchanged\n\nRefresh failed\nFailed\n\nmanual \u00b7 Nov 10, 2026, 7:26 PM CST \u00b7 0.3 s\n\narxiv-ai: Server error '503 Service Unavailable' for url 'https://export.arxiv.org/api/living-spaces-acceptance-missing-path' For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503\n\nRefresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 10, 2026, 7:26 PM CST \u00b7 0.4 s\n\nno change \u00b7 20 unchanged\n\nRefresh failed\nFailed\n\nmanual \u00b7 Nov 10, 2026, 7:26 PM CST \u00b7 0.7 s\n\narxiv-ai: Server error '503 Service Unavailable' for url 'https://export.arxiv.org/api/living-spaces-acceptance-missing-path' For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503\n\nRefresh failed\nFailed\n\nmanual \u00b7 Nov 10, 2026, 7:25 PM CST \u00b7 0.4 s\n\narxiv-ai: Server error '503 Service Unavailable' for url 'https://export.arxiv.org/api/living-spaces-acceptance-missing-path' For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:19 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:18 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:17 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:16 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:13 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:12 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:11 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:10 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:09 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:08 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:07 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:05 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:04 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:03 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:02 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:01 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 7:00 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 6:58 PM CST \u00b7 0.3 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 6:57 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 6:56 PM CST \u00b7 0.2 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 6:55 PM CST \u00b7 0.1 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 6:54 PM CST \u00b7 0.3 s\n\n0 added \u00b7 1 updated \u00b7 19 unchanged\n\nRefresh succeeded\nSucceeded\n\nschedule \u00b7 Nov 10, 2026, 6:50 PM CST \u00b7 0.2 s\n\nno change \u00b7 20 unchanged\n\nRefresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 10, 2026, 6:23 PM CST \u00b7 0.5 s\n\n20 added \u00b7 0 updated \u00b7 0 unchanged",
+        "label": "radix-_r_53u_",
+        "modal": null,
+        "rect": {
+          "x": 1230,
+          "y": 0,
+          "width": 460,
+          "height": 858,
+          "top": 0,
+          "right": 1690,
+          "bottom": 858,
+          "left": 1230
+        }
+      }
+    ],
+    "guest": {
+      "w": 1404,
+      "h": 711,
+      "docW": 1389,
+      "bodyW": 1389,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Overview",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Library",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading queue",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Priority review",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQu",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "keyboard-History": {
+    "initial": {
+      "tag": "BUTTON",
+      "text": "Close",
+      "label": null,
+      "inDialog": true,
+      "outline": "color(srgb 0.901961 0.929412 0.952941 / 0.74) none 3px"
+    },
+    "tabs": [
+      {
+        "tag": "BUTTON",
+        "text": "Run history",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgba(75, 133, 254, 1) solid 2px"
+      },
+      {
+        "tag": "DIV",
+        "text": "Refresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 11, 2026, 8:26 AM CST \u00b7 0.1 s\n\nno chan",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(153, 200, 255) auto 1px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Close",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Run history",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgba(75, 133, 254, 1) solid 2px"
+      },
+      {
+        "tag": "DIV",
+        "text": "Refresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 11, 2026, 8:26 AM CST \u00b7 0.1 s\n\nno chan",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(153, 200, 255) auto 1px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Close",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Run history",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgba(77, 134, 254, 1) solid 2px"
+      },
+      {
+        "tag": "DIV",
+        "text": "Refresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 11, 2026, 8:26 AM CST \u00b7 0.1 s\n\nno chan",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(153, 200, 255) auto 1px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Close",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Run history",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgba(76, 134, 254, 1) solid 2px"
+      },
+      {
+        "tag": "DIV",
+        "text": "Refresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 11, 2026, 8:26 AM CST \u00b7 0.1 s\n\nno chan",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(153, 200, 255) auto 1px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Close",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Run history",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgba(75, 133, 254, 1) solid 2px"
+      },
+      {
+        "tag": "DIV",
+        "text": "Refresh succeeded\nSucceeded\n\nmanual \u00b7 Nov 11, 2026, 8:26 AM CST \u00b7 0.1 s\n\nno chan",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(153, 200, 255) auto 1px"
+      }
+    ],
+    "shiftTab": {
+      "tag": "BUTTON",
+      "text": "Run history",
+      "label": null,
+      "inDialog": true,
+      "outline": "rgba(77, 134, 254, 1) solid 2px"
+    },
+    "afterEscape": {
+      "tag": "BUTTON",
+      "text": "History",
+      "label": null,
+      "inDialog": false,
+      "outline": "rgb(74, 132, 254) solid 2px"
+    },
+    "dialogsAfterEscape": 0
+  },
+  "b-live-upkeep": {
+    "w": 1690,
+    "h": 858,
+    "docW": 1690,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 260,
+          "y": 34,
+          "width": 1430,
+          "height": 67.5,
+          "top": 34,
+          "right": 1690,
+          "bottom": 101.5,
+          "left": 260
+        },
+        "scrollWidth": 1430,
+        "clientWidth": 1430
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 272,
+          "y": 51.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 51.25,
+          "right": 363.375,
+          "bottom": 83.25,
+          "left": 272
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Research Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago",
+        "label": null,
+        "rect": {
+          "x": 373.375,
+          "y": 46,
+          "width": 787.59375,
+          "height": 42.5,
+          "top": 46,
+          "right": 1160.96875,
+          "bottom": 88.5,
+          "left": 373.375
+        },
+        "scrollWidth": 788,
+        "clientWidth": 788
+      },
+      {
+        "text": "Research Desk",
+        "label": null,
+        "rect": {
+          "x": 415.375,
+          "y": 46,
+          "width": 110.765625,
+          "height": 24,
+          "top": 46,
+          "right": 526.140625,
+          "bottom": 70,
+          "left": 415.375
+        },
+        "scrollWidth": 111,
+        "clientWidth": 111
+      },
+      {
+        "text": "Upkeep: paused",
+        "label": null,
+        "rect": {
+          "x": 1176.96875,
+          "y": 51.25,
+          "width": 146.421875,
+          "height": 32,
+          "top": 51.25,
+          "right": 1323.390625,
+          "bottom": 83.25,
+          "left": 1176.96875
+        },
+        "scrollWidth": 146,
+        "clientWidth": 146
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 1329.390625,
+          "y": 51.25,
+          "width": 68.84375,
+          "height": 32,
+          "top": 51.25,
+          "right": 1398.234375,
+          "bottom": 83.25,
+          "left": 1329.390625
+        },
+        "scrollWidth": 69,
+        "clientWidth": 69
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 1404.234375,
+          "y": 51.25,
+          "width": 99.015625,
+          "height": 32,
+          "top": 51.25,
+          "right": 1503.25,
+          "bottom": 83.25,
+          "left": 1404.234375
+        },
+        "scrollWidth": 99,
+        "clientWidth": 99
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 1509.25,
+          "y": 51.25,
+          "width": 122.75,
+          "height": 32,
+          "top": 51.25,
+          "right": 1632,
+          "bottom": 83.25,
+          "left": 1509.25
+        },
+        "scrollWidth": 123,
+        "clientWidth": 123
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 1638,
+          "y": 51.25,
+          "width": 40,
+          "height": 32,
+          "top": 51.25,
+          "right": 1678,
+          "bottom": 83.25,
+          "left": 1638
+        },
+        "scrollWidth": 40,
+        "clientWidth": 40
+      }
+    ],
+    "dialogs": [
+      {
+        "text": "Upkeep \u00b7 Research Desk\nClose\n\nThe Hermes cron job that keeps this Space current\n\nPaused\n\nRefreshes from public sources. No model calls.\n\nRuns\n0 7 * * *\nAmerica/Chicago\nNext run\nPaused. Future runs stop until resumed. Already-running work may finish.\nLast result\nSucceeded \u00b7 Nov 10, 2026, 7:19 PM CST\n\nIf Hermes is asleep at run time, it runs once when it wakes. Missed runs aren't replayed.\n\nRun now\nResume\nRemove\nExecutions\nNov 10, 2026, 7:19 PM CST \u00b7 completed\nNov 10, 2026, 7:18 PM CST \u00b7 completed\nNov 10, 2026, 7:17 PM CST \u00b7 completed\nNov 10, 2026, 7:16 PM CST \u00b7 completed\nNov 10, 2026, 7:13 PM CST \u00b7 completed\nNov 10, 2026, 7:12 PM CST \u00b7 completed\nNov 10, 2026, 7:11 PM CST \u00b7 completed\nNov 10, 2026, 7:10 PM CST \u00b7 completed\nNov 10, 2026, 7:09 PM CST \u00b7 completed\nNov 10, 2026, 7:08 PM CST \u00b7 completed\nNov 10, 2026, 7:07 PM CST \u00b7 completed\nNov 10, 2026, 7:05 PM CST \u00b7 completed\nNov 10, 2026, 7:04 PM CST \u00b7 completed\nNov 10, 2026, 7:03 PM CST \u00b7 completed\nNov 10, 2026, 7:02 PM CST \u00b7 completed\nNov 10, 2026, 7:01 PM CST \u00b7 completed\nNov 10, 2026, 7:00 PM CST \u00b7 completed\nNov 10, 2026, 6:58 PM CST \u00b7 completed\nNov 10, 2026, 6:57 PM CST \u00b7 completed\nNov 10, 2026, 6:56 PM CST \u00b7 completed",
+        "label": "radix-_r_544_",
+        "modal": null,
+        "rect": {
+          "x": 1230,
+          "y": 0,
+          "width": 460,
+          "height": 858,
+          "top": 0,
+          "right": 1690,
+          "bottom": 858,
+          "left": 1230
+        }
+      }
+    ],
+    "guest": {
+      "w": 1404,
+      "h": 711,
+      "docW": 1389,
+      "bodyW": 1389,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Overview",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Library",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading queue",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Priority review",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQu",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "keyboard-Upkeep: paused": {
+    "initial": {
+      "tag": "BUTTON",
+      "text": "Close",
+      "label": null,
+      "inDialog": true,
+      "outline": "color(srgb 0.901961 0.929412 0.952941 / 0.74) none 3px"
+    },
+    "tabs": [
+      {
+        "tag": "BUTTON",
+        "text": "Run now",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Resume",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Remove",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Close",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Run now",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Resume",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Remove",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Close",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Run now",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Resume",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Remove",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Close",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Run now",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Resume",
+        "label": null,
+        "inDialog": true,
+        "outline": "rgb(74, 132, 254) solid 2px"
+      }
+    ],
+    "shiftTab": {
+      "tag": "BUTTON",
+      "text": "Run now",
+      "label": null,
+      "inDialog": true,
+      "outline": "rgb(74, 132, 254) solid 2px"
+    },
+    "afterEscape": {
+      "tag": "BUTTON",
+      "text": "Upkeep: paused",
+      "label": null,
+      "inDialog": false,
+      "outline": "rgb(74, 132, 254) solid 2px"
+    },
+    "dialogsAfterEscape": 0
+  },
+  "b-live-research-900": {
+    "w": 900,
+    "h": 844,
+    "docW": 900,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 640,
+      "height": 790,
+      "top": 34,
+      "right": 900,
+      "bottom": 824,
+      "left": 260
+    },
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 260,
+          "y": 34,
+          "width": 640,
+          "height": 85.5,
+          "top": 34,
+          "right": 900,
+          "bottom": 119.5,
+          "left": 260
+        },
+        "scrollWidth": 640,
+        "clientWidth": 640
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 272,
+          "y": 60.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 60.25,
+          "right": 363.375,
+          "bottom": 92.25,
+          "left": 272
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Research Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago",
+        "label": null,
+        "rect": {
+          "x": 373.375,
+          "y": 46,
+          "width": 0,
+          "height": 60.5,
+          "top": 46,
+          "right": 373.375,
+          "bottom": 106.5,
+          "left": 373.375
+        },
+        "scrollWidth": 125,
+        "clientWidth": 0
+      },
+      {
+        "text": "Research Desk",
+        "label": null,
+        "rect": {
+          "x": 415.375,
+          "y": 46,
+          "width": 0,
+          "height": 24,
+          "top": 46,
+          "right": 415.375,
+          "bottom": 70,
+          "left": 415.375
+        },
+        "scrollWidth": 111,
+        "clientWidth": 0
+      },
+      {
+        "text": "Upkeep: paused",
+        "label": null,
+        "rect": {
+          "x": 389.375,
+          "y": 60.25,
+          "width": 146.421875,
+          "height": 32,
+          "top": 60.25,
+          "right": 535.796875,
+          "bottom": 92.25,
+          "left": 389.375
+        },
+        "scrollWidth": 146,
+        "clientWidth": 146
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 541.796875,
+          "y": 60.25,
+          "width": 68.84375,
+          "height": 32,
+          "top": 60.25,
+          "right": 610.640625,
+          "bottom": 92.25,
+          "left": 541.796875
+        },
+        "scrollWidth": 69,
+        "clientWidth": 69
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 616.640625,
+          "y": 60.25,
+          "width": 99.015625,
+          "height": 32,
+          "top": 60.25,
+          "right": 715.65625,
+          "bottom": 92.25,
+          "left": 616.640625
+        },
+        "scrollWidth": 99,
+        "clientWidth": 99
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 721.65625,
+          "y": 60.25,
+          "width": 122.75,
+          "height": 32,
+          "top": 60.25,
+          "right": 844.40625,
+          "bottom": 92.25,
+          "left": 721.65625
+        },
+        "scrollWidth": 123,
+        "clientWidth": 123
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 850.40625,
+          "y": 60.25,
+          "width": 40,
+          "height": 32,
+          "top": 60.25,
+          "right": 890.40625,
+          "bottom": 92.25,
+          "left": 850.40625
+        },
+        "scrollWidth": 40,
+        "clientWidth": 40
+      }
+    ],
+    "dialogs": [],
+    "guest": {
+      "w": 614,
+      "h": 679,
+      "docW": 599,
+      "bodyW": 599,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Overview",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Library",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading queue",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Priority review",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQu",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "b-live-research-390": {
+    "w": 390,
+    "h": 844,
+    "docW": 390,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 88.640625,
+          "y": 34,
+          "width": 301.34375,
+          "height": 127.5,
+          "top": 34,
+          "right": 389.984375,
+          "bottom": 161.5,
+          "left": 88.640625
+        },
+        "scrollWidth": 301,
+        "clientWidth": 301
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 100.640625,
+          "y": 60.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 60.25,
+          "right": 192.015625,
+          "bottom": 92.25,
+          "left": 100.640625
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Research Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago",
+        "label": null,
+        "rect": {
+          "x": 202.015625,
+          "y": 46,
+          "width": 175.96875,
+          "height": 60.5,
+          "top": 46,
+          "right": 377.984375,
+          "bottom": 106.5,
+          "left": 202.015625
+        },
+        "scrollWidth": 176,
+        "clientWidth": 176
+      },
+      {
+        "text": "Research Desk",
+        "label": null,
+        "rect": {
+          "x": 244.015625,
+          "y": 46,
+          "width": 51.140625,
+          "height": 24,
+          "top": 46,
+          "right": 295.15625,
+          "bottom": 70,
+          "left": 244.015625
+        },
+        "scrollWidth": 111,
+        "clientWidth": 51
+      },
+      {
+        "text": "Upkeep: paused",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 128.21875,
+          "y": 116.5,
+          "width": 91.015625,
+          "height": 32,
+          "top": 116.5,
+          "right": 219.234375,
+          "bottom": 148.5,
+          "left": 128.21875
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 225.234375,
+          "y": 116.5,
+          "width": 114.75,
+          "height": 32,
+          "top": 116.5,
+          "right": 339.984375,
+          "bottom": 148.5,
+          "left": 225.234375
+        },
+        "scrollWidth": 115,
+        "clientWidth": 115
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 345.984375,
+          "y": 116.5,
+          "width": 32,
+          "height": 32,
+          "top": 116.5,
+          "right": 377.984375,
+          "bottom": 148.5,
+          "left": 345.984375
+        },
+        "scrollWidth": 32,
+        "clientWidth": 32
+      }
+    ],
+    "dialogs": [],
+    "guest": {
+      "w": 275,
+      "h": 637,
+      "docW": 260,
+      "bodyW": 260,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Overview",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Library",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading queue",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Priority review",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQu",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "b-live-research-320": {
+    "w": 320,
+    "h": 844,
+    "docW": 320,
+    "root": {
+      "x": 72.71875,
+      "y": 34,
+      "width": 247.265625,
+      "height": 790,
+      "top": 34,
+      "right": 319.984375,
+      "bottom": 824,
+      "left": 72.71875
+    },
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 72.71875,
+          "y": 34,
+          "width": 247.265625,
+          "height": 165.5,
+          "top": 34,
+          "right": 319.984375,
+          "bottom": 199.5,
+          "left": 72.71875
+        },
+        "scrollWidth": 247,
+        "clientWidth": 247
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 84.71875,
+          "y": 60.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 60.25,
+          "right": 176.09375,
+          "bottom": 92.25,
+          "left": 84.71875
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Research Desk\nReady\nH\nHermes\n \u00b7 Updated 58 min. ago \u00b7 Source data from 20 hr. ago",
+        "label": null,
+        "rect": {
+          "x": 186.09375,
+          "y": 46,
+          "width": 121.890625,
+          "height": 60.5,
+          "top": 46,
+          "right": 307.984375,
+          "bottom": 106.5,
+          "left": 186.09375
+        },
+        "scrollWidth": 125,
+        "clientWidth": 122
+      },
+      {
+        "text": "Research Desk",
+        "label": null,
+        "rect": {
+          "x": 228.09375,
+          "y": 46,
+          "width": 0,
+          "height": 24,
+          "top": 46,
+          "right": 228.09375,
+          "bottom": 70,
+          "left": 228.09375
+        },
+        "scrollWidth": 111,
+        "clientWidth": 0
+      },
+      {
+        "text": "Upkeep: paused",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 96.21875,
+          "y": 116.5,
+          "width": 91.015625,
+          "height": 32,
+          "top": 116.5,
+          "right": 187.234375,
+          "bottom": 148.5,
+          "left": 96.21875
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 193.234375,
+          "y": 116.5,
+          "width": 114.75,
+          "height": 32,
+          "top": 116.5,
+          "right": 307.984375,
+          "bottom": 148.5,
+          "left": 193.234375
+        },
+        "scrollWidth": 115,
+        "clientWidth": 115
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 275.984375,
+          "y": 154.5,
+          "width": 32,
+          "height": 32,
+          "top": 154.5,
+          "right": 307.984375,
+          "bottom": 186.5,
+          "left": 275.984375
+        },
+        "scrollWidth": 32,
+        "clientWidth": 32
+      }
+    ],
+    "dialogs": [],
+    "guest": {
+      "w": 221,
+      "h": 599,
+      "docW": 254,
+      "bodyW": 254,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Overview",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Library",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading queue",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Priority review",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQu",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "b-live-index-900": {
+    "w": 900,
+    "h": 844,
+    "docW": 900,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 640,
+      "height": 790,
+      "top": 34,
+      "right": 900,
+      "bottom": 824,
+      "left": 260
+    },
+    "elements": [
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 288,
+          "y": 54,
+          "width": 66.625,
+          "height": 30,
+          "top": 54,
+          "right": 354.625,
+          "bottom": 84,
+          "left": 288
+        },
+        "scrollWidth": 67,
+        "clientWidth": 67
+      },
+      {
+        "text": "All",
+        "label": null,
+        "rect": {
+          "x": 634.578125,
+          "y": 103,
+          "width": 33.703125,
+          "height": 32,
+          "top": 103,
+          "right": 668.28125,
+          "bottom": 135,
+          "left": 634.578125
+        },
+        "scrollWidth": 34,
+        "clientWidth": 34
+      },
+      {
+        "text": "Needs attention \u00b7 0",
+        "label": null,
+        "rect": {
+          "x": 670.28125,
+          "y": 103,
+          "width": 122.40625,
+          "height": 32,
+          "top": 103,
+          "right": 792.6875,
+          "bottom": 135,
+          "left": 670.28125
+        },
+        "scrollWidth": 122,
+        "clientWidth": 122
+      },
+      {
+        "text": "Archived",
+        "label": null,
+        "rect": {
+          "x": 794.6875,
+          "y": 103,
+          "width": 67.3125,
+          "height": 32,
+          "top": 103,
+          "right": 862,
+          "bottom": 135,
+          "left": 794.6875
+        },
+        "scrollWidth": 67,
+        "clientWidth": 67
+      },
+      {
+        "text": "Research Desk\nH\nHermes\n\nA public research library with a reading queue and saved notes.\n\nReady\nUpdated 58 min. ago\nUpkeep paused\nLast attempt 58 min. ago \u00b7 succ",
+        "label": "Research Desk, Ready, owner Hermes. Updated 58 min. ago. Upkeep paused. Last successful update Nov 11, 2026, 8:26 AM CST. Last attempt Nov 11, 2026, 8:26 AM CST \u00b7 succeeded. Source data from Nov 10, 2026, 12:59 PM CST. Next refresh Nov 11, 2026, 7:00 AM CST",
+        "rect": {
+          "x": 288,
+          "y": 184,
+          "width": 576,
+          "height": 267.5,
+          "top": 184,
+          "right": 864,
+          "bottom": 451.5,
+          "left": 288
+        },
+        "scrollWidth": 574,
+        "clientWidth": 574
+      },
+      {
+        "text": "Sky Window\nH\nHermes\n\nA public weather dashboard for Chicago, Lisbon, Tokyo and cities you add, with live Open-Meteo forecasts.\n\nReady\nNot refreshed yet",
+        "label": "Sky Window, Ready, owner Hermes. Not refreshed yet. . ",
+        "rect": {
+          "x": 288,
+          "y": 463.5,
+          "width": 576,
+          "height": 204.5,
+          "top": 463.5,
+          "right": 864,
+          "bottom": 668,
+          "left": 288
+        },
+        "scrollWidth": 574,
+        "clientWidth": 574
+      },
+      {
+        "text": "Pair Play\nH\nHermes\n\nA small memory-match card game with six fruit pairs, saved rounds and a history of completed games.\n\nReady\nNot refreshed yet",
+        "label": "Pair Play, Ready, owner Hermes. Not refreshed yet. . ",
+        "rect": {
+          "x": 288,
+          "y": 680,
+          "width": 576,
+          "height": 204.5,
+          "top": 680,
+          "right": 864,
+          "bottom": 884.5,
+          "left": 288
+        },
+        "scrollWidth": 574,
+        "clientWidth": 574
+      },
+      {
+        "text": "Public Trip Board\nH\nHermes\n\nA public demonstration trip planner for Paris places, with no personal information.\n\nReady\nNot refreshed yet",
+        "label": "Public Trip Board, Ready, owner Hermes. Not refreshed yet. . ",
+        "rect": {
+          "x": 288,
+          "y": 896.5,
+          "width": 576,
+          "height": 204.5,
+          "top": 896.5,
+          "right": 864,
+          "bottom": 1101,
+          "left": 288
+        },
+        "scrollWidth": 574,
+        "clientWidth": 574
+      },
+      {
+        "text": "Runtime Probe\nP\nPublic fixture\n\nReady\nNot refreshed yet",
+        "label": "Runtime Probe, Ready, owner Public fixture. Not refreshed yet. . ",
+        "rect": {
+          "x": 288,
+          "y": 1113,
+          "width": 576,
+          "height": 204.5,
+          "top": 1113,
+          "right": 864,
+          "bottom": 1317.5,
+          "left": 288
+        },
+        "scrollWidth": 574,
+        "clientWidth": 574
+      }
+    ],
+    "dialogs": [],
+    "guest": null
+  },
+  "b-live-index-390": {
+    "w": 390,
+    "h": 844,
+    "docW": 390,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "elements": [
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 104.640625,
+          "y": 54,
+          "width": 66.625,
+          "height": 30,
+          "top": 54,
+          "right": 171.265625,
+          "bottom": 84,
+          "left": 104.640625
+        },
+        "scrollWidth": 67,
+        "clientWidth": 67
+      },
+      {
+        "text": "All",
+        "label": null,
+        "rect": {
+          "x": 106.640625,
+          "y": 150,
+          "width": 33.703125,
+          "height": 32,
+          "top": 150,
+          "right": 140.34375,
+          "bottom": 182,
+          "left": 106.640625
+        },
+        "scrollWidth": 34,
+        "clientWidth": 34
+      },
+      {
+        "text": "Needs attention \u00b7 0",
+        "label": null,
+        "rect": {
+          "x": 142.34375,
+          "y": 150,
+          "width": 122.40625,
+          "height": 32,
+          "top": 150,
+          "right": 264.75,
+          "bottom": 182,
+          "left": 142.34375
+        },
+        "scrollWidth": 122,
+        "clientWidth": 122
+      },
+      {
+        "text": "Archived",
+        "label": null,
+        "rect": {
+          "x": 266.75,
+          "y": 150,
+          "width": 67.3125,
+          "height": 32,
+          "top": 150,
+          "right": 334.0625,
+          "bottom": 182,
+          "left": 266.75
+        },
+        "scrollWidth": 67,
+        "clientWidth": 67
+      },
+      {
+        "text": "Research Desk\nH\nHermes\n\nA public research library with a reading queue and saved notes.\n\nReady\nUpdated 58 min. ago\nUpkeep paused\nLast attempt 58 min. ago \u00b7 succ",
+        "label": "Research Desk, Ready, owner Hermes. Updated 58 min. ago. Upkeep paused. Last successful update Nov 11, 2026, 8:26 AM CST. Last attempt Nov 11, 2026, 8:26 AM CST \u00b7 succeeded. Source data from Nov 10, 2026, 12:59 PM CST. Next refresh Nov 11, 2026, 7:00 AM CST",
+        "rect": {
+          "x": 104.640625,
+          "y": 230,
+          "width": 261.34375,
+          "height": 267.5,
+          "top": 230,
+          "right": 365.984375,
+          "bottom": 497.5,
+          "left": 104.640625
+        },
+        "scrollWidth": 259,
+        "clientWidth": 259
+      },
+      {
+        "text": "Sky Window\nH\nHermes\n\nA public weather dashboard for Chicago, Lisbon, Tokyo and cities you add, with live Open-Meteo forecasts.\n\nReady\nNot refreshed yet",
+        "label": "Sky Window, Ready, owner Hermes. Not refreshed yet. . ",
+        "rect": {
+          "x": 104.640625,
+          "y": 509.5,
+          "width": 261.34375,
+          "height": 204.5,
+          "top": 509.5,
+          "right": 365.984375,
+          "bottom": 714,
+          "left": 104.640625
+        },
+        "scrollWidth": 259,
+        "clientWidth": 259
+      },
+      {
+        "text": "Pair Play\nH\nHermes\n\nA small memory-match card game with six fruit pairs, saved rounds and a history of completed games.\n\nReady\nNot refreshed yet",
+        "label": "Pair Play, Ready, owner Hermes. Not refreshed yet. . ",
+        "rect": {
+          "x": 104.640625,
+          "y": 726,
+          "width": 261.34375,
+          "height": 204.5,
+          "top": 726,
+          "right": 365.984375,
+          "bottom": 930.5,
+          "left": 104.640625
+        },
+        "scrollWidth": 259,
+        "clientWidth": 259
+      },
+      {
+        "text": "Public Trip Board\nH\nHermes\n\nA public demonstration trip planner for Paris places, with no personal information.\n\nReady\nNot refreshed yet",
+        "label": "Public Trip Board, Ready, owner Hermes. Not refreshed yet. . ",
+        "rect": {
+          "x": 104.640625,
+          "y": 942.5,
+          "width": 261.34375,
+          "height": 204.5,
+          "top": 942.5,
+          "right": 365.984375,
+          "bottom": 1147,
+          "left": 104.640625
+        },
+        "scrollWidth": 259,
+        "clientWidth": 259
+      },
+      {
+        "text": "Runtime Probe\nP\nPublic fixture\n\nReady\nNot refreshed yet",
+        "label": "Runtime Probe, Ready, owner Public fixture. Not refreshed yet. . ",
+        "rect": {
+          "x": 104.640625,
+          "y": 1159,
+          "width": 261.34375,
+          "height": 204.5,
+          "top": 1159,
+          "right": 365.984375,
+          "bottom": 1363.5,
+          "left": 104.640625
+        },
+        "scrollWidth": 259,
+        "clientWidth": 259
+      }
+    ],
+    "dialogs": [],
+    "guest": null
+  },
+  "b-live-index-320": {
+    "w": 320,
+    "h": 844,
+    "docW": 320,
+    "root": {
+      "x": 72.71875,
+      "y": 34,
+      "width": 247.265625,
+      "height": 790,
+      "top": 34,
+      "right": 319.984375,
+      "bottom": 824,
+      "left": 72.71875
+    },
+    "elements": [
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 88.71875,
+          "y": 54,
+          "width": 66.625,
+          "height": 30,
+          "top": 54,
+          "right": 155.34375,
+          "bottom": 84,
+          "left": 88.71875
+        },
+        "scrollWidth": 67,
+        "clientWidth": 67
+      },
+      {
+        "text": "All",
+        "label": null,
+        "rect": {
+          "x": 90.71875,
+          "y": 175,
+          "width": 33.703125,
+          "height": 32,
+          "top": 175,
+          "right": 124.421875,
+          "bottom": 207,
+          "left": 90.71875
+        },
+        "scrollWidth": 34,
+        "clientWidth": 34
+      },
+      {
+        "text": "Needs attention \u00b7 0",
+        "label": null,
+        "rect": {
+          "x": 126.421875,
+          "y": 175,
+          "width": 122.40625,
+          "height": 32,
+          "top": 175,
+          "right": 248.828125,
+          "bottom": 207,
+          "left": 126.421875
+        },
+        "scrollWidth": 122,
+        "clientWidth": 122
+      },
+      {
+        "text": "Archived",
+        "label": null,
+        "rect": {
+          "x": 250.828125,
+          "y": 175,
+          "width": 67.3125,
+          "height": 32,
+          "top": 175,
+          "right": 318.140625,
+          "bottom": 207,
+          "left": 250.828125
+        },
+        "scrollWidth": 67,
+        "clientWidth": 67
+      },
+      {
+        "text": "Research Desk\nH\nHermes\n\nA public research library with a reading queue and saved notes.\n\nReady\nUpdated 58 min. ago\nUpkeep paused\nLast attempt 58 min. ago \u00b7 succ",
+        "label": "Research Desk, Ready, owner Hermes. Updated 58 min. ago. Upkeep paused. Last successful update Nov 11, 2026, 8:26 AM CST. Last attempt Nov 11, 2026, 8:26 AM CST \u00b7 succeeded. Source data from Nov 10, 2026, 12:59 PM CST. Next refresh Nov 11, 2026, 7:00 AM CST",
+        "rect": {
+          "x": 88.71875,
+          "y": 255,
+          "width": 207.265625,
+          "height": 285.5,
+          "top": 255,
+          "right": 295.984375,
+          "bottom": 540.5,
+          "left": 88.71875
+        },
+        "scrollWidth": 205,
+        "clientWidth": 205
+      },
+      {
+        "text": "Sky Window\nH\nHermes\n\nA public weather dashboard for Chicago, Lisbon, Tokyo and cities you add, with live Open-Meteo forecasts.\n\nReady\nNot refreshed yet",
+        "label": "Sky Window, Ready, owner Hermes. Not refreshed yet. . ",
+        "rect": {
+          "x": 88.71875,
+          "y": 552.5,
+          "width": 207.265625,
+          "height": 204.5,
+          "top": 552.5,
+          "right": 295.984375,
+          "bottom": 757,
+          "left": 88.71875
+        },
+        "scrollWidth": 205,
+        "clientWidth": 205
+      },
+      {
+        "text": "Pair Play\nH\nHermes\n\nA small memory-match card game with six fruit pairs, saved rounds and a history of completed games.\n\nReady\nNot refreshed yet",
+        "label": "Pair Play, Ready, owner Hermes. Not refreshed yet. . ",
+        "rect": {
+          "x": 88.71875,
+          "y": 769,
+          "width": 207.265625,
+          "height": 204.5,
+          "top": 769,
+          "right": 295.984375,
+          "bottom": 973.5,
+          "left": 88.71875
+        },
+        "scrollWidth": 205,
+        "clientWidth": 205
+      },
+      {
+        "text": "Public Trip Board\nH\nHermes\n\nA public demonstration trip planner for Paris places, with no personal information.\n\nReady\nNot refreshed yet",
+        "label": "Public Trip Board, Ready, owner Hermes. Not refreshed yet. . ",
+        "rect": {
+          "x": 88.71875,
+          "y": 985.5,
+          "width": 207.265625,
+          "height": 204.5,
+          "top": 985.5,
+          "right": 295.984375,
+          "bottom": 1190,
+          "left": 88.71875
+        },
+        "scrollWidth": 205,
+        "clientWidth": 205
+      },
+      {
+        "text": "Runtime Probe\nP\nPublic fixture\n\nReady\nNot refreshed yet",
+        "label": "Runtime Probe, Ready, owner Public fixture. Not refreshed yet. . ",
+        "rect": {
+          "x": 88.71875,
+          "y": 1202,
+          "width": 207.265625,
+          "height": 204.5,
+          "top": 1202,
+          "right": 295.984375,
+          "bottom": 1406.5,
+          "left": 88.71875
+        },
+        "scrollWidth": 205,
+        "clientWidth": 205
+      }
+    ],
+    "dialogs": [],
+    "guest": null
+  },
+  "b-live-sky-window-native": {
+    "w": 1690,
+    "h": 858,
+    "docW": 1690,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 260,
+          "y": 34,
+          "width": 1430,
+          "height": 67.5,
+          "top": 34,
+          "right": 1690,
+          "bottom": 101.5,
+          "left": 260
+        },
+        "scrollWidth": 1430,
+        "clientWidth": 1430
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 272,
+          "y": 51.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 51.25,
+          "right": 363.375,
+          "bottom": 83.25,
+          "left": 272
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Sky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet",
+        "label": null,
+        "rect": {
+          "x": 373.375,
+          "y": 46,
+          "width": 802.421875,
+          "height": 42.5,
+          "top": 46,
+          "right": 1175.796875,
+          "bottom": 88.5,
+          "left": 373.375
+        },
+        "scrollWidth": 802,
+        "clientWidth": 802
+      },
+      {
+        "text": "Sky Window",
+        "label": null,
+        "rect": {
+          "x": 415.375,
+          "y": 46,
+          "width": 91.640625,
+          "height": 24,
+          "top": 46,
+          "right": 507.015625,
+          "bottom": 70,
+          "left": 415.375
+        },
+        "scrollWidth": 92,
+        "clientWidth": 92
+      },
+      {
+        "text": "Upkeep: none",
+        "label": null,
+        "rect": {
+          "x": 1191.796875,
+          "y": 51.25,
+          "width": 131.59375,
+          "height": 32,
+          "top": 51.25,
+          "right": 1323.390625,
+          "bottom": 83.25,
+          "left": 1191.796875
+        },
+        "scrollWidth": 132,
+        "clientWidth": 132
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 1329.390625,
+          "y": 51.25,
+          "width": 68.84375,
+          "height": 32,
+          "top": 51.25,
+          "right": 1398.234375,
+          "bottom": 83.25,
+          "left": 1329.390625
+        },
+        "scrollWidth": 69,
+        "clientWidth": 69
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 1404.234375,
+          "y": 51.25,
+          "width": 99.015625,
+          "height": 32,
+          "top": 51.25,
+          "right": 1503.25,
+          "bottom": 83.25,
+          "left": 1404.234375
+        },
+        "scrollWidth": 99,
+        "clientWidth": 99
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 1509.25,
+          "y": 51.25,
+          "width": 122.75,
+          "height": 32,
+          "top": 51.25,
+          "right": 1632,
+          "bottom": 83.25,
+          "left": 1509.25
+        },
+        "scrollWidth": 123,
+        "clientWidth": 123
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 1638,
+          "y": 51.25,
+          "width": 40,
+          "height": 32,
+          "top": 51.25,
+          "right": 1678,
+          "bottom": 83.25,
+          "left": 1638
+        },
+        "scrollWidth": 40,
+        "clientWidth": 40
+      }
+    ],
+    "dialogs": [],
+    "guest": null
+  },
+  "b-live-pair-play-native": {
+    "w": 1690,
+    "h": 858,
+    "docW": 1690,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "header": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 260,
+          "y": 34,
+          "width": 1430,
+          "height": 67.5,
+          "top": 34,
+          "right": 1690,
+          "bottom": 101.5,
+          "left": 260
+        },
+        "scrollWidth": 1430,
+        "clientWidth": 1430
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 272,
+          "y": 51.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 51.25,
+          "right": 363.375,
+          "bottom": 83.25,
+          "left": 272
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Pair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet",
+        "label": null,
+        "rect": {
+          "x": 373.375,
+          "y": 46,
+          "width": 802.421875,
+          "height": 42.5,
+          "top": 46,
+          "right": 1175.796875,
+          "bottom": 88.5,
+          "left": 373.375
+        },
+        "scrollWidth": 802,
+        "clientWidth": 802
+      },
+      {
+        "text": "Pair Play",
+        "label": null,
+        "rect": {
+          "x": 415.375,
+          "y": 46,
+          "width": 63.859375,
+          "height": 24,
+          "top": 46,
+          "right": 479.234375,
+          "bottom": 70,
+          "left": 415.375
+        },
+        "scrollWidth": 64,
+        "clientWidth": 64
+      },
+      {
+        "text": "Upkeep: none",
+        "label": null,
+        "rect": {
+          "x": 1191.796875,
+          "y": 51.25,
+          "width": 131.59375,
+          "height": 32,
+          "top": 51.25,
+          "right": 1323.390625,
+          "bottom": 83.25,
+          "left": 1191.796875
+        },
+        "scrollWidth": 132,
+        "clientWidth": 132
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 1329.390625,
+          "y": 51.25,
+          "width": 68.84375,
+          "height": 32,
+          "top": 51.25,
+          "right": 1398.234375,
+          "bottom": 83.25,
+          "left": 1329.390625
+        },
+        "scrollWidth": 69,
+        "clientWidth": 69
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 1404.234375,
+          "y": 51.25,
+          "width": 99.015625,
+          "height": 32,
+          "top": 51.25,
+          "right": 1503.25,
+          "bottom": 83.25,
+          "left": 1404.234375
+        },
+        "scrollWidth": 99,
+        "clientWidth": 99
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 1509.25,
+          "y": 51.25,
+          "width": 122.75,
+          "height": 32,
+          "top": 51.25,
+          "right": 1632,
+          "bottom": 83.25,
+          "left": 1509.25
+        },
+        "scrollWidth": 123,
+        "clientWidth": 123
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 1638,
+          "y": 51.25,
+          "width": 40,
+          "height": 32,
+          "top": 51.25,
+          "right": 1678,
+          "bottom": 83.25,
+          "left": 1638
+        },
+        "scrollWidth": 40,
+        "clientWidth": 40
+      }
+    ],
+    "dialogs": [],
+    "guest": null
+  },
+  "restored": {
+    "hash": "#/spaces?space=research-desk",
+    "w": 1690,
+    "h": 858,
+    "scroll": [
+      0,
+      0
+    ],
+    "theme": "dark",
+    "dialogs": 0,
+    "guest": null
+  },
+  "restorationEqual": false,
+  "timestamp": "2026-11-11T09:24:23.992637-06:00"
+}

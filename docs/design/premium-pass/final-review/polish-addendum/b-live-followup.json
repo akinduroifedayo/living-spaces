@@ -1,0 +1,3421 @@
+{
+  "b-live-revisions": {
+    "w": 1690,
+    "h": 858,
+    "docW": 1690,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 59 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 59 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 260,
+          "y": 34,
+          "width": 1430,
+          "height": 67.5,
+          "top": 34,
+          "right": 1690,
+          "bottom": 101.5,
+          "left": 260
+        },
+        "scrollWidth": 1430,
+        "clientWidth": 1430
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 272,
+          "y": 51.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 51.25,
+          "right": 363.375,
+          "bottom": 83.25,
+          "left": 272
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Research Desk\nReady\nH\nHermes\n \u00b7 Updated 59 min. ago \u00b7 Source data from 20 hr. ago",
+        "label": null,
+        "rect": {
+          "x": 373.375,
+          "y": 46,
+          "width": 787.59375,
+          "height": 42.5,
+          "top": 46,
+          "right": 1160.96875,
+          "bottom": 88.5,
+          "left": 373.375
+        },
+        "scrollWidth": 788,
+        "clientWidth": 788
+      },
+      {
+        "text": "Research Desk",
+        "label": null,
+        "rect": {
+          "x": 415.375,
+          "y": 46,
+          "width": 110.765625,
+          "height": 24,
+          "top": 46,
+          "right": 526.140625,
+          "bottom": 70,
+          "left": 415.375
+        },
+        "scrollWidth": 111,
+        "clientWidth": 111
+      },
+      {
+        "text": "Upkeep: paused",
+        "label": null,
+        "rect": {
+          "x": 1176.96875,
+          "y": 51.25,
+          "width": 146.421875,
+          "height": 32,
+          "top": 51.25,
+          "right": 1323.390625,
+          "bottom": 83.25,
+          "left": 1176.96875
+        },
+        "scrollWidth": 146,
+        "clientWidth": 146
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 1329.390625,
+          "y": 51.25,
+          "width": 68.84375,
+          "height": 32,
+          "top": 51.25,
+          "right": 1398.234375,
+          "bottom": 83.25,
+          "left": 1329.390625
+        },
+        "scrollWidth": 69,
+        "clientWidth": 69
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 1404.234375,
+          "y": 51.25,
+          "width": 99.015625,
+          "height": 32,
+          "top": 51.25,
+          "right": 1503.25,
+          "bottom": 83.25,
+          "left": 1404.234375
+        },
+        "scrollWidth": 99,
+        "clientWidth": 99
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 1509.25,
+          "y": 51.25,
+          "width": 122.75,
+          "height": 32,
+          "top": 51.25,
+          "right": 1632,
+          "bottom": 83.25,
+          "left": 1509.25
+        },
+        "scrollWidth": 123,
+        "clientWidth": 123
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 1638,
+          "y": 51.25,
+          "width": 40,
+          "height": 32,
+          "top": 51.25,
+          "right": 1678,
+          "bottom": 83.25,
+          "left": 1638
+        },
+        "scrollWidth": 40,
+        "clientWidth": 40
+      }
+    ],
+    "dialogs": [
+      {
+        "text": "History & revisions\nClose\n\nHistory and code revisions for Research Desk\n\nRun history\nRevisions\n\nRestoring code does not rewind records. Your records, notes and statuses stay as they are now.\n\nRevision 19\nCurrent\n\nNov 11, 2026, 9:00 AM CST\n\nagent:Hermes \u00b7 Polish Library: secondary add-paper disclosure and adjacent search/results on phones\n\nRevision 18\nRestore\u2026\n\nNov 11, 2026, 8:00 AM CST\n\nagent:Hermes \u00b7 Avoid resetting a newly typed draft when the editor's first effect runs\n\nRevision 17\nRestore\u2026\n\nNov 11, 2026, 7:58 AM CST\n\nagent:Hermes \u00b7 Reconcile freshness history alongside incoming paper updates\n\nRevision 16\nRestore\u2026\n\nNov 11, 2026, 7:58 AM CST\n\nagent:Hermes \u00b7 Reconcile incoming papers after refresh and periodically without unmounting drafts\n\nRevision 15\nRestore\u2026\n\nNov 11, 2026, 7:56 AM CST\n\nagent:Hermes \u00b7 Finish narrow-phone sidebar sizing without horizontal overflow\n\nRevision 14\nRestore\u2026\n\nNov 11, 2026, 7:55 AM CST\n\nagent:Hermes \u00b7 Fix intrinsic layout overflow at 320px and high zoom\n\nRevision 13\nRestore\u2026\n\nNov 11, 2026, 7:54 AM CST\n\nagent:Hermes \u00b7 Scroll mobile paper selections directly to the reading pane\n\nRevision 12\nRestore\u2026\n\nNov 11, 2026, 7:53 AM CST\n\nagent:Hermes \u00b7 Bring full notes editing to priority review and add mobile reading focus\n\nRevision 11\nRestore\u2026\n\nNov 11, 2026, 7:51 AM CST\n\nagent:Hermes \u00b7 Keep deep links safe while saved papers load\n\nRevision 10\nRestore\u2026\n\nNov 11, 2026, 7:51 AM CST\n\nagent:Hermes \u00b7 Open overview paper selections in the library reading pane\n\nRevision 9\nRestore\u2026\n\nNov 11, 2026, 7:50 AM CST\n\nagent:Hermes \u00b7 Editorial Research Desk redesign with responsive reading panes and protected paper notes\n\nRevision 8\nRestore\u2026\n\nNov 11, 2026, 2:56 AM CST\n\nagent:Hermes \u00b7 Frontend: adopt shipped design kit (CSS floor, editorial theme) across all four views\n\nRevision 7\nRestore\u2026\n\nNov 10, 2026, 7:26 PM CST\n\nuser \u00b7 Restored revision 5\n\nRevision 6\nRestore\u2026\n\nNov 10, 2026, 7:26 PM CST\n\nharness-fixture \u00b7 Acceptance fixture: point feed at a failing path on the granted host\n\nRevision 5\nRestore\u2026\n\nNov 10, 2026, 7:26 PM CST\n\nuser \u00b7 Restored revision 3\n\nRevision 4\nRestore\u2026\n\nNov 10, 2026, 7:25 PM CST\n\nharness-fixture \u00b7 Acceptance fixture: point feed at a failing path on the granted host\n\nRevision 3\nRestore\u2026\n\nNov 10, 2026, 4:29 PM CST\n\nagent:Hermes \u00b7 Add Review view for high-priority unfinished papers\n\nRevision 2\nRestore\u2026\n\nNov 10, 2026, 4:13 PM CST\n\nagent:Hermes \u00b7 Replace native forms with explicit JS click and keyboard handlers\n\nRevision 1\nRestore\u2026\n\nNov 10, 2026, 4:00 PM CST\n\nagent:Hermes \u00b7 Created",
+        "label": "radix-_r_5f6_",
+        "modal": null,
+        "rect": {
+          "x": 1230,
+          "y": 0,
+          "width": 460,
+          "height": 858,
+          "top": 0,
+          "right": 1690,
+          "bottom": 858,
+          "left": 1230
+        }
+      }
+    ],
+    "guest": {
+      "w": 1404,
+      "h": 711,
+      "docW": 1389,
+      "bodyW": 1389,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Overview",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Library",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading queue",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Priority review",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQu",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "b-live-permissions-after": {
+    "w": 1690,
+    "h": 858,
+    "docW": 1690,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 1430,
+      "height": 804,
+      "top": 34,
+      "right": 1690,
+      "bottom": 838,
+      "left": 260
+    },
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 59 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 59 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 260,
+          "y": 34,
+          "width": 1430,
+          "height": 67.5,
+          "top": 34,
+          "right": 1690,
+          "bottom": 101.5,
+          "left": 260
+        },
+        "scrollWidth": 1430,
+        "clientWidth": 1430
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 272,
+          "y": 51.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 51.25,
+          "right": 363.375,
+          "bottom": 83.25,
+          "left": 272
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Research Desk\nReady\nH\nHermes\n \u00b7 Updated 59 min. ago \u00b7 Source data from 20 hr. ago",
+        "label": null,
+        "rect": {
+          "x": 373.375,
+          "y": 46,
+          "width": 787.59375,
+          "height": 42.5,
+          "top": 46,
+          "right": 1160.96875,
+          "bottom": 88.5,
+          "left": 373.375
+        },
+        "scrollWidth": 788,
+        "clientWidth": 788
+      },
+      {
+        "text": "Research Desk",
+        "label": null,
+        "rect": {
+          "x": 415.375,
+          "y": 46,
+          "width": 110.765625,
+          "height": 24,
+          "top": 46,
+          "right": 526.140625,
+          "bottom": 70,
+          "left": 415.375
+        },
+        "scrollWidth": 111,
+        "clientWidth": 111
+      },
+      {
+        "text": "Upkeep: paused",
+        "label": null,
+        "rect": {
+          "x": 1176.96875,
+          "y": 51.25,
+          "width": 146.421875,
+          "height": 32,
+          "top": 51.25,
+          "right": 1323.390625,
+          "bottom": 83.25,
+          "left": 1176.96875
+        },
+        "scrollWidth": 146,
+        "clientWidth": 146
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 1329.390625,
+          "y": 51.25,
+          "width": 68.84375,
+          "height": 32,
+          "top": 51.25,
+          "right": 1398.234375,
+          "bottom": 83.25,
+          "left": 1329.390625
+        },
+        "scrollWidth": 69,
+        "clientWidth": 69
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 1404.234375,
+          "y": 51.25,
+          "width": 99.015625,
+          "height": 32,
+          "top": 51.25,
+          "right": 1503.25,
+          "bottom": 83.25,
+          "left": 1404.234375
+        },
+        "scrollWidth": 99,
+        "clientWidth": 99
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 1509.25,
+          "y": 51.25,
+          "width": 122.75,
+          "height": 32,
+          "top": 51.25,
+          "right": 1632,
+          "bottom": 83.25,
+          "left": 1509.25
+        },
+        "scrollWidth": 123,
+        "clientWidth": 123
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 1638,
+          "y": 51.25,
+          "width": 40,
+          "height": 32,
+          "top": 51.25,
+          "right": 1678,
+          "bottom": 83.25,
+          "left": 1638
+        },
+        "scrollWidth": 40,
+        "clientWidth": 40
+      }
+    ],
+    "dialogs": [
+      {
+        "text": "Permissions \u00b7 Research Desk\nClose\n\nReview this Space's access.\n\nInternet access\nOn\n\nThis Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.\n\nGranted to Research Desk\nOwn data\nAllowed\nScope\nThis Space's records only. Cannot see other Spaces.\nPurpose\nSave and use this Space's data\nData leaves device\nThis grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off.\nAccess\nContinuing\nRevoke\nDiagnostics\nAllowed\nScope\nError logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.\nPurpose\nDiagnose and repair this Space\nData leaves device\nNo ordinary network access. The owner can read these logs in chat.\nAccess\nContinuing\nRevoke\nWaiting for your decision\n\nNothing waiting for your decision.\n\nYour canvas and its bot\n\nAsk Hermes in a normal Hermes chat to build or change this canvas, use connected tools, or bring in files. Bot actions follow Hermes's native rules, not extra per-site, per-tool or device permissions here.\n\nCanvas controls that ask their maintaining bot need a working native bot connection. This panel does not submit a bot request.\n\nOwner\nH\nHermes\nAudit\nNov 10, 2026, 10:37 PM CST \u00b7 user \u00b7 decision net \u00b7 granted\nNov 10, 2026, 7:26 PM CST \u00b7 upkeep:schedule \u00b7 schedule.disabled \u00b7 disabled\nNov 10, 2026, 6:20 PM CST \u00b7 user \u00b7 decision refresh \u00b7 granted\nNov 10, 2026, 6:20 PM CST \u00b7 acceptance:trusted-host-fixture \u00b7 request refresh \u00b7 requested\nNov 10, 2026, 6:17 PM CST \u00b7 user \u00b7 decision refresh \u00b7 denied\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request refresh \u00b7 requested\nNov 10, 2026, 4:00 PM CST \u00b7 user \u00b7 decision logs \u00b7 granted\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request logs \u00b7 requested\nNov 10, 2026, 4:00 PM CST \u00b7 user \u00b7 decision data \u00b7 granted\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request data \u00b7 requested",
+        "label": "radix-_r_5fc_",
+        "modal": null,
+        "rect": {
+          "x": 1230,
+          "y": 0,
+          "width": 460,
+          "height": 858,
+          "top": 0,
+          "right": 1690,
+          "bottom": 858,
+          "left": 1230
+        }
+      }
+    ],
+    "guest": {
+      "w": 1404,
+      "h": 711,
+      "docW": 1389,
+      "bodyW": 1389,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Overview",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Library",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading queue",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Priority review",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQu",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "b-live-permissions-390": {
+    "w": 390,
+    "h": 844,
+    "docW": 390,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 59 min. ago \u00b7 Source data from 20 hr. ago\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 59 min. ago \u00b7 Source data from 20 hr. ago\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 88.640625,
+          "y": 34,
+          "width": 301.34375,
+          "height": 127.5,
+          "top": 34,
+          "right": 389.984375,
+          "bottom": 161.5,
+          "left": 88.640625
+        },
+        "scrollWidth": 301,
+        "clientWidth": 301
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 100.640625,
+          "y": 60.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 60.25,
+          "right": 192.015625,
+          "bottom": 92.25,
+          "left": 100.640625
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Research Desk\nReady\nH\nHermes\n \u00b7 Updated 59 min. ago \u00b7 Source data from 20 hr. ago",
+        "label": null,
+        "rect": {
+          "x": 202.015625,
+          "y": 46,
+          "width": 175.96875,
+          "height": 60.5,
+          "top": 46,
+          "right": 377.984375,
+          "bottom": 106.5,
+          "left": 202.015625
+        },
+        "scrollWidth": 176,
+        "clientWidth": 176
+      },
+      {
+        "text": "Research Desk",
+        "label": null,
+        "rect": {
+          "x": 244.015625,
+          "y": 46,
+          "width": 51.140625,
+          "height": 24,
+          "top": 46,
+          "right": 295.15625,
+          "bottom": 70,
+          "left": 244.015625
+        },
+        "scrollWidth": 111,
+        "clientWidth": 51
+      },
+      {
+        "text": "Upkeep: paused",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 128.21875,
+          "y": 116.5,
+          "width": 91.015625,
+          "height": 32,
+          "top": 116.5,
+          "right": 219.234375,
+          "bottom": 148.5,
+          "left": 128.21875
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 225.234375,
+          "y": 116.5,
+          "width": 114.75,
+          "height": 32,
+          "top": 116.5,
+          "right": 339.984375,
+          "bottom": 148.5,
+          "left": 225.234375
+        },
+        "scrollWidth": 115,
+        "clientWidth": 115
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 345.984375,
+          "y": 116.5,
+          "width": 32,
+          "height": 32,
+          "top": 116.5,
+          "right": 377.984375,
+          "bottom": 148.5,
+          "left": 345.984375
+        },
+        "scrollWidth": 32,
+        "clientWidth": 32
+      }
+    ],
+    "dialogs": [
+      {
+        "text": "Permissions \u00b7 Research Desk\nClose\n\nReview this Space's access.\n\nInternet access\nOn\n\nThis Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.\n\nGranted to Research Desk\nOwn data\nAllowed\nScope\nThis Space's records only. Cannot see other Spaces.\nPurpose\nSave and use this Space's data\nData leaves device\nThis grant stays on device. Space-readable data can leave through Internet access or the WebRTC limit when Internet access is off.\nAccess\nContinuing\nRevoke\nDiagnostics\nAllowed\nScope\nError logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.\nPurpose\nDiagnose and repair this Space\nData leaves device\nNo ordinary network access. The owner can read these logs in chat.\nAccess\nContinuing\nRevoke\nWaiting for your decision\n\nNothing waiting for your decision.\n\nYour canvas and its bot\n\nAsk Hermes in a normal Hermes chat to build or change this canvas, use connected tools, or bring in files. Bot actions follow Hermes's native rules, not extra per-site, per-tool or device permissions here.\n\nCanvas controls that ask their maintaining bot need a working native bot connection. This panel does not submit a bot request.\n\nOwner\nH\nHermes\nAudit\nNov 10, 2026, 10:37 PM CST \u00b7 user \u00b7 decision net \u00b7 granted\nNov 10, 2026, 7:26 PM CST \u00b7 upkeep:schedule \u00b7 schedule.disabled \u00b7 disabled\nNov 10, 2026, 6:20 PM CST \u00b7 user \u00b7 decision refresh \u00b7 granted\nNov 10, 2026, 6:20 PM CST \u00b7 acceptance:trusted-host-fixture \u00b7 request refresh \u00b7 requested\nNov 10, 2026, 6:17 PM CST \u00b7 user \u00b7 decision refresh \u00b7 denied\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request refresh \u00b7 requested\nNov 10, 2026, 4:00 PM CST \u00b7 user \u00b7 decision logs \u00b7 granted\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request logs \u00b7 requested\nNov 10, 2026, 4:00 PM CST \u00b7 user \u00b7 decision data \u00b7 granted\nNov 10, 2026, 4:00 PM CST \u00b7 agent:Hermes \u00b7 request data \u00b7 requested",
+        "label": "radix-_r_5fc_",
+        "modal": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 844,
+          "top": 0,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        }
+      }
+    ],
+    "guest": {
+      "w": 275,
+      "h": 637,
+      "docW": 260,
+      "bodyW": 260,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Overview",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Library",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading queue",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Priority review",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "LogCDM: Interpretable Log Anomaly Detection via Behavioral Graph Drift and Adaptive Signal Fusion\nQu",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Attention Is All You Need\nCompleted\nHigh priority\nDemo",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "b-live-sky-window-ready-900": {
+    "w": 900,
+    "h": 844,
+    "docW": 900,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 640,
+      "height": 790,
+      "top": 34,
+      "right": 900,
+      "bottom": 824,
+      "left": 260
+    },
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 260,
+          "y": 34,
+          "width": 640,
+          "height": 85.5,
+          "top": 34,
+          "right": 900,
+          "bottom": 119.5,
+          "left": 260
+        },
+        "scrollWidth": 640,
+        "clientWidth": 640
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 272,
+          "y": 60.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 60.25,
+          "right": 363.375,
+          "bottom": 92.25,
+          "left": 272
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Sky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet",
+        "label": null,
+        "rect": {
+          "x": 373.375,
+          "y": 46,
+          "width": 12.421875,
+          "height": 60.5,
+          "top": 46,
+          "right": 385.796875,
+          "bottom": 106.5,
+          "left": 373.375
+        },
+        "scrollWidth": 125,
+        "clientWidth": 12
+      },
+      {
+        "text": "Sky Window",
+        "label": null,
+        "rect": {
+          "x": 415.375,
+          "y": 46,
+          "width": 0,
+          "height": 24,
+          "top": 46,
+          "right": 415.375,
+          "bottom": 70,
+          "left": 415.375
+        },
+        "scrollWidth": 92,
+        "clientWidth": 0
+      },
+      {
+        "text": "Upkeep: none",
+        "label": null,
+        "rect": {
+          "x": 401.796875,
+          "y": 60.25,
+          "width": 131.59375,
+          "height": 32,
+          "top": 60.25,
+          "right": 533.390625,
+          "bottom": 92.25,
+          "left": 401.796875
+        },
+        "scrollWidth": 132,
+        "clientWidth": 132
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 539.390625,
+          "y": 60.25,
+          "width": 68.84375,
+          "height": 32,
+          "top": 60.25,
+          "right": 608.234375,
+          "bottom": 92.25,
+          "left": 539.390625
+        },
+        "scrollWidth": 69,
+        "clientWidth": 69
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 614.234375,
+          "y": 60.25,
+          "width": 99.015625,
+          "height": 32,
+          "top": 60.25,
+          "right": 713.25,
+          "bottom": 92.25,
+          "left": 614.234375
+        },
+        "scrollWidth": 99,
+        "clientWidth": 99
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 719.25,
+          "y": 60.25,
+          "width": 122.75,
+          "height": 32,
+          "top": 60.25,
+          "right": 842,
+          "bottom": 92.25,
+          "left": 719.25
+        },
+        "scrollWidth": 123,
+        "clientWidth": 123
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 848,
+          "y": 60.25,
+          "width": 40,
+          "height": 32,
+          "top": 60.25,
+          "right": 888,
+          "bottom": 92.25,
+          "left": 848
+        },
+        "scrollWidth": 40,
+        "clientWidth": 40
+      }
+    ],
+    "dialogs": [],
+    "guest": {
+      "w": 614,
+      "h": 679,
+      "docW": 599,
+      "bodyW": 599,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "Today",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Week",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Cities",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Manage cities",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Chicago\nOvercast\n9\u00b0",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Lisbon\nOvercast\n18\u00b0",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Tokyo\nMostly clear night\n10\u00b0",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "b-live-sky-window-ready-390": {
+    "w": 390,
+    "h": 844,
+    "docW": 390,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 88.640625,
+          "y": 34,
+          "width": 301.34375,
+          "height": 127.5,
+          "top": 34,
+          "right": 389.984375,
+          "bottom": 161.5,
+          "left": 88.640625
+        },
+        "scrollWidth": 301,
+        "clientWidth": 301
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 100.640625,
+          "y": 60.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 60.25,
+          "right": 192.015625,
+          "bottom": 92.25,
+          "left": 100.640625
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Sky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet",
+        "label": null,
+        "rect": {
+          "x": 202.015625,
+          "y": 46,
+          "width": 175.96875,
+          "height": 60.5,
+          "top": 46,
+          "right": 377.984375,
+          "bottom": 106.5,
+          "left": 202.015625
+        },
+        "scrollWidth": 176,
+        "clientWidth": 176
+      },
+      {
+        "text": "Sky Window",
+        "label": null,
+        "rect": {
+          "x": 244.015625,
+          "y": 46,
+          "width": 51.140625,
+          "height": 24,
+          "top": 46,
+          "right": 295.15625,
+          "bottom": 70,
+          "left": 244.015625
+        },
+        "scrollWidth": 92,
+        "clientWidth": 51
+      },
+      {
+        "text": "Upkeep: none",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 128.21875,
+          "y": 116.5,
+          "width": 91.015625,
+          "height": 32,
+          "top": 116.5,
+          "right": 219.234375,
+          "bottom": 148.5,
+          "left": 128.21875
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 225.234375,
+          "y": 116.5,
+          "width": 114.75,
+          "height": 32,
+          "top": 116.5,
+          "right": 339.984375,
+          "bottom": 148.5,
+          "left": 225.234375
+        },
+        "scrollWidth": 115,
+        "clientWidth": 115
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 345.984375,
+          "y": 116.5,
+          "width": 32,
+          "height": 32,
+          "top": 116.5,
+          "right": 377.984375,
+          "bottom": 148.5,
+          "left": 345.984375
+        },
+        "scrollWidth": 32,
+        "clientWidth": 32
+      }
+    ],
+    "dialogs": [],
+    "guest": {
+      "w": 275,
+      "h": 637,
+      "docW": 260,
+      "bodyW": 260,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "Today",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Week",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Cities",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Manage cities",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Chicago\nOvercast\n9\u00b0",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Lisbon\nOvercast\n18\u00b0",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Tokyo\nMostly clear night\n10\u00b0",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "b-live-sky-window-ready-320": {
+    "w": 320,
+    "h": 844,
+    "docW": 320,
+    "root": {
+      "x": 72.71875,
+      "y": 34,
+      "width": 247.265625,
+      "height": 790,
+      "top": 34,
+      "right": 319.984375,
+      "bottom": 824,
+      "left": 72.71875
+    },
+    "header": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nSky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 72.71875,
+          "y": 34,
+          "width": 247.265625,
+          "height": 165.5,
+          "top": 34,
+          "right": 319.984375,
+          "bottom": 199.5,
+          "left": 72.71875
+        },
+        "scrollWidth": 247,
+        "clientWidth": 247
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 84.71875,
+          "y": 60.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 60.25,
+          "right": 176.09375,
+          "bottom": 92.25,
+          "left": 84.71875
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Sky Window\nReady\nH\nHermes\n \u00b7 Not refreshed yet",
+        "label": null,
+        "rect": {
+          "x": 186.09375,
+          "y": 46,
+          "width": 121.890625,
+          "height": 60.5,
+          "top": 46,
+          "right": 307.984375,
+          "bottom": 106.5,
+          "left": 186.09375
+        },
+        "scrollWidth": 125,
+        "clientWidth": 122
+      },
+      {
+        "text": "Sky Window",
+        "label": null,
+        "rect": {
+          "x": 228.09375,
+          "y": 46,
+          "width": 0,
+          "height": 24,
+          "top": 46,
+          "right": 228.09375,
+          "bottom": 70,
+          "left": 228.09375
+        },
+        "scrollWidth": 92,
+        "clientWidth": 0
+      },
+      {
+        "text": "Upkeep: none",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 96.21875,
+          "y": 116.5,
+          "width": 91.015625,
+          "height": 32,
+          "top": 116.5,
+          "right": 187.234375,
+          "bottom": 148.5,
+          "left": 96.21875
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 193.234375,
+          "y": 116.5,
+          "width": 114.75,
+          "height": 32,
+          "top": 116.5,
+          "right": 307.984375,
+          "bottom": 148.5,
+          "left": 193.234375
+        },
+        "scrollWidth": 115,
+        "clientWidth": 115
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 275.984375,
+          "y": 154.5,
+          "width": 32,
+          "height": 32,
+          "top": 154.5,
+          "right": 307.984375,
+          "bottom": 186.5,
+          "left": 275.984375
+        },
+        "scrollWidth": 32,
+        "clientWidth": 32
+      }
+    ],
+    "dialogs": [],
+    "guest": {
+      "w": 221,
+      "h": 599,
+      "docW": 246,
+      "bodyW": 246,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "Today",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Week",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Cities",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Manage cities",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Chicago\nOvercast\n9\u00b0",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Lisbon\nOvercast\n18\u00b0",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Tokyo\nMostly clear night\n10\u00b0",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "sky-window-ax": [],
+  "b-live-pair-play-ready-900": {
+    "w": 900,
+    "h": 844,
+    "docW": 900,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 640,
+      "height": 790,
+      "top": 34,
+      "right": 900,
+      "bottom": 824,
+      "left": 260
+    },
+    "header": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 260,
+          "y": 34,
+          "width": 640,
+          "height": 85.5,
+          "top": 34,
+          "right": 900,
+          "bottom": 119.5,
+          "left": 260
+        },
+        "scrollWidth": 640,
+        "clientWidth": 640
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 272,
+          "y": 60.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 60.25,
+          "right": 363.375,
+          "bottom": 92.25,
+          "left": 272
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Pair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet",
+        "label": null,
+        "rect": {
+          "x": 373.375,
+          "y": 46,
+          "width": 12.421875,
+          "height": 60.5,
+          "top": 46,
+          "right": 385.796875,
+          "bottom": 106.5,
+          "left": 373.375
+        },
+        "scrollWidth": 125,
+        "clientWidth": 12
+      },
+      {
+        "text": "Pair Play",
+        "label": null,
+        "rect": {
+          "x": 415.375,
+          "y": 46,
+          "width": 0,
+          "height": 24,
+          "top": 46,
+          "right": 415.375,
+          "bottom": 70,
+          "left": 415.375
+        },
+        "scrollWidth": 64,
+        "clientWidth": 0
+      },
+      {
+        "text": "Upkeep: none",
+        "label": null,
+        "rect": {
+          "x": 401.796875,
+          "y": 60.25,
+          "width": 131.59375,
+          "height": 32,
+          "top": 60.25,
+          "right": 533.390625,
+          "bottom": 92.25,
+          "left": 401.796875
+        },
+        "scrollWidth": 132,
+        "clientWidth": 132
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 539.390625,
+          "y": 60.25,
+          "width": 68.84375,
+          "height": 32,
+          "top": 60.25,
+          "right": 608.234375,
+          "bottom": 92.25,
+          "left": 539.390625
+        },
+        "scrollWidth": 69,
+        "clientWidth": 69
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 614.234375,
+          "y": 60.25,
+          "width": 99.015625,
+          "height": 32,
+          "top": 60.25,
+          "right": 713.25,
+          "bottom": 92.25,
+          "left": 614.234375
+        },
+        "scrollWidth": 99,
+        "clientWidth": 99
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 719.25,
+          "y": 60.25,
+          "width": 122.75,
+          "height": 32,
+          "top": 60.25,
+          "right": 842,
+          "bottom": 92.25,
+          "left": 719.25
+        },
+        "scrollWidth": 123,
+        "clientWidth": 123
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 848,
+          "y": 60.25,
+          "width": 40,
+          "height": 32,
+          "top": 60.25,
+          "right": 888,
+          "bottom": 92.25,
+          "left": 848
+        },
+        "scrollWidth": 40,
+        "clientWidth": 40
+      }
+    ],
+    "dialogs": [],
+    "guest": {
+      "w": 614,
+      "h": 679,
+      "docW": 599,
+      "bodyW": 599,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "\u2733\nPair Play",
+          "label": "Pair Play home",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Play",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Progress",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "History",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "01\n\u2605\n\ud83c\udf4a\nOrange",
+          "label": "Card 1, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "02\n\u2605\n\ud83c\udf53\nStrawberry",
+          "label": "Card 2, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "03\n\u2605\n\ud83c\udf49\nWatermelon",
+          "label": "Card 3, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "04\n\u2605\n\ud83c\udf53\nStrawberry",
+          "label": "Card 4, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "05\n\u2605\n\ud83c\udf47\nGrapes",
+          "label": "Card 5, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "06\n\u2605\n\ud83c\udf4e\nApple",
+          "label": "Card 6, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "07\n\u2605\n\ud83c\udf49\nWatermelon",
+          "label": "Card 7, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "08\n\u2605\n\ud83c\udf4a\nOrange",
+          "label": "Card 8, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "09\n\u2605\n\ud83c\udf4e\nApple",
+          "label": "Card 9, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "10\n\u2605\n\ud83c\udf4c\nBanana",
+          "label": "Card 10, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "11\n\u2605\n\ud83c\udf47\nGrapes",
+          "label": "Card 11, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "12\n\u2605\n\ud83c\udf4c\nBanana",
+          "label": "Card 12, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Your completed rounds\n\u2197",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "\u21bb New round",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "b-live-pair-play-ready-390": {
+    "w": 390,
+    "h": 844,
+    "docW": 390,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "header": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 88.640625,
+          "y": 34,
+          "width": 301.34375,
+          "height": 127.5,
+          "top": 34,
+          "right": 389.984375,
+          "bottom": 161.5,
+          "left": 88.640625
+        },
+        "scrollWidth": 301,
+        "clientWidth": 301
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 100.640625,
+          "y": 60.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 60.25,
+          "right": 192.015625,
+          "bottom": 92.25,
+          "left": 100.640625
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Pair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet",
+        "label": null,
+        "rect": {
+          "x": 202.015625,
+          "y": 46,
+          "width": 175.96875,
+          "height": 60.5,
+          "top": 46,
+          "right": 377.984375,
+          "bottom": 106.5,
+          "left": 202.015625
+        },
+        "scrollWidth": 176,
+        "clientWidth": 176
+      },
+      {
+        "text": "Pair Play",
+        "label": null,
+        "rect": {
+          "x": 244.015625,
+          "y": 46,
+          "width": 51.140625,
+          "height": 24,
+          "top": 46,
+          "right": 295.15625,
+          "bottom": 70,
+          "left": 244.015625
+        },
+        "scrollWidth": 64,
+        "clientWidth": 51
+      },
+      {
+        "text": "Upkeep: none",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 128.21875,
+          "y": 116.5,
+          "width": 91.015625,
+          "height": 32,
+          "top": 116.5,
+          "right": 219.234375,
+          "bottom": 148.5,
+          "left": 128.21875
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 225.234375,
+          "y": 116.5,
+          "width": 114.75,
+          "height": 32,
+          "top": 116.5,
+          "right": 339.984375,
+          "bottom": 148.5,
+          "left": 225.234375
+        },
+        "scrollWidth": 115,
+        "clientWidth": 115
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 345.984375,
+          "y": 116.5,
+          "width": 32,
+          "height": 32,
+          "top": 116.5,
+          "right": 377.984375,
+          "bottom": 148.5,
+          "left": 345.984375
+        },
+        "scrollWidth": 32,
+        "clientWidth": 32
+      }
+    ],
+    "dialogs": [],
+    "guest": {
+      "w": 275,
+      "h": 637,
+      "docW": 260,
+      "bodyW": 260,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "\u2733\nPair Play",
+          "label": "Pair Play home",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Play",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Progress",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "History",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "01\n\u2605\n\ud83c\udf4a\nOrange",
+          "label": "Card 1, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "02\n\u2605\n\ud83c\udf53\nStrawberry",
+          "label": "Card 2, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "03\n\u2605\n\ud83c\udf49\nWatermelon",
+          "label": "Card 3, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "04\n\u2605\n\ud83c\udf53\nStrawberry",
+          "label": "Card 4, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "05\n\u2605\n\ud83c\udf47\nGrapes",
+          "label": "Card 5, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "06\n\u2605\n\ud83c\udf4e\nApple",
+          "label": "Card 6, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "07\n\u2605\n\ud83c\udf49\nWatermelon",
+          "label": "Card 7, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "08\n\u2605\n\ud83c\udf4a\nOrange",
+          "label": "Card 8, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "09\n\u2605\n\ud83c\udf4e\nApple",
+          "label": "Card 9, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "10\n\u2605\n\ud83c\udf4c\nBanana",
+          "label": "Card 10, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "11\n\u2605\n\ud83c\udf47\nGrapes",
+          "label": "Card 11, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "12\n\u2605\n\ud83c\udf4c\nBanana",
+          "label": "Card 12, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Your completed rounds\n\u2197",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "\u21bb New round",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "b-live-pair-play-ready-320": {
+    "w": 320,
+    "h": 844,
+    "docW": 320,
+    "root": {
+      "x": 72.71875,
+      "y": 34,
+      "width": 247.265625,
+      "height": 790,
+      "top": 34,
+      "right": 319.984375,
+      "bottom": 824,
+      "left": 72.71875
+    },
+    "header": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 72.71875,
+          "y": 34,
+          "width": 247.265625,
+          "height": 165.5,
+          "top": 34,
+          "right": 319.984375,
+          "bottom": 199.5,
+          "left": 72.71875
+        },
+        "scrollWidth": 247,
+        "clientWidth": 247
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 84.71875,
+          "y": 60.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 60.25,
+          "right": 176.09375,
+          "bottom": 92.25,
+          "left": 84.71875
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Pair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet",
+        "label": null,
+        "rect": {
+          "x": 186.09375,
+          "y": 46,
+          "width": 121.890625,
+          "height": 60.5,
+          "top": 46,
+          "right": 307.984375,
+          "bottom": 106.5,
+          "left": 186.09375
+        },
+        "scrollWidth": 125,
+        "clientWidth": 122
+      },
+      {
+        "text": "Pair Play",
+        "label": null,
+        "rect": {
+          "x": 228.09375,
+          "y": 46,
+          "width": 0,
+          "height": 24,
+          "top": 46,
+          "right": 228.09375,
+          "bottom": 70,
+          "left": 228.09375
+        },
+        "scrollWidth": 64,
+        "clientWidth": 0
+      },
+      {
+        "text": "Upkeep: none",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 96.21875,
+          "y": 116.5,
+          "width": 91.015625,
+          "height": 32,
+          "top": 116.5,
+          "right": 187.234375,
+          "bottom": 148.5,
+          "left": 96.21875
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 193.234375,
+          "y": 116.5,
+          "width": 114.75,
+          "height": 32,
+          "top": 116.5,
+          "right": 307.984375,
+          "bottom": 148.5,
+          "left": 193.234375
+        },
+        "scrollWidth": 115,
+        "clientWidth": 115
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 275.984375,
+          "y": 154.5,
+          "width": 32,
+          "height": 32,
+          "top": 154.5,
+          "right": 307.984375,
+          "bottom": 186.5,
+          "left": 275.984375
+        },
+        "scrollWidth": 32,
+        "clientWidth": 32
+      }
+    ],
+    "dialogs": [],
+    "guest": {
+      "w": 221,
+      "h": 599,
+      "docW": 207,
+      "bodyW": 207,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "\u2733\nPair Play",
+          "label": "Pair Play home",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Play",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Progress",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "History",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "01\n\u2605\n\ud83c\udf4a\nOrange",
+          "label": "Card 1, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "02\n\u2605\n\ud83c\udf53\nStrawberry",
+          "label": "Card 2, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "03\n\u2605\n\ud83c\udf49\nWatermelon",
+          "label": "Card 3, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "04\n\u2605\n\ud83c\udf53\nStrawberry",
+          "label": "Card 4, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "05\n\u2605\n\ud83c\udf47\nGrapes",
+          "label": "Card 5, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "06\n\u2605\n\ud83c\udf4e\nApple",
+          "label": "Card 6, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "07\n\u2605\n\ud83c\udf49\nWatermelon",
+          "label": "Card 7, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "08\n\u2605\n\ud83c\udf4a\nOrange",
+          "label": "Card 8, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "09\n\u2605\n\ud83c\udf4e\nApple",
+          "label": "Card 9, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "10\n\u2605\n\ud83c\udf4c\nBanana",
+          "label": "Card 10, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "11\n\u2605\n\ud83c\udf47\nGrapes",
+          "label": "Card 11, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "12\n\u2605\n\ud83c\udf4c\nBanana",
+          "label": "Card 12, face down",
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Your completed rounds\n\u2197",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "\u21bb New round",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "pair-play-ax": [],
+  "b-live-research-desk-ready-900": {
+    "w": 900,
+    "h": 844,
+    "docW": 900,
+    "root": {
+      "x": 260,
+      "y": 34,
+      "width": 640,
+      "height": 790,
+      "top": 34,
+      "right": 900,
+      "bottom": 824,
+      "left": 260
+    },
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 60 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 60 min. ago \u00b7 Source data from 20 hr. ago\nUpkeep: paused\nHistory\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 260,
+          "y": 34,
+          "width": 640,
+          "height": 85.5,
+          "top": 34,
+          "right": 900,
+          "bottom": 119.5,
+          "left": 260
+        },
+        "scrollWidth": 640,
+        "clientWidth": 640
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 272,
+          "y": 60.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 60.25,
+          "right": 363.375,
+          "bottom": 92.25,
+          "left": 272
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Research Desk\nReady\nH\nHermes\n \u00b7 Updated 60 min. ago \u00b7 Source data from 20 hr. ago",
+        "label": null,
+        "rect": {
+          "x": 373.375,
+          "y": 46,
+          "width": 0,
+          "height": 60.5,
+          "top": 46,
+          "right": 373.375,
+          "bottom": 106.5,
+          "left": 373.375
+        },
+        "scrollWidth": 125,
+        "clientWidth": 0
+      },
+      {
+        "text": "Research Desk",
+        "label": null,
+        "rect": {
+          "x": 415.375,
+          "y": 46,
+          "width": 0,
+          "height": 24,
+          "top": 46,
+          "right": 415.375,
+          "bottom": 70,
+          "left": 415.375
+        },
+        "scrollWidth": 111,
+        "clientWidth": 0
+      },
+      {
+        "text": "Upkeep: paused",
+        "label": null,
+        "rect": {
+          "x": 389.375,
+          "y": 60.25,
+          "width": 146.421875,
+          "height": 32,
+          "top": 60.25,
+          "right": 535.796875,
+          "bottom": 92.25,
+          "left": 389.375
+        },
+        "scrollWidth": 146,
+        "clientWidth": 146
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 541.796875,
+          "y": 60.25,
+          "width": 68.84375,
+          "height": 32,
+          "top": 60.25,
+          "right": 610.640625,
+          "bottom": 92.25,
+          "left": 541.796875
+        },
+        "scrollWidth": 69,
+        "clientWidth": 69
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 616.640625,
+          "y": 60.25,
+          "width": 99.015625,
+          "height": 32,
+          "top": 60.25,
+          "right": 715.65625,
+          "bottom": 92.25,
+          "left": 616.640625
+        },
+        "scrollWidth": 99,
+        "clientWidth": 99
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 721.65625,
+          "y": 60.25,
+          "width": 122.75,
+          "height": 32,
+          "top": 60.25,
+          "right": 844.40625,
+          "bottom": 92.25,
+          "left": 721.65625
+        },
+        "scrollWidth": 123,
+        "clientWidth": 123
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 850.40625,
+          "y": 60.25,
+          "width": 40,
+          "height": 32,
+          "top": 60.25,
+          "right": 890.40625,
+          "bottom": 92.25,
+          "left": 850.40625
+        },
+        "scrollWidth": 40,
+        "clientWidth": 40
+      }
+    ],
+    "dialogs": [],
+    "guest": {
+      "w": 614,
+      "h": 679,
+      "docW": 599,
+      "bodyW": 599,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Overview",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Library",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading queue",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Priority review",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Medical Image Segmentation: Foundation Model Adaptation versus Task-Specific Training",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Toward Foundation Detection Models via Example-Based Grounding in EM-DETR",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Contrastive Discovery: Open-Ended Scientific Discovery over Competing Explanations",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Comparative Analysis of Agent Evaluation Frameworks: Stability, Detection, and Discovery in Enterpri",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Explore the library\n\u2197",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Open priority review\n\u2197",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "In the queue\n42",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading now\n1",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Completed\n4",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "b-live-research-desk-ready-390": {
+    "w": 390,
+    "h": 844,
+    "docW": 390,
+    "root": {
+      "x": 88.640625,
+      "y": 34,
+      "width": 301.34375,
+      "height": 790,
+      "top": 34,
+      "right": 389.984375,
+      "bottom": 824,
+      "left": 88.640625
+    },
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 60 min. ago \u00b7 Source data from 20 hr. ago\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 60 min. ago \u00b7 Source data from 20 hr. ago\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 88.640625,
+          "y": 34,
+          "width": 301.34375,
+          "height": 127.5,
+          "top": 34,
+          "right": 389.984375,
+          "bottom": 161.5,
+          "left": 88.640625
+        },
+        "scrollWidth": 301,
+        "clientWidth": 301
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 100.640625,
+          "y": 60.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 60.25,
+          "right": 192.015625,
+          "bottom": 92.25,
+          "left": 100.640625
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Research Desk\nReady\nH\nHermes\n \u00b7 Updated 60 min. ago \u00b7 Source data from 20 hr. ago",
+        "label": null,
+        "rect": {
+          "x": 202.015625,
+          "y": 46,
+          "width": 175.96875,
+          "height": 60.5,
+          "top": 46,
+          "right": 377.984375,
+          "bottom": 106.5,
+          "left": 202.015625
+        },
+        "scrollWidth": 176,
+        "clientWidth": 176
+      },
+      {
+        "text": "Research Desk",
+        "label": null,
+        "rect": {
+          "x": 244.015625,
+          "y": 46,
+          "width": 51.140625,
+          "height": 24,
+          "top": 46,
+          "right": 295.15625,
+          "bottom": 70,
+          "left": 244.015625
+        },
+        "scrollWidth": 111,
+        "clientWidth": 51
+      },
+      {
+        "text": "Upkeep: paused",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 128.21875,
+          "y": 116.5,
+          "width": 91.015625,
+          "height": 32,
+          "top": 116.5,
+          "right": 219.234375,
+          "bottom": 148.5,
+          "left": 128.21875
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 225.234375,
+          "y": 116.5,
+          "width": 114.75,
+          "height": 32,
+          "top": 116.5,
+          "right": 339.984375,
+          "bottom": 148.5,
+          "left": 225.234375
+        },
+        "scrollWidth": 115,
+        "clientWidth": 115
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 345.984375,
+          "y": 116.5,
+          "width": 32,
+          "height": 32,
+          "top": 116.5,
+          "right": 377.984375,
+          "bottom": 148.5,
+          "left": 345.984375
+        },
+        "scrollWidth": 32,
+        "clientWidth": 32
+      }
+    ],
+    "dialogs": [],
+    "guest": {
+      "w": 275,
+      "h": 637,
+      "docW": 260,
+      "bodyW": 260,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Overview",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Library",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading queue",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Priority review",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Medical Image Segmentation: Foundation Model Adaptation versus Task-Specific Training",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Toward Foundation Detection Models via Example-Based Grounding in EM-DETR",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Contrastive Discovery: Open-Ended Scientific Discovery over Competing Explanations",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Comparative Analysis of Agent Evaluation Frameworks: Stability, Detection, and Discovery in Enterpri",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Explore the library\n\u2197",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Open priority review\n\u2197",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "In the queue42",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading now1",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Completed4",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "b-live-research-desk-ready-320": {
+    "w": 320,
+    "h": 844,
+    "docW": 320,
+    "root": {
+      "x": 72.71875,
+      "y": 34,
+      "width": 247.265625,
+      "height": 790,
+      "top": 34,
+      "right": 319.984375,
+      "bottom": 824,
+      "left": 72.71875
+    },
+    "header": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 60 min. ago \u00b7 Source data from 20 hr. ago\nPermissions\nRefresh now",
+    "elements": [
+      {
+        "text": "Spaces\nResearch Desk\nReady\nH\nHermes\n \u00b7 Updated 60 min. ago \u00b7 Source data from 20 hr. ago\nPermissions\nRefresh now",
+        "label": null,
+        "rect": {
+          "x": 72.71875,
+          "y": 34,
+          "width": 247.265625,
+          "height": 165.5,
+          "top": 34,
+          "right": 319.984375,
+          "bottom": 199.5,
+          "left": 72.71875
+        },
+        "scrollWidth": 247,
+        "clientWidth": 247
+      },
+      {
+        "text": "Spaces",
+        "label": null,
+        "rect": {
+          "x": 84.71875,
+          "y": 60.25,
+          "width": 91.375,
+          "height": 32,
+          "top": 60.25,
+          "right": 176.09375,
+          "bottom": 92.25,
+          "left": 84.71875
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Research Desk\nReady\nH\nHermes\n \u00b7 Updated 60 min. ago \u00b7 Source data from 20 hr. ago",
+        "label": null,
+        "rect": {
+          "x": 186.09375,
+          "y": 46,
+          "width": 121.890625,
+          "height": 60.5,
+          "top": 46,
+          "right": 307.984375,
+          "bottom": 106.5,
+          "left": 186.09375
+        },
+        "scrollWidth": 125,
+        "clientWidth": 122
+      },
+      {
+        "text": "Research Desk",
+        "label": null,
+        "rect": {
+          "x": 228.09375,
+          "y": 46,
+          "width": 0,
+          "height": 24,
+          "top": 46,
+          "right": 228.09375,
+          "bottom": 70,
+          "left": 228.09375
+        },
+        "scrollWidth": 111,
+        "clientWidth": 0
+      },
+      {
+        "text": "Upkeep: paused",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "History",
+        "label": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "text": "Permissions",
+        "label": null,
+        "rect": {
+          "x": 96.21875,
+          "y": 116.5,
+          "width": 91.015625,
+          "height": 32,
+          "top": 116.5,
+          "right": 187.234375,
+          "bottom": 148.5,
+          "left": 96.21875
+        },
+        "scrollWidth": 91,
+        "clientWidth": 91
+      },
+      {
+        "text": "Refresh now",
+        "label": null,
+        "rect": {
+          "x": 193.234375,
+          "y": 116.5,
+          "width": 114.75,
+          "height": 32,
+          "top": 116.5,
+          "right": 307.984375,
+          "bottom": 148.5,
+          "left": 193.234375
+        },
+        "scrollWidth": 115,
+        "clientWidth": 115
+      },
+      {
+        "text": "",
+        "label": "More Space actions",
+        "rect": {
+          "x": 275.984375,
+          "y": 154.5,
+          "width": 32,
+          "height": 32,
+          "top": 154.5,
+          "right": 307.984375,
+          "bottom": 186.5,
+          "left": 275.984375
+        },
+        "scrollWidth": 32,
+        "clientWidth": 32
+      }
+    ],
+    "dialogs": [],
+    "guest": {
+      "w": 221,
+      "h": 599,
+      "docW": 254,
+      "bodyW": 254,
+      "reduced": false,
+      "controls": [
+        {
+          "tag": "A",
+          "text": "R\n/\nD\nResearch Desk\nA field journal for artificial intelligence",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Refresh",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Overview",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Library",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading queue",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Priority review",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Medical Image Segmentation: Foundation Model Adaptation versus Task-Specific Training",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Toward Foundation Detection Models via Example-Based Grounding in EM-DETR",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Contrastive Discovery: Open-Ended Scientific Discovery over Competing Explanations",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Comparative Analysis of Agent Evaluation Frameworks: Stability, Detection, and Discovery in Enterpri",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Explore the library\n\u2197",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Open priority review\n\u2197",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "In the queue42",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Reading now1",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        },
+        {
+          "tag": "A",
+          "text": "Completed4",
+          "label": null,
+          "placeholder": null,
+          "title": "",
+          "tab": 0
+        }
+      ],
+      "motionRules": []
+    }
+  },
+  "research-desk-ax": [],
+  "restored": {
+    "hash": "#/spaces?space=research-desk",
+    "w": 1690,
+    "h": 858,
+    "scroll": [
+      0,
+      0
+    ],
+    "theme": "dark",
+    "dialogs": 0,
+    "guest": {
+      "hash": "#/library",
+      "scroll": [
+        0,
+        0
+      ],
+      "search": "attention"
+    }
+  },
+  "restorationEqual": true
+}
