@@ -16,6 +16,12 @@ The current isolated Desktop and gateway remain in use for qualification. Their 
 
 The real-model trace is `evidence/normal-chat-03.trace.json` in that build directory. `journey-interaction.log.attempt-1`, `journey-interaction-attempt-2.log`, `journey-chat-live-update.json` and its screenshot retain the interaction evidence and the harness failure. The exact packaged renderer SHA-256 is `4ec39eca0987f25709dd8de52de39208bb4c688ea0407fee975b637e5d6fdd00`. These observations precede the packaging repair and must be requalified afterward.
 
+## Scheduled upkeep checkpoint (19:10 CT)
+
+`harness/qualify_schedule.py` drives the real isolated Desktop, the isolated gateway's cron ticker and native `cron/jobs.json`. Runs were made due with `cron.jobs.trigger_job`, which only moves `next_run_at`; the gateway ticker still claimed and executed the no-agent script. To show an update, the harness overwrites one record's `source` title directly in SQLite, then requires the scheduled run to correct it. This is a test fixture, not a product path. Two harness limits are disclosed. The isolated window is occluded, so the renderer reports `document.visibilityState=hidden` and TanStack Query pauses polling. The open-view pickup check therefore holds CDP focus emulation. The in-frame Library tab press did not route under that state, so the harness set the frame's hash directly. Twelve failed or vacuous attempts are retained beside the passing runs.
+
+The independent packaging review found that the renderer graph gate resolved paths against the process cwd and compared case-sensitively. Commit `783cff8` resolves against the repo root and lowercases. Three regression tests fail on the old gate and pass on the new one, and the real esbuild metafile still passes.
+
 ## Acceptance ledger
 
 | Check | Status | Missing evidence |
@@ -26,7 +32,7 @@ The real-model trace is `evidence/normal-chat-03.trace.json` in that build direc
 | R1-04 evolution and breadth | Partial | Normal chat added Research Desk's Review view and created the distinct Pair Play game. Pair Play's revision-2 Progress view works in the restarted packaged Desktop with the original round and settings intact. Broader evolution and acceptance review remain. |
 | R1-05 authority | Pending | Actual grant panel, denial and revocation checks, WebRTC disclosure and secret checks. |
 | R1-06 refresh | Pending | Real public retrieval, notes retained, failure and concurrent-write behavior. |
-| R1-07 schedule | Pending | Approved isolated native cron updates closed and open Spaces; pause and cleanup verified. |
+| R1-07 schedule | Partial | Model-requested daily schedule approved through the host-owned Approve control (native input). One native no-agent cron job, cadence `0 7 * * *` America/Chicago, next eligible 07:00 shown. The isolated gateway ticker executed scheduled runs with the Space closed (index only, zero frames) and open; each corrected one diverged source record, kept all user data, and the open frame showed the new value without remount. History shows the schedule run. Host Pause paused the native job; no run across two ticker intervals. Job left paused. Open: offline/missed-run catch-up not observed, revoke-stops-schedule not exercised, final job deletion pending at release end. Evidence `evidence/schedule/`. |
 | R1-08 restart and failure | Partial | Full isolated Desktop and gateway restart preserved all projects, records, revisions and grants. Pair Play reopened with retained game and settings. Resource-limit, interrupted-work and recovery cases remain. |
 | R1-09 repair | Pending | Bounded scoped error and real chat repair without data loss. |
 | R1-10 restore | Pending | Code restored as a new revision without data rewind; incompatible schema blocked or safely migrated. |
