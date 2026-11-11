@@ -68,6 +68,21 @@ async function click(label) {
 }
 async function cleanup() { await act(async () => view.unmount()) }
 
+test('accepted Run now does not claim a worker started before native execution', async () => {
+  setup(); data.upkeep = payload()
+  const calls = []
+  try {
+    await render(UpkeepSheet, props(async (path, options) => { calls.push({ path, options }); return data.upkeep }))
+    await click('Run now')
+    assert.equal(calls.length, 1)
+    assert.equal(data.upkeep.job.state, 'scheduled')
+    assert.deepEqual(data.upkeep.executions, [])
+    const feedback = document.querySelector('.ls-upkeep-feedback').textContent
+    assert.match(feedback, /Run requested/)
+    assert.doesNotMatch(feedback, /Run started|Hermes is working on it/)
+  } finally { await cleanup() }
+})
+
 for (const [freshness, expected, count] of [
   [{}, 'Not refreshed yet', 0],
   [{ last_attempt_status: 'failed' }, 'No successful update yet', 0],
