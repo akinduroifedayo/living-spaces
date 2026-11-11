@@ -1,0 +1,139 @@
+{
+  "url": "http://127.0.0.1:8769/src/living-spaces/skills/build-space/references/kit-gallery.html",
+  "scroll": 379,
+  "client": 379,
+  "offenders": [],
+  "flagged": [
+    {
+      "class": "space-card space-stat",
+      "text": "Papers in library\n12",
+      "padding": "16px",
+      "children": [
+        {
+          "tag": "SPAN",
+          "padding": "0px",
+          "margin": "0px"
+        },
+        {
+          "tag": "SPAN",
+          "padding": "0px",
+          "margin": "0px"
+        },
+        {
+          "tag": "STRONG",
+          "padding": "0px",
+          "margin": "0px"
+        }
+      ]
+    },
+    {
+      "class": "space-card space-stat",
+      "text": "Completed / all papers\n3 / 12",
+      "padding": "16px",
+      "children": [
+        {
+          "tag": "SPAN",
+          "padding": "0px",
+          "margin": "0px"
+        },
+        {
+          "tag": "SPAN",
+          "padding": "0px",
+          "margin": "0px"
+        },
+        {
+          "tag": "STRONG",
+          "padding": "0px",
+          "margin": "0px"
+        }
+      ]
+    },
+    {
+      "class": "space-card space-stat",
+      "text": "Check-ins / planned today\n2 / 3",
+      "padding": "16px",
+      "children": [
+        {
+          "tag": "SPAN",
+          "padding": "0px",
+          "margin": "0px"
+        },
+        {
+          "tag": "SPAN",
+          "padding": "0px",
+          "margin": "0px"
+        },
+        {
+          "tag": "STRONG",
+          "padding": "0px",
+          "margin": "0px"
+        }
+      ]
+    },
+    {
+      "class": "space-card",
+      "text": "Reading list\nRead the introduction\nWrite a short note\nReturn to the source",
+      "padding": "16px",
+      "children": [
+        {
+          "tag": "H3",
+          "padding": "0px",
+          "margin": "0px 0px 12px"
+        },
+        {
+          "tag": "UL",
+          "padding": "0px",
+          "margin": "0px"
+        }
+      ]
+    },
+    {
+      "class": "",
+      "text": "Read the introduction",
+      "padding": "0px 0px 12px",
+      "children": [
+        {
+          "tag": "LABEL",
+          "padding": "0px",
+          "margin": "0px"
+        }
+      ]
+    },
+    {
+      "class": "",
+      "text": "Write a short note",
+      "padding": "12px 0px",
+      "children": [
+        {
+          "tag": "LABEL",
+          "padding": "0px",
+          "margin": "0px"
+        }
+      ]
+    },
+    {
+      "class": "",
+      "text": "Return to the source",
+      "padding": "12px 0px 0px",
+      "children": [
+        {
+          "tag": "LABEL",
+          "padding": "0px",
+          "margin": "0px"
+        }
+      ]
+    },
+    {
+      "class": "space-table-wrap",
+      "text": "Same 12 synthetic papers\nStatus\tPapers\tOf all 12\nQueued\t5\t41.7%\nReading\t4\t33.3%\nCompleted\t3\t25.0%",
+      "padding": "0px",
+      "children": [
+        {
+          "tag": "TABLE",
+          "padding": "0px",
+          "margin": "0px"
+        }
+      ]
+    }
+  ]
+}

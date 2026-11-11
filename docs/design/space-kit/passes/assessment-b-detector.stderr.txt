@@ -1,0 +1,1 @@
+impeccable detect: could not read linked stylesheet ./kit/spaces-kit.css (resolved to /Users/ifedayoakinduro/.hermes/kanban/workspaces/t_7d0302a8/repo/src/living-spaces/skills/build-space/references/research-desk/kit/spaces-kit.css); color and custom-property rules will be incomplete

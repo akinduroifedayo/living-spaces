@@ -116,6 +116,75 @@ its result. Run them inside the callback after `space.put` confirms, or check
 that the returned record exists. Disable editable creation fields while saving
 so a confirmation cannot clear newer input.
 
+## Make the inside worth using (optional design defaults)
+
+The user’s request and installed design skills (impeccable or another) take
+precedence over these defaults. Use your other authorized tools too: search for
+real reference/content, generate illustrations or sprites, make SVG art, and
+bring libraries that earn their place. Respect tool permissions and asset terms.
+**The kit is a floor, not a ceiling.** Use its HTML classes for a finished Hermes
+look, start from a preset, override everything, or skip its CSS entirely.
+
+Choose an identity from the job, not from “AI dashboard.” Kit presets use
+`data-theme="…"` on `<body>` (or `<html>` when the loader supports root attributes):
+`editorial`, `terminal`, `playful`, `minimal`, `data`, `journal`, `game`; no preset
+follows the category automatically. All follow
+light/dark. Customize any `--space-*` token in your later CSS: arbitrary palette,
+`--space-font`/`--space-heading-font`, radius, `--space-density`, shadow,
+`--space-background-image` (solid/gradient/pattern/local or remote image), and
+`--space-motion` (0 or 1). Link bundled fonts only if actually included; use
+fallbacks. The manifest tile accent does not constrain the inside’s palette.
+
+Useful starting compositions, not required templates:
+- **Dashboard:** a few meaningful measures, one dominant plot/table and a
+  supporting list. Put measure, unit, period and denominator in the headers.
+- **Tracker/planner:** period control + check-in list/calendar + compact creation
+  row. A selected day is UI state, not a saved check-in. Show checkmarks/text.
+- **Document:** readable measure (~65–75ch), headings and useful navigation.
+  **Tool:** inputs beside output (`space-split`), inputs first on narrow screens.
+- **Game:** the board leads; rules, turn, result and restart stay findable. Use
+  native buttons or accessible keyboard equivalents to canvas/drag gestures.
+- **Multi-view:** visible labelled nav, current location, list/detail, focused
+  editor. Preserve drafts through reload; don’t use a landing page as the app.
+
+Kit vocabulary: `space-app`, `space-header`, `space-nav`, `space-stack`,
+`space-split`, `space-card`, `space-tile`, `space-stat-grid`, `space-list`,
+`space-table-wrap`, `space-form-row`, `space-button--primary`, `space-badge`,
+`space-chart`, `space-board`. Default type is 14/20/16px body/title/section;
+12–16px within groups, 24–32px between jobs. Change those with purpose. Give the
+primary task emphasis, not every block the same size card. Tile tints identify
+subjects, never outcomes. Use coherent SVG icons, not emoji substitutes.
+
+First run says what belongs here and gives a next action; don’t fabricate saved
+records or success metrics. Distinguish no records from no search matches.
+Keep last-good data and drafts during loading/failure. Name what is loading,
+what failed, what survived and a real recovery action. Use persistent status
+text (`SaveIndicator`, `ConflictBanner` or equivalents), not toast-only feedback.
+
+Charts are calculations, not decoration. Use a qualified bundled general chart
+library, finance-specific lightweight-charts, a chosen web dependency, or local
+SVG/Canvas. Label units/axes/series; provide equivalent data or a useful summary.
+Use actual domain calculations and zero/empty/no-eligible states. No fake trend,
+color-only series identification, or unlabelled decorative sparkline.
+
+The **Runtime and project files** section above is authoritative about available
+network capabilities; these design defaults do not enable direct fetch, CDN
+imports or embeds. When supported by that runtime, public content can add value.
+Keep core work local/bundled, and give each remote region loading, failed-load,
+retry and unavailable states. Say “Internet is off for this Space” only from
+authoritative host state, not a guessed request failure. Otherwise name what
+couldn’t load. Never imitate host permission toggles.
+
+Avoid centered card soup, gray-everything, walls of identical tiles, nested
+cards, giant stacked forms, unearned gradients/glass, fake freshness and
+meaningless ornament. Keep visible focus, labelled inputs and icon controls,
+4.5:1 body-text contrast, text/icon status cues and reduced-motion alternatives.
+Custom CSS can break these floors: check them again after overrides. Test light
+and dark, narrow width, long text, keyboard, loading/empty/error/offline and a
+confirmed save. See the [gallery](references/kit-gallery.html), Research Desk,
+Daily Practice and [Weather Window](references/weather-window/index.html)—the last
+uses its own visual language with no kit CSS.
+
 ## JavaScript-controlled forms
 
 The accepted frame has `sandbox="allow-scripts"` and CSP `form-action 'none'`.

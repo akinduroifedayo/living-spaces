@@ -1,0 +1,152 @@
+{
+  "url": "http://127.0.0.1:8769/weather-off.html",
+  "outerPreflight": {
+    "title": "[Human] Assessment B \u00b7 \ud83d\udc34 Weather Window",
+    "appended": true,
+    "executed": true
+  },
+  "outerDesktop": {
+    "text": "Design fixture \u00b7 simulated host Internet Off \u00b7 actual reference code \u00b7 no network attempted\nWeather Window\nLondon\nCopenhagen\nTokyo\nLondon\n\nA window onto the next twelve hours.\n\n\u2014\n\u00b0C\n\nNo forecast loaded yet\n\nLoad forecast\nExplore sample\n\nInternet is off for this Space. Local sample exploration is still available.\n\nTemperature \u00b7 \u00b0C\n\nNext 12 hourly forecasts \u00b7 UTC\n\nA forecast will appear here. Your local Space stays usable if it cannot load.\n\nHourly values & forecast details\n\nPublic forecast from Open-Meteo \u00b7 no location permission or account needed\n\nForecasts are estimates, not observations. Location selection is not saved.",
+    "console": [
+      {
+        "level": "log",
+        "text": "%c[impeccable] No anti-patterns found. color: #22c55e; font-weight: bold"
+      }
+    ],
+    "csp": [],
+    "overlayLoad": "loaded",
+    "viewport": {
+      "w": 1280,
+      "h": 900
+    },
+    "overflow": {
+      "scroll": 1280,
+      "client": 1280
+    },
+    "headings": [
+      "Weather Window",
+      "London",
+      "Temperature \u00b7 \u00b0C"
+    ],
+    "controls": [
+      {
+        "tag": "BUTTON",
+        "text": "London",
+        "type": "submit",
+        "label": null,
+        "width": 86.703125,
+        "height": 44.5,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Copenhagen",
+        "type": "submit",
+        "label": null,
+        "width": 124.140625,
+        "height": 44.5,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Tokyo",
+        "type": "submit",
+        "label": null,
+        "width": 74.234375,
+        "height": 44.5,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Load forecast",
+        "type": "button",
+        "label": null,
+        "width": 126.09375,
+        "height": 44.5,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Explore sample",
+        "type": "button",
+        "label": null,
+        "width": 139.875,
+        "height": 44.5,
+        "disabled": false
+      }
+    ],
+    "overlayElements": []
+  },
+  "outerMobile": {
+    "text": "Design fixture \u00b7 simulated host Internet Off \u00b7 actual reference code \u00b7 no network attempted\nWeather Window\nLondon\nCopenhagen\nTokyo\nLondon\n\nA window onto the next twelve hours.\n\n\u2014\n\u00b0C\n\nNo forecast loaded yet\n\nLoad forecast\nExplore sample\n\nInternet is off for this Space. Local sample exploration is still available.\n\nTemperature \u00b7 \u00b0C\n\nNext 12 hourly forecasts \u00b7 UTC\n\nA forecast will appear here. Your local Space stays usable if it cannot load.\n\nHourly values & forecast details\n\nPublic forecast from Open-Meteo \u00b7 no location permission or account needed\n\nForecasts are estimates, not observations. Location selection is not saved.",
+    "console": [
+      {
+        "level": "log",
+        "text": "%c[impeccable] No anti-patterns found. color: #22c55e; font-weight: bold"
+      }
+    ],
+    "csp": [],
+    "overlayLoad": "loaded",
+    "viewport": {
+      "w": 390,
+      "h": 844
+    },
+    "overflow": {
+      "scroll": 379,
+      "client": 379
+    },
+    "headings": [
+      "Weather Window",
+      "London",
+      "Temperature \u00b7 \u00b0C"
+    ],
+    "controls": [
+      {
+        "tag": "BUTTON",
+        "text": "London",
+        "type": "submit",
+        "label": null,
+        "width": 109,
+        "height": 44,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Copenhagen",
+        "type": "submit",
+        "label": null,
+        "width": 109,
+        "height": 44,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Tokyo",
+        "type": "submit",
+        "label": null,
+        "width": 109,
+        "height": 44,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Load forecast",
+        "type": "button",
+        "label": null,
+        "width": 126.09375,
+        "height": 44.5,
+        "disabled": false
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Explore sample",
+        "type": "button",
+        "label": null,
+        "width": 139.875,
+        "height": 44.5,
+        "disabled": false
+      }
+    ],
+    "overlayElements": []
+  }
+}

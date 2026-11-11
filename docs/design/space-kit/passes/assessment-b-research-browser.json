@@ -1,0 +1,59 @@
+{
+  "url": "http://127.0.0.1:8769/?example=research-desk",
+  "innerPreflight": {
+    "result": {
+      "type": "object",
+      "value": {
+        "title": "[Human] Assessment B \u00b7",
+        "appended": true,
+        "executed": true,
+        "url": "about:srcdoc"
+      }
+    }
+  },
+  "innerInjection": {
+    "result": {
+      "type": "object",
+      "value": {
+        "src": "http://localhost:8401/detect.js",
+        "appended": true
+      }
+    }
+  },
+  "innerEvidence": {
+    "result": {
+      "type": "object",
+      "value": {
+        "console": [],
+        "csp": [
+          {
+            "blockedURI": "http://localhost:8401/detect.js",
+            "violatedDirective": "script-src-elem",
+            "originalPolicy": "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline' blob:; img-src blob: data:; font-src blob: data:; media-src blob: data:; worker-src blob:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; manifest-src 'none'; webrtc 'block'"
+          }
+        ],
+        "overlayLoad": "error",
+        "text": "",
+        "viewport": {
+          "w": 1280,
+          "h": 820
+        },
+        "overflow": {
+          "scroll": 1280,
+          "client": 1280
+        },
+        "overlayElements": []
+      }
+    }
+  },
+  "outerEvidence": {
+    "console": [
+      {
+        "level": "log",
+        "text": "%c[impeccable] No anti-patterns found. color: #22c55e; font-weight: bold"
+      }
+    ],
+    "overlayLoad": "loaded",
+    "overlayElements": []
+  }
+}

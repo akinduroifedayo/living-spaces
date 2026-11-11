@@ -1,0 +1,80 @@
+{
+  "detector_exit_code": 2,
+  "findings_total": 8,
+  "rules": {
+    "cramped-padding": 8
+  },
+  "files": {
+    "/Users/ifedayoakinduro/.hermes/kanban/workspaces/t_7d0302a8/repo/src/living-spaces/skills/build-space/references/kit-gallery.html": 8
+  },
+  "severity": {
+    "warning": 8
+  },
+  "snippets": {
+    "<div> \"space-card\": children flush against border+bg on all sides (no inset)": 3,
+    "<section> \"space-card\": children flush against border+bg on top/right/left (no inset)": 1,
+    "<li>: children flush against border-bottom on bottom (no inset)": 3,
+    "<div> \"space-table-wrap\": children flush against border on all sides (no inset)": 1
+  },
+  "source_inventory": [
+    "src/living-spaces/skills/build-space/references/kit-gallery.html",
+    "src/living-spaces/skills/build-space/references/habit-planner.md",
+    "src/living-spaces/skills/build-space/references/research-desk/space.json",
+    "src/living-spaces/skills/build-space/references/research-desk/index.html",
+    "src/living-spaces/skills/build-space/references/research-desk/styles.css",
+    "src/living-spaces/skills/build-space/references/research-desk/app.js",
+    "src/living-spaces/skills/build-space/references/weather-window/space.json",
+    "src/living-spaces/skills/build-space/references/weather-window/index.html",
+    "src/living-spaces/skills/build-space/references/weather-window/styles.css",
+    "src/living-spaces/skills/build-space/references/weather-window/README.md",
+    "src/living-spaces/skills/build-space/references/weather-window/app.js",
+    "src/living-spaces/skills/build-space/references/research-desk/views/queue.js",
+    "src/living-spaces/skills/build-space/references/research-desk/views/library.js",
+    "src/living-spaces/skills/build-space/references/research-desk/views/editor.js",
+    "src/living-spaces/skills/build-space/references/research-desk/views/overview.js",
+    "src/living-spaces/runtime/kit/spaces-kit.css"
+  ],
+  "source_changed_since_scan": [],
+  "live_server_stop": {
+    "command": [
+      "/Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable",
+      "live-server",
+      "stop",
+      "--keep-inject"
+    ],
+    "cwd": "/Users/ifedayoakinduro/.hermes/kanban/workspaces/t_7d0302a8/repo/docs/design/space-kit/passes",
+    "exit_code": 0,
+    "stdout": "Stopped live server on port 8401.\n",
+    "stderr": ""
+  },
+  "live_server_health_after_stop": {
+    "responded": false,
+    "error": "<urlopen error [Errno 61] Connection refused>"
+  },
+  "artifacts": [
+    "assessment-b-detector.raw.json",
+    "assessment-b-detector.stderr.txt",
+    "assessment-b-execution.json",
+    "assessment-b-gallery-browser.json",
+    "assessment-b-gallery-data-mobile.png",
+    "assessment-b-gallery-desktop.png",
+    "assessment-b-gallery-mobile-no-overlay.png",
+    "assessment-b-gallery-mobile.png",
+    "assessment-b-gallery-overflow-no-overlay.json",
+    "assessment-b-gallery-overlay.png",
+    "assessment-b-habit-browser.json",
+    "assessment-b-habit-desktop.png",
+    "assessment-b-habit-mobile.png",
+    "assessment-b-preflight.json",
+    "assessment-b-research-application.json",
+    "assessment-b-research-browser.json",
+    "assessment-b-research-desktop.png",
+    "assessment-b-research-mobile.png",
+    "assessment-b-research-overlay.png",
+    "assessment-b-run.py",
+    "assessment-b-verify.py",
+    "assessment-b-weather-browser.json",
+    "assessment-b-weather-desktop.png",
+    "assessment-b-weather-mobile.png"
+  ]
+}

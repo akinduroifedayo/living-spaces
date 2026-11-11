@@ -1,0 +1,2181 @@
+{
+  "method": "Chromium computed CSS colors; WCAG relative luminance; default plus seven presets, light/dark",
+  "checks": [
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "text/bg",
+      "ratio": 15.798,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "text/card",
+      "ratio": 14.839,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "text/surface",
+      "ratio": 15.798,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "muted/bg",
+      "ratio": 5.247,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "muted/card",
+      "ratio": 4.929,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "muted/surface",
+      "ratio": 5.247,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "link/bg",
+      "ratio": 5.744,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "link/card",
+      "ratio": 5.396,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "link/surface",
+      "ratio": 5.744,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "alert/alert-bg",
+      "ratio": 6.728,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "success/success-bg",
+      "ratio": 5.825,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "warning/warning-bg",
+      "ratio": 5.912,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "on-action/action",
+      "ratio": 5.744,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "focus/bg",
+      "ratio": 5.744,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "focus/card",
+      "ratio": 5.396,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "focus/surface",
+      "ratio": 5.744,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "default",
+      "pair": "control-line/surface",
+      "ratio": 3.358,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "text/bg",
+      "ratio": 13.363,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "text/card",
+      "ratio": 12.345,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "text/surface",
+      "ratio": 14.753,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "muted/bg",
+      "ratio": 6.16,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "muted/card",
+      "ratio": 5.691,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "muted/surface",
+      "ratio": 6.801,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "link/bg",
+      "ratio": 6.95,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "link/card",
+      "ratio": 6.42,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "link/surface",
+      "ratio": 7.673,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "alert/alert-bg",
+      "ratio": 6.728,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "success/success-bg",
+      "ratio": 5.825,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "warning/warning-bg",
+      "ratio": 5.912,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "on-action/action",
+      "ratio": 7.673,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "focus/bg",
+      "ratio": 6.95,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "focus/card",
+      "ratio": 6.42,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "focus/surface",
+      "ratio": 7.673,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "editorial",
+      "pair": "control-line/surface",
+      "ratio": 3.999,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "text/bg",
+      "ratio": 11.643,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "text/card",
+      "ratio": 10.857,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "text/surface",
+      "ratio": 12.622,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "muted/bg",
+      "ratio": 5.851,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "muted/card",
+      "ratio": 5.456,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "muted/surface",
+      "ratio": 6.343,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "link/bg",
+      "ratio": 6.788,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "link/card",
+      "ratio": 6.33,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "link/surface",
+      "ratio": 7.359,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "alert/alert-bg",
+      "ratio": 6.728,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "success/success-bg",
+      "ratio": 5.825,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "warning/warning-bg",
+      "ratio": 5.912,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "on-action/action",
+      "ratio": 7.666,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "focus/bg",
+      "ratio": 6.788,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "focus/card",
+      "ratio": 6.33,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "focus/surface",
+      "ratio": 7.359,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "terminal",
+      "pair": "control-line/surface",
+      "ratio": 4.166,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "text/bg",
+      "ratio": 12.613,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "text/card",
+      "ratio": 14.476,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "text/surface",
+      "ratio": 14.476,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "muted/bg",
+      "ratio": 5.885,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "muted/card",
+      "ratio": 6.754,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "muted/surface",
+      "ratio": 6.754,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "link/bg",
+      "ratio": 7.071,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "link/card",
+      "ratio": 8.115,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "link/surface",
+      "ratio": 8.115,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "alert/alert-bg",
+      "ratio": 6.728,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "success/success-bg",
+      "ratio": 5.825,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "warning/warning-bg",
+      "ratio": 5.912,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "on-action/action",
+      "ratio": 8.115,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "focus/bg",
+      "ratio": 7.071,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "focus/card",
+      "ratio": 8.115,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "focus/surface",
+      "ratio": 8.115,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "playful",
+      "pair": "control-line/surface",
+      "ratio": 4.038,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "text/bg",
+      "ratio": 15.523,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "text/card",
+      "ratio": 14.238,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "text/surface",
+      "ratio": 15.523,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "muted/bg",
+      "ratio": 6.1,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "muted/card",
+      "ratio": 5.595,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "muted/surface",
+      "ratio": 6.1,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "link/bg",
+      "ratio": 15.523,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "link/card",
+      "ratio": 14.238,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "link/surface",
+      "ratio": 15.523,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "alert/alert-bg",
+      "ratio": 6.728,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "success/success-bg",
+      "ratio": 5.825,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "warning/warning-bg",
+      "ratio": 5.912,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "on-action/action",
+      "ratio": 15.523,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "focus/bg",
+      "ratio": 15.523,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "focus/card",
+      "ratio": 14.238,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "focus/surface",
+      "ratio": 15.523,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "minimal",
+      "pair": "control-line/surface",
+      "ratio": 3.69,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "text/bg",
+      "ratio": 12.295,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "text/card",
+      "ratio": 13.47,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "text/surface",
+      "ratio": 13.47,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "muted/bg",
+      "ratio": 5.787,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "muted/card",
+      "ratio": 6.339,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "muted/surface",
+      "ratio": 6.339,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "link/bg",
+      "ratio": 7.009,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "link/card",
+      "ratio": 7.678,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "link/surface",
+      "ratio": 7.678,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "alert/alert-bg",
+      "ratio": 6.728,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "success/success-bg",
+      "ratio": 5.825,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "warning/warning-bg",
+      "ratio": 5.912,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "on-action/action",
+      "ratio": 7.678,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "focus/bg",
+      "ratio": 7.009,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "focus/card",
+      "ratio": 7.678,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "focus/surface",
+      "ratio": 7.678,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "data",
+      "pair": "control-line/surface",
+      "ratio": 3.705,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "text/bg",
+      "ratio": 11.796,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "text/card",
+      "ratio": 10.781,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "text/surface",
+      "ratio": 12.315,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "muted/bg",
+      "ratio": 6.034,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "muted/card",
+      "ratio": 5.515,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "muted/surface",
+      "ratio": 6.299,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "link/bg",
+      "ratio": 6.915,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "link/card",
+      "ratio": 6.32,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "link/surface",
+      "ratio": 7.219,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "alert/alert-bg",
+      "ratio": 6.728,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "success/success-bg",
+      "ratio": 5.825,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "warning/warning-bg",
+      "ratio": 5.912,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "on-action/action",
+      "ratio": 7.498,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "focus/bg",
+      "ratio": 6.915,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "focus/card",
+      "ratio": 6.32,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "focus/surface",
+      "ratio": 7.219,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "journal",
+      "pair": "control-line/surface",
+      "ratio": 4.028,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "text/bg",
+      "ratio": 11.573,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "text/card",
+      "ratio": 13.072,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "text/surface",
+      "ratio": 12.472,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "muted/bg",
+      "ratio": 5.388,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "muted/card",
+      "ratio": 6.086,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "muted/surface",
+      "ratio": 5.807,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "link/bg",
+      "ratio": 7.36,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "link/card",
+      "ratio": 8.313,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "link/surface",
+      "ratio": 7.932,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "alert/alert-bg",
+      "ratio": 6.728,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "success/success-bg",
+      "ratio": 5.825,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "warning/warning-bg",
+      "ratio": 5.912,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "on-action/action",
+      "ratio": 8.313,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "focus/bg",
+      "ratio": 7.36,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "focus/card",
+      "ratio": 8.313,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "focus/surface",
+      "ratio": 7.932,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "light",
+      "theme": "game",
+      "pair": "control-line/surface",
+      "ratio": 4.005,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "text/bg",
+      "ratio": 16.016,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "text/card",
+      "ratio": 17.38,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "text/surface",
+      "ratio": 14.64,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "muted/bg",
+      "ratio": 6.575,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "muted/card",
+      "ratio": 7.135,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "muted/surface",
+      "ratio": 6.01,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "link/bg",
+      "ratio": 7.785,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "link/card",
+      "ratio": 8.448,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "link/surface",
+      "ratio": 7.116,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "alert/alert-bg",
+      "ratio": 7.905,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "success/success-bg",
+      "ratio": 8.12,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "warning/warning-bg",
+      "ratio": 9.066,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "on-action/action",
+      "ratio": 5.307,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "focus/bg",
+      "ratio": 7.785,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "focus/card",
+      "ratio": 8.448,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "focus/surface",
+      "ratio": 7.116,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "default",
+      "pair": "control-line/surface",
+      "ratio": 4.086,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "text/bg",
+      "ratio": 15.16,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "text/card",
+      "ratio": 13.763,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "text/surface",
+      "ratio": 12.229,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "muted/bg",
+      "ratio": 8.267,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "muted/card",
+      "ratio": 7.506,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "muted/surface",
+      "ratio": 6.669,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "link/bg",
+      "ratio": 10.899,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "link/card",
+      "ratio": 9.894,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "link/surface",
+      "ratio": 8.792,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "alert/alert-bg",
+      "ratio": 7.905,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "success/success-bg",
+      "ratio": 8.12,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "warning/warning-bg",
+      "ratio": 9.066,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "on-action/action",
+      "ratio": 7.538,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "focus/bg",
+      "ratio": 10.899,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "focus/card",
+      "ratio": 9.894,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "focus/surface",
+      "ratio": 8.792,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "editorial",
+      "pair": "control-line/surface",
+      "ratio": 3.916,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "text/bg",
+      "ratio": 15.249,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "text/card",
+      "ratio": 13.762,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "text/surface",
+      "ratio": 11.879,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "muted/bg",
+      "ratio": 8.848,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "muted/card",
+      "ratio": 7.985,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "muted/surface",
+      "ratio": 6.892,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "link/bg",
+      "ratio": 10.214,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "link/card",
+      "ratio": 9.218,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "link/surface",
+      "ratio": 7.957,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "alert/alert-bg",
+      "ratio": 7.905,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "success/success-bg",
+      "ratio": 8.12,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "warning/warning-bg",
+      "ratio": 9.066,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "on-action/action",
+      "ratio": 6.921,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "focus/bg",
+      "ratio": 10.214,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "focus/card",
+      "ratio": 9.218,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "focus/surface",
+      "ratio": 7.957,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "terminal",
+      "pair": "control-line/surface",
+      "ratio": 4.642,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "text/bg",
+      "ratio": 14.097,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "text/card",
+      "ratio": 12.395,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "text/surface",
+      "ratio": 10.793,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "muted/bg",
+      "ratio": 7.986,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "muted/card",
+      "ratio": 7.022,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "muted/surface",
+      "ratio": 6.114,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "link/bg",
+      "ratio": 8.704,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "link/card",
+      "ratio": 7.654,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "link/surface",
+      "ratio": 6.664,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "alert/alert-bg",
+      "ratio": 7.905,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "success/success-bg",
+      "ratio": 8.12,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "warning/warning-bg",
+      "ratio": 9.066,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "on-action/action",
+      "ratio": 6.777,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "focus/bg",
+      "ratio": 8.704,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "focus/card",
+      "ratio": 7.654,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "focus/surface",
+      "ratio": 6.664,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "playful",
+      "pair": "control-line/surface",
+      "ratio": 4.321,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "text/bg",
+      "ratio": 15.739,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "text/card",
+      "ratio": 14.043,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "text/surface",
+      "ratio": 12.707,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "muted/bg",
+      "ratio": 7.861,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "muted/card",
+      "ratio": 7.014,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "muted/surface",
+      "ratio": 6.346,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "link/bg",
+      "ratio": 15.739,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "link/card",
+      "ratio": 14.043,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "link/surface",
+      "ratio": 12.707,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "alert/alert-bg",
+      "ratio": 7.905,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "success/success-bg",
+      "ratio": 8.12,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "warning/warning-bg",
+      "ratio": 9.066,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "on-action/action",
+      "ratio": 9.74,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "focus/bg",
+      "ratio": 15.739,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "focus/card",
+      "ratio": 14.043,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "focus/surface",
+      "ratio": 12.707,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "minimal",
+      "pair": "control-line/surface",
+      "ratio": 3.995,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "text/bg",
+      "ratio": 14.935,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "text/card",
+      "ratio": 13.141,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "text/surface",
+      "ratio": 11.453,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "muted/bg",
+      "ratio": 8.437,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "muted/card",
+      "ratio": 7.424,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "muted/surface",
+      "ratio": 6.47,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "link/bg",
+      "ratio": 9.525,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "link/card",
+      "ratio": 8.381,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "link/surface",
+      "ratio": 7.304,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "alert/alert-bg",
+      "ratio": 7.905,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "success/success-bg",
+      "ratio": 8.12,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "warning/warning-bg",
+      "ratio": 9.066,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "on-action/action",
+      "ratio": 6.783,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "focus/bg",
+      "ratio": 9.525,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "focus/card",
+      "ratio": 8.381,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "focus/surface",
+      "ratio": 7.304,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "data",
+      "pair": "control-line/surface",
+      "ratio": 4.124,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "text/bg",
+      "ratio": 13.68,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "text/card",
+      "ratio": 12.225,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "text/surface",
+      "ratio": 10.488,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "muted/bg",
+      "ratio": 8.24,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "muted/card",
+      "ratio": 7.363,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "muted/surface",
+      "ratio": 6.317,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "link/bg",
+      "ratio": 9.573,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "link/card",
+      "ratio": 8.554,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "link/surface",
+      "ratio": 7.338,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "alert/alert-bg",
+      "ratio": 7.905,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "success/success-bg",
+      "ratio": 8.12,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "warning/warning-bg",
+      "ratio": 9.066,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "on-action/action",
+      "ratio": 6.822,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "focus/bg",
+      "ratio": 9.573,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "focus/card",
+      "ratio": 8.554,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "focus/surface",
+      "ratio": 7.338,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "journal",
+      "pair": "control-line/surface",
+      "ratio": 4.018,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "text/bg",
+      "ratio": 14.976,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "text/card",
+      "ratio": 12.298,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "text/surface",
+      "ratio": 9.565,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "muted/bg",
+      "ratio": 9.617,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "muted/card",
+      "ratio": 7.898,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "muted/surface",
+      "ratio": 6.143,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "link/bg",
+      "ratio": 9.886,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "link/card",
+      "ratio": 8.118,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "link/surface",
+      "ratio": 6.314,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "alert/alert-bg",
+      "ratio": 7.905,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "success/success-bg",
+      "ratio": 8.12,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "warning/warning-bg",
+      "ratio": 9.066,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "on-action/action",
+      "ratio": 6.395,
+      "minimum": 4.5,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "focus/bg",
+      "ratio": 9.886,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "focus/card",
+      "ratio": 8.118,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "focus/surface",
+      "ratio": 6.314,
+      "minimum": 3,
+      "pass": true
+    },
+    {
+      "mode": "dark",
+      "theme": "game",
+      "pair": "control-line/surface",
+      "ratio": 4.316,
+      "minimum": 3,
+      "pass": true
+    }
+  ]
+}

@@ -36,24 +36,24 @@ export function Library({ records, reload }) {
     <section aria-labelledby="library-heading">
       <h2 id="library-heading">Library</h2>
       <label>Search papers<input type="search" value=${search} onInput=${e => setSearch(e.target.value)} /></label>
-      <div class="add-item" role="group" aria-label="Add a paper">
+      <div class="add-item space-form-row" role="group" aria-label="Add a paper">
         <label>New paper title<input ref=${titleInput} required disabled=${save.state === 'saving'} value=${title}
           onInput=${e => setTitle(e.target.value)} onKeyDown=${addOnEnter} /></label>
-        <button type="button" onClick=${add} disabled=${save.state === 'saving' || !title.trim()}>Add to library</button>
+        <button class="space-button--primary" type="button" onClick=${add} disabled=${save.state === 'saving' || !title.trim()}>Add to library</button>
         <${SaveIndicator} state=${title.trim() && save.state === 'saved' ? 'idle' : save.state}
           message=${title.trim() && save.state === 'saved' ? 'Draft not saved' : save.message} />
       </div>
-      <div class="split">
+      <div class="split space-split">
         <div><p>${filtered.length} matching papers</p>
-          ${filtered.length ? html`<ul class="paper-list">${filtered.map(record => html`
-            <li key=${record.id}><button type="button" aria-pressed=${record.id === selected?.id}
+          ${filtered.length ? html`<ul class="paper-list space-list">${filtered.map(record => html`
+            <li key=${record.id}><button class="space-list-button" type="button" aria-pressed=${record.id === selected?.id}
               onClick=${() => setSelected(record)}>${window.space.field(record, 'title') || 'Untitled'}</button>
               <small>${record.data.status || 'queued'} · ${record.data.priority || 'normal'}</small></li>`)}</ul>` :
             html`<${EmptyState} title=${search ? 'No matching papers' : 'Your library is empty'}>
               <p>${search ? 'Try another search.' : 'Add a paper above or approve the public feed refresh.'}</p><//>`}
         </div>
         ${detail ? html`<${Editor} key=${detail.id} record=${detail} reload=${reload} />` :
-          html`<p class="panel">Select a paper to read its summary and edit your notes.</p>`}
+          html`<p class="space-empty">Select a paper to read its summary and edit your notes.</p>`}
       </div>
     </section>`;
 }

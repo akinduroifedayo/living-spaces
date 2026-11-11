@@ -1,0 +1,30 @@
+{
+  "command": [
+    "/Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable",
+    "detect",
+    "--json",
+    "src/living-spaces/skills/build-space/references",
+    "src/living-spaces/runtime/kit/spaces-kit.css"
+  ],
+  "cwd": "/Users/ifedayoakinduro/.hermes/kanban/workspaces/t_7d0302a8/repo",
+  "source_sha256": {
+    "src/living-spaces/skills/build-space/references/kit-gallery.html": "a2655f5d70b14906b67e7b52636335207e1e7185c6ec8d79fac53a6f12e27333",
+    "src/living-spaces/skills/build-space/references/habit-planner.md": "f6489ddfa9d8435840b17c92914c8ba6bb8065e200cec7fc4d43cd837592d362",
+    "src/living-spaces/skills/build-space/references/research-desk/space.json": "47da105ab42f97667465ffb447ed4e4759673a2e489885a568772c0412ed21fb",
+    "src/living-spaces/skills/build-space/references/research-desk/index.html": "fca51e18338cc311d5a4e33e0e38a5a54faf13b4998bfdd6e4eec57dcb9b8899",
+    "src/living-spaces/skills/build-space/references/research-desk/styles.css": "bb379670d44cbf0a362c4964e39a002f50d463b9fedfa82397722f71bc09acc4",
+    "src/living-spaces/skills/build-space/references/research-desk/app.js": "6f12964ef2ae33b2ef61431a76fa0494a37ca7986f49163e18bbb0518bf1b4a0",
+    "src/living-spaces/skills/build-space/references/weather-window/space.json": "ab4b66fff2b528532b3368c383ee4b904b81db3b850a57ceae99875fcae7934a",
+    "src/living-spaces/skills/build-space/references/weather-window/index.html": "3cbe42c105d75f1b81de0f0ea87c7541d32fa8dc9a0769ac6b7b0a1265468506",
+    "src/living-spaces/skills/build-space/references/weather-window/styles.css": "ceb4bad05a8e8dfba7dbeca123f3d80becca3de76761dae028b7d7e40a6bbca5",
+    "src/living-spaces/skills/build-space/references/weather-window/README.md": "219d3355ef331a12ab084e61889bf3a7492ea4767c25cf9e89297849334e0f88",
+    "src/living-spaces/skills/build-space/references/weather-window/app.js": "1bb7fe37b15e6eca604a1dcd0137dea1dcf251d0c7e6ce007c710d953fa6944d",
+    "src/living-spaces/skills/build-space/references/research-desk/views/queue.js": "6e39a816deebd3c3f94a146108d19464d3f6dde98c1a6e5cf9e7d7bc35ea4d3e",
+    "src/living-spaces/skills/build-space/references/research-desk/views/library.js": "7c2e28e57bb1e7c5ecfe46f1cddba7f79f79ed92615211275372974f3c065b63",
+    "src/living-spaces/skills/build-space/references/research-desk/views/editor.js": "c665cd51c1530b514b97f343f3642e3c4d7e9a2f67f4ea38681979e59da97ff6",
+    "src/living-spaces/skills/build-space/references/research-desk/views/overview.js": "32563b2a2093713779d96656311147580c522cf8191f0cb470febb756e56ce16",
+    "src/living-spaces/runtime/kit/spaces-kit.css": "3fa8c53411543f120c371a97fd282212c0f1cd330ca807e59564a2328d7b2c8b"
+  },
+  "git_status_before": " M docs/design/space-kit/render-server.mjs\n M src/living-spaces/skills/build-space/SKILL.md\n M src/living-spaces/skills/build-space/references/habit-planner.md\n M src/living-spaces/skills/build-space/references/research-desk/index.html\n M src/living-spaces/skills/build-space/references/weather-window/README.md\n M src/living-spaces/skills/build-space/references/weather-window/app.js\n?? .impeccable/\n?? docs/design/space-kit/passes/\n",
+  "exit_code": 2
+}

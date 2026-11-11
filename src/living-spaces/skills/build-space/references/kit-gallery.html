@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Spaces kit gallery</title>
+<link rel="stylesheet" href="../../../runtime/kit/spaces-kit.css">
+<style>
+.gallery-section { display: grid; gap: var(--space-4); padding-top: var(--space-5); border-top: 1px solid var(--space-line); }
+.gallery-swatch-row { display:flex; flex-wrap:wrap; gap:var(--space-3); }
+.gallery-swatch { display:grid; justify-items:center; gap:var(--space-2); font-size:var(--space-text-xs); }
+.gallery-controls { display:grid; gap:var(--space-4); }
+.gallery-bars { display:grid; gap:var(--space-3); }
+.gallery-bar { display:grid; grid-template-columns:90px minmax(0,1fr) 36px; gap:var(--space-3); align-items:center; }
+.gallery-bar i { height:20px; width:var(--value); background:var(--space-action); border-radius:3px; }
+.gallery-bar span:last-child { text-align:end; font-variant-numeric:tabular-nums; }
+.gallery-note { margin-top:var(--space-2); }
+</style></head>
+<body><main class="space-app">
+<header class="space-header"><div class="space-heading"><span class="space-tile" aria-hidden="true"><span class="space-icon" data-icon="grid"></span></span><div><h1>Spaces kit</h1><p>Composable HTML for the work inside a Space</p></div></div><span class="space-badge">Synthetic component gallery</span></header>
+<nav class="space-nav" aria-label="Gallery sections"><a href="#composition">Composition</a><a href="#controls">Controls</a><a href="#states">States</a><a href="#data">Data & play</a></nav>
+<section id="composition" class="space-stack"><div class="space-section-header"><h2>Tile accents & compact measures</h2><label class="gallery-theme">Preview identity<select id="gallery-theme"><option value="">Hermes default</option><option value="editorial">Editorial</option><option value="terminal">Terminal</option><option value="playful">Playful</option><option value="minimal">Minimal</option><option value="data">Data-dense</option><option value="journal">Warm journal</option><option value="game">Game</option></select></label></div>
+<div class="gallery-swatch-row">
+<div class="gallery-swatch"><span class="space-tile" data-accent="blue" aria-hidden="true"><span class="space-icon" data-icon="book"></span></span>Blue</div>
+<div class="gallery-swatch"><span class="space-tile" data-accent="green" aria-hidden="true"><span class="space-icon" data-icon="checklist"></span></span>Green</div>
+<div class="gallery-swatch"><span class="space-tile" data-accent="amber" aria-hidden="true"><span class="space-icon" data-icon="calendar"></span></span>Amber</div>
+<div class="gallery-swatch"><span class="space-tile" data-accent="purple" aria-hidden="true"><span class="space-icon" data-icon="file"></span></span>Purple</div>
+<div class="gallery-swatch"><span class="space-tile" data-accent="teal" aria-hidden="true"><span class="space-icon" data-icon="chart"></span></span>Teal</div>
+<div class="gallery-swatch"><span class="space-tile" data-accent="rose" aria-hidden="true"><span class="space-icon" data-icon="heart"></span></span>Rose</div>
+<div class="gallery-swatch"><span class="space-tile" data-accent="orange" aria-hidden="true"><span class="space-icon" data-icon="folder"></span></span>Orange</div>
+<div class="gallery-swatch"><span class="space-tile" data-accent="grey" aria-hidden="true"><span class="space-icon" data-icon="list"></span></span>Grey</div>
+</div>
+<div class="space-stat-grid">
+<div class="space-card space-stat"><span class="space-stat-label">Papers in library</span><span class="space-tile space-tile--small" aria-hidden="true"><span class="space-icon" data-icon="book"></span></span><strong class="space-stat-value">12</strong></div>
+<div class="space-card space-stat"><span class="space-stat-label">Completed / all papers</span><span class="space-tile space-tile--small" data-accent="green" aria-hidden="true"><span class="space-icon" data-icon="check"></span></span><strong class="space-stat-value">3 / 12</strong></div>
+<div class="space-card space-stat"><span class="space-stat-label">Check-ins / planned today</span><span class="space-tile space-tile--small" data-accent="amber" aria-hidden="true"><span class="space-icon" data-icon="calendar"></span></span><strong class="space-stat-value">2 / 3</strong></div>
+</div></section>
+<section id="controls" class="gallery-section"><h2>Forms & actions</h2><div class="space-split">
+<div class="gallery-controls"><div role="group" aria-label="Example paper editor"><label>Paper title (required)<input required value="A small, durable workspace"></label><div class="space-form-row"><label>Status<select><option>Queued</option><option>Reading</option><option>Completed</option></select></label><label>Priority<select><option>Normal</option><option>High</option><option>Low</option></select></label></div><label>Notes<textarea>Keep the useful details close to the work.</textarea></label><label>Source URL<input aria-invalid="true" aria-describedby="url-error" value="not a URL"></label><p id="url-error" class="space-field-error">Enter a complete HTTPS URL.</p></div>
+<div class="space-actions"><button type="button" class="space-button--primary" id="gallery-save">Save example</button><button type="button" id="gallery-reset">Reset example</button><button type="button" disabled>Unavailable</button></div><p id="gallery-feedback" class="space-muted" role="status">Example fields only; nothing is stored.</p></div>
+<div class="space-stack"><section class="space-card"><h3>Reading list</h3><ul class="space-list"><li><label class="space-check"><input type="checkbox" checked>Read the introduction</label></li><li><label class="space-check"><input type="checkbox">Write a short note</label></li><li><label class="space-check"><input type="checkbox">Return to the source</label></li></ul></section><div class="space-row"><span class="space-badge space-badge--success"><span class="space-icon" data-icon="check" aria-hidden="true"></span>Completed</span><span class="space-badge space-badge--warning">Pending approval</span><span class="space-badge space-badge--error">Save failed</span><span class="space-badge space-badge--archived">Archived</span></div><div class="space-actions"><button type="button" class="space-button--quiet" id="gallery-details">Show details</button><button type="button" class="space-button--danger" id="gallery-clear">Clear example notes</button></div><p id="gallery-detail" hidden>Details belong on demand, not below every metric.</p></div>
+</div></section>
+<section id="states" class="gallery-section"><h2>Honest states</h2><div class="space-grid"><section class="space-empty"><span class="space-tile" data-accent="blue" aria-hidden="true"><span class="space-icon" data-icon="book"></span></span><h3>Your library is empty</h3><p>Add a paper to start your reading list.</p><button type="button" id="gallery-add">Add a paper</button></section><section class="space-stack" aria-label="Loading example"><p class="space-loading" role="status"><span class="space-spinner" aria-hidden="true"></span>Loading your library…</p><span class="space-skeleton" aria-hidden="true"></span><span class="space-skeleton" aria-hidden="true"></span><p class="space-caption">Loading specimen; no request is running.</p></section></div>
+<div class="space-notice space-notice--error"><strong>Refresh failed. Last-good records are still available.</strong><p>The source did not respond. Example only; no refresh was attempted.</p><button type="button" id="gallery-retry">Try example again</button></div>
+<div class="space-conflict"><p>This record changed elsewhere. Your draft is still here.</p><button type="button" data-choice="Draft kept; nothing stored.">Keep mine</button> <button type="button" data-choice="Updated example selected; nothing stored.">Use updated</button></div>
+<section class="space-offline"><h3>Live content unavailable</h3><p>Could not load this region. Local records and drafts are still available.</p><p class="space-caption">When host state confirms Internet Off: “This part needs the internet, which is off for this Space. Turn it on in Permissions.” A failed fetch alone cannot prove that.</p></section>
+<p class="space-caption">Conflict specimen. In a real Space, use ConflictBanner and a confirmed revision-aware write.</p>
+</section>
+<section id="data" class="gallery-section"><h2>Data & game surfaces</h2><div class="space-split">
+<figure class="space-chart"><figcaption>Papers by status · 12 synthetic papers</figcaption><div class="space-chart-plot gallery-bars" role="img" aria-label="Queued 5, reading 4, completed 3 papers. Exact values in the following table."><div class="gallery-bar"><span>Queued</span><i style="--value:100%"></i><span>5</span></div><div class="gallery-bar"><span>Reading</span><i style="--value:80%"></i><span>4</span></div><div class="gallery-bar"><span>Completed</span><i style="--value:60%"></i><span>3</span></div></div><p class="space-caption gallery-note">Bar length: papers, zero baseline; longest bar = 5.</p></figure>
+<div class="space-table-wrap" tabindex="0" role="region" aria-label="Paper status counts"><table><caption>Same 12 synthetic papers</caption><thead><tr><th scope="col">Status</th><th scope="col" class="space-numeric">Papers</th><th scope="col" class="space-numeric">Of all 12</th></tr></thead><tbody><tr><th scope="row">Queued</th><td class="space-numeric">5</td><td class="space-numeric">41.7%</td></tr><tr><th scope="row">Reading</th><td class="space-numeric">4</td><td class="space-numeric">33.3%</td></tr><tr><th scope="row">Completed</th><td class="space-numeric">3</td><td class="space-numeric">25.0%</td></tr></tbody></table></div>
+</div><div class="space-game"><h3>Board anatomy</h3><p class="space-muted">Static layout specimen. Real games need visible turn/result text, keyboard input and deliberate restart.</p><div class="space-board" aria-label="Static example board"><button class="space-cell" type="button" disabled aria-label="Row 1, column 1: X">X</button><button class="space-cell" type="button" disabled aria-label="Row 1, column 2: empty"></button><button class="space-cell" type="button" disabled aria-label="Row 1, column 3: O">O</button><button class="space-cell" type="button" disabled aria-label="Row 2, column 1: empty"></button><button class="space-cell" type="button" disabled aria-label="Row 2, column 2: X">X</button><button class="space-cell" type="button" disabled aria-label="Row 2, column 3: empty"></button><button class="space-cell" type="button" disabled aria-label="Row 3, column 1: O">O</button><button class="space-cell" type="button" disabled aria-label="Row 3, column 2: empty"></button><button class="space-cell" type="button" disabled aria-label="Row 3, column 3: empty"></button></div></div>
+</section><footer class="space-caption">Synthetic component specimens · local assets only · follows the system light/dark preference</footer>
+</main><script>
+const feedback = message => { document.getElementById('gallery-feedback').textContent = message; };
+const themeSelect = document.getElementById('gallery-theme');
+themeSelect.onchange = () => { document.documentElement.dataset.theme = themeSelect.value; };
+const requestedTheme = new URL(location.href).searchParams.get('theme');
+if ([...themeSelect.options].some(o => o.value === requestedTheme)) { themeSelect.value = requestedTheme; themeSelect.onchange(); }
+document.getElementById('gallery-save').onclick = () => feedback('Example acknowledged. No data was stored.');
+document.getElementById('gallery-reset').onclick = () => { for (const input of document.querySelectorAll('input')) {input.value=input.defaultValue;input.checked=input.defaultChecked;} for (const select of document.querySelectorAll('select:not(#gallery-theme)')) select.selectedIndex=0; document.querySelector('textarea').value=document.querySelector('textarea').defaultValue; feedback('Example fields restored. Nothing stored.'); };
+document.getElementById('gallery-clear').onclick = () => { document.querySelector('textarea').value = ''; feedback('Example notes cleared.'); };
+document.getElementById('gallery-details').onclick = () => { const d = document.getElementById('gallery-detail'); d.hidden = !d.hidden; };
+document.getElementById('gallery-add').onclick = () => { document.querySelector('input').focus(); feedback('Enter a title in the example editor.'); };
+document.getElementById('gallery-retry').onclick = () => feedback('Retry specimen only. No network request was made.');
+for (const b of document.querySelectorAll('[data-choice]')) b.onclick = () => feedback(b.dataset.choice);
+</script></body></html>
