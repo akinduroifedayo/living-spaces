@@ -779,5 +779,231 @@ class ReviewCustomizationTests(unittest.TestCase):
         self.assertTrue(fx.cron.jobs[jid]["enabled"])
         self.assertEqual(fx.schedules.get_schedule(sid)["status"], "active")
 
+    def test_r02_removed_unstarted_one_shot_allows_regrant_but_running_ack_does_not(self):
+        for native_state in ("unstarted", "running"):
+            with self.subTest(native_state=native_state), ExitStack() as stack:
+                fx = CustomizationFixture(stack)
+                try:
+                    sid = fx.make()
+                    other_sid = fx.make()
+                    other_jid = fx.approve_schedule(other_sid)["cron_job_id"]
+                except fx.core.SpacesError as error:
+                    self.fail(f"Initial exact approval must succeed: {error.to_dict()}")
+                other_execution = fx.cron.execution(other_jid)
+                other_job = copy.deepcopy(fx.cron.jobs[other_jid])
+                other_native = copy.deepcopy(other_execution)
+                run = fx.runs.start_refresh(sid, trigger="manual", actor="user")
+                self.assertEqual(run["status"], "queued")
+                self.assertTrue(run["detail"]["one_shot"])
+                jid = run["detail"]["cron_job_id"]
+                self.assertIsNone(fx.cron.jobs[jid].get("fire_claim"))
+                self.assertIsNone(fx.cron.jobs[jid].get("run_claim"))
+                self.assertEqual(fx.cron.list_executions(job_id=jid), [])
+                if native_state == "running":
+                    execution = fx.cron.execution(jid)
+                    claimed_at = datetime.fromtimestamp(run["queued_at"] + 1).astimezone().isoformat()
+                    execution.update(claimed_at=claimed_at, started_at=claimed_at)
+                    self.assertEqual(fx.runs.get_run(run["id"])["status"], "running")
+                    execution_before = copy.deepcopy(execution)
+                call_start = len(fx.cron.calls)
+                with patch.object(fx.cron, "cancel_job_run", return_value=True) as cancel:
+                    revoked = fx.grants.decide(sid, "refresh", "revoke")
+                    self.assertEqual(revoked["status"], "revoked")
+                    self.assertNotIn(jid, fx.cron.jobs)
+                    self.assertIn(("remove", jid), fx.cron.calls[call_start:])
+                    cancel.assert_any_call(jid, reason=unittest.mock.ANY)
+                    if native_state == "running":
+                        self.assertEqual(execution, execution_before)
+                        with self.assertRaises(fx.core.SpacesError) as refused:
+                            fx.approve_refresh(sid)
+                        self.assertEqual(refused.exception.code, "blocked")
+                        self.assertEqual(refused.exception.message,
+                                         "Cannot grant Refresh until native interruption is confirmed")
+                        self.assertEqual(fx.refresh_grant(sid)["status"], "revoked")
+                        self.assertEqual(execution, execution_before)
+                        self.assertEqual([call for call in fx.cron.calls[call_start:]
+                                          if call[0] in ("create", "resume", "trigger")], [])
+                        execution.update(status="completed", started_at=execution["claimed_at"],
+                                         finished_at=execution["claimed_at"], error=None)
+                    with self.subTest(boundary="exact reapproval succeeds"):
+                        try:
+                            approved = fx.approve_refresh(sid)
+                        except fx.core.SpacesError as error:
+                            self.fail(f"Exact Refresh reapproval must succeed: {error.to_dict()}")
+                        self.assertEqual(approved["status"], "granted")
+                        self.assertEqual(fx.refresh_grant(sid)["status"], "granted")
+                    with self.subTest(boundary="withdrawn descriptor no longer blocks"):
+                        withdrawn = fx.runs.get_run(run["id"])
+                        self.assertNotIn(withdrawn["status"], ("queued", "running"))
+                        self.assertIsNotNone(withdrawn["ended_at"])
+                        self.assertTrue(withdrawn["detail"].get("cancel_reason"))
+                    with self.subTest(boundary="approval admits no work"):
+                        self.assertNotIn(jid, fx.cron.jobs)
+                        self.assertIsNone(fx.schedules.get_schedule(sid))
+                        self.assertEqual([call for call in fx.cron.calls[call_start:]
+                                          if call[0] in ("create", "resume", "trigger")], [])
+                        with fx.db.read() as conn:
+                            self.assertEqual(conn.execute(
+                                "SELECT COUNT(*) FROM runs WHERE space=?", (sid,)).fetchone()[0], 1)
+                        if native_state == "unstarted":
+                            self.assertEqual(fx.cron.list_executions(job_id=jid), [])
+                    with self.subTest(boundary="unrelated authority survives"):
+                        self.assertEqual(fx.cron.jobs[other_jid], other_job)
+                        self.assertEqual(other_execution, other_native)
+                        self.assertEqual(fx.refresh_grant(other_sid)["status"], "granted")
+                        self.assertEqual([call for call in fx.cron.calls[call_start:]
+                                          if call[1] == other_jid], [])
+
+    def test_r02_terminal_history_regrant_covers_pages_and_rejects_uncertain_ledger(self):
+        cases = (("short", 2), ("full", 501), ("unknown", 2),
+                 ("malformed", 2), ("inaccessible", 2))
+        for evidence, count in cases:
+            with self.subTest(evidence=evidence), ExitStack() as stack:
+                fx = CustomizationFixture(stack)
+                try:
+                    sid = fx.make()
+                    jid = fx.approve_schedule(sid)["cron_job_id"]
+                except fx.core.SpacesError as error:
+                    self.fail(f"Initial exact approval must succeed: {error.to_dict()}")
+                entries = [fx.cron.execution(jid, "completed") for _ in range(count)]
+                stamps = [entry["claimed_at"] for entry in entries]
+                self.assertEqual(stamps, sorted(set(stamps)))
+                self.assertTrue(all(entry["finished_at"] is not None for entry in entries))
+                native_before = copy.deepcopy(entries)
+                call_start = len(fx.cron.calls)
+                with patch.object(fx.cron, "cancel_job_run", return_value=True):
+                    with ExitStack() as ledger_fault:
+                        if evidence == "unknown":
+                            ledger_fault.enter_context(patch.dict(entries[0], status="unknown"))
+                        elif evidence == "malformed":
+                            ledger_fault.enter_context(patch.dict(entries[0], finished_at="not-a-timestamp"))
+                        elif evidence == "inaccessible":
+                            ledger_fault.enter_context(patch(
+                                "cron.executions.list_executions",
+                                side_effect=OSError("native ledger unavailable")))
+                        revoked = fx.grants.decide(sid, "refresh", "revoke")
+                        self.assertEqual(revoked["status"], "revoked")
+                        if evidence in ("unknown", "malformed", "inaccessible"):
+                            with self.assertRaises(fx.core.SpacesError) as refused:
+                                fx.approve_refresh(sid)
+                            self.assertEqual(refused.exception.code, "blocked")
+                            self.assertEqual(refused.exception.message,
+                                             "Cannot grant Refresh until native interruption is confirmed")
+                            self.assertEqual(fx.refresh_grant(sid)["status"], "revoked")
+                            self.assertIn(fx.schedules.get_schedule(sid)["status"], ("paused", "disabled"))
+                            self.assertIsNone(fx.schedules.get_schedule(sid)["next_run_at"])
+                            self.assertFalse(fx.cron.jobs[jid]["enabled"])
+                            self.assertEqual(fx.cron.jobs[jid]["state"], "paused")
+                            self.assertEqual([call for call in fx.cron.calls[call_start:]
+                                              if call[0] in ("create", "resume", "trigger")], [])
+                    self.assertEqual(entries, native_before)
+                    regrant_start = len(fx.cron.calls)
+                    with self.subTest(boundary="complete terminal history permits approval"):
+                        try:
+                            approved = fx.approve_refresh(sid)
+                        except fx.core.SpacesError as error:
+                            self.fail(f"Complete terminal history must permit reapproval: {error.to_dict()}")
+                        self.assertEqual(approved["status"], "granted")
+                        self.assertEqual(fx.refresh_grant(sid)["status"], "granted")
+                    with self.subTest(boundary="every completed execution is reconciled"):
+                        with fx.db.read() as conn:
+                            history = conn.execute(
+                                "SELECT status,detail,ended_at FROM runs WHERE space=?", (sid,)).fetchall()
+                        self.assertEqual(len(history), count)
+                        self.assertEqual({json.loads(row["detail"])["cron_run_id"] for row in history},
+                                         {entry["id"] for entry in entries})
+                        self.assertTrue(all(row["status"] == "succeeded" and row["ended_at"] is not None
+                                            for row in history))
+                    with self.subTest(boundary="consent does not restart schedule"):
+                        schedule = fx.schedules.get_schedule(sid)
+                        self.assertIn(schedule["status"], ("paused", "disabled"))
+                        self.assertIsNone(schedule["next_run_at"])
+                        self.assertFalse(fx.cron.jobs[jid]["enabled"])
+                        self.assertEqual(fx.cron.jobs[jid]["state"], "paused")
+                        self.assertIsNone(fx.cron.jobs[jid].get("fire_claim"))
+                        self.assertIsNone(fx.cron.jobs[jid].get("run_claim"))
+                        self.assertEqual([call for call in fx.cron.calls[regrant_start:]
+                                          if call[0] in ("create", "resume", "trigger")], [])
+                        self.assertEqual(entries, native_before)
+
+    def test_r02_older_running_execution_beyond_full_page_blocks_until_terminal(self):
+        fx = self.fx
+        try:
+            sid = fx.make()
+            jid = fx.approve_schedule(sid)["cron_job_id"]
+            other_sid = fx.make()
+            other_jid = fx.approve_schedule(other_sid)["cron_job_id"]
+        except fx.core.SpacesError as error:
+            self.fail(f"Initial exact approval must succeed: {error.to_dict()}")
+        other_execution = fx.cron.execution(other_jid)
+        other_bytes = json.dumps({"job": fx.cron.jobs[other_jid], "execution": other_execution},
+                                sort_keys=True).encode()
+        older = fx.cron.execution(jid)
+        newer = [fx.cron.execution(jid, "completed") for _ in range(501)]
+        older_before = copy.deepcopy(older)
+        newer_before = copy.deepcopy(newer)
+        self.assertTrue(all(entry["claimed_at"] > older["claimed_at"] for entry in newer))
+        self.assertEqual(len({entry["claimed_at"] for entry in newer}), 501)
+        self.assertNotIn(older, fx.cron.list_executions(job_id=jid, limit=500))
+        call_start = len(fx.cron.calls)
+        with patch.object(fx.cron, "cancel_job_run", return_value=True) as cancel:
+            revoked = fx.grants.decide(sid, "refresh", "revoke")
+            self.assertEqual(revoked["status"], "revoked")
+            cancel.assert_any_call(jid, reason=unittest.mock.ANY)
+            self.assertEqual(older, older_before)
+            with self.assertRaises(fx.core.SpacesError) as refused:
+                fx.approve_refresh(sid)
+            self.assertEqual(refused.exception.code, "blocked")
+            self.assertEqual(refused.exception.message,
+                             "Cannot grant Refresh until native interruption is confirmed")
+            self.assertEqual(fx.refresh_grant(sid)["status"], "revoked")
+            self.assertEqual(older, older_before)
+            with self.subTest(boundary="pagination discovers older live execution"):
+                with fx.db.read() as conn:
+                    history = conn.execute("SELECT status,detail FROM runs WHERE space=?", (sid,)).fetchall()
+                self.assertEqual(len(history), 502)
+                statuses = {json.loads(row["detail"])["cron_run_id"]: row["status"] for row in history}
+                self.assertEqual(statuses[older["id"]], "running")
+                self.assertTrue(all(statuses[entry["id"]] == "succeeded" for entry in newer))
+            with self.subTest(boundary="refusal keeps schedule fenced"):
+                schedule = fx.schedules.get_schedule(sid)
+                self.assertIn(schedule["status"], ("paused", "disabled"))
+                self.assertIsNone(schedule["next_run_at"])
+                self.assertFalse(fx.cron.jobs[jid]["enabled"])
+                self.assertEqual(fx.cron.jobs[jid]["state"], "paused")
+                self.assertEqual([call for call in fx.cron.calls[call_start:]
+                                  if call[0] in ("create", "resume", "trigger")], [])
+            older.update(status="completed", started_at=older["claimed_at"],
+                         finished_at=newer[-1]["finished_at"], error=None)
+            regrant_start = len(fx.cron.calls)
+            with self.subTest(boundary="terminal completion permits exact approval"):
+                try:
+                    approved = fx.approve_refresh(sid)
+                except fx.core.SpacesError as error:
+                    self.fail(f"Terminal completion must permit reapproval: {error.to_dict()}")
+                self.assertEqual(approved["status"], "granted")
+                self.assertEqual(fx.refresh_grant(sid)["status"], "granted")
+            with self.subTest(boundary="terminal history reconciled without restart"):
+                with fx.db.read() as conn:
+                    history = conn.execute(
+                        "SELECT status,detail,ended_at FROM runs WHERE space=?", (sid,)).fetchall()
+                self.assertEqual(len(history), 502)
+                self.assertEqual({json.loads(row["detail"])["cron_run_id"] for row in history},
+                                 {older["id"]} | {entry["id"] for entry in newer})
+                self.assertTrue(all(row["status"] == "succeeded" and row["ended_at"] is not None
+                                    for row in history))
+                schedule = fx.schedules.get_schedule(sid)
+                self.assertIn(schedule["status"], ("paused", "disabled"))
+                self.assertIsNone(schedule["next_run_at"])
+                self.assertFalse(fx.cron.jobs[jid]["enabled"])
+                self.assertEqual(fx.cron.jobs[jid]["state"], "paused")
+                self.assertEqual([call for call in fx.cron.calls[regrant_start:]
+                                  if call[0] in ("create", "resume", "trigger")], [])
+            with self.subTest(boundary="unrelated native bytes survive"):
+                self.assertEqual(json.dumps({"job": fx.cron.jobs[other_jid], "execution": other_execution},
+                                            sort_keys=True).encode(), other_bytes)
+                self.assertEqual(newer, newer_before)
+                self.assertEqual([call for call in fx.cron.calls[call_start:] if call[1] == other_jid], [])
+
 if __name__ == "__main__":
     unittest.main()

@@ -190,8 +190,8 @@ async def schedule_update(space_id: str, body=Body(default=None)):
                 if not isinstance(snapshot, dict) or set(snapshot) != {"cadence", "timezone", "purpose", "requested_at"}:
                     _invalid(core, "Approval requires the displayed requested_schedule with cadence, timezone, purpose and requested_at.")
                 kwargs["requested_schedule"] = snapshot
-            if "requested_upkeep" in body:
-                if not isinstance(body["requested_upkeep"], dict):
+            if body["decision"] == "approve" or "requested_upkeep" in body:
+                if not isinstance(body.get("requested_upkeep"), dict):
                     _invalid(core, "requested_upkeep must be an object")
                 kwargs["requested_upkeep"] = body["requested_upkeep"]
             return core.decide_schedule(space_id, body["decision"], actor="user", **kwargs)
