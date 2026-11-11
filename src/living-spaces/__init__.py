@@ -110,7 +110,11 @@ def _descriptor_source(value):
     return keys[0]
 
 
-def _decode_b64(core, path, encoded):
+def _decode_b64(core, path, encoded, *, max_bytes=None):
+    maximum = core.limits.FILE_BYTES if max_bytes is None else min(max_bytes, core.limits.FILE_BYTES)
+    estimated = len(encoded) // 4 * 3 - min(2, len(encoded) - len(encoded.rstrip("=")))
+    core.limits.check(estimated, core.limits.FILE_BYTES, "file bytes")
+    core.limits.check(estimated, maximum, "available project bytes")
     try:
         raw = base64.b64decode(encoded, validate=True)
     except (ValueError, binascii.Error):
@@ -121,10 +125,16 @@ def _decode_b64(core, path, encoded):
     return raw
 
 
-def _with_path(core, path, read):
+def _with_path(core, path, read, *, used=0):
     try:
         return read()
     except core.SpacesError as exc:
+        if (exc.code == "limit" and exc.extra.get("resource") in ("available project bytes", "response body")
+                and exc.extra.get("limit", core.limits.FILE_BYTES) < core.limits.FILE_BYTES):
+            actual = used + exc.extra["actual"]
+            maximum = core.limits.PROJECT_BYTES
+            raise core.SpacesError("limit", f"{path}: project bytes exceeds {maximum} (actual {actual})",
+                                   limit=maximum, actual=actual, resource="project bytes") from None
         raise core.SpacesError(exc.code, f"{path}: {exc.message}", **exc.extra) from None
 
 
@@ -132,23 +142,61 @@ def _file_refs(core):
     return importlib.import_module(core.__name__ + ".file_refs")
 
 
-def _files(core, args, *, deleting=False):
-    """Resolve every entry to text or bytes before the core write, so one bad entry writes nothing."""
-    prepared, sources = {}, []
-    for path, value in _json_arg(core, args, "files", dict).items():
-        source = _descriptor_source(value)
-        if isinstance(value, str) or (value is None and deleting):
-            prepared[path] = value
-        elif source == "b64":
-            prepared[path] = _decode_b64(core, path, value["b64"])
-        elif source == "from_path":
-            prepared[path] = _with_path(core, path, lambda: _file_refs(core).read_path(value["from_path"]))
-        elif source == "from_url":
-            prepared[path], note = _with_path(core, path, lambda: _file_refs(core).fetch_url(value["from_url"]))
-            sources.append(f"{path} from {note}")
-        else:
+def _files(core, args, *, deleting=False, space=None):
+    """Preflight destinations and final state, then expand within the remaining byte budget."""
+    files = _json_arg(core, args, "files", dict)
+    for path, value in files.items():
+        if (not isinstance(value, str) and not (value is None and deleting)
+                and _descriptor_source(value) is None):
             raise _invalid(core, f"{path}: expected file text or one of {{b64}}, {{from_path}} or {{from_url}} "
                            "with optional mime" + (", or null to delete" if deleting else ""))
+    if not any(isinstance(value, dict) for value in files.values()):
+        return files, []
+    for path in files:
+        core.limits.path(path)
+    current = {file["path"]: file["size"] for file in core.list_files(space)} if space else {}
+    retained = {path: size for path, size in current.items() if path not in files}
+    libraries = _json_arg(core, args, "libraries", list, required=False)
+    if libraries is None:
+        libraries = [] if deleting else DEFAULT_LIBRARIES
+    for library in libraries:
+        if not isinstance(library, str) or library not in LIBRARIES:
+            raise _invalid(core, "libraries contains an unsupported library")
+        for path in core.projects._LIBRARIES[library]["files"]:
+            source = core.projects.RUNTIME / path
+            if path not in files and path not in current and source.is_file():
+                retained[path] = source.stat().st_size
+    final_paths = set(retained) | {path for path, value in files.items() if value is not None and path != MANIFEST_PATH}
+    core.limits.check(len(final_paths), core.limits.PROJECT_FILES, "project files")
+    used = sum(retained.values())
+    core.limits.check(used, core.limits.PROJECT_BYTES, "project bytes")
+    prepared, sources = {}, []
+    for path, value in files.items():
+        maximum = core.limits.FILE_BYTES if path == MANIFEST_PATH else min(
+            core.limits.FILE_BYTES, core.limits.PROJECT_BYTES - used)
+        source = _descriptor_source(value)
+        if value is None:
+            prepared[path] = None
+            continue
+        if isinstance(value, str):
+            core.limits.check(len(value), core.limits.FILE_BYTES, "file bytes")
+            core.limits.check(len(value), maximum, "available project bytes")
+            size = len(value.encode("utf-8"))
+            prepared[path] = value
+        elif source == "b64":
+            prepared[path] = _with_path(core, path, lambda: _decode_b64(core, path, value["b64"], max_bytes=maximum), used=used)
+            size = len(prepared[path])
+        elif source == "from_path":
+            prepared[path] = _with_path(core, path, lambda: _file_refs(core).read_path(value["from_path"], max_bytes=maximum), used=used)
+            size = len(prepared[path])
+        else:
+            prepared[path], note = _with_path(core, path, lambda: _file_refs(core).fetch_url(value["from_url"], max_bytes=maximum), used=used)
+            size = len(prepared[path])
+            sources.append(f"{path} from {note}")
+        core.limits.check(size, core.limits.FILE_BYTES, "file bytes")
+        if path != MANIFEST_PATH:
+            used += size
+            core.limits.check(used, core.limits.PROJECT_BYTES, "project bytes")
     return prepared, sources
 
 
@@ -285,7 +333,7 @@ def spaces_read_file(core, args, owner):
 
 def spaces_write_files(core, args, owner):
     sid = _space(core, args)
-    files, sources = _files(core, args, deleting=True)
+    files, sources = _files(core, args, deleting=True, space=sid)
     files, manifest = _split_manifest(core, files, None)
     libraries = _json_arg(core, args, "libraries", list, required=False)
     summary = _summary_with_sources(_text(core, args, "summary"), sources)
