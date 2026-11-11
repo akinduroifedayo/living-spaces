@@ -85,7 +85,7 @@ def main():
         report['fixture_space'] = sid
         check('new Space defaults to Internet access On', next(g['status'] for g in core.list_grants(sid) if g['capability'] == 'net'), 'granted')
         evaluate(f'location.hash={json.dumps("/spaces?space=" + sid)}')
-        wait(lambda: guest('({id:space.meta?.space?.id, granted:space.meta?.grants?.includes("net")})'),
+        wait(lambda: guest('({id:space.meta?.space?.id, granted:(space.meta?.grants||[]).some(g => g === "net" || (g?.capability === "net" && g?.status === "granted"))})'),
              lambda r: r and r.get('ok') and r.get('value') == {'id': sid, 'granted': True})
         check('integrated guest exposes space.net.fetch', guest('typeof space.net?.fetch'), {'ok': True, 'value': 'function'})
         public = net(args.public_url)
@@ -113,14 +113,14 @@ def main():
         wait(lambda: evaluate(f'document.querySelector({json.dumps(switch)})?.getAttribute("aria-checked")'), lambda v: v == 'false')
         check('Off shows the exact WebRTC note', evaluate(f'document.body.innerText.includes({json.dumps(OFF_NOTE)})'))
         screenshot(str(out / '02-off.png'))
-        wait(lambda: guest('({id:space.meta?.space?.id, granted:space.meta?.grants?.includes("net")})'),
+        wait(lambda: guest('({id:space.meta?.space?.id, granted:(space.meta?.grants||[]).some(g => g === "net" || (g?.capability === "net" && g?.status === "granted"))})'),
              lambda r: r and r.get('ok') and r.get('value') == {'id': sid, 'granted': False})
         denied = net(args.public_url)
         check('revoked guest fetch returns not_granted', (denied or {}).get('value', {}).get('code'), 'not_granted')
         press(switch)
         wait(lambda: next(g['status'] for g in core.list_grants(sid) if g['capability'] == 'net'), lambda v: v == 'granted')
         wait(lambda: evaluate(f'document.querySelector({json.dumps(switch)})?.getAttribute("aria-checked")'), lambda v: v == 'true')
-        wait(lambda: guest('({id:space.meta?.space?.id, granted:space.meta?.grants?.includes("net")})'),
+        wait(lambda: guest('({id:space.meta?.space?.id, granted:(space.meta?.grants||[]).some(g => g === "net" || (g?.capability === "net" && g?.status === "granted"))})'),
              lambda r: r and r.get('ok') and r.get('value') == {'id': sid, 'granted': True})
         resumed = net(args.public_url)
         check('host reapproval restores public HTTPS', bool(resumed and resumed.get('ok') and 200 <= resumed.get('value', {}).get('status', 0) < 300))

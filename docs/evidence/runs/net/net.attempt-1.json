@@ -1,0 +1,18 @@
+{
+  "evidence_class": "real Space realm and bridge; native mouse input for host permissions",
+  "checks": [
+    {
+      "name": "new Space defaults to Internet access On",
+      "passed": true,
+      "observed": "granted",
+      "expected": "granted"
+    }
+  ],
+  "completed": false,
+  "fixture_space": "internet-qualification",
+  "error": "{'ok': True, 'value': {'id': 'internet-qualification', 'granted': False}}",
+  "fixture_removed": true,
+  "passed": 1,
+  "total": 1,
+  "verdict": "ISSUES"
+}
