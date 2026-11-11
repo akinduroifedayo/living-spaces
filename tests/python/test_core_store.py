@@ -35,7 +35,7 @@ class CoreCase(unittest.TestCase):
                 if previous is not None:
                     setattr(living_spaces_core, name, previous)
             self.addCleanup(restore_attribute)
-        unavailable = {f"living_spaces_core.{name}": None for name in ("runs", "feeds", "schedules")}
+        unavailable = {"living_spaces_core.feeds": None}
         modules = patch.dict(sys.modules, unavailable)
         modules.start()
         self.addCleanup(modules.stop)
@@ -457,8 +457,7 @@ class AuthorityTests(CoreCase):
     def test_revocation_cancels_pending_via_lazy_seam(self):
         self.write({}, manifest=self.upkeep(["example.org"]))
         calls = []
-        fake = types.SimpleNamespace(cancel_pending=lambda *args: calls.append(args))
-        with patch.dict(sys.modules, {"living_spaces_core.runs": fake}):
+        with patch("living_spaces_core.runs.cancel_pending", side_effect=lambda *args, **kwargs: calls.append(args)):
             grants.decide(self.sid, "refresh", "revoke")
         self.assertEqual(calls, [(self.sid, "refresh revoked")])
         self.error("not_granted", grants.check, self.sid, "refresh")
@@ -525,7 +524,7 @@ class AuthorityTests(CoreCase):
         def refresh(*args, **kwargs):
             grants.decide(self.sid, "refresh", "revoke")
             return {"id": "demo-run"}
-        with patch.dict(sys.modules, {"living_spaces_core.runs": types.SimpleNamespace(start_refresh=refresh)}):
+        with patch("living_spaces_core.runs.start_refresh", side_effect=refresh):
             self.assertEqual(bridge.dispatch(self.sid, session, "refresh", {})["error"]["code"], "not_granted")
 
     def test_future_and_capability_disclosures(self):
@@ -600,7 +599,7 @@ class AuthorityTests(CoreCase):
         def remove(sid):
             with db.write() as conn:
                 conn.execute("DELETE FROM schedules WHERE space=?", (sid,))
-        with patch.dict(sys.modules, {"living_spaces_core.schedules": types.SimpleNamespace(on_delete=remove)}):
+        with patch("living_spaces_core.schedules.on_delete", side_effect=remove):
             result = projects.delete_space(self.sid, actor="user", confirm=self.sid)
         self.assertTrue(result["removed"]["schedule"])
 

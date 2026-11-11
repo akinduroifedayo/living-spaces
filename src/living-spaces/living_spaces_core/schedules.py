@@ -5,6 +5,7 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
+from typing import NamedTuple
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from . import db
@@ -12,6 +13,19 @@ from .errors import SpacesError
 
 CATCH_UP_POLICY = "Runs one current refresh when Hermes wakes. Missed intervals aren't replayed."
 PACKAGE = Path(__file__).resolve().parents[1]
+
+
+class Reconciliation(NamedTuple):
+    schedule_fenced: bool
+    executions_quiescent: bool
+    reason: str | None = None
+
+
+def _native_call(call, *args, **kwargs):
+    try:
+        return call(*args, **kwargs), None
+    except Exception as exc:
+        return None, f"Native cron unavailable or invocation failed ({type(exc).__name__}): {exc}"
 
 
 def _cron():
@@ -123,13 +137,17 @@ def get_schedule(sid):
             return None
         if current["cron_job_id"] != schedule["cron_job_id"] or current["status"] not in ("active", "paused"):
             return dict(current)
-        try:
-            job = _cron().get_job(current["cron_job_id"])
-        except ImportError as exc:
-            _disabled(conn, sid, f"Native cron is unavailable: {exc}", "upkeep:schedule")
+        job, error = _native_call(lambda: _cron().get_job(current["cron_job_id"]))
+        if error:
+            _disabled(conn, sid, error + "; native interruption unconfirmed", "upkeep:schedule")
         else:
             if job is None:
                 _disabled(conn, sid, "Native cron job is missing; approve the schedule again", "upkeep:schedule")
+            elif not isinstance(job, dict) or job.get("id") != current["cron_job_id"]:
+                _disabled(conn, sid, "Native job readback is malformed; interruption unconfirmed", "upkeep:schedule")
+                job = None
+            elif current["status"] == "paused" and (job.get("enabled") is not False or job.get("state") != "paused"):
+                _disabled(conn, sid, "Native interruption unconfirmed; local upkeep remains inactive", "upkeep:schedule")
             else:
                 paused = job.get("state") == "paused" or not job.get("enabled", True)
                 conn.execute("UPDATE schedules SET status=?,next_run_at=? WHERE space=?", (
@@ -284,11 +302,110 @@ def pause_schedule(sid, paused, *, actor, reason="Space upkeep paused"):
     return _schedule_row(sid)
 
 
-def on_refresh_revoked(sid, decision, *, actor):
-    schedule = _schedule_row(sid)
-    if schedule and schedule["status"] in ("active", "paused"):
-        reason = "Refresh permission " + ("denied" if decision == "deny" else "revoked") + "; approve Refresh and resume upkeep to restart."
-        pause_schedule(sid, True, actor=actor, reason=reason)
+def on_refresh_revoked(sid, decision, *, actor, conn=None):
+    if conn is None:
+        with db.write() as conn:
+            on_refresh_revoked(sid, decision, actor=actor, conn=conn)
+        with db.write() as conn:
+            reconcile_refresh(conn, sid, actor=actor)
+        return
+    row = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
+    if row:
+        reason = "Refresh permission " + ("denied" if decision == "deny" else "revoked")
+        _disabled(conn, sid, reason + "; native interruption unconfirmed; approve Refresh and resume upkeep to restart.", actor)
+
+
+def reconcile_refresh(conn, sid, *, actor, expected_withdrawal_audit_id=None):
+    from . import runs
+
+    if expected_withdrawal_audit_id is not None:
+        latest = conn.execute("SELECT id FROM audit WHERE space=? AND capability='refresh' AND action='decision' ORDER BY id DESC LIMIT 1", (sid,)).fetchone()
+        grant = conn.execute("SELECT status FROM grants WHERE space=? AND capability='refresh'", (sid,)).fetchone()
+        if (latest is None or latest["id"] != expected_withdrawal_audit_id
+                or grant is None or grant["status"] not in ("revoked", "denied")):
+            return Reconciliation(False, False, "Refresh decision changed before native reconciliation")
+    schedule = conn.execute("SELECT * FROM schedules WHERE space=?", (sid,)).fetchone()
+    retained = conn.execute("SELECT detail FROM runs WHERE space=? AND handler='agent' AND (status IN ('queued','running') OR json_extract(detail,'$.one_shot')=1)", (sid,)).fetchall()
+    identities = {}
+    for row in retained:
+        detail = json.loads(row["detail"])
+        if detail.get("cron_job_id"):
+            identities[detail["cron_job_id"]] = bool(detail.get("one_shot"))
+    if schedule and schedule["cron_job_id"]:
+        identities[schedule["cron_job_id"]] = False
+    if not identities and not retained:
+        return Reconciliation(True, True)
+    audit = conn.execute("SELECT detail FROM audit WHERE space=? AND action IN ('schedule.disabled','schedule.paused') ORDER BY id DESC LIMIT 1", (sid,)).fetchone()
+    reason = json.loads(audit["detail"])["reason"] if audit else "Space upkeep interrupted; approve Refresh and resume upkeep to restart."
+    grant = conn.execute("SELECT status FROM grants WHERE space=? AND capability='refresh'", (sid,)).fetchone()
+    if grant and grant["status"] in ("denied", "revoked"):
+        reason = f"Refresh permission {grant['status']}; approve Refresh and resume upkeep to restart."
+    jobs, error = _native_call(_cron)
+    failures = [error] if error else []
+    fenced = not error
+    if not error:
+        for jid, one_shot in identities.items():
+            job, error = _native_call(lambda: jobs.get_job(jid))
+            if error:
+                failures.append(error)
+                fenced = False
+                continue
+            if job is not None and (not isinstance(job, dict) or job.get("id") != jid):
+                failures.append(f"Native job {jid} readback is malformed")
+                fenced = False
+                continue
+            if job is not None:
+                if not one_shot:
+                    paused, error = _native_call(lambda: jobs.pause_job(jid, reason=reason))
+                    if error or (not isinstance(paused, dict) or paused.get("id") != jid
+                                 or paused.get("enabled") is not False or paused.get("state") != "paused"):
+                        failures.append(error or f"Native job {jid} pause acknowledgement is unconfirmed")
+                        fenced = False
+                _, error = _native_call(lambda: jobs.cancel_job_run(jid, reason=reason))
+                if error:
+                    failures.append(error)
+                if one_shot:
+                    removed, error = _native_call(lambda: jobs.remove_job(jid))
+                    if error or removed is not True:
+                        failures.append(error or f"Native job {jid} removal acknowledgement is unconfirmed")
+                        fenced = False
+            observed, error = _native_call(lambda: jobs.get_job(jid))
+            if error or (observed is not None and (
+                    not isinstance(observed, dict) or observed.get("id") != jid
+                    or observed.get("enabled") is not False or observed.get("state") != "paused"
+                    or observed.get("fire_claim") is not None or observed.get("run_claim") is not None)):
+                failures.append(error or f"Native job {jid} pause or retained claims are unconfirmed")
+                fenced = False
+    observation = runs._sync_agent_runs(sid, conn=conn)
+    quiescent = observation.complete and not observation.outstanding
+    if not quiescent:
+        failures.append(observation.reason or "Native executions remain outstanding; interruption unconfirmed")
+    runs._withdraw_pending(conn, sid, "refresh revoked")
+    if failures:
+        diagnostic = "; ".join(dict.fromkeys(failures)) + "; native interruption unconfirmed"
+        if schedule:
+            _disabled(conn, sid, diagnostic, actor)
+        conn.execute("INSERT INTO audit(space,at,actor,action,outcome,detail) VALUES(?,?,?,?,?,?)", (
+            sid, db.now(), actor, "refresh.interruption", "unconfirmed", json.dumps({"reason": diagnostic, "cron_job_ids": sorted(identities)}),
+        ))
+        return Reconciliation(fenced, quiescent, diagnostic)
+    if schedule and schedule["cron_job_id"]:
+        job, error = _native_call(lambda: jobs.get_job(schedule["cron_job_id"]))
+        if error or (job is not None and (
+                not isinstance(job, dict) or job.get("id") != schedule["cron_job_id"]
+                or job.get("enabled") is not False or job.get("state") != "paused"
+                or job.get("fire_claim") is not None or job.get("run_claim") is not None)):
+            diagnostic = error or "Native schedule interruption remains unconfirmed"
+            _disabled(conn, sid, diagnostic, actor)
+            return Reconciliation(False, quiescent, diagnostic)
+        if job is not None:
+            conn.execute("UPDATE schedules SET status='paused',next_run_at=NULL WHERE space=?", (sid,))
+            conn.execute("INSERT INTO audit(space,at,actor,action,outcome,detail) VALUES(?,?,?,?,?,?)", (
+                sid, db.now(), actor, "schedule.paused", "paused", json.dumps({"reason": reason}),
+            ))
+        else:
+            _disabled(conn, sid, "Native job is absent; approve the schedule again", actor)
+    return Reconciliation(True, True)
 
 
 def on_archive(sid):

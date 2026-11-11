@@ -32,8 +32,8 @@ def _grant(row):
 def _audit(conn, sid, actor, action, capability, outcome, detail=None):
     from .logs import redact_values
 
-    conn.execute("INSERT INTO audit(space,at,actor,action,capability,outcome,detail) VALUES(?,?,?,?,?,?,?)",
-                 (sid, db.now(), actor, action, capability, outcome, limits.dumps(redact_values(detail or {}))))
+    return conn.execute("INSERT INTO audit(space,at,actor,action,capability,outcome,detail) VALUES(?,?,?,?,?,?,?)",
+                        (sid, db.now(), actor, action, capability, outcome, limits.dumps(redact_values(detail or {})))).lastrowid
 
 
 def _subset(needed, granted):
@@ -161,6 +161,8 @@ def decide(sid, capability, decision, *, actor="user", scope=None, requested_sco
     if decision not in ("grant", "deny", "revoke"):
         raise SpacesError("invalid", "Decision must be grant, deny or revoke")
     limits.text(actor, "actor")
+    refusal = None
+    withdrawal_id = None
     with db.write() as conn:
         db.space(conn, sid)
         row = conn.execute("SELECT * FROM grants WHERE space=? AND capability=?", (sid, capability)).fetchone()
@@ -175,26 +177,29 @@ def decide(sid, capability, decision, *, actor="user", scope=None, requested_sco
         selected = _scope(capability, scope if scope is not None else current["requested_scope"] or current["scope"])
         if decision == "grant" and not _subset(selected, current["requested_scope"] or current["scope"]):
             raise SpacesError("invalid", "Grant scope exceeds the requested scope")
-        status = {"grant": "granted", "deny": "denied", "revoke": "revoked"}[decision]
-        conn.execute("UPDATE grants SET status=?,scope=?,decided_at=?,decided_by=? WHERE space=? AND capability=?",
-                     (status, limits.dumps(selected), db.now(), actor, sid, capability))
-        _audit(conn, sid, actor, "decision", capability, status, {"scope": selected})
-        result = _grant(conn.execute("SELECT * FROM grants WHERE space=? AND capability=?", (sid, capability)).fetchone())
-    if capability == "refresh" and decision in ("deny", "revoke"):
-        try:
-            from . import runs
-            cancel = runs.cancel_pending
-        except (ImportError, AttributeError):
-            pass
-        else:
-            cancel(sid, "refresh revoked")
-        try:
+        if capability == "refresh" and decision == "grant" and current["status"] != "granted":
             from . import schedules
-            pause = schedules.on_refresh_revoked
-        except (ImportError, AttributeError):
-            pass
-        else:
-            pause(sid, decision, actor=actor)
+            reconciliation = schedules.reconcile_refresh(conn, sid, actor=actor)
+            if (not reconciliation.schedule_fenced or not reconciliation.executions_quiescent
+                    or reconciliation.reason is not None):
+                refusal = reconciliation.reason or "Native interruption is unconfirmed"
+                _audit(conn, sid, actor, "grant.blocked", capability, "blocked", {"reason": refusal})
+        status = {"grant": "granted", "deny": "denied", "revoke": "revoked"}[decision]
+        if refusal is None:
+            conn.execute("UPDATE grants SET status=?,scope=?,decided_at=?,decided_by=? WHERE space=? AND capability=?",
+                         (status, limits.dumps(selected), db.now(), actor, sid, capability))
+            decision_id = _audit(conn, sid, actor, "decision", capability, status, {"scope": selected})
+            if capability == "refresh" and decision in ("deny", "revoke"):
+                from . import runs, schedules
+                withdrawal_id = decision_id
+                schedules.on_refresh_revoked(sid, decision, actor=actor, conn=conn)
+                runs.cancel_pending(sid, "refresh revoked", conn=conn)
+        result = _grant(conn.execute("SELECT * FROM grants WHERE space=? AND capability=?", (sid, capability)).fetchone())
+    if refusal is not None:
+        raise SpacesError("blocked", "Cannot grant Refresh until native interruption is confirmed", reason=refusal)
+    if withdrawal_id is not None:
+        with db.write() as conn:
+            schedules.reconcile_refresh(conn, sid, actor=actor, expected_withdrawal_audit_id=withdrawal_id)
     return result
 
 
