@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Action, Banner, CopyPrompt, DecisionDialog, Drawer, Icon, OwnerChip, SpaceTile, StatusPill, Time, DisabledReason, absolute } from './components.jsx'
 import { HistorySheet } from './history.jsx'
 import { PermissionsSheet } from './permissions.jsx'
-import { ScheduleSheet } from './schedule.jsx'
+import { UpkeepSheet } from './upkeep.jsx'
 import { advanceCursor, diagnosticText, errorText, inFlight, refreshReason, runResult, spacePath, spaceStatus } from './model.mjs'
 import { createSpaceSession } from './session.mjs'
 import { mountSpace } from '../sandbox/index.js'
@@ -108,8 +108,11 @@ export function SpaceView({ ctx, sid }) {
     setRefreshPending(true); setActionError(''); setAnnouncement('Refreshing…')
     try {
       const run = await ctx.rest(`${base}/refresh`, { method: 'POST' })
-      controller.current?.postEvent('run.updated', run)
-      if (!inFlight(run.status)) setAnnouncement(`Refresh ${run.status}: ${runResult(run)}`)
+      if (run?.kind === 'cron') setAnnouncement('Refresh started in Hermes')
+      else {
+        controller.current?.postEvent('run.updated', run)
+        if (!inFlight(run.status)) setAnnouncement(`Refresh ${run.status}: ${runResult(run)}`)
+      }
       await detail.refetch()
     } catch (e) { setActionError(errorText(e)); setAnnouncement('Refresh failed') }
     finally { refreshLock.current = false; setRefreshPending(false) }
@@ -123,11 +126,11 @@ export function SpaceView({ ctx, sid }) {
     finally { actionLock.current = false }
   }
   if (!space) return <div className="ls-page">{detail.error ? <ErrorState title="This Space could not be opened" description={errorText(detail.error)}><Action onClick={() => detail.refetch()}>Try again</Action><Action onClick={() => host.navigate('/spaces')}>Spaces</Action></ErrorState> : <Skeleton style={{ height: 400 }} />}</div>
-  const schedule = space.schedule
+  const upkeep = space.upkeep
   const busy = refreshPending || inFlight(lastRun?.status) || status === 'updating'
   const reason = refreshReason(space)
-  const pause = () => act('schedule', { paused: schedule.status !== 'paused' })
-  const pauseAction = schedule && ['active', 'paused'].includes(schedule.status) && !archived ? <Action icon={schedule.status === 'paused' ? 'play' : 'debug-pause'} onClick={pause}>{schedule.status === 'paused' ? 'Resume upkeep' : 'Pause upkeep'}</Action> : null
+  const pause = () => act('upkeep', { action: upkeep.enabled ? 'pause' : 'resume' })
+  const pauseAction = upkeep && !upkeep.missing && !archived ? <Action icon={upkeep.enabled ? 'debug-pause' : 'play'} onClick={pause}>{upkeep.enabled ? 'Pause upkeep' : 'Resume upkeep'}</Action> : null
   const opener = () => document.activeElement?.getAttribute('role') === 'menuitem' ? overflow.current : document.activeElement
   const openSheet = (kind, tab) => setSheet({ kind, tab, returnFocus: opener() })
   const openHistory = tab => openSheet('history', tab || 'runs')
@@ -135,10 +138,10 @@ export function SpaceView({ ctx, sid }) {
   const crashMessage = diagnosticText(crash || space.attention?.message || 'The Space hit repeated runtime errors.')
   return <div className="ls-frame" data-testid="space-view"><header className="ls-framebar"><Action icon="chevron-left" onClick={() => host.navigate('/spaces')}>Spaces</Action><div className="ls-identity"><SpaceTile space={space} small /><div><div className="ls-name-row"><h1>{space.name}</h1><StatusPill status={status} /></div><div className="ls-frame-meta"><OwnerChip owner={space.owner} /><span>Last successful update <Time at={space.freshness?.last_success_at} /> · source data from <Time at={space.freshness?.source_as_of} /></span></div></div></div>
     <div className="ls-frame-actions"><SaveStatus write={write} announcement={announcement} />
-      {!building && <><div className="ls-wide-only"><Action icon="watch" onClick={() => openSheet('schedule')}>{schedule ? `${schedule.status === 'paused' ? 'Paused · ' : ''}${schedule.cadence} ${schedule.timezone}` : 'No schedule'}</Action></div><div className="ls-wide-only">{pauseAction}</div></>}
+      {!building && <><div className="ls-wide-only"><Action icon="watch" onClick={() => openSheet('upkeep')}>{!upkeep ? 'No upkeep' : upkeep.missing ? 'Upkeep missing' : upkeep.enabled ? 'Upkeep on' : 'Upkeep paused'}</Action></div><div className="ls-wide-only">{pauseAction}</div></>}
       <span className="ls-wide-only"><Action onClick={() => openHistory()}>History</Action></span>
       {!building && <><Action onClick={() => openSheet('permissions')}>Permissions</Action><DisabledReason reason={reason}><Action primary icon="refresh" aria-busy={busy} aria-disabled={!!reason} title={reason || undefined} onClick={refresh}>{busy ? 'Refreshing…' : 'Refresh now'}</Action></DisabledReason></>}
-      <DropdownMenu><DropdownMenuTrigger asChild><Action ref={overflow} aria-label="More Space actions" icon="ellipsis" /></DropdownMenuTrigger><DropdownMenuContent align="end"><div className="ls-compact-only"><DropdownMenuItem onSelect={() => openHistory()}>History</DropdownMenuItem></div>{!building && <><DropdownMenuItem onSelect={() => openSheet('schedule')}>Schedule</DropdownMenuItem>{pauseAction && <DropdownMenuItem onSelect={pause}>{schedule.status === 'paused' ? 'Resume upkeep' : 'Pause upkeep'}</DropdownMenuItem>}<DropdownMenuSeparator /><DropdownMenuItem onSelect={() => act('pin', { pinned: !space.pinned })}>{space.pinned ? 'Unpin Space' : 'Pin Space'}</DropdownMenuItem><DropdownMenuItem onSelect={() => archived ? act('unarchive') : askConfirmation('archive')}>{archived ? 'Restore Space' : 'Archive Space…'}</DropdownMenuItem>{archived && <DropdownMenuItem onSelect={() => askConfirmation('delete')}>Delete…</DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
+      <DropdownMenu><DropdownMenuTrigger asChild><Action ref={overflow} aria-label="More Space actions" icon="ellipsis" /></DropdownMenuTrigger><DropdownMenuContent align="end"><div className="ls-compact-only"><DropdownMenuItem onSelect={() => openHistory()}>History</DropdownMenuItem></div>{!building && <><DropdownMenuItem onSelect={() => openSheet('upkeep')}>Upkeep</DropdownMenuItem>{pauseAction && <DropdownMenuItem onSelect={pause}>{upkeep.enabled ? 'Pause upkeep' : 'Resume upkeep'}</DropdownMenuItem>}<DropdownMenuSeparator /><DropdownMenuItem onSelect={() => act('pin', { pinned: !space.pinned })}>{space.pinned ? 'Unpin Space' : 'Pin Space'}</DropdownMenuItem><DropdownMenuItem onSelect={() => archived ? act('unarchive') : askConfirmation('archive')}>{archived ? 'Restore Space' : 'Archive Space…'}</DropdownMenuItem>{archived && <DropdownMenuItem onSelect={() => askConfirmation('delete')}>Delete…</DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
     </div></header>
     {actionError && <Banner kind="failed" title={actionError} />}
     {detail.error && <Banner kind="failed" title="Space status could not be refreshed. You're seeing the last loaded state." actions={<Action onClick={() => detail.refetch()}>Try again</Action>}>{errorText(detail.error)}</Banner>}
@@ -150,7 +153,7 @@ export function SpaceView({ ctx, sid }) {
     </div></section>
     {sheet?.kind === 'permissions' && <PermissionsSheet returnFocus={sheet.returnFocus} ctx={ctx} space={space} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
     {sheet?.kind === 'history' && <HistorySheet returnFocus={sheet.returnFocus} ctx={ctx} space={space} initialTab={sheet.tab} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
-    {sheet?.kind === 'schedule' && <ScheduleSheet returnFocus={sheet.returnFocus} ctx={ctx} space={space} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
+    {sheet?.kind === 'upkeep' && <UpkeepSheet returnFocus={sheet.returnFocus} ctx={ctx} space={space} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
     {sheet?.kind === 'compare' && write && <Drawer returnFocus={sheet.returnFocus} title="Compare record changes" description="Your submitted change and the latest stored record" onClose={() => setSheet(null)}><div className="ls-compare"><h2>Your change</h2><pre className="ls-diagnostic">{JSON.stringify(write.args, null, 2)}</pre><h2>Updated record</h2><pre className="ls-diagnostic">{JSON.stringify(write.reply?.error?.current, null, 2)}</pre></div></Drawer>}
     {confirmation && <DecisionDialog returnFocus={confirmationTrigger.current} danger title={confirmation === 'delete' ? `Delete ${space.name}?` : `Archive ${space.name}?`} description={confirmation === 'delete' ? "Delete removes this Space, all its records and revisions permanently and stops future upkeep. Exported copies aren't recalled." : 'Archiving stops refreshes and schedules. Your records and revisions are kept. You can restore this Space later.'} confirmLabel={confirmation === 'delete' ? 'Delete Space' : 'Archive Space'} onClose={() => setConfirmation(null)} onConfirm={async () => { if (confirmation === 'delete') { await ctx.rest(`${base}?confirm=${encodeURIComponent(sid)}`, { method: 'DELETE' }); host.navigate('/spaces') } else { await ctx.rest(`${base}/archive`, { method: 'POST' }); await detail.refetch() } }} />}
   </div>

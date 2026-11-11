@@ -36,7 +36,7 @@ STATUS = {"not_found": 404, "invalid": 400, "conflict": 409, "not_granted": 403,
 SID = "research-desk"
 MANIFEST = {"schema": 1, "entry": "index.html", "imports": {"preact": "vendor/preact.mjs"}}
 DETAIL = {"id": SID, "name": "Research Desk", "head_rev": 2, "manifest": MANIFEST,
-          "schedule": None, "freshness": {}, "attention": None}
+          "upkeep": None, "freshness": {}, "attention": None}
 PARAMS = {
     "spaces_list": {},
     "spaces_get": {"space": "Research Desk"},
@@ -53,15 +53,16 @@ PARAMS = {
     "spaces_revisions": {"space": SID},
     "spaces_restore": {"space": SID, "rev": 1},
     "spaces_refresh": {"space": SID},
-    "spaces_request_schedule": {"space": SID, "cadence": "0 7 * * *", "timezone": "America/Chicago",
-                                "purpose": "Read new public papers each morning"},
+    "spaces_schedule_upkeep": {"space": SID, "kind": "agent", "cadence": "0 7 * * *", "timezone": "America/Chicago",
+                               "prompt": "Read new public papers each morning"},
+    "spaces_upkeep": {"space": SID, "action": "status"},
 }
 TARGETS = {
     "spaces_list": "list_spaces", "spaces_get": "get_space", "spaces_create": "create_space",
     "spaces_read_file": "read_file", "spaces_write_files": "write_files", "spaces_edit_file": "edit_file",
     "spaces_query": "query", "spaces_write_records": "batch", "spaces_read_logs": "read_logs",
     "spaces_revisions": "list_revisions", "spaces_restore": "restore_revision",
-    "spaces_refresh": "start_refresh", "spaces_request_schedule": "request_schedule",
+    "spaces_refresh": "start_refresh", "spaces_schedule_upkeep": "schedule_upkeep", "spaces_upkeep": "get_upkeep",
 }
 
 
@@ -84,12 +85,12 @@ class AdapterCase(unittest.TestCase):
             "write_files": {"rev": 3}, "edit_file": {"rev": 3}, "list_revisions": [{"rev": 2}],
             "restore_revision": {"rev": 3}, "query": {"records": [], "total": 0, "seq": 8},
             "batch": {"results": [{"id": "demo", "rev": 4}], "seq": 9}, "read_logs": [{"level": "error", "msg": "Demo"}],
-            "list_grants": [{"capability": "refresh", "status": "requested", "scope": {"hosts": ["example.org"]},
+            "list_grants": [{"capability": "net", "status": "requested", "scope": {},
                              "purpose": "Public feed"}], "audit_log": [],
             "start_refresh": {"id": "run_demo", "status": "queued"},
-            "request_schedule": {"status": "requested"}, "get_schedule": {"status": "requested"},
-            "decide_schedule": {"status": "active"}, "pause_schedule": {"status": "paused"},
-            "decide": {"capability": "refresh", "status": "granted"},
+            "schedule_upkeep": {"link": {"cron_job_id": "demo"}}, "get_upkeep": {"link": None},
+            "upkeep_action": {"link": {"cron_job_id": "demo"}},
+            "decide": {"capability": "net", "status": "granted"},
             "bundle": {"manifest": MANIFEST, "files": [
                 {"path": "index.html", "text": "<main>Library</main>"},
                 {"path": "app.js", "text": "export const value = 2"}, {"path": "vendor/preact.mjs", "text": ""}]},
@@ -97,7 +98,7 @@ class AdapterCase(unittest.TestCase):
             "close_session": None, "dispatch": {"ok": True, "result": {"records": []}},
             "changes_since": {"seq": 8, "changes": []}, "list_runs": [{"id": "run_demo"}],
             "set_status": None, "set_pinned": None, "touch_opened": None,
-            "delete_space": {"deleted": True, "removed": {"records": 2, "revisions": 3, "schedule": False}},
+            "delete_space": {"deleted": True, "removed": {"records": 2, "revisions": 3, "upkeep": False}},
         }
         for name, value in returns.items():
             setattr(self.core, name, Mock(return_value=value))
@@ -177,7 +178,7 @@ class ToolTests(AdapterCase):
     def test_mutation_attribution(self):
         for name, keyword in (("spaces_write_files", "author"), ("spaces_edit_file", "author"),
                               ("spaces_write_records", "actor"), ("spaces_restore", "author"),
-                              ("spaces_refresh", "actor"), ("spaces_request_schedule", "actor")):
+                              ("spaces_refresh", "actor"), ("spaces_schedule_upkeep", "actor")):
             with self.subTest(tool=name):
                 self.assertTrue(self.tool(name, profile_name="DemoBot")["ok"])
                 self.assertEqual(getattr(self.core, TARGETS[name]).call_args.kwargs[keyword], "agent:DemoBot")
@@ -195,7 +196,7 @@ class ToolTests(AdapterCase):
         self.assertEqual(result["open"], {"directive": '::living-space{id="research-desk"}',
                                           "route": "/spaces?space=research-desk"})
         self.assertEqual(result["rev"], 2)
-        self.assertEqual(result["grants_pending"][0]["capability"], "refresh")
+        self.assertEqual(result["grants_pending"][0]["capability"], "net")
         self.assertIn("directive paragraph", result["next"])
         self.assertEqual(params["files"]["space.json"], json.dumps(MANIFEST))
 
@@ -256,7 +257,9 @@ class ToolTests(AdapterCase):
                  ("spaces_edit_file", {**PARAMS["spaces_edit_file"], "old": ""}),
                  ("spaces_write_records", {"space": SID, "ops": []}),
                  ("spaces_restore", {"space": SID, "rev": False}),
-                 ("spaces_request_schedule", {**PARAMS["spaces_request_schedule"], "timezone": ""})]
+                 ("spaces_schedule_upkeep", {**PARAMS["spaces_schedule_upkeep"], "timezone": ""}),
+                 ("spaces_schedule_upkeep", {**PARAMS["spaces_schedule_upkeep"], "prompt": None}),
+                 ("spaces_upkeep", {"space": SID})]
         for name, args in cases:
             with self.subTest(tool=name, args=args):
                 self.assertEqual(self.tool(name, args)["error"]["code"], "invalid")
@@ -277,7 +280,7 @@ def tool_success(name):
         target = getattr(self.core, TARGETS[name])
         target.assert_called_once()
         if name in ("spaces_list", "spaces_read_file", "spaces_query", "spaces_write_records", "spaces_read_logs",
-                    "spaces_revisions", "spaces_refresh", "spaces_request_schedule"):
+                    "spaces_revisions", "spaces_refresh", "spaces_schedule_upkeep", "spaces_upkeep"):
             self.assertEqual(reply, {"ok": True, "result": target.return_value})
         elif name == "spaces_get":
             self.assertEqual(reply["result"], {**DETAIL, "files": self.core.list_files.return_value})
@@ -297,8 +300,9 @@ def tool_success(name):
             self.assertEqual(target.call_args.args[1], PARAMS[name]["ops"])
         if name == "spaces_refresh":
             self.assertEqual(target.call_args.kwargs["trigger"], "chat")
-        if name == "spaces_request_schedule":
-            self.assertEqual(reply["result"]["status"], "requested")
+        if name == "spaces_schedule_upkeep":
+            self.assertEqual(target.call_args.kwargs, {"kind": "agent", "cadence": "0 7 * * *", "timezone": "America/Chicago",
+                                                       "prompt": "Read new public papers each morning", "actor": "agent:Hermes"})
     return test
 
 
@@ -308,17 +312,14 @@ for tool_name in PARAMS:
 
 class RestTests(AdapterCase):
     def test_all_routes_success(self):
-        upkeep = {"handler": "agent", "prompt": "Update public demo data."}
-        snapshot = {"cadence": "0 7 * * *", "timezone": "UTC", "purpose": "Public demo", "requested_at": 1.0}
         cases = [("GET", "/spaces", None), ("GET", "/status", None), ("GET", f"/spaces/{SID}", None),
                  ("GET", f"/spaces/{SID}/bundle", None), ("POST", f"/spaces/{SID}/sessions", None),
                  ("DELETE", f"/spaces/{SID}/sessions/session_demo", None),
                  ("GET", f"/spaces/{SID}/changes?since=3", None), ("GET", f"/spaces/{SID}/runs", None),
                  ("POST", f"/spaces/{SID}/refresh", None), ("GET", f"/spaces/{SID}/grants", None),
-                 ("POST", f"/spaces/{SID}/grants/refresh", {"decision": "grant", "scope": {"hosts": ["example.org"]}, "requested_scope": {"hosts": ["example.org"]}}),
-                 ("GET", f"/spaces/{SID}/schedule", None),
-                 ("POST", f"/spaces/{SID}/schedule", {"decision": "approve", "requested_schedule": snapshot, "requested_upkeep": upkeep}),
-                 ("POST", f"/spaces/{SID}/schedule", {"paused": True}),
+                 ("POST", f"/spaces/{SID}/grants/net", {"decision": "grant", "scope": {}, "requested_scope": {}}),
+                 ("GET", f"/spaces/{SID}/upkeep", None),
+                 ("POST", f"/spaces/{SID}/upkeep", {"action": "pause"}),
                  ("GET", f"/spaces/{SID}/revisions", None),
                  ("POST", f"/spaces/{SID}/revisions/1/restore", None),
                  ("GET", f"/spaces/{SID}/logs?level=error", None),
@@ -330,9 +331,9 @@ class RestTests(AdapterCase):
                 response = self.request(method, path, json=body) if body is not None else self.request(method, path)
                 self.assertEqual(response.status_code, 200, response.text)
         self.core.start_refresh.assert_called_once_with(SID, trigger="manual", actor="user")
-        self.core.decide.assert_called_once_with(SID, "refresh", "grant", actor="user", scope={"hosts": ["example.org"]}, requested_scope={"hosts": ["example.org"]})
-        self.core.decide_schedule.assert_called_once_with(SID, "approve", actor="user", requested_schedule=snapshot, requested_upkeep=upkeep)
-        self.core.pause_schedule.assert_called_once_with(SID, True, actor="user")
+        self.core.decide.assert_called_once_with(SID, "net", "grant", actor="user", scope={}, requested_scope={})
+        self.core.get_upkeep.assert_called_once_with(SID)
+        self.core.upkeep_action.assert_called_once_with(SID, "pause", actor="user")
         self.core.restore_revision.assert_called_once_with(SID, 1, author="user")
         self.core.delete_space.assert_called_once_with(SID, actor="user", confirm=SID)
         self.assertEqual(self.core.set_status.call_args_list[0].args, (SID, "archived"))
@@ -404,11 +405,10 @@ class RestTests(AdapterCase):
                 self.assertNotIn("manifest", response.json())
 
     def test_invalid_requests_are_contract_errors(self):
-        cases = [("POST", f"/spaces/{SID}/schedule", {"paused": "false"}),
-                 ("POST", f"/spaces/{SID}/schedule", {"paused": True, "decision": "approve"}),
-                 ("POST", f"/spaces/{SID}/schedule", {"decision": "activate"}),
-                 ("POST", f"/spaces/{SID}/grants/refresh", {"decision": "approve"}),
-                 ("POST", f"/spaces/{SID}/grants/refresh", {"decision": "grant", "scope": []}),
+        cases = [("POST", f"/spaces/{SID}/upkeep", {}),
+                 ("POST", f"/spaces/{SID}/upkeep", {"action": "pause", "paused": True}),
+                 ("POST", f"/spaces/{SID}/grants/net", {"decision": "approve"}),
+                 ("POST", f"/spaces/{SID}/grants/net", {"decision": "grant", "scope": []}),
                  ("POST", f"/spaces/{SID}/pin", {"pinned": 1}),
                  ("POST", f"/spaces/{SID}/pin", {"pinned": True, "extra": True}),
                  ("GET", f"/spaces/{SID}/changes?since=-1", None),
@@ -421,8 +421,7 @@ class RestTests(AdapterCase):
                 self.assertEqual(response.status_code, 400, response.text)
                 self.assertEqual(response.json()["error"]["code"], "invalid")
         self.core.decide.assert_not_called()
-        self.core.decide_schedule.assert_not_called()
-        self.core.pause_schedule.assert_not_called()
+        self.core.upkeep_action.assert_not_called()
         self.core.set_pinned.assert_not_called()
 
     def test_index_and_status_aggregate_public_core_cursors(self):

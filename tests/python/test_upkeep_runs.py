@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from datetime import datetime
 import hashlib
 import json
 import os
@@ -19,7 +20,7 @@ FIXTURES = Path(__file__).parent / "fixtures" / "feeds"
 sys.path.insert(0, str(PACKAGE))
 
 import living_spaces_core as core
-from living_spaces_core import db, feeds, runs, schedules
+from living_spaces_core import db, feeds, runs, upkeep
 from living_spaces_core.errors import SpacesError
 from .feed_transport_support import PUBLIC, PinnedTransport, Response
 
@@ -184,16 +185,13 @@ class RunTests(UpkeepCase):
         for row in before:
             self.assertEqual(stored[row["id"]], row)
 
-    def test_denied_absent_revoked_or_narrow_grant_is_blocked_without_fetch(self):
+    def test_internet_access_off_is_blocked_without_fetch(self):
         for status in ("denied", None, "revoked", "requested"):
             with self.subTest(status=status):
                 self.grant_status = status
                 run = self.refresh()
                 self.assertEqual(run["status"], "blocked")
                 self.assertEqual(run["detail"]["reason"], "not_granted")
-        self.grant_status = "granted"
-        self.manifest["upkeep"]["sources"].append(self.source("other", "other.example"))
-        self.assertEqual(self.refresh()["status"], "blocked")
         self.fetch.assert_not_called()
         self.assertEqual(self.stored(), [])
 
@@ -287,9 +285,8 @@ class RunTests(UpkeepCase):
         success = self.refresh()
         self.fetch.side_effect = OSError("Unavailable")
         failed = self.refresh()
-        with db.write() as conn:
-            conn.execute("INSERT INTO schedules(space,status,cadence,timezone,next_run_at) VALUES('research-desk','requested','0 * * * *','UTC',?)", (db.now() + 3600,))
-        fresh = runs.freshness("research-desk")
+        with patch.object(upkeep, "summary", return_value={"next_run_at": db.now() + 3600}):
+            fresh = runs.freshness("research-desk")
         self.assertEqual(fresh["last_success_at"], success["ended_at"])
         self.assertEqual(fresh["last_attempt_at"], failed["queued_at"])
         self.assertEqual(fresh["last_attempt_status"], "failed")
@@ -357,11 +354,13 @@ class RunTests(UpkeepCase):
         self.assertEqual(self.refresh()["status"], "canceled")
         self.assertEqual(self.stored(), [])
 
-    def test_bad_source_does_not_hide_another_sources_missing_host_grant(self):
-        self.manifest["upkeep"]["sources"] = [self.source("bad"), self.source("denied", "other.example")]
+    def test_bad_source_fails_visibly_without_hiding_the_next_source(self):
+        self.manifest["upkeep"]["sources"] = [self.source("bad"), self.source("other", "other.example")]
         self.manifest["upkeep"]["sources"][0]["url"] = "http://research.example/feed"
-        self.assertEqual(self.refresh()["status"], "blocked")
-        self.fetch.assert_not_called()
+        run = self.refresh()
+        self.assertEqual(run["status"], "failed")
+        self.assertEqual([source["ok"] for source in run["detail"]["sources"]], [False, True])
+        self.fetch.assert_called_once_with("research-desk", "https://other.example/feed")
 
     def test_source_write_failure_reports_zero_committed_changes(self):
         original = self.records.upsert_source
@@ -460,7 +459,7 @@ class FeedTests(UpkeepCase):
         self.assertEqual(run["changed"], {"added": 0, "updated": 0, "unchanged": 0, "removed": 0})
         self.assertIsInstance(run["source_as_of"], float)
 
-    def test_production_fetch_uses_streaming_timeout_and_per_request_grants(self):
+    def test_production_fetch_uses_streaming_timeout_and_per_request_net_checks(self):
         transport = PinnedTransport([
             Response(status=302, headers={"location": "/current"}),
             Response((FIXTURES / "research.rss").read_bytes()),
@@ -481,7 +480,7 @@ class FeedTests(UpkeepCase):
         self.assertEqual(len(requests), 2)
         self.assertEqual(len(feeds.parse(payload)), 2)
         self.assertEqual([request["target"] for request in requests], ["/feed", "/current"])
-        grant = ("grant", "research-desk", "refresh", {"hosts": ["research.example"]})
+        grant = ("grant", "research-desk", "net", None)
         for index, event in enumerate(transport.events):
             if event[0] == "request":
                 self.assertGreater(index, 0)
@@ -492,8 +491,7 @@ class FeedTests(UpkeepCase):
         self.assertLess(redirect, next_connection)
         self.assertIn(grant, transport.events[redirect + 1:next_connection])
 
-    def test_off_host_redirect_is_refused_even_if_other_host_is_also_granted(self):
-        self.allowed.add("other.example")
+    def test_off_host_redirect_is_refused(self):
         transport = PinnedTransport([Response(status=302, headers={"location": "https://other.example/feed"})])
         requests = transport.requests
         with transport.installed():
@@ -517,254 +515,118 @@ class FeedTests(UpkeepCase):
         self.assertEqual(caught.exception.code, "limit")
 
 
-class ScheduleTests(UpkeepCase):
+class NativeCronTests(UpkeepCase):
+    """Runs against the installed Hermes cron module in a temporary cron store."""
+
     def cron(self):
         hermes = Path.home() / ".hermes" / "hermes-agent"
         self.assertTrue(Path(os.environ["HERMES_HOME"]).is_relative_to(ROOT / ".run"))
         sys.path.insert(0, str(hermes))
         self.addCleanup(sys.path.remove, str(hermes))
-        return schedules._cron()
+        jobs = upkeep._cron()
+        store = jobs.use_cron_store(self.home)
+        store.__enter__()
+        self.addCleanup(store.__exit__, None, None, None)
+        with db.write() as conn:
+            conn.execute("INSERT INTO revisions(space,rev,kind,manifest,files,author,summary,created_at) VALUES('research-desk',1,'create',?,'{}','user','',?)",
+                         (json.dumps(self.manifest), db.now()))
+            conn.execute("UPDATE spaces SET head_rev=1")
+        return jobs
 
-    def request(self):
-        return schedules.request_schedule("research-desk", cadence="0 * * * *", timezone="America/Chicago", purpose="Public demo research", actor="agent:demo")
+    def schedule(self, kind="feed", prompt=None):
+        return upkeep.schedule_upkeep("research-desk", kind=kind, cadence="0 * * * *", timezone="America/Chicago",
+                                      prompt=prompt, actor="agent:demo")
+
+    def test_installed_cron_feed_job_matches_get_upkeep(self):
+        jobs = self.cron()
+        shown = self.schedule()
+        native = jobs.get_job(shown["link"]["cron_job_id"])
+        self.assertTrue(native["no_agent"])
+        self.assertEqual((native["deliver"], native["catch_up"], native["timezone"]), ("local", True, "America/Chicago"))
+        self.assertEqual(shown["job"]["cadence"], native["schedule"]["expr"])
+        self.assertEqual(shown["job"]["schedule_display"], native["schedule_display"])
+        self.assertIsNone(shown["job"]["prompt"])
+        self.assertEqual(shown["job"]["next_run_at"], datetime.fromisoformat(native["next_run_at"]).timestamp())
+        self.assertEqual(shown["executions"], [])
+        upkeep.upkeep_action("research-desk", "remove", actor="user")
+        self.assertIsNone(jobs.get_job(native["id"]))
+
+    def test_installed_cron_agent_job_uses_ordinary_chat_cron_settings(self):
+        jobs = self.cron()
+        self.manifest = {"upkeep": {"handler": "agent", "prompt": "Update the public demo."}}
+        shown = self.schedule(kind="agent", prompt="Update the public demo.")
+        native = jobs.get_job(shown["link"]["cron_job_id"])
+        self.assertFalse(native["no_agent"])
+        self.assertEqual(native["prompt"], shown["job"]["prompt"])
+        for key in ("enabled_toolsets", "skills", "model", "provider", "script"):
+            self.assertFalse(native.get(key), key)
+        upkeep.upkeep_action("research-desk", "pause", actor="user")
+        self.assertEqual(jobs.get_job(native["id"])["state"], "paused")
+        upkeep.upkeep_action("research-desk", "remove", actor="user")
+
+    def test_installed_cron_one_shot_refresh_now(self):
+        jobs = self.cron()
+        self.manifest = {"upkeep": {"handler": "agent", "prompt": "Update the public demo."}}
+        result = self.refresh()
+        job = jobs.get_job(result["cron_job_id"])
+        try:
+            self.assertEqual(job["schedule"]["kind"], "once")
+            self.assertEqual(job["name"], "living-spaces:research-desk:once")
+            self.assertFalse(job["no_agent"])
+            self.assertEqual(job["deliver"], "local")
+            self.assertEqual(job["manual_run_at"], job["next_run_at"])
+            self.assertIsNone(job["enabled_toolsets"])
+            self.assertIsNone(upkeep.get_upkeep("research-desk")["link"])
+        finally:
+            jobs.remove_job(job["id"])
 
     def test_catchup_dispatch_survives_in_run_history(self):
-        from datetime import datetime, timedelta, timezone
+        from datetime import timedelta, timezone
 
         jobs = self.cron()
-        self.request()
-        with jobs.use_cron_store(self.home):
-            schedule = schedules.decide_schedule("research-desk", "approve")
-            past = (datetime.now(timezone.utc) - timedelta(days=3)).replace(minute=0, second=0, microsecond=0).isoformat()
-            jobs.update_job(schedule["cron_job_id"], {"next_run_at": past})
-            due = jobs.get_due_jobs()
-            self.assertEqual(len(due), 1)
-            dispatch = due[0]["last_dispatch"]
-            self.assertEqual(dispatch["kind"], "catch_up")
-            run = runs.start_refresh("research-desk", trigger="schedule", actor="upkeep:schedule", wait=True)
-            self.assertEqual(run["status"], "succeeded")
-            self.assertEqual(run["detail"].get("dispatch"), dispatch)
-            jobs.mark_job_run(schedule["cron_job_id"], success=True)
-            self.assertEqual(jobs.get_due_jobs(), [])
-            self.assertEqual(runs.list_runs("research-desk")[0]["detail"]["dispatch"], dispatch)
-            self.assertEqual(schedules.get_schedule("research-desk").get("last_dispatch"), dispatch)
-            manual = self.refresh()
-            self.assertNotIn("dispatch", manual["detail"])
-            stale = runs.start_refresh("research-desk", trigger="schedule", actor="upkeep:schedule", wait=True)
-            self.assertNotIn("dispatch", stale["detail"])
-            schedules.remove_schedule("research-desk")
+        jid = self.schedule()["link"]["cron_job_id"]
+        past = (datetime.now(timezone.utc) - timedelta(days=3)).replace(minute=0, second=0, microsecond=0).isoformat()
+        jobs.update_job(jid, {"next_run_at": past})
+        due = jobs.get_due_jobs()
+        self.assertEqual(len(due), 1)
+        dispatch = due[0]["last_dispatch"]
+        self.assertEqual(dispatch["kind"], "catch_up")
+        run = runs.start_refresh("research-desk", trigger="schedule", actor="upkeep:schedule", wait=True)
+        self.assertEqual(run["status"], "succeeded")
+        self.assertEqual(run["detail"].get("dispatch"), dispatch)
+        jobs.mark_job_run(jid, success=True)
+        self.assertEqual(jobs.get_due_jobs(), [])
+        self.assertEqual(runs.list_runs("research-desk")[0]["detail"]["dispatch"], dispatch)
+        manual = self.refresh()
+        self.assertNotIn("dispatch", manual["detail"])
+        stale = runs.start_refresh("research-desk", trigger="schedule", actor="upkeep:schedule", wait=True)
+        self.assertNotIn("dispatch", stale["detail"])
+        upkeep.upkeep_action("research-desk", "remove", actor="user")
 
     def test_failed_catchup_keeps_dispatch_and_last_good_data(self):
         jobs = self.cron()
-        self.request()
         self.refresh()
         before = self.stored()
-        with jobs.use_cron_store(self.home):
-            schedule = schedules.decide_schedule("research-desk", "approve")
-            dispatch = {"kind": "catch_up", "scheduled_at": "2026-01-01T00:00:00+00:00",
-                        "dispatched_at": "2026-01-04T00:00:00+00:00", "lateness_seconds": 259200}
-            jobs.update_job(schedule["cron_job_id"], {"last_dispatch": dispatch})
-            self.fetch.side_effect = TimeoutError("Feed unavailable")
-            run = runs.start_refresh("research-desk", trigger="schedule", actor="upkeep:schedule", wait=True)
-            self.assertEqual(run["status"], "failed")
-            self.assertEqual(run["detail"].get("dispatch"), dispatch)
-            self.assertEqual(self.stored(), before)
-            schedules.remove_schedule("research-desk")
+        jid = self.schedule()["link"]["cron_job_id"]
+        dispatch = {"kind": "catch_up", "scheduled_at": "2026-01-01T00:00:00+00:00",
+                    "dispatched_at": "2026-01-04T00:00:00+00:00", "lateness_seconds": 259200}
+        jobs.update_job(jid, {"last_dispatch": dispatch})
+        self.fetch.side_effect = TimeoutError("Feed unavailable")
+        run = runs.start_refresh("research-desk", trigger="schedule", actor="upkeep:schedule", wait=True)
+        self.assertEqual(run["status"], "failed")
+        self.assertEqual(run["detail"].get("dispatch"), dispatch)
+        self.assertEqual(self.stored(), before)
+        upkeep.upkeep_action("research-desk", "remove", actor="user")
 
-    def test_refresh_decisions_pause_native_job_until_explicit_resume(self):
-        import importlib
-        grants = importlib.import_module(core.__name__ + ".grants")
-        jobs = self.cron()
-        with jobs.use_cron_store(self.home), patch.object(core, "grants", grants):
-            for decision in ("deny", "revoke"):
-                with self.subTest(decision=decision):
-                    grants.request("research-desk", "refresh", scope={"hosts": ["research.example"]}, purpose="Demo", actor="user")
-                    grants.decide("research-desk", "refresh", "grant")
-                    self.request()
-                    schedule = schedules.decide_schedule("research-desk", "approve")
-                    job_id = schedule["cron_job_id"]
-                    with patch.object(runs.threading, "Thread"):
-                        pending = runs.start_refresh("research-desk", trigger="manual", actor="user")
-                    grants.decide("research-desk", "refresh", decision)
-                    job = jobs.get_job(job_id)
-                    self.assertEqual((job["state"], job["enabled"]), ("paused", False))
-                    paused = schedules.get_schedule("research-desk")
-                    self.assertEqual(paused["status"], "paused")
-                    self.assertIn("Refresh permission", paused["reason"])
-                    self.assertIn("denied" if decision == "deny" else "revoked", paused["reason"])
-                    self.assertIsNone(paused["next_run_at"])
-                    self.assertEqual(runs.get_run(pending["id"])["status"], "canceled")
-                    jobs.update_job(job_id, {"next_run_at": "2026-01-01T00:00:00+00:00"})
-                    self.assertEqual(jobs.get_due_jobs(), [])
-                    with self.assertRaises(SpacesError) as caught:
-                        schedules.pause_schedule("research-desk", False, actor="user")
-                    self.assertEqual(caught.exception.code, "not_granted")
-                    grants.decide("research-desk", "refresh", "grant")
-                    self.assertEqual(schedules.get_schedule("research-desk")["status"], "paused")
-                    self.assertFalse(jobs.get_job(job_id)["enabled"])
-                    resumed = schedules.pause_schedule("research-desk", False, actor="user")
-                    self.assertEqual(resumed["status"], "active")
-                    self.assertNotIn("reason", resumed)
-                    schedules.remove_schedule("research-desk")
-
-    def test_approval_and_resume_require_refresh_permission(self):
-        jobs = self.cron()
-        self.request()
-        with jobs.use_cron_store(self.home):
-            active = schedules.decide_schedule("research-desk", "approve")
-            schedules.pause_schedule("research-desk", True, actor="user")
-            self.grant_status = "revoked"
-            for action in (lambda: schedules.decide_schedule("research-desk", "approve"),
-                           lambda: schedules.pause_schedule("research-desk", False, actor="user")):
-                with self.subTest(action=action):
-                    with self.assertRaises(SpacesError) as caught:
-                        action()
-                    self.assertEqual(caught.exception.code, "not_granted")
-                    self.assertFalse(jobs.get_job(active["cron_job_id"])["enabled"])
-            schedules.remove_schedule("research-desk")
-
-    def test_request_does_not_import_cron_create_job_or_write_shim(self):
-        with patch.object(schedules, "_cron") as cron:
-            result = self.request()
-        cron.assert_not_called()
-        self.assertEqual(result["status"], "requested")
-        self.assertIsNone(result["cron_job_id"])
-        self.assertFalse((self.home / "cron" / "jobs.json").exists())
-        self.assertFalse((self.home / "scripts").exists())
-
-    def test_native_schedule_approve_pause_resume_archive_and_delete_in_temp_home(self):
-        jobs = self.cron()
-        self.request()
-        with jobs.use_cron_store(self.home):
-            result = schedules.decide_schedule("research-desk", "approve")
-            self.assertEqual(result["status"], "active", result)
-            job_id = result["cron_job_id"]
-            cron_file = self.home / "cron" / "jobs.json"
-            self.assertTrue(cron_file.exists())
-            persisted = json.loads(cron_file.read_text())
-            job = jobs.get_job(job_id)
-            self.assertIn(job_id, json.dumps(persisted))
-            self.assertEqual(job["name"], "living-spaces:research-desk")
-            self.assertEqual(job["script"], "living-spaces-refresh-research-desk.py")
-            self.assertEqual(job["prompt"], "")
-            self.assertTrue(job["no_agent"])
-            self.assertTrue(job["catch_up"])
-            self.assertEqual(job["deliver"], "local")
-            self.assertEqual(job["timezone"], "America/Chicago")
-            self.assertEqual(result["next_run_at"], schedules._next(job))
-            shim = self.home / "scripts" / job["script"]
-            self.assertTrue(shim.exists())
-            script = shim.read_text()
-            self.assertIn(repr(str(PACKAGE)), script)
-            self.assertNotIn("__LIVING_SPACES_", script)
-            self.assertEqual(schedules.decide_schedule("research-desk", "approve")["cron_job_id"], job_id)
-            self.assertEqual(len(jobs.load_jobs()), 1)
-            self.assertEqual(schedules.pause_schedule("research-desk", True, actor="user")["status"], "paused")
-            self.assertFalse(jobs.get_job(job_id)["enabled"])
-            self.assertIsNone(schedules.get_schedule("research-desk")["next_run_at"])
-            self.assertEqual(schedules.pause_schedule("research-desk", False, actor="user")["status"], "active")
-            self.assertTrue(jobs.get_job(job_id)["enabled"])
-            with db.write() as conn:
-                conn.execute("UPDATE spaces SET status='archived'")
-            schedules.on_archive("research-desk")
-            self.assertFalse(jobs.get_job(job_id)["enabled"])
-            with self.assertRaises(SpacesError) as caught:
-                schedules.pause_schedule("research-desk", False, actor="user")
-            self.assertEqual(caught.exception.code, "archived")
-            with db.write() as conn:
-                conn.execute("UPDATE spaces SET status='active'")
-            schedules.on_unarchive("research-desk")
-            self.assertFalse(jobs.get_job(job_id)["enabled"])
-            schedules.on_delete("research-desk")
-            self.assertIsNone(jobs.get_job(job_id))
-            self.assertFalse(shim.exists())
-            self.assertIsNone(schedules.get_schedule("research-desk"))
-            self.assertEqual(jobs.load_jobs(), [])
-
-    def test_missing_cron_disables_with_persisted_visible_reason(self):
-        self.request()
-        with patch.object(schedules, "_cron", side_effect=ImportError("demo cron unavailable")):
-            result = schedules.decide_schedule("research-desk", "approve")
-        self.assertEqual(result["status"], "disabled")
-        self.assertIn("demo cron unavailable", result["reason"])
-        self.assertEqual(schedules.get_schedule("research-desk")["reason"], result["reason"])
-        self.assertIsNone(result["cron_job_id"])
-        self.assertFalse((self.home / "scripts").exists())
-
-    def test_deny_never_creates_a_job(self):
-        self.request()
-        with patch.object(schedules, "_cron") as factory:
-            result = schedules.decide_schedule("research-desk", "deny")
-        factory.return_value.create_job.assert_not_called()
-        self.assertEqual(result["status"], "disabled")
-        self.assertIn("denied", result["reason"])
-
-    def test_native_get_refreshes_next_run_and_missing_job_is_visible(self):
-        jobs = self.cron()
-        self.request()
-        with jobs.use_cron_store(self.home):
-            result = schedules.decide_schedule("research-desk", "approve")
-            job_id = result["cron_job_id"]
-            try:
-                updated = jobs.update_job(job_id, {"next_run_at": "2027-01-01T12:00:00+00:00"})
-                self.assertEqual(schedules.get_schedule("research-desk")["next_run_at"], schedules._next(updated))
-                jobs.remove_job(job_id)
-                disabled = schedules.get_schedule("research-desk")
-                self.assertEqual(disabled["status"], "disabled")
-                self.assertIn("missing", disabled["reason"])
-            finally:
-                schedules.remove_schedule("research-desk")
-
-    def test_re_request_pauses_old_job_and_requires_new_approval(self):
-        jobs = self.cron()
-        self.request()
-        with jobs.use_cron_store(self.home):
-            first = schedules.decide_schedule("research-desk", "approve")
-            try:
-                changed = schedules.request_schedule("research-desk", cadence="0 8 * * *", timezone="UTC", purpose="Daily public feed", actor="agent:demo")
-                self.assertEqual(changed["status"], "requested")
-                self.assertFalse(jobs.get_job(first["cron_job_id"])["enabled"])
-                with self.assertRaises(SpacesError):
-                    schedules.pause_schedule("research-desk", False, actor="user")
-                second = schedules.decide_schedule("research-desk", "approve")
-                self.assertNotEqual(first["cron_job_id"], second["cron_job_id"])
-                self.assertIsNone(jobs.get_job(first["cron_job_id"]))
-                self.assertEqual(len(jobs.load_jobs()), 1)
-            finally:
-                schedules.remove_schedule("research-desk")
-
-    def test_create_job_failure_removes_shim_and_reports_disabled(self):
-        self.request()
-        with patch.object(schedules, "_cron") as factory:
-            factory.return_value.create_job.side_effect = ValueError("Invalid cadence")
-            result = schedules.decide_schedule("research-desk", "approve")
-        self.assertEqual(result["status"], "disabled")
-        self.assertIn("Invalid cadence", result["reason"])
-        self.assertFalse((self.home / "scripts" / "living-spaces-refresh-research-desk.py").exists())
-
-    def test_delete_fails_visibly_when_native_cron_cannot_be_loaded(self):
-        jobs = self.cron()
-        self.request()
-        with jobs.use_cron_store(self.home):
-            active = schedules.decide_schedule("research-desk", "approve")
-            try:
-                with patch.object(schedules, "_cron", side_effect=ImportError("demo cron unavailable")):
-                    with self.assertRaises(SpacesError) as caught:
-                        schedules.remove_schedule("research-desk")
-                self.assertEqual(caught.exception.code, "blocked")
-                self.assertIsNotNone(jobs.get_job(active["cron_job_id"]))
-                self.assertTrue((self.home / "scripts" / "living-spaces-refresh-research-desk.py").exists())
-            finally:
-                schedules.remove_schedule("research-desk")
-
-    def test_bad_timezone_or_missing_cadence_or_unapproved_resume_is_rejected(self):
-        with self.assertRaises(SpacesError):
-            schedules.request_schedule("research-desk", cadence="", timezone="UTC", purpose="Demo", actor="user")
-        with self.assertRaises(SpacesError):
-            schedules.request_schedule("research-desk", cadence="0 * * * *", timezone="Not/AZone", purpose="Demo", actor="user")
-        self.request()
-        with self.assertRaises(SpacesError):
-            schedules.pause_schedule("research-desk", False, actor="user")
+    def test_bad_timezone_cadence_or_kind_is_rejected_before_native_cron(self):
+        for kwargs in ({"timezone": "Mars/Base"}, {"cadence": " "}, {"kind": "shell"}, {"kind": "agent", "prompt": " "},
+                       {"kind": "feed", "prompt": "Feeds take no prompt"}):
+            args = {"kind": "feed", "cadence": "0 * * * *", "timezone": "UTC", "prompt": None, "actor": "agent:demo", **kwargs}
+            with self.subTest(kwargs=kwargs), patch.object(upkeep, "_cron") as cron:
+                with self.assertRaises(SpacesError) as error:
+                    upkeep.schedule_upkeep("research-desk", **args)
+                self.assertEqual(error.exception.code, "invalid")
+                cron.return_value.create_job.assert_not_called()
 
     def test_shim_loads_by_path_waits_inline_and_is_silent_only_on_success(self):
         import contextlib
@@ -780,7 +642,15 @@ class ScheduleTests(UpkeepCase):
                     self.assertEqual(namespace["main"](), expected)
                 start.assert_called_once_with("research-desk", trigger="schedule", actor="upkeep:schedule", wait=True)
                 self.assertEqual(len(output.getvalue().splitlines()), expected)
-        self.assertEqual(schedules.CATCH_UP_POLICY, "Runs one current refresh when Hermes wakes. Missed intervals aren't replayed.")
+
+    def test_upkeep_validation(self):
+        for value in (None, [], {}, {"handler": "shell"}, {"handler": "agent"}, {"handler": "agent", "prompt": " "},
+                      {"handler": "agent", "prompt": 3}, {"handler": "agent", "prompt": "a" * 4001}):
+            with self.subTest(upkeep=value), self.assertRaises(SpacesError) as error:
+                upkeep.validate_upkeep(value)
+            self.assertEqual(error.exception.code, "invalid")
+        upkeep.validate_upkeep({"handler": "agent", "prompt": "a" * 4000})
+        upkeep.validate_upkeep({"handler": "feed", "sources": []})
 
 
 if __name__ == "__main__":

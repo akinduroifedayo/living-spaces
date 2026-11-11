@@ -101,3 +101,18 @@ def grant_internet_access(conn):
         conn.execute("""INSERT INTO grants(space,capability,status,scope,purpose,decided_at,decided_by)
             VALUES(?,'net','granted','{}',?,?,'user')""", (row["id"], purpose, db.now()))
         grants._audit(conn, row["id"], "user", "decision", "net", "granted", {"default_on_migration": True})
+
+
+def link_native_upkeep(conn):
+    """Convert legacy schedules rows to upkeep links, then drop schedules and Refresh grants."""
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='schedules'").fetchone():
+        rows = conn.execute("""SELECT sc.space, sc.cron_job_id, r.manifest FROM schedules sc
+            JOIN spaces s ON s.id=sc.space LEFT JOIN revisions r ON r.space=s.id AND r.rev=s.head_rev
+            WHERE sc.cron_job_id IS NOT NULL AND sc.cron_job_id!=''""").fetchall()
+        for row in rows:
+            handler = (json.loads(row["manifest"]).get("upkeep") or {}).get("handler") if row["manifest"] else None
+            conn.execute("""INSERT OR IGNORE INTO upkeep_links(space,cron_job_id,kind,created_at,created_by)
+                VALUES(?,?,?,?,'migration')""", (row["space"], row["cron_job_id"],
+                                                 "agent" if handler == "agent" else "feed", db.now()))
+        conn.execute("DROP TABLE schedules")
+    conn.execute("DELETE FROM grants WHERE capability='refresh'")

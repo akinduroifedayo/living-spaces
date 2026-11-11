@@ -22,7 +22,7 @@ writeFileSync(entry, [
   `export { SpaceView } from ${JSON.stringify(join(root, 'src/desktop/ui/space.jsx'))}`,
   `export { PermissionsSheet } from ${JSON.stringify(join(root, 'src/desktop/ui/permissions.jsx'))}`,
   `export { HistorySheet } from ${JSON.stringify(join(root, 'src/desktop/ui/history.jsx'))}`,
-  `export { ScheduleSheet } from ${JSON.stringify(join(root, 'src/desktop/ui/schedule.jsx'))}`,
+  `export { UpkeepSheet } from ${JSON.stringify(join(root, 'src/desktop/ui/upkeep.jsx'))}`,
   `export { styles } from ${JSON.stringify(join(root, 'src/desktop/ui/styles.js'))}`,
   `export { resetQueries, settleQueries } from ${JSON.stringify(join(root, 'tests/js/ui/sdk-stub.js'))}`
 ].join('\n'))
@@ -35,14 +35,14 @@ const render = (component, props) => server.renderToStaticMarkup(React.createEle
 let assertions = 0
 function check(condition, message) { assert.ok(condition, message); assertions++ }
 const calls = []
-const base = { id: 'research-desk', name: 'Research Desk', owner: 'Atlas', description: 'A public research reading system', status: 'active', head_rev: 7, accent: 'blue', icon: 'book', pinned: true, updated_at: 1794343200, freshness: { last_success_at: 1794343200, last_attempt_at: 1794343500, last_attempt_status: 'succeeded', source_as_of: 1794342900, next_run_at: 1794346800 }, manifest: { upkeep: { handler: 'feed' } }, grants: [{ capability: 'data', status: 'granted', scope: {} }, { capability: 'logs', status: 'granted', scope: {} }, { capability: 'refresh', status: 'requested', scope: { hosts: ['public.example'] }, purpose: 'Read public papers' }], schedule: { status: 'requested', cadence: '0 7 * * *', timezone: 'America/Chicago', purpose: 'Keep public papers current' }, recent_runs: [{ id: 'demo-run', status: 'succeeded', trigger: 'manual', queued_at: 1794343199, started_at: 1794343200, ended_at: 1794343201, changed: { unchanged: 3 } }] }
+const base = { id: 'research-desk', name: 'Research Desk', owner: 'Atlas', description: 'A public research reading system', status: 'active', head_rev: 7, accent: 'blue', icon: 'book', pinned: true, updated_at: 1794343200, freshness: { last_success_at: 1794343200, last_attempt_at: 1794343500, last_attempt_status: 'succeeded', source_as_of: 1794342900, next_run_at: 1794346800 }, manifest: { upkeep: { handler: 'feed' } }, grants: [{ capability: 'data', status: 'granted', scope: {} }, { capability: 'logs', status: 'granted', scope: {} }], upkeep: { cron_job_id: 'job1', kind: 'feed', enabled: true, state: 'scheduled', next_run_at: 1794346800, missing: false }, recent_runs: [{ id: 'demo-run', status: 'succeeded', trigger: 'manual', queued_at: 1794343199, started_at: 1794343200, ended_at: 1794343201, changed: { unchanged: 3 } }] }
 function context(space = base, spaces = [space]) {
   return { listActions: () => [{ id: 'session.new', label: 'New chat' }], runAction: () => ({ ok: true }), rest: async (path, options) => {
     calls.push([path, options])
     if (path === '/spaces') return { spaces, seq_global: 5 }
     if (path === '/spaces/research-desk') return space
     if (path.endsWith('/grants')) return { grants: space.grants, future: [], audit: [{ id: 1, at: 1794343200, actor: 'user', action: 'grant', capability: 'data', outcome: 'granted' }] }
-    if (path.endsWith('/schedule')) return space.schedule
+    if (path.endsWith('/upkeep')) return { link: { cron_job_id: 'job1', kind: 'feed', created_at: 1, created_by: 'agent' }, job: { id: 'job1', prompt: null, schedule_display: 'every day at 7:00', cadence: '0 7 * * *', timezone: 'America/Chicago', enabled: true, state: 'scheduled', next_run_at: '2026-11-12T13:00:00+00:00', last_run_at: null, last_status: null, last_error: null }, executions: [], missing: false, error: null }
     if (path.endsWith('/runs')) return space.recent_runs
     if (path.endsWith('/revisions')) return [{ rev: 7, created_at: 1794343200, author: 'agent:Atlas', summary: 'Current app' }, { rev: 5, created_at: 1794340000, author: 'agent:Atlas', summary: 'Earlier app' }]
     throw new Error(`Unexpected REST call ${path}`)
@@ -78,8 +78,7 @@ check(permissions.includes('Spaces block ordinary internet connections unless yo
 const future = permissions.split('data-testid="release-two"')[1].split('</section>')[0]
 check(!/<button|<input|role="switch"/.test(future), 'release-two rows have no controls')
 check((future.match(/Not available yet/g) || []).length === 8, 'all future rows labelled')
-check(permissions.includes('No model calls') && permissions.includes('America/Chicago'), 'pending schedule scope and cost')
-check(permissions.includes("Missed intervals aren&#x27;t replayed."), 'catch-up policy')
+check(!/Refresh|Scheduled upkeep/.test(permissions.split('data-testid="release-two"')[0]), 'no Refresh row or schedule approval')
 check(!permissions.includes('Approve narrower'), 'no invented narrower scopes')
 save('permissions', permissions)
 for (const [name, patch, expected] of [
@@ -102,9 +101,9 @@ const revisions = await ready(ui.HistorySheet, { ctx: context(), space: base, in
 check(revisions.includes('Restoring code does not rewind records.'), 'restoration note')
 check(revisions.includes('Current') && revisions.includes('Restore…'), 'revision controls')
 save('revisions', revisions)
-const schedule = await ready(ui.ScheduleSheet, { ctx: context(), space: base, onClose() {}, onChanged() {} })
-check(schedule.includes('No model calls.') && schedule.includes('Change schedule in chat'), 'schedule controls and cost')
-save('schedule', schedule)
+const schedule = await ready(ui.UpkeepSheet, { ctx: context(), space: base, onClose() {}, onChanged() {} })
+check(schedule.includes('No model calls') && schedule.includes('Run now'), 'upkeep controls and cost')
+save('upkeep', schedule)
 check(ui.renderDirective(context(), { id: '../invalid' }) === null, 'invalid directive renders nothing')
 ui.resetQueries()
 render(() => ui.renderDirective(context(), { id: base.id }), {})

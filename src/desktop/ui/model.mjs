@@ -70,7 +70,7 @@ export function cardLines(space, format) {
   if (state === 'updating') return ['Refreshing now…', `Last good update ${at(f.last_success_at)}`]
   if (state === 'failed') return [`Refresh failed ${at(f.last_attempt_at)}`, `Showing last good data from ${at(f.last_success_at)}`]
   if (state === 'blocked') return [`Refresh blocked ${at(f.last_attempt_at)}`, space.attention?.message || 'Refresh needs your approval in Permissions']
-  return [f.last_success_at == null ? 'No successful update yet' : `Updated ${at(f.last_success_at)}`, space.schedule?.status === 'paused' ? 'Upkeep paused' : `Next refresh ${f.next_run_at == null ? 'not scheduled' : format(f.next_run_at)}`]
+  return [f.last_success_at == null ? 'No successful update yet' : `Updated ${at(f.last_success_at)}`, space.upkeep && space.upkeep.enabled === false ? 'Upkeep paused' : `Next refresh ${f.next_run_at == null ? 'not scheduled' : format(f.next_run_at)}`]
 }
 export function advanceCursor(cursor, page) {
   const changes = (page?.changes || []).filter(c => Number.isSafeInteger(c.seq) && c.seq > cursor).sort((a, b) => a.seq - b.seq)
@@ -81,7 +81,6 @@ export function advanceCursor(cursor, page) {
 export function refreshReason(space) {
   if (space.status === 'archived') return 'This Space is archived. Restore it to refresh.'
   if (!space.manifest?.upkeep) return 'No refresh handler is declared. Ask the owner in chat to add one.'
-  if (!space.grants?.some(g => g.capability === 'refresh' && g.status === 'granted')) return 'Refresh needs your approval in Permissions'
   if (spaceStatus(space) === 'blocked') return space.attention?.message || 'Refresh is blocked. Review Permissions.'
   return ''
 }
@@ -101,6 +100,9 @@ export function dispatchText(dispatch, format) {
   return `${catchUp ? 'Catch-up refresh. Missed scheduled time' : 'Scheduled time'} ${at(dispatch.scheduled_at)}. Actual dispatch ${at(dispatch.dispatched_at)}.${delay}${catchUp ? ' Missed intervals were not replayed.' : ''}`
 }
 export const CATCH_UP = "Runs one current refresh when Hermes wakes. Missed intervals aren't replayed."
+export const EXECUTION_LABELS = { succeeded: 'Succeeded', failed: 'Failed', running: 'Running', claimed: 'Claimed', queued: 'Queued', unknown: 'Outcome unknown, side effects may have run' }
+export const executionLabel = status => EXECUTION_LABELS[status] || String(status ?? 'Unknown')
+export const toSeconds = value => value == null ? null : typeof value === 'number' ? value : Number.isFinite(Date.parse(value)) ? Date.parse(value) / 1000 : null
 export const PROMPTS = [
   'Build Research Desk: an overview, a searchable library and a reading queue. Keep my notes and reading status.',
   'Build a weekly fitness planner with a progress chart. Refresh it every Monday.'

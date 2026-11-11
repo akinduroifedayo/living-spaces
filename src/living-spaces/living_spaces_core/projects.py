@@ -7,7 +7,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-from . import db, grants, limits, migrations, records
+from . import db, grants, limits, migrations, records, runs, upkeep
 from .errors import SpacesError
 
 RUNTIME = Path(__file__).parent.parent / "runtime"
@@ -24,21 +24,6 @@ _LIBRARIES = {
 }
 _ACCENTS = {"blue", "green", "amber", "purple", "teal", "rose", "orange", "grey"}
 _THEME_PRESETS = {"editorial", "terminal", "playful", "minimal", "data", "journal", "game"}
-_EMPTY_FRESHNESS = {"last_success_at": None, "last_attempt_at": None, "last_attempt_status": None,
-                    "source_as_of": None, "next_run_at": None}
-
-
-def _upkeep(module, name, *args, default=None, **kwargs):
-    try:
-        if module == "runs":
-            from . import runs
-            function = getattr(runs, name)
-        else:
-            from . import schedules
-            function = getattr(schedules, name)
-    except (ImportError, AttributeError):
-        return default
-    return function(*args, **kwargs)
 
 
 def _manifest(value, name, description):
@@ -93,7 +78,7 @@ def _manifest(value, name, description):
         limits.object_json(definition)
     migrations.validate(value["data"].get("migrations", []))
     if "upkeep" in value:
-        _upkeep("schedules", "validate_upkeep", value["upkeep"])
+        upkeep.validate_upkeep(value["upkeep"])
         limits.object_json(value["upkeep"])
         sources = value["upkeep"].get("sources", [])
         if not isinstance(sources, list):
@@ -209,7 +194,6 @@ def _warnings(conn, manifest, files):
 
 
 def _save_revision(conn, space, manifest, files, *, kind, author, summary, restored_from=None):
-    _upkeep("schedules", "on_manifest_change", conn, space["id"], _revision(conn, space["id"])["manifest"], manifest, actor=author)
     encoded_manifest = limits.object_json(manifest, limits.FILE_BYTES, "manifest")
     rev, at = space["head_rev"] + 1, db.now()
     conn.execute("INSERT INTO revisions(space,rev,parent_rev,kind,restored_from,manifest,files,author,summary,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
@@ -218,7 +202,6 @@ def _save_revision(conn, space, manifest, files, *, kind, author, summary, resto
     status = "active" if manifest["entry"] in files else space["status"]
     conn.execute("UPDATE spaces SET head_rev=?,name=?,description=?,accent=?,icon=?,status=?,updated_at=? WHERE id=?",
                  (rev, manifest["name"], manifest["description"], manifest["accent"], manifest["icon"], status, at, space["id"]))
-    grants._manifest(conn, space["id"], manifest, author)
     return _revision(conn, space["id"], rev)
 
 
@@ -276,10 +259,10 @@ def _summary(row):
     sid = row["id"]
     summary = {key: row[key] for key in ("id", "name", "description", "owner", "status", "head_rev", "accent", "icon", "pinned", "updated_at", "last_opened_at")}
     summary["pinned"] = bool(summary["pinned"])
-    summary["freshness"] = _upkeep("runs", "freshness", sid, default=_EMPTY_FRESHNESS.copy())
-    summary["schedule"] = _upkeep("schedules", "get_schedule", sid)
+    summary["freshness"] = runs.freshness(sid)
+    summary["upkeep"] = upkeep.summary(sid)
     summary["attention"] = None
-    recent = _upkeep("runs", "list_runs", sid, limit=1, default=[])
+    recent = runs.list_runs(sid, limit=1)
     if recent and recent[0]["status"] in ("failed", "blocked"):
         run = recent[0]
         summary["attention"] = {"kind": run["status"], "message": run.get("error") or (run.get("detail") or {}).get("reason") or "Refresh unavailable"}
@@ -304,7 +287,7 @@ def get_space(sid):
         grant_rows = [grants._grant(row) for row in conn.execute("SELECT * FROM grants WHERE space=? ORDER BY capability", (sid,))]
         errors = conn.execute("SELECT count(*) FROM logs WHERE space=? AND level='error' AND at>=?", (sid, db.now() - 86400)).fetchone()[0]
     result = _summary(space)
-    result.update(manifest=manifest, grants=grant_rows, recent_runs=_upkeep("runs", "list_runs", sid, limit=10, default=[]),
+    result.update(manifest=manifest, grants=grant_rows, recent_runs=runs.list_runs(sid, limit=10),
                   data_version=space["data_version"], collections=collections, error_count_24h=errors)
     return result
 
@@ -457,10 +440,8 @@ def set_status(sid, status, *, actor):
         if status == "archived":
             conn.execute("UPDATE sessions SET closed_at=coalesce(closed_at,?) WHERE space=?", (db.now(), sid))
     if status == "archived":
-        _upkeep("runs", "cancel_pending", sid, "archived")
-        _upkeep("schedules", "on_archive", sid)
-    elif space["status"] == "archived":
-        _upkeep("schedules", "on_unarchive", sid)
+        runs.cancel_pending(sid, "archived")
+        upkeep.on_archive(sid)
     return get_space(sid)
 
 
@@ -470,14 +451,13 @@ def delete_space(sid, *, actor, confirm):
         raise SpacesError("invalid", "Deletion confirmation must equal the Space id")
     with db.read() as conn:
         db.space(conn, sid)
-        had_schedule = bool(conn.execute("SELECT 1 FROM schedules WHERE space=?", (sid,)).fetchone())
-    _upkeep("schedules", "on_delete", sid)
-    _upkeep("runs", "cancel_pending", sid, "deleted")
+    had_upkeep = upkeep.on_delete(sid)
+    runs.cancel_pending(sid, "deleted")
     with db.write() as conn:
         db.space(conn, sid)
         removed = {table: conn.execute(f"SELECT count(*) FROM {table} WHERE space=?", (sid,)).fetchone()[0]
                    for table in ("records", "revisions")}
-        removed["schedule"] = had_schedule
+        removed["upkeep"] = had_upkeep
         for table in ("changes", "recovery_points", "audit", "sessions", "runs", "logs"):
             conn.execute(f"DELETE FROM {table} WHERE space=?", (sid,))
         conn.execute("DELETE FROM spaces WHERE id=?", (sid,))

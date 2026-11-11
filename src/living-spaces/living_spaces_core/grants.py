@@ -1,5 +1,4 @@
 import json
-from urllib.parse import urlsplit
 
 from . import db, limits
 from .errors import SpacesError
@@ -11,8 +10,6 @@ CAPABILITIES = {
              "default_purpose": "Save and use this Space's data", "data_leaves_device": False, "continuing_access": True},
     "logs": {"label": "Diagnostics", "description": "Submit bounded runtime logs for this Space.",
              "default_purpose": "Diagnose and repair this Space", "data_leaves_device": False, "continuing_access": True},
-    "refresh": {"label": "Refresh", "description": "Run declared upkeep against approved public-source hosts.",
-                "default_purpose": "Keep this Space's sources current", "data_leaves_device": True, "continuing_access": True},
 }
 FUTURE = {
     "sites": {"label": "Approved sites"}, "camera": {"label": "Camera"},
@@ -46,21 +43,6 @@ def _subset(needed, granted):
 
 def _scope(capability, scope):
     limits.object_json(scope)
-    if capability == "refresh":
-        if set(scope) - {"hosts", "upkeep"} or not isinstance(scope.get("hosts", []), list):
-            raise SpacesError("invalid", "Refresh scope must contain a hosts array")
-        if any(not isinstance(host, str) or not host or host != host.lower()
-               or any(char in host for char in "/:@* ") for host in scope.get("hosts", [])):
-            raise SpacesError("invalid", "Refresh hosts must be exact lowercase hostnames")
-        result = {"hosts": sorted(set(scope.get("hosts", [])))}
-        if "upkeep" in scope:
-            upkeep = scope["upkeep"]
-            if (not isinstance(upkeep, dict) or set(upkeep) != {"handler", "prompt"}
-                    or upkeep["handler"] != "agent" or not isinstance(upkeep["prompt"], str)
-                    or not upkeep["prompt"].strip() or len(upkeep["prompt"]) > 4000):
-                raise SpacesError("invalid", "Refresh upkeep scope requires handler agent and an exact prompt of at most 4000 characters")
-            result["upkeep"] = dict(upkeep)
-        return result
     if scope:
         raise SpacesError("invalid", "This capability has no external scope")
     return {}
@@ -88,36 +70,6 @@ def _seed(conn, sid, manifest, actor):
         conn.execute("UPDATE grants SET status='granted',scope='{}',decided_at=?,decided_by='user' WHERE space=? AND capability=?",
                      (db.now(), sid, capability))
         _audit(conn, sid, "user", "decision", capability, "granted", {"default_on_create": True})
-    _manifest(conn, sid, manifest, actor)
-
-
-def _manifest(conn, sid, manifest, actor):
-    upkeep = manifest.get("upkeep")
-    if upkeep is None:
-        return
-    hosts = []
-    for source in upkeep.get("sources", []):
-        try:
-            host = urlsplit(source["url"]).hostname
-        except (KeyError, ValueError, TypeError) as exc:
-            raise SpacesError("invalid", "Invalid upkeep source URL") from exc
-        if not host:
-            raise SpacesError("invalid", "Upkeep source URL requires a host")
-        hosts.append(host.lower())
-    scope = {"hosts": hosts}
-    if upkeep.get("handler") == "agent":
-        scope["upkeep"] = {"handler": "agent", "prompt": upkeep["prompt"]}
-    scope = _scope("refresh", scope)
-    row = conn.execute("SELECT * FROM grants WHERE space=? AND capability='refresh'", (sid,)).fetchone()
-    if row:
-        current = _grant(row)
-        if (current["status"] == "granted" and _subset(scope, current["scope"])
-                and scope.get("upkeep") == current["scope"].get("upkeep")):
-            return
-        if current["status"] != "granted" and current["requested_scope"] == scope:
-            return
-    _request(conn, sid, "refresh", scope=scope,
-             purpose=CAPABILITIES["refresh"]["default_purpose"], actor=actor)
 
 
 def list_grants(sid):
@@ -132,11 +84,6 @@ def _check(conn, sid, capability, scope_need=None):
     limits.text(capability, "capability")
     row = conn.execute("SELECT * FROM grants WHERE space=? AND capability=?", (sid, capability)).fetchone()
     allowed = row is not None and row["status"] == "granted" and _subset(need, json.loads(row["scope"]))
-    if allowed and capability == "refresh":
-        revision = conn.execute("SELECT r.manifest FROM revisions r JOIN spaces s ON s.id=r.space AND s.head_rev=r.rev WHERE s.id=?", (sid,)).fetchone()
-        upkeep = (json.loads(revision["manifest"]).get("upkeep") or {}) if revision else {}
-        if upkeep.get("handler") == "agent":
-            allowed = json.loads(row["scope"]).get("upkeep") == {"handler": "agent", "prompt": upkeep["prompt"]}
     if not allowed:
         _audit(conn, sid, "app", "check", capability, "denied", {"scope_need": need})
     return allowed
@@ -161,8 +108,6 @@ def decide(sid, capability, decision, *, actor="user", scope=None, requested_sco
     if decision not in ("grant", "deny", "revoke"):
         raise SpacesError("invalid", "Decision must be grant, deny or revoke")
     limits.text(actor, "actor")
-    refusal = None
-    withdrawal_id = None
     with db.write() as conn:
         db.space(conn, sid)
         row = conn.execute("SELECT * FROM grants WHERE space=? AND capability=?", (sid, capability)).fetchone()
@@ -177,30 +122,11 @@ def decide(sid, capability, decision, *, actor="user", scope=None, requested_sco
         selected = _scope(capability, scope if scope is not None else current["requested_scope"] or current["scope"])
         if decision == "grant" and not _subset(selected, current["requested_scope"] or current["scope"]):
             raise SpacesError("invalid", "Grant scope exceeds the requested scope")
-        if capability == "refresh" and decision == "grant" and current["status"] != "granted":
-            from . import schedules
-            reconciliation = schedules.reconcile_refresh(conn, sid, actor=actor)
-            if (not reconciliation.schedule_fenced or not reconciliation.executions_quiescent
-                    or reconciliation.reason is not None):
-                refusal = reconciliation.reason or "Native interruption is unconfirmed"
-                _audit(conn, sid, actor, "grant.blocked", capability, "blocked", {"reason": refusal})
         status = {"grant": "granted", "deny": "denied", "revoke": "revoked"}[decision]
-        if refusal is None:
-            conn.execute("UPDATE grants SET status=?,scope=?,decided_at=?,decided_by=? WHERE space=? AND capability=?",
-                         (status, limits.dumps(selected), db.now(), actor, sid, capability))
-            decision_id = _audit(conn, sid, actor, "decision", capability, status, {"scope": selected})
-            if capability == "refresh" and decision in ("deny", "revoke"):
-                from . import runs, schedules
-                withdrawal_id = decision_id
-                schedules.on_refresh_revoked(sid, decision, actor=actor, conn=conn)
-                runs.cancel_pending(sid, "refresh revoked", conn=conn)
-        result = _grant(conn.execute("SELECT * FROM grants WHERE space=? AND capability=?", (sid, capability)).fetchone())
-    if refusal is not None:
-        raise SpacesError("blocked", "Cannot grant Refresh until native interruption is confirmed", reason=refusal)
-    if withdrawal_id is not None:
-        with db.write() as conn:
-            schedules.reconcile_refresh(conn, sid, actor=actor, expected_withdrawal_audit_id=withdrawal_id)
-    return result
+        conn.execute("UPDATE grants SET status=?,scope=?,decided_at=?,decided_by=? WHERE space=? AND capability=?",
+                     (status, limits.dumps(selected), db.now(), actor, sid, capability))
+        _audit(conn, sid, actor, "decision", capability, status, {"scope": selected})
+        return _grant(conn.execute("SELECT * FROM grants WHERE space=? AND capability=?", (sid, capability)).fetchone())
 
 
 def audit_log(sid, limit=100):

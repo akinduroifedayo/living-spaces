@@ -28,17 +28,6 @@ class CoreCase(unittest.TestCase):
         })
         self.environment.start()
         self.addCleanup(self.environment.stop)
-        for name in ("runs", "feeds", "schedules"):
-            previous = living_spaces_core.__dict__.pop(name, None)
-            def restore_attribute(name=name, previous=previous):
-                living_spaces_core.__dict__.pop(name, None)
-                if previous is not None:
-                    setattr(living_spaces_core, name, previous)
-            self.addCleanup(restore_attribute)
-        unavailable = {"living_spaces_core.feeds": None}
-        modules = patch.dict(sys.modules, unavailable)
-        modules.start()
-        self.addCleanup(modules.stop)
         self.sid = self.create()["id"]
 
     def create(self, name="Research Desk", **kwargs):
@@ -196,7 +185,8 @@ class ProjectTests(CoreCase):
         self.assertTrue(space["pinned"])
         self.assertIsInstance(space["last_opened_at"], float)
         self.assertEqual(set(space["freshness"]), {"last_success_at", "last_attempt_at", "last_attempt_status", "source_as_of", "next_run_at"})
-        self.assertIsNone(space["schedule"])
+        self.assertIsNone(space["upkeep"])
+        self.assertNotIn("schedule", space)
 
 
 class RecordTests(CoreCase):
@@ -430,37 +420,11 @@ class AuthorityTests(CoreCase):
     def upkeep(self, hosts):
         return {"upkeep": {"handler": "feed", "sources": [{"id": str(i), "url": f"https://{host}/public.xml", "collection": "papers"} for i, host in enumerate(hosts)]}}
 
-    def test_default_grants_and_refresh_scope_widening(self):
+    def test_default_grants_and_upkeep_manifest_requests_nothing(self):
         self.assertEqual({row["capability"]: row["status"] for row in grants.list_grants(self.sid)}, {"data": "granted", "logs": "granted", "net": "granted"})
         self.write({}, manifest=self.upkeep(["example.org"]))
-        refresh = next(row for row in grants.list_grants(self.sid) if row["capability"] == "refresh")
-        self.assertEqual((refresh["status"], refresh["requested_scope"]), ("requested", {"hosts": ["example.org"]}))
-        grants.decide(self.sid, "refresh", "grant")
-        grants.check(self.sid, "refresh", {"hosts": ["example.org"]})
-        self.write({}, manifest=self.upkeep(["example.org", "example.com"]))
-        self.error("not_granted", grants.check, self.sid, "refresh", {"hosts": ["example.org"]})
-        refresh = next(row for row in grants.list_grants(self.sid) if row["capability"] == "refresh")
-        self.assertEqual(refresh["status"], "requested")
-        self.assertEqual(refresh["requested_scope"], {"hosts": ["example.com", "example.org"]})
-        self.assertIn("denied", [entry["outcome"] for entry in grants.audit_log(self.sid)])
-
-    def test_narrow_grant_scope_and_denied_request_does_not_reprompt(self):
-        self.write({}, manifest=self.upkeep(["example.org", "example.com"]))
-        grants.decide(self.sid, "refresh", "grant", scope={"hosts": ["example.org"]})
-        self.error("not_granted", grants.check, self.sid, "refresh", {"hosts": ["example.com"]})
-        self.write({}, manifest=self.upkeep(["example.org"]))
-        grants.check(self.sid, "refresh", {"hosts": ["example.org"]})
-        grants.decide(self.sid, "refresh", "deny")
-        self.write({}, manifest=self.upkeep(["example.org", "example.com"]))
-        self.assertEqual(next(row for row in grants.list_grants(self.sid) if row["capability"] == "refresh")["status"], "denied")
-
-    def test_revocation_cancels_pending_via_lazy_seam(self):
-        self.write({}, manifest=self.upkeep(["example.org"]))
-        calls = []
-        with patch("living_spaces_core.runs.cancel_pending", side_effect=lambda *args, **kwargs: calls.append(args)):
-            grants.decide(self.sid, "refresh", "revoke")
-        self.assertEqual(calls, [(self.sid, "refresh revoked")])
-        self.error("not_granted", grants.check, self.sid, "refresh")
+        self.assertEqual({row["capability"] for row in grants.list_grants(self.sid)}, {"data", "logs", "net"})
+        self.assertNotIn("refresh", grants.CAPABILITIES)
 
     def test_sessions_are_space_bound_and_closed_dispatch_fails_first(self):
         session = sessions.open_session(self.sid)["session"]
@@ -507,25 +471,20 @@ class AuthorityTests(CoreCase):
         self.assertEqual(call("data.delete", {"collection": "papers", "id": item["id"], "base_rev": item["rev"]}), {"deleted": True})
         self.assertEqual(projects.get_space(self.sid)["error_count_24h"], 1)
 
-    def test_missing_upkeep_returns_blocked_and_denied_refresh_does_not_call(self):
+    def test_missing_upkeep_refresh_is_a_blocked_run(self):
         session = sessions.open_session(self.sid)["session"]
-        self.assertEqual(bridge.dispatch(self.sid, session, "refresh", {})["error"]["code"], "not_granted")
-        self.write({}, manifest=self.upkeep(["example.org"]))
-        grants.decide(self.sid, "refresh", "grant")
-        with patch.dict(sys.modules, {"living_spaces_core.runs": None}):
-            for op in ("refresh", "runs.list"):
-                reply = bridge.dispatch(self.sid, session, op, {})
-                self.assertEqual((reply["error"]["code"], reply["error"]["reason"]), ("blocked", "no_handler"))
+        reply = bridge.dispatch(self.sid, session, "refresh", {})
+        self.assertTrue(reply["ok"], reply)
+        self.assertEqual((reply["result"]["status"], reply["result"]["detail"]["reason"]), ("blocked", "no_handler"))
 
-    def test_inflight_result_not_delivered_after_revocation_or_session_close(self):
+    def test_inflight_result_not_delivered_after_session_close(self):
         self.write({}, manifest=self.upkeep(["example.org"]))
-        grants.decide(self.sid, "refresh", "grant")
         session = sessions.open_session(self.sid)["session"]
         def refresh(*args, **kwargs):
-            grants.decide(self.sid, "refresh", "revoke")
+            sessions.close_session(session)
             return {"id": "demo-run"}
-        with patch("living_spaces_core.runs.start_refresh", side_effect=refresh):
-            self.assertEqual(bridge.dispatch(self.sid, session, "refresh", {})["error"]["code"], "not_granted")
+        with patch.object(bridge.runs, "start_refresh", side_effect=refresh):
+            self.assertEqual(bridge.dispatch(self.sid, session, "refresh", {})["error"]["code"], "session_invalid")
 
     def test_future_and_capability_disclosures(self):
         self.assertEqual(set(grants.FUTURE), {"sites", "camera", "microphone", "location", "tool:*", "files", "cross_space", "agent.ask"})
@@ -538,11 +497,9 @@ class AuthorityTests(CoreCase):
         session = sessions.open_session(self.sid)["session"]
         logs.add_logs(self.sid, session, [{"level": "info", "msg": "Demo"}])
         calls = []
-        schedule = types.SimpleNamespace(on_archive=lambda sid: calls.append(("archive", sid)),
-            on_unarchive=lambda sid: calls.append(("unarchive", sid)),
-            on_delete=lambda sid: calls.append(("delete", sid)), get_schedule=lambda sid: None)
-        runs = types.SimpleNamespace(cancel_pending=lambda sid, reason: calls.append(("cancel", reason)))
-        with patch.dict(sys.modules, {"living_spaces_core.runs": runs, "living_spaces_core.schedules": schedule}):
+        with patch.object(projects.upkeep, "on_archive", lambda sid: calls.append(("archive", sid))), \
+                patch.object(projects.upkeep, "on_delete", lambda sid: calls.append(("delete", sid)) or False), \
+                patch.object(projects.runs, "cancel_pending", lambda sid, reason: calls.append(("cancel", reason))):
             projects.set_status(self.sid, "archived", actor="user")
             self.error("archived", self.put, "new")
             self.error("session_invalid", sessions.require, self.sid, session)
@@ -553,7 +510,7 @@ class AuthorityTests(CoreCase):
         self.assertEqual(result["removed"]["records"], 1)
         self.assertLess(calls.index(("delete", self.sid)), calls.index(("cancel", "deleted")))
         self.assertIn(("archive", self.sid), calls)
-        self.assertIn(("unarchive", self.sid), calls)
+        self.assertEqual(len(calls), 4)
         self.error("not_found", projects.get_space, self.sid)
         with db.read() as conn:
             for table in ("records", "changes", "revisions", "sessions", "logs", "grants", "audit", "runs", "recovery_points"):
@@ -588,20 +545,10 @@ class AuthorityTests(CoreCase):
         self.assertEqual(grants.audit_log(self.sid)[0]["outcome"], "denied")
 
     def test_audit_redacts_values_without_breaking_json(self):
-        grants.request(self.sid, "refresh", scope={"hosts": ["example.org"]}, purpose='Demo Bearer "quoted"', actor="user")
+        grants.request(self.sid, "net", scope={}, purpose='Demo Bearer "quoted"', actor="user")
         audit = grants.audit_log(self.sid)
-        self.assertEqual(audit[0]["detail"]["scope"], {"hosts": ["example.org"]})
+        self.assertEqual(audit[0]["detail"]["scope"], {})
         self.assertNotIn("quoted", audit[0]["detail"]["purpose"])
-
-    def test_delete_reports_schedule_removed_by_hook(self):
-        with db.write() as conn:
-            conn.execute("INSERT INTO schedules(space,status,cadence,timezone) VALUES(?,'requested','0 * * * *','UTC')", (self.sid,))
-        def remove(sid):
-            with db.write() as conn:
-                conn.execute("DELETE FROM schedules WHERE space=?", (sid,))
-        with patch("living_spaces_core.schedules.on_delete", side_effect=remove):
-            result = projects.delete_space(self.sid, actor="user", confirm=self.sid)
-        self.assertTrue(result["removed"]["schedule"])
 
     def test_all_bridge_mutations_recheck_session_inside_transaction(self):
         original_record = self.put()
@@ -630,15 +577,15 @@ class AuthorityTests(CoreCase):
         def list_runs(*args, **kwargs):
             sessions.close_session(session)
             return [{"id": "demo"}]
-        with patch.dict(sys.modules, {"living_spaces_core.runs": types.SimpleNamespace(list_runs=list_runs)}):
+        with patch.object(bridge.runs, "list_runs", list_runs):
             reply = bridge.dispatch(self.sid, session, "runs.list", {})
         self.assertEqual(reply["error"]["code"], "session_invalid")
         self.assertNotIn("result", reply)
 
-    def test_delete_schedule_failure_preserves_space(self):
+    def test_delete_upkeep_failure_preserves_space(self):
         def fail(sid):
             raise SpacesError("blocked", "Cron unavailable", reason="no_handler")
-        with patch.dict(sys.modules, {"living_spaces_core.schedules": types.SimpleNamespace(on_delete=fail)}):
+        with patch.object(projects.upkeep, "on_delete", fail):
             self.error("blocked", projects.delete_space, self.sid, actor="user", confirm=self.sid)
         self.assertEqual(projects.get_space(self.sid)["id"], self.sid)
 
@@ -680,11 +627,6 @@ class LogAndStorageTests(CoreCase):
         for suffix in ("", "-wal", "-shm"):
             Path(str(db.db_path()) + suffix).unlink(missing_ok=True)
         self.assertEqual(projects.list_spaces(), [])
-
-    def test_import_does_not_load_upkeep(self):
-        code = "import sys; sys.path.insert(0, sys.argv[1]); import living_spaces_core; assert not any('living_spaces_core.' + n in sys.modules for n in ('runs','feeds','schedules'))"
-        subprocess.run([sys.executable, "-c", code, str(ROOT / "src" / "living-spaces")], check=True, capture_output=True)
-
 
 if __name__ == "__main__":
     unittest.main()

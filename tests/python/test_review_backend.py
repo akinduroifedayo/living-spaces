@@ -106,7 +106,6 @@ class ReviewRefreshAdmissionTests(ReviewBackendCase):
                 "id": "review-feed", "url": self.FEED_URL, "collection": "papers",
             }],
         }}, author="agent:demo", summary="Declare public feed")
-        grants.decide(self.sid, "refresh", "grant")
         self.session = sessions.open_session(self.sid)["session"]
         self.fetch = Mock(return_value=self.FEED)
         fetch_patch = patch.object(feeds, "fetch", self.fetch)
@@ -172,9 +171,9 @@ class ReviewRefreshAdmissionTests(ReviewBackendCase):
         self.assertEqual(len(changes), 1)
         self.assertEqual((changes[0]["id"], changes[0]["op"]), (record["id"], "source"))
 
-    def test_f4_session_closed_after_grant_check_cannot_admit_refresh(self):
+    def test_f4_session_closed_after_entry_check_cannot_admit_refresh(self):
         closed, resume = threading.Event(), threading.Event()
-        real_check = grants.check
+        real_check = sessions.require
 
         def close_after_first_check(*args, **kwargs):
             result = real_check(*args, **kwargs)
@@ -185,13 +184,13 @@ class ReviewRefreshAdmissionTests(ReviewBackendCase):
                     raise TimeoutError("Review dispatch was not released")
             return result
 
-        with patch.object(grants, "check", close_after_first_check), \
+        with patch.object(sessions, "require", close_after_first_check), \
                 patch.object(runs, "start_refresh", self.refresh_and_wait):
             thread, outcome = self.start_call(
                 lambda: bridge.dispatch(self.sid, self.session, "refresh", {}),
             )
             try:
-                self.assertTrue(closed.wait(10), "First successful grant check did not close the session")
+                self.assertTrue(closed.wait(10), "First successful session check did not close the session")
                 self.assert_session_closed()
                 self.assert_no_admission_or_write()
                 self.fetch.assert_not_called()

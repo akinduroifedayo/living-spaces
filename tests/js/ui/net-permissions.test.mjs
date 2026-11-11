@@ -47,8 +47,7 @@ after(() => dom.window.close())
 async function mounted(status, run, { busyRequest = false } = {}) {
   requests = []
   data = { grants: [{ capability: 'data', status: 'granted' }, { capability: 'logs', status: 'granted' },
-    { capability: 'net', status, scope: {}, requested_scope: {} },
-    { capability: 'refresh', status: 'requested', requested_scope: { hosts: ['example.com'] } }] }
+    { capability: 'net', status, scope: {}, requested_scope: {} }] }
   const view = createRoot(document.getElementById('root'))
   let finish
   const props = { space: { id: 'demo-space', name: 'Demo', owner: 'Demo' }, onClose() {}, onChanged() {}, ctx: {
@@ -107,13 +106,11 @@ test('agent re-request stays Off until the host Approve action', async () => {
   })
 })
 
-test('refresh approval and data revoke controls remain available', async () => {
+test('data revoke control remains available and no Refresh row renders', async () => {
   await mounted('granted', async () => {
     const rows = [...document.querySelectorAll('article')]
     assert.ok(rows.find(r => r.textContent.includes('Own data')).textContent.includes('Revoke'))
-    const row = rows.find(r => r.textContent.includes('Approved hosts: example.com'))
-    await click([...row.querySelectorAll('button')].find(b => b.textContent === 'Approve'))
-    assert.deepEqual(requests[0].body, { decision: 'grant', requested_scope: { hosts: ['example.com'] } })
+    assert.equal(rows.find(r => /Refresh/.test(r.textContent)), undefined)
   })
 })
 
