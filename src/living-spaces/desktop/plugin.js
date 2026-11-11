@@ -890,9 +890,217 @@ function UpkeepSheet({ ctx, space, onClose, onChanged, returnFocus }) {
   ] });
 }
 
+// src/desktop/ui/actions.mjs
+var routeFields = ["connectionId", "profile", "targetProfile", "mode"];
+var sameRoute = (a, b) => routeFields.every((key) => a?.[key] === b?.[key]);
+var publicStatus = (action, status, message, answer) => ({ activationId: action?.activation_id, status, message, ...answer ? { answer } : {} });
+var failure = (message, status = "failed") => Object.assign(new Error(message), { actionStatus: status });
+function createBotActions({ host: host5, backend, post, onStatus, isActive, userActivation = () => globalThis.navigator?.userActivation?.isActive === true }) {
+  let current = null;
+  let binding = null;
+  let release = null;
+  let heldRoute = null;
+  let timer = null;
+  let closed = false;
+  let chain = Promise.resolve();
+  const alive = () => {
+    if (closed || !isActive()) throw failure("This Space view is closed", "unknown");
+  };
+  const publish = (value) => {
+    if (!closed && isActive()) onStatus(value);
+    return value;
+  };
+  const serial = (work) => {
+    const next = chain.then(work);
+    chain = next.catch(() => {
+    });
+    return next;
+  };
+  const pinned = (route) => route.profile === backend?.profile && (backend.connectionId == null ? route.primary === true : route.connectionId === backend.connectionId);
+  async function registered(expected) {
+    alive();
+    if (!backend?.api || typeof host5?.profileRoutes !== "function" || typeof host5?.retainProfile !== "function" || typeof host5?.requestProfile !== "function") {
+      throw failure("Native profile routing is unavailable in this Desktop", "offline");
+    }
+    const routes = await host5.profileRoutes();
+    alive();
+    const matches = routes.filter((route) => pinned(route) && (!expected || sameRoute(route, expected)));
+    if (matches.length !== 1 || routeFields.some((key) => typeof matches[0][key] !== "string" || !matches[0][key])) {
+      throw failure("The exact maintaining profile route is unavailable or ambiguous", "offline");
+    }
+    return matches[0];
+  }
+  async function rpc(route, method, params = {}) {
+    const fresh = await registered(route);
+    alive();
+    const value = await host5.requestProfile(fresh, method, params).catch((error) => {
+      const reason = error?.data?.reason;
+      if (["permission_denied", "invalid_params", "not_found", "profile_mismatch", "admission_conflict"].includes(reason)) {
+        throw failure(`Native request refused: ${reason}`);
+      }
+      if (reason === "runtime_draining") throw failure("The native runtime is busy shutting down", "busy");
+      throw error;
+    });
+    alive();
+    return value;
+  }
+  async function connect(target) {
+    const route = await registered(target?.route);
+    if (!heldRoute || !sameRoute(route, heldRoute)) {
+      release?.();
+      release = null;
+      heldRoute = null;
+      const lease = await host5.retainProfile(route, { spawnPriority: "foreground" });
+      if (closed || !isActive()) {
+        lease();
+        alive();
+      }
+      release = lease;
+      heldRoute = route;
+    }
+    const identity = await rpc(route, "runtime.describe");
+    if (identity.profile_id !== binding.profile_id || !identity.capabilities?.includes("durable-admission-v1")) {
+      throw failure("Native profile identity does not match this Space\u2019s maintaining bot");
+    }
+    return route;
+  }
+  async function context(activationId) {
+    alive();
+    const value = await post("context", activationId ? { activation_id: activationId } : {});
+    alive();
+    binding = value.maintainer;
+    return value.action;
+  }
+  function validateReceipt(receipt) {
+    if (!receipt || typeof receipt.admission_id !== "string" || !receipt.admission_id || receipt.ref?.profile_id !== current.target.profile_id || receipt.ref?.session_id !== current.target.session_id || current.admission_id && receipt.admission_id !== current.admission_id || !["queued", "started", "unknown", "terminal"].includes(receipt.status)) {
+      throw failure("Native admission outcome could not be correlated", "unknown");
+    }
+  }
+  async function observe(receipt) {
+    validateReceipt(receipt);
+    current.admission_id = receipt.admission_id;
+    const recorded = await post("observe", { activation_id: current.activation_id, receipt: {
+      admission_id: receipt.admission_id,
+      ref: receipt.ref,
+      status: receipt.status,
+      outcome: receipt.outcome
+    } });
+    alive();
+    const settled = recorded.settled && receipt.status === "terminal";
+    current.settled = settled;
+    let status = { queued: "queued", started: "busy", unknown: "unknown" }[receipt.status] || "unknown";
+    let message = { queued: "Queued for the maintaining bot. Uses model calls.", busy: "The maintaining bot is working.", unknown: "Native outcome is unknown. No automatic resend." }[status];
+    let answer;
+    if (settled) {
+      status = receipt.outcome === "completed" ? "completed" : "failed";
+      message = status === "completed" ? "The maintaining bot completed this request." : `Native request ${receipt.outcome}.`;
+      const text = receipt.result?.final_response;
+      if (typeof text === "string") {
+        if (new TextEncoder().encode(text).length <= 16384) answer = text;
+        else message += " The answer exceeds the 16 KiB canvas display limit; read it in the native conversation.";
+      }
+      release?.();
+      release = null;
+      heldRoute = null;
+    }
+    const value = publish(publicStatus(current, status, message, answer));
+    if (!settled && status !== "unknown") schedule();
+    return value;
+  }
+  function schedule() {
+    clearTimeout(timer);
+    if (!closed) timer = setTimeout(() => {
+      serial(check).catch(report);
+    }, 2e3);
+  }
+  function report(error) {
+    release?.();
+    release = null;
+    heldRoute = null;
+    const status = error.actionStatus || (current ? "unknown" : "offline");
+    return publish(publicStatus(current, status, `${error.message || "Native request unavailable"}. No automatic resend.`));
+  }
+  async function attach(route, sessionId) {
+    const resumed = await rpc(route, "session.resume", { session_id: sessionId, omit_messages: true });
+    if (typeof resumed.session_id !== "string" || !resumed.session_id || resumed.session_id !== resumed.stored_session_id) {
+      throw failure("This native session does not provide canonical durable admission");
+    }
+    return resumed;
+  }
+  async function check() {
+    clearTimeout(timer);
+    current = await context(current?.activation_id);
+    if (!current) return null;
+    const route = await connect(current.target);
+    const resumed = await attach(route, current.target.session_id);
+    if (resumed.session_id !== current.target.session_id) throw failure("The native activation target changed", "unknown");
+    if (!current.admission_id) {
+      const pending = resumed.pending?.find((item) => item.input_id === current.input_id);
+      if (!pending) return publish(publicStatus(current, "unknown", "Admission was not observed. Check again or explicitly retry this same request."));
+      await observe(pending);
+    }
+    const receipt = await rpc(route, "prompt.receipt", { session_id: current.target.session_id, admission_id: current.admission_id, include_result: true });
+    return observe(receipt);
+  }
+  async function submit(route) {
+    const identity = await rpc(route, "runtime.describe");
+    if (identity.profile_id !== current.target.profile_id) throw failure("Maintaining profile changed before submission", "unknown");
+    alive();
+    publish(publicStatus(current, "submitted", "Requesting native admission. Uses model calls."));
+    const receipt = await rpc(route, "prompt.submit", {
+      session_id: current.target.session_id,
+      input_id: current.input_id,
+      text: current.text
+    });
+    return observe(receipt);
+  }
+  return {
+    restore: () => serial(check).catch(report),
+    check: () => serial(check).catch(report),
+    request(args) {
+      if (!userActivation()) return Promise.resolve(publish(publicStatus(null, "failed", "Bot requests need a current user activation. No request was sent.")));
+      return serial(async () => {
+        clearTimeout(timer);
+        current = await context();
+        const route = await connect(current?.target);
+        const resumed = await attach(route, current?.target.session_id || binding.stored_session_id);
+        if (current && resumed.session_id !== current.target.session_id) throw failure("The native activation target changed", "unknown");
+        const target = current?.target || { route: Object.fromEntries(routeFields.map((key) => [key, route[key]])), profile_id: binding.profile_id, session_id: resumed.session_id };
+        const claim = await post("claim", { ...args, records: args.records || [], target }).catch((error) => {
+          throw failure(error.message || "The activation was rejected");
+        });
+        alive();
+        current = claim.action;
+        if (!claim.dispatch) {
+          const status = await check();
+          return claim.coalesced ? publish({ ...status, message: `An earlier request is already pending or finished. This activation did not send a new request. ${status.message}` }) : status;
+        }
+        return submit(route);
+      }).catch(report);
+    },
+    retry() {
+      if (!userActivation()) return Promise.resolve(publish(publicStatus(current, "failed", "Activate Retry to request native admission again.")));
+      return serial(async () => {
+        await check();
+        if (!current || current.admission_id || current.settled) return;
+        const route = await connect(current.target);
+        return submit(route);
+      }).catch(report);
+    },
+    destroy() {
+      closed = true;
+      clearTimeout(timer);
+      release?.();
+      release = null;
+      heldRoute = null;
+    }
+  };
+}
+
 // src/desktop/ui/session.mjs
 var errorCode = (error) => [error?.error?.code, error?.body?.error?.code, error?.message, String(error)].filter(Boolean).join(" ");
-function createSpaceSession({ rest, backend, sid, container, mount, onEvent, onWrite = () => {
+function createSpaceSession({ rest, backend, sid, container, mount, onEvent, host: host5, onAction = () => {
+}, onWrite = () => {
 }, onCloseError = (error) => console.warn("Space session cleanup failed", error) }) {
   const base = spacePath(sid);
   const { api, connectionId, profile } = backend || {};
@@ -906,6 +1114,17 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, onW
   const failures = /* @__PURE__ */ new Map();
   const retries = /* @__PURE__ */ new Map();
   const publish = (event) => onWrite(failures.values().next().value || (pendingWrites ? { status: "saving" } : event));
+  const actions = host5 ? createBotActions({
+    host: host5,
+    backend,
+    isActive: () => !closed,
+    post: (operation, body) => lifecycleRest(`${base}/actions/${operation}`, { method: "POST", body: { ...body, session } }),
+    onStatus: (status) => {
+      if (closed) return;
+      onAction(status);
+      mounted?.postEvent?.("bot.status", status);
+    }
+  }) : null;
   const close = () => {
     if (!session) return Promise.resolve();
     closePromise ??= (async () => {
@@ -927,6 +1146,12 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, onW
   };
   const call = async (op, args, retryToken) => {
     if (closed) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
+    if (op === "bot.request") {
+      if (!actions) return { ok: false, error: { code: "blocked", message: "Native bot actions are unavailable" } };
+      const result = await actions.request(args);
+      if (closed) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
+      return { ok: true, result };
+    }
     const writing = ["data.put", "data.delete", "data.batch"].includes(op);
     if (writing && retryToken == null) {
       args = structuredClone(args);
@@ -982,12 +1207,13 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, onW
       mounted = mount(container, { bundle, grants: opened.grants, call, onEvent: (event) => {
         if (closed) return;
         if (event.kind === "write-rejected" && ["data.put", "data.delete", "data.batch"].includes(event.op)) {
-          const failure = { status: "failed", token: ++nextWrite, op: event.op, reply: { ok: false, error: event.error } };
-          failures.set(failure.token, failure);
-          publish(failure);
+          const failure2 = { status: "failed", token: ++nextWrite, op: event.op, reply: { ok: false, error: event.error } };
+          failures.set(failure2.token, failure2);
+          publish(failure2);
         }
         onEvent(event);
       } });
+      actions?.restore();
     } catch (error) {
       closed = true;
       await close().catch(() => {
@@ -997,6 +1223,12 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, onW
   })();
   return {
     ready,
+    checkAction() {
+      return actions?.check();
+    },
+    retryAction() {
+      return actions?.retry();
+    },
     dismissWrite(token) {
       failures.delete(token);
       publish(null);
@@ -1006,6 +1238,7 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, onW
     },
     destroy() {
       closed = true;
+      actions?.destroy();
       mounted?.destroy();
       mounted = null;
       return close();
@@ -1023,6 +1256,7 @@ var OP_GRANT = Object.freeze({
   "data.put": "data",
   "data.delete": "data",
   "data.batch": "data",
+  "bot.request": null,
   refresh: null,
   "runs.list": null,
   log: "logs"
@@ -1213,6 +1447,7 @@ function SpaceView({ ctx, sid }) {
   const [write, setWrite] = useState6(null);
   const [announcement, setAnnouncement] = useState6("");
   const [actionError, setActionError] = useState6("");
+  const [botAction, setBotAction] = useState6(null);
   const [refreshPending, setRefreshPending] = useState6(false);
   const [ready, setReady] = useState6(false);
   const refreshLock = useRef4(false);
@@ -1246,10 +1481,13 @@ function SpaceView({ ctx, sid }) {
     let errors = 0;
     cursor.current = 0;
     setReady(false);
+    setBotAction(null);
     const [connectionId, profile] = ctx.queryScope ? JSON.parse(ctx.queryScope) : [host2.state.connectionId.get(), host2.state.profile.get()];
     const backend = { api: window.hermesDesktop?.api, connectionId, profile };
     const session = createSpaceSession({
       backend,
+      host: host2,
+      onAction: (event) => !disposed && setBotAction(event),
       rest: (path, options) => ctx.rest(path, options),
       sid,
       container: content.current,
@@ -1390,6 +1628,13 @@ Location: ${event.location || event.filename}` : ""}`));
           ] })
         ] })
       ] })
+    ] }),
+    botAction && /* @__PURE__ */ jsxs6(Banner, { kind: ["failed", "offline", "unknown"].includes(botAction.status) ? "failed" : void 0, title: `Bot request: ${botAction.status}`, actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
+      /* @__PURE__ */ jsx6(Action, { onClick: () => controller.current?.checkAction(), children: "Check bot status" }),
+      botAction.activationId && ["unknown", "failed", "offline"].includes(botAction.status) && /* @__PURE__ */ jsx6(Action, { onClick: () => controller.current?.retryAction(), children: "Retry same request" })
+    ] }), children: [
+      /* @__PURE__ */ jsx6("span", { role: "status", "aria-live": "polite", children: botAction.message }),
+      botAction.answer && /* @__PURE__ */ jsx6("p", { children: botAction.answer })
     ] }),
     actionError && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: actionError }),
     detail.error && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "Space status could not be refreshed. You're seeing the last loaded state.", actions: /* @__PURE__ */ jsx6(Action, { onClick: () => detail.refetch(), children: "Try again" }), children: errorText(detail.error) }),
