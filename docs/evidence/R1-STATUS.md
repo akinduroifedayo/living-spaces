@@ -30,6 +30,10 @@ The independent packaging review found that the renderer graph gate resolved pat
 
 That run found a real host defect. The renderer silently dropped any bridge request over 1 MB, so the guest promise never settled. The host now replies `limit` (or `invalid`) when a rejected envelope carries a usable id. A host test failed before the fix and passes after. The bundle was rebuilt with `--jsx=automatic`, which matches the committed artifact; the contract build line omitted that flag and is corrected.
 
+## Package validation at 872480426c70fb7cfac1eda3d0837809a66e6955 (20:30 CT)
+
+`hermes plugins validate <export>/src/living-spaces --install-deps` ran against a clean `git archive` export of `872480426c70fb7cfac1eda3d0837809a66e6955` in a fresh throwaway HERMES_HOME and HOME, with the same interpreter and invocation as the packaging receipt. Exit 0, "Validation passed": 16 checks pass, Desktop admission included. The one warning is the disclosed private `cron.jobs` import (catalog rule 9). Raw log is `evidence/validate-872480426c70fb7cfac1eda3d0837809a66e6955/raw.log`. A catalog pin must be re-validated if HEAD moves.
+
 ## Acceptance ledger
 
 | Check | Status | Missing evidence |
