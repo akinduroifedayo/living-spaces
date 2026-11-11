@@ -1,0 +1,28 @@
+{
+ "seat": "r02-design-b",
+ "attempt": 1,
+ "argv": [
+  "codex",
+  "exec",
+  "--model",
+  "gpt-6.1-sol",
+  "-c",
+  "model_reasoning_effort=xhigh",
+  "--sandbox",
+  "workspace-write",
+  "--add-dir",
+  "/Volumes/Expansion/Development/Projects/living-spaces/.git",
+  "--json",
+  "-C",
+  "/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-design-b",
+  "-o",
+  "/Volumes/Expansion/Development/Build/living-spaces-r1/run/seats/r02-design-b/attempt-1/summary.md",
+  "-"
+ ],
+ "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-design-b",
+ "brief": "/Volumes/Expansion/Development/Build/living-spaces-r1/run/briefs/r02-design-b.md",
+ "brief_sha256": "2e7b77e1c18dbac8c9104290c38ef9b1ea2a772d419dcf60e24c5686ea46426a",
+ "model": "gpt-6.1-sol",
+ "effort": "xhigh",
+ "started_at": 1794380386.0767832
+}

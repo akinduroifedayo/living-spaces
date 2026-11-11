@@ -1,0 +1,218 @@
+{
+  "step": "incompatible-restore",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "research-desk exists",
+      "passed": true,
+      "observed": "research-desk",
+      "expected": "research-desk"
+    },
+    {
+      "name": "pair-play exists",
+      "passed": true,
+      "observed": "pair-play",
+      "expected": "pair-play"
+    },
+    {
+      "name": "Partials Restore fixture name is unused",
+      "passed": true,
+      "observed": false,
+      "expected": false
+    },
+    {
+      "name": "migration created version two data",
+      "passed": true,
+      "observed": {
+        "annotation": "Keep this public note"
+      },
+      "expected": {
+        "annotation": "Keep this public note"
+      }
+    },
+    {
+      "name": "revision A is present",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "blocked restore creates no revision",
+      "passed": true,
+      "observed": [
+        {
+          "space": "partials-restore",
+          "rev": 2,
+          "parent_rev": 1,
+          "kind": "edit",
+          "restored_from": null,
+          "manifest": {
+            "data": {
+              "version": 2,
+              "migrations": [
+                {
+                  "to": 2,
+                  "ops": [
+                    {
+                      "op": "rename_field",
+                      "collection": "notes",
+                      "from": "note",
+                      "to": "annotation"
+                    }
+                  ]
+                }
+              ]
+            },
+            "schema": 1,
+            "name": "Partials Restore",
+            "description": "",
+            "entry": "index.html",
+            "imports": {},
+            "accent": "blue",
+            "icon": "layers"
+          },
+          "files": {
+            "index.html": "0b23787fbc471b601af8f9972cfecb856808a3de32f46597c92f31d1876c0e1e"
+          },
+          "author": "harness-fixture",
+          "summary": "Migrate public note to annotation",
+          "created_at": 1794381316.496344
+        },
+        {
+          "space": "partials-restore",
+          "rev": 1,
+          "parent_rev": null,
+          "kind": "create",
+          "restored_from": null,
+          "manifest": {
+            "data": {
+              "version": 1
+            },
+            "schema": 1,
+            "name": "Partials Restore",
+            "description": "",
+            "entry": "index.html",
+            "imports": {},
+            "accent": "blue",
+            "icon": "layers"
+          },
+          "files": {
+            "index.html": "c410ff4e96a3a12384c2d3da6b6de6a877f7c6dd2d917dd374d6492fb5c46eaa"
+          },
+          "author": "harness-fixture",
+          "summary": "Created",
+          "created_at": 1794381316.492502
+        }
+      ],
+      "expected": [
+        {
+          "space": "partials-restore",
+          "rev": 2,
+          "parent_rev": 1,
+          "kind": "edit",
+          "restored_from": null,
+          "manifest": {
+            "data": {
+              "version": 2,
+              "migrations": [
+                {
+                  "to": 2,
+                  "ops": [
+                    {
+                      "op": "rename_field",
+                      "collection": "notes",
+                      "from": "note",
+                      "to": "annotation"
+                    }
+                  ]
+                }
+              ]
+            },
+            "schema": 1,
+            "name": "Partials Restore",
+            "description": "",
+            "entry": "index.html",
+            "imports": {},
+            "accent": "blue",
+            "icon": "layers"
+          },
+          "files": {
+            "index.html": "0b23787fbc471b601af8f9972cfecb856808a3de32f46597c92f31d1876c0e1e"
+          },
+          "author": "harness-fixture",
+          "summary": "Migrate public note to annotation",
+          "created_at": 1794381316.496344
+        },
+        {
+          "space": "partials-restore",
+          "rev": 1,
+          "parent_rev": null,
+          "kind": "create",
+          "restored_from": null,
+          "manifest": {
+            "data": {
+              "version": 1
+            },
+            "schema": 1,
+            "name": "Partials Restore",
+            "description": "",
+            "entry": "index.html",
+            "imports": {},
+            "accent": "blue",
+            "icon": "layers"
+          },
+          "files": {
+            "index.html": "c410ff4e96a3a12384c2d3da6b6de6a877f7c6dd2d917dd374d6492fb5c46eaa"
+          },
+          "author": "harness-fixture",
+          "summary": "Created",
+          "created_at": 1794381316.492502
+        }
+      ]
+    },
+    {
+      "name": "blocked restore does not rewind data bytes",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "data version stays at two",
+      "passed": true,
+      "observed": 2,
+      "expected": 2
+    },
+    {
+      "name": "host error names current and target data versions",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "partials-restore fixture deleted",
+      "passed": true,
+      "observed": false,
+      "expected": false
+    },
+    {
+      "name": "research-desk protected snapshot is byte-identical",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "pair-play protected snapshot is byte-identical",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    }
+  ],
+  "fixtures": [
+    "partials-restore"
+  ],
+  "evidence_class": "isolated Desktop; native host controls; guest bridge; canonical SQLite",
+  "restore_error_text": "Incompatible revision: Code restore requires the current data version. Current data version 2; target data version 1. Your current code and records are unchanged.",
+  "cleanup_errors": [],
+  "passed": 12,
+  "total": 12
+}

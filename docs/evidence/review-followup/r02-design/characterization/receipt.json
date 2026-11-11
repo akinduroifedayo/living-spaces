@@ -1,0 +1,20 @@
+{
+ "direct_exit": 0,
+ "argv": [
+  "/Users/ifedayoakinduro/.hermes/tools/python-3.14.9+20261021-darwin-arm64/bin/python3",
+  "-I",
+  "-c",
+  "import os, sys, runpy; os.environ.pop('PYTHONHOME', None); os.environ.pop('PYTHONPATH', None); os.environ.pop('VIRTUAL_ENV', None); sys.path.insert(0, '/Users/ifedayoakinduro/.hermes/hermes-agent'); sys._hermes_pin_default_home = True; import hermes_bootstrap; os.environ.get('HERMES_HOME') or os.environ.__setitem__('HERMES_HOME', str(__import__('hermes_constants').get_default_hermes_root())); runpy.run_path('/Volumes/Expansion/Development/Build/living-spaces-r1/run/r02-design/characterize-native.py',run_name='__main__')"
+ ],
+ "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-repair",
+ "environment_keys": [
+  "HERMES_HOME",
+  "HOME",
+  "LOGNAME",
+  "PATH",
+  "SHELL",
+  "TMPDIR",
+  "USER"
+ ],
+ "script_sha256": "b99b2306305961d4478e3d60212309738d04d9988848667e42a11cda254e621d"
+}

@@ -25,6 +25,8 @@ Turning Internet access off is not a complete outbound block. WebRTC can still s
 
 Agent upkeep uses the user's model subscription and the tools enabled for native Hermes cron jobs. It is not a new restricted agent sandbox. Approval shows that cost and access distinction.
 
+The package validator currently passes with catalog warnings for private native cron APIs and raw Desktop bridge access used to pin session cleanup to its original backend. This is not an all-public-SDK or catalog-approved package. Adapter-outage revoke and regrant safety remains under repair. The acceptance ledger records the exact tested commits and unresolved qualification.
+
 ## Repository references
 
 - [Approved spec v5.1](docs/spec/SPEC.md) and [owner amendments](docs/spec/AMENDMENTS.md) define product scope. Amendments govern conflicts.

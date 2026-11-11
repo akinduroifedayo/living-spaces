@@ -17,10 +17,13 @@ version: "0.1.0"
 platforms: [macos]
 known_issues:
   - "Release 1 acceptance is incomplete. See docs/evidence/R1-STATUS.md in the repository for observed, partial and pending checks."
-  - "Schedules import the private cron.jobs API. Validation passes with a warning; compatibility and catalog maintainer review remain open."
-  - "Spaces block ordinary internet connections unless you approve a site or capability. This is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle."
-  - "Scheduled refresh runs only while Hermes is running. Catch-up policy: runs one current refresh when Hermes wakes; missed intervals are not replayed. Offline catch-up remains unqualified."
-# Pending Forge: capture final screenshots after Miro's design kit merges.
+  - "Schedules and agent history use the private cron.jobs and cron.executions APIs. Validation passes with a catalog rule 9 warning; compatibility and catalog maintainer review remain open."
+  - "Frontend session cleanup pins its captured backend through window.hermesDesktop. Validation reports a catalog rule 8 raw-bridge warning. No supported pinned REST target was found in the inspected SDK. This is not an all-public-SDK or catalog-approved package."
+  - "Internet access is on by default per Space. space.net.fetch mediates public HTTPS requests and can send data the Space can read. Turn Internet access off in the host-owned Permissions panel. Direct frame networking, arbitrary CDN imports, remote assets and embeds remain blocked. Local/private destinations and Hermes backends are blocked. Off is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle."
+  - "Scheduled refresh runs only while Hermes is running. Catch-up runs one current refresh when Hermes wakes, without replaying all missed intervals. The isolated Desktop feed fixture passed catch-up and revoke qualification. Adapter-outage revoke/regrant safety remains under repair, so release acceptance is not passed."
+  - "Agent upkeep makes model/tool calls using the active Hermes profile and can consume its subscription quota. Refresh approval binds the exact task; scheduling additionally requires explicit approval of the displayed cadence, timezone and purpose. Feed upkeep has no model call."
+  - "Offline optional dependencies and fonts are pinned in runtime/vendor/SHELF.json with licenses in THIRD-PARTY.md. The bundled shelf is not a general package installer. See README for included items and deferred proposals."
+# Pending Forge: capture final screenshots from the validated running candidate.
 # Add up to 6 GitHub-hosted screenshots pinned to the final candidate SHA.
 screenshots: []
 # plugin.yaml declares no host capabilities (capabilities: []).

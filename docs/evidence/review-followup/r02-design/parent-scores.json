@@ -1,0 +1,34 @@
+{
+ "stage": "parent-scored provisional before synthesis",
+ "rubric_sha256": "5a36b5b1aa77d7a3be0111493786af8fc4c2f27c5a6104e74f48067f17e812cc",
+ "criteria": [
+  "Durable revoke and visibly uncertain native interruption",
+  "Fail-closed regrant and explicit resumption",
+  "Preserved history and unrelated-state controls",
+  "Concurrency and crash boundaries without invented atomicity",
+  "Small coherent repair within existing ownership"
+ ],
+ "candidate_a": {
+  "sha256": "c65d2b9804fdd08922364c369c8c2d94144c73a4d1ac3e1e22f8ea1f73492aea",
+  "scores": [
+   3,
+   3,
+   4,
+   3,
+   3
+  ]
+ },
+ "candidate_b": {
+  "sha256": "6c2e77ef41b7b2feb19f5ed89a87bd7318fdb4098efca7822010f901bc798f96",
+  "scores": [
+   4,
+   4,
+   4,
+   4,
+   3
+  ]
+ },
+ "cross_judge": "Skipped. Claude quota unavailable until 02:00 CT; no same-family replacement credited.",
+ "selected_for_refinement": "candidate B with enumerated synthesis repairs",
+ "acceptance": false
+}

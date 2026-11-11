@@ -1,0 +1,30 @@
+{
+ "seat": "r02-design-a",
+ "attempt": 1,
+ "argv": [
+  "codex",
+  "exec",
+  "--model",
+  "gpt-6-astra",
+  "-c",
+  "model_reasoning_effort=high",
+  "-c",
+  "service_tier=fast",
+  "--sandbox",
+  "workspace-write",
+  "--add-dir",
+  "/Volumes/Expansion/Development/Projects/living-spaces/.git",
+  "--json",
+  "-C",
+  "/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-design-a",
+  "-o",
+  "/Volumes/Expansion/Development/Build/living-spaces-r1/run/seats/r02-design-a/attempt-1/summary.md",
+  "-"
+ ],
+ "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-design-a",
+ "brief": "/Volumes/Expansion/Development/Build/living-spaces-r1/run/briefs/r02-design-a.md",
+ "brief_sha256": "928c83a8401f0860cff3f318ad5138183661afd66bab18ad15d6383156d417e3",
+ "model": "gpt-6-astra",
+ "effort": "high",
+ "started_at": 1794380386.076121
+}

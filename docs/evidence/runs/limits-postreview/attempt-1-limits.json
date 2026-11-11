@@ -1,0 +1,30 @@
+{
+  "evidence_class": "isolated Desktop guest bridge, registered agent handlers, canonical SQLite",
+  "fixture": "limits-probe",
+  "scope": "fixture save UI uses shipped kit; no model turn and no claim about model-built app save UI",
+  "attempts": [],
+  "exception": "TimeoutError: ['[closed owned session; SHA256 eabaad2396652a3f2fb3584ded19de1cc2f9e297e7ced711303107904b650f14]']",
+  "checks": [
+    {
+      "name": "core and guest helpers target the isolated database",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "reserved disposable fixture is absent",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "harness completed all scenarios",
+      "passed": false,
+      "observed": false,
+      "expected": true
+    }
+  ],
+  "passed": 2,
+  "total": 3,
+  "verdict": "FAIL"
+}

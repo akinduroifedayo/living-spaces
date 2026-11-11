@@ -1,0 +1,16 @@
+{"passed": 0, "total": 0}
+PASS research-desk exists
+PASS pair-play exists
+PASS Partials Reload fixture name is unused
+PASS only the guest frame schedules its reload
+PASS old session is explicitly closed
+PASS shell emitted space-reloaded
+PASS host page was not reloaded
+PASS host replaced the old Space frame
+PASS old session replay is refused
+PASS reload and replay preserve all record bytes
+PASS replay appends no change
+PASS partials-reload fixture deleted
+PASS research-desk protected snapshot is byte-identical
+PASS pair-play protected snapshot is byte-identical
+PASS: /Volumes/Expansion/Development/Build/living-spaces-r1/evidence/partials/1794381318403767000-frame-reload/partials.json

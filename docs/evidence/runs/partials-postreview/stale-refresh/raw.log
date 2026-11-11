@@ -1,0 +1,27 @@
+{"passed": 0, "total": 0}
+PASS research-desk exists
+PASS pair-play exists
+PASS Partials Refresh fixture name is unused
+PASS seed source refresh succeeds
+PASS guest reads the current record
+PASS refresh reaches the fetch barrier
+PASS refresh is running during guest edit
+PASS guest edit succeeds at its current rev
+PASS guest edit advances the rev once
+PASS guest edit retains the old source
+PASS refresh worker finishes
+PASS refresh succeeds
+PASS refresh updates exactly one source
+PASS both writes advance the rev
+PASS refresh keeps the user note
+PASS refreshed source survives
+PASS change stream has coherent revisions
+PASS stale guest call settles
+PASS stale guest writer receives conflict
+PASS conflict supplies the entire current record
+PASS stale writer changes no record
+PASS stale writer appends no change
+PASS partials-refresh fixture deleted
+PASS research-desk protected snapshot is byte-identical
+PASS pair-play protected snapshot is byte-identical
+PASS: /Volumes/Expansion/Development/Build/living-spaces-r1/evidence/partials/1794381312864076000-stale-refresh/partials.json

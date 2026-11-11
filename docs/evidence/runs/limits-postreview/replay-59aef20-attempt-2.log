@@ -1,0 +1,109 @@
+{"passed": 0, "total": 0}
+PASS core and guest helpers target the isolated database true
+PASS reserved disposable fixture is absent true
+PASS fixture has the reserved identity "limits-probe"
+PASS host visible under focus emulation "visible"
+PASS retry guest call settled true
+PASS guest-batch prior successful write acknowledged true
+PASS batch guest call settled true
+PASS guest-batch returns typed limit [false, "limit"]
+PASS guest-batch includes limit 500
+PASS guest-batch includes numeric actual above limit true
+PASS guest-batch reports exact actual 501
+PASS guest-batch explains failure true
+PASS guest-batch shipped kit shows failed "failed"
+PASS guest-batch frame never shows Saved for rejected work false
+PASS guest-batch canonical project and data unchanged true
+PASS guest-batch host observations present true
+PASS guest-batch host never announces Saved for rejected work []
+PASS guest-batch previous revision still opens [1, true]
+PASS retry guest call settled true
+PASS guest-batch next valid guest write succeeds true
+PASS guest-batch saved retry is durable {"note": "Recovered guest-batch"}
+PASS retry guest call settled true
+PASS guest-data prior successful write acknowledged true
+PASS data guest call settled true
+PASS guest-data returns typed limit [false, "limit"]
+PASS guest-data includes limit 262144
+PASS guest-data includes numeric actual above limit true
+PASS guest-data reports exact actual 262145
+PASS guest-data explains failure true
+PASS guest-data shipped kit shows failed "failed"
+PASS guest-data frame never shows Saved for rejected work false
+PASS guest-data canonical project and data unchanged true
+PASS guest-data host observations present true
+PASS guest-data host never announces Saved for rejected work []
+PASS guest-data previous revision still opens [1, true]
+PASS retry guest call settled true
+PASS guest-data next valid guest write succeeds true
+PASS guest-data saved retry is durable {"note": "Recovered guest-data"}
+PASS retry guest call settled true
+PASS guest-bridge prior successful write acknowledged true
+PASS bridge guest call settled true
+PASS guest-bridge returns typed limit [false, "limit"]
+PASS guest-bridge includes limit 1048576
+PASS guest-bridge includes numeric actual above limit true
+PASS guest-bridge explains failure true
+PASS guest-bridge shipped kit shows failed "failed"
+PASS guest-bridge frame never shows Saved for rejected work false
+PASS guest-bridge canonical project and data unchanged true
+PASS guest-bridge host observations present true
+PASS guest-bridge host never announces Saved for rejected work []
+PASS guest-bridge previous revision still opens [1, true]
+PASS retry guest call settled true
+PASS guest-bridge next valid guest write succeeds true
+PASS guest-bridge saved retry is durable {"note": "Recovered guest-bridge"}
+PASS agent-batch returns typed limit [false, "limit"]
+PASS agent-batch includes limit 500
+PASS agent-batch includes numeric actual above limit true
+PASS agent-batch reports exact actual 501
+PASS agent-batch explains failure true
+PASS agent-batch canonical project and data unchanged true
+PASS agent-batch host observations present true
+PASS agent-batch host never announces Saved for rejected work []
+PASS agent-batch frame remains Ready without false Saved "idle"
+PASS agent-batch previous revision still opens [1, true]
+PASS agent-batch next valid tool write succeeds true
+PASS agent-batch retry is durable {"note": "Recovered agent-batch"}
+PASS agent-data returns typed limit [false, "limit"]
+PASS agent-data includes limit 262144
+PASS agent-data includes numeric actual above limit true
+PASS agent-data reports exact actual 262145
+PASS agent-data explains failure true
+PASS agent-data canonical project and data unchanged true
+PASS agent-data host observations present true
+PASS agent-data host never announces Saved for rejected work []
+PASS agent-data frame remains Ready without false Saved "idle"
+PASS agent-data previous revision still opens [1, true]
+PASS agent-data next valid tool write succeeds true
+PASS agent-data retry is durable {"note": "Recovered agent-data"}
+PASS agent-file returns typed limit [false, "limit"]
+PASS agent-file includes limit 8388608
+PASS agent-file includes numeric actual above limit true
+PASS agent-file reports exact actual 8388609
+PASS agent-file explains failure true
+PASS agent-file canonical project and data unchanged true
+PASS agent-file host observations present true
+PASS agent-file host never announces Saved for rejected work []
+PASS agent-file frame remains Ready without false Saved "idle"
+PASS agent-file previous revision still opens [1, true]
+PASS agent-file next valid tool write succeeds true
+PASS agent-file revision advances once 2
+PASS agent-file retry file is durable "Complete public fixture"
+PASS agent-files returns typed limit [false, "limit"]
+PASS agent-files includes limit 600
+PASS agent-files includes numeric actual above limit true
+PASS agent-files reports exact actual 601
+PASS agent-files explains failure true
+PASS agent-files canonical project and data unchanged true
+PASS agent-files host observations present true
+PASS agent-files host never announces Saved for rejected work []
+PASS agent-files frame remains Ready without false Saved "idle"
+PASS agent-files previous revision still opens [2, true]
+PASS agent-files next valid tool write succeeds true
+PASS agent-files revision advances once 3
+PASS agent-files retry file is durable "Complete public fixture"
+PASS disposable fixture deleted true
+PASS research-desk canonical snapshot byte-identical true
+PASS pair-play canonical snapshot byte-identical true
+{"verdict": "PASS", "passed": 107, "total": 107}

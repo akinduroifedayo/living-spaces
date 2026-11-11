@@ -1,0 +1,21 @@
+{
+ "seat": "r02-design-a",
+ "thread_id": "01a1c967-d5ad-7030-91f0-f569e60b7aef",
+ "model": "gpt-6-astra",
+ "provider": "openai",
+ "effort": "high",
+ "service_tier": null,
+ "recorded_cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/r02-design-a",
+ "exit": 0,
+ "completed": true,
+ "errors": [],
+ "input_count": 43,
+ "missing_read_bodies": [],
+ "product_diff": [
+  ""
+ ],
+ "report_sha256": "c65d2b9804fdd08922364c369c8c2d94144c73a4d1ac3e1e22f8ea1f73492aea",
+ "report_lines": 93,
+ "report_words": 1068,
+ "scope": "Design only. No product acceptance."
+}

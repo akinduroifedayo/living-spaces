@@ -1,0 +1,11 @@
+{
+ "criteria": [
+  "Durable revoke and visibly uncertain native interruption",
+  "Fail-closed regrant and explicit resumption",
+  "Preserved history and unrelated-state controls",
+  "Concurrency and crash boundaries without invented atomicity",
+  "Small coherent repair within existing ownership"
+ ],
+ "scale": "0-4 per criterion, parent-scored before synthesis",
+ "purpose": "Design refinement only, not product acceptance"
+}

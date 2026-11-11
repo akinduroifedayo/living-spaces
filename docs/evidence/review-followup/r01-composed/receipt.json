@@ -1,0 +1,15 @@
+{
+ "commit": "bafafdf0dc945375a33bf3456c8346b03e38a57d",
+ "direct_exit": 1,
+ "tests_run": 35,
+ "failure_events": 19,
+ "failing_methods": [
+  "tests.python.test_review_customization.ReviewCustomizationTests.test_r02_restored_adapter_interrupts_native_job_before_refresh_regrant",
+  "tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_keeps_refresh_regrant_fail_closed",
+  "tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_preserves_pending_run_uncertainty_and_gates_regrant",
+  "tests.python.test_review_customization.ReviewCustomizationTests.test_r02_unavailable_adapter_revoke_without_pending_runs_succeeds_at_rest"
+ ],
+ "all_35_method_hashes_match_frozen": true,
+ "R01_three_methods_pass": true,
+ "scope": "R01 composed proof only. Four R02 methods remain failing. Not a full regression pass."
+}

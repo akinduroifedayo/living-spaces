@@ -1,0 +1,5 @@
+{"passed": 0, "total": 0}
+PASS core and guest helpers target the isolated database true
+PASS reserved disposable fixture is absent true
+FAIL harness completed all scenarios false
+{"verdict": "FAIL", "passed": 2, "total": 3}

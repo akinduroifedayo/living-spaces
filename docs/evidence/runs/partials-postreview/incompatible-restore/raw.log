@@ -1,0 +1,14 @@
+{"passed": 0, "total": 0}
+PASS research-desk exists
+PASS pair-play exists
+PASS Partials Restore fixture name is unused
+PASS migration created version two data
+PASS revision A is present
+PASS blocked restore creates no revision
+PASS blocked restore does not rewind data bytes
+PASS data version stays at two
+PASS host error names current and target data versions
+PASS partials-restore fixture deleted
+PASS research-desk protected snapshot is byte-identical
+PASS pair-play protected snapshot is byte-identical
+PASS: /Volumes/Expansion/Development/Build/living-spaces-r1/evidence/partials/1794381316456169000-incompatible-restore/partials.json

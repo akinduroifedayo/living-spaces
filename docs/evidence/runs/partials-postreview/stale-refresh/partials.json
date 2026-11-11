@@ -1,0 +1,529 @@
+{
+  "step": "stale-refresh",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "research-desk exists",
+      "passed": true,
+      "observed": "research-desk",
+      "expected": "research-desk"
+    },
+    {
+      "name": "pair-play exists",
+      "passed": true,
+      "observed": "pair-play",
+      "expected": "pair-play"
+    },
+    {
+      "name": "Partials Refresh fixture name is unused",
+      "passed": true,
+      "observed": false,
+      "expected": false
+    },
+    {
+      "name": "seed source refresh succeeds",
+      "passed": true,
+      "observed": "succeeded",
+      "expected": "succeeded"
+    },
+    {
+      "name": "guest reads the current record",
+      "passed": true,
+      "observed": {
+        "ok": true,
+        "value": {
+          "collection": "papers",
+          "id": "src_b6796d8594b74099",
+          "data": {},
+          "source": {
+            "title": "Small Models for Imaginary Gardens",
+            "summary": "A synthetic public research abstract.",
+            "url": "https://research.example/papers/1",
+            "authors": [
+              "Ada Example"
+            ],
+            "published": 1794312000,
+            "updated": 1794312000
+          },
+          "source_meta": {
+            "handler": "feed",
+            "source_id": "demo",
+            "url": "https://research.example/feed",
+            "fetched_at": 1794381313.083512,
+            "source_updated": 1794312000
+          },
+          "rev": 1,
+          "created_at": 1794381313.084992,
+          "updated_at": 1794381313.084992,
+          "updated_by": "harness-fixture"
+        }
+      },
+      "expected": {
+        "ok": true,
+        "value": {
+          "collection": "papers",
+          "id": "src_b6796d8594b74099",
+          "data": {},
+          "source": {
+            "title": "Small Models for Imaginary Gardens",
+            "summary": "A synthetic public research abstract.",
+            "url": "https://research.example/papers/1",
+            "authors": [
+              "Ada Example"
+            ],
+            "published": 1794312000.0,
+            "updated": 1794312000.0
+          },
+          "source_meta": {
+            "handler": "feed",
+            "source_id": "demo",
+            "url": "https://research.example/feed",
+            "fetched_at": 1794381313.083512,
+            "source_updated": 1794312000.0
+          },
+          "rev": 1,
+          "created_at": 1794381313.084992,
+          "updated_at": 1794381313.084992,
+          "updated_by": "harness-fixture"
+        }
+      }
+    },
+    {
+      "name": "refresh reaches the fetch barrier",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "refresh is running during guest edit",
+      "passed": true,
+      "observed": "running",
+      "expected": "running"
+    },
+    {
+      "name": "guest edit succeeds at its current rev",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "guest edit advances the rev once",
+      "passed": true,
+      "observed": 2,
+      "expected": 2
+    },
+    {
+      "name": "guest edit retains the old source",
+      "passed": true,
+      "observed": {
+        "title": "Small Models for Imaginary Gardens",
+        "summary": "A synthetic public research abstract.",
+        "url": "https://research.example/papers/1",
+        "authors": [
+          "Ada Example"
+        ],
+        "published": 1794312000,
+        "updated": 1794312000
+      },
+      "expected": {
+        "title": "Small Models for Imaginary Gardens",
+        "summary": "A synthetic public research abstract.",
+        "url": "https://research.example/papers/1",
+        "authors": [
+          "Ada Example"
+        ],
+        "published": 1794312000.0,
+        "updated": 1794312000.0
+      }
+    },
+    {
+      "name": "refresh worker finishes",
+      "passed": true,
+      "observed": false,
+      "expected": false
+    },
+    {
+      "name": "refresh succeeds",
+      "passed": true,
+      "observed": "succeeded",
+      "expected": "succeeded"
+    },
+    {
+      "name": "refresh updates exactly one source",
+      "passed": true,
+      "observed": {
+        "added": 0,
+        "updated": 1,
+        "unchanged": 1,
+        "removed": 0
+      },
+      "expected": {
+        "added": 0,
+        "updated": 1,
+        "unchanged": 1,
+        "removed": 0
+      }
+    },
+    {
+      "name": "both writes advance the rev",
+      "passed": true,
+      "observed": 3,
+      "expected": 3
+    },
+    {
+      "name": "refresh keeps the user note",
+      "passed": true,
+      "observed": {
+        "notes": "User note saved during refresh"
+      },
+      "expected": {
+        "notes": "User note saved during refresh"
+      }
+    },
+    {
+      "name": "refreshed source survives",
+      "passed": true,
+      "observed": "Updated Public Research",
+      "expected": "Updated Public Research"
+    },
+    {
+      "name": "change stream has coherent revisions",
+      "passed": true,
+      "observed": [
+        [
+          "put",
+          2
+        ],
+        [
+          "source",
+          3
+        ]
+      ],
+      "expected": [
+        [
+          "put",
+          2
+        ],
+        [
+          "source",
+          3
+        ]
+      ]
+    },
+    {
+      "name": "stale guest call settles",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "stale guest writer receives conflict",
+      "passed": true,
+      "observed": [
+        false,
+        "conflict"
+      ],
+      "expected": [
+        false,
+        "conflict"
+      ]
+    },
+    {
+      "name": "conflict supplies the entire current record",
+      "passed": true,
+      "observed": {
+        "collection": "papers",
+        "id": "src_b6796d8594b74099",
+        "data": {
+          "notes": "User note saved during refresh"
+        },
+        "source": {
+          "title": "Updated Public Research",
+          "summary": "A synthetic public research abstract.",
+          "url": "https://research.example/papers/1",
+          "authors": [
+            "Ada Example"
+          ],
+          "published": 1794312000,
+          "updated": 1794312000
+        },
+        "source_meta": {
+          "handler": "feed",
+          "source_id": "demo",
+          "url": "https://research.example/feed",
+          "fetched_at": 1794381315.564358,
+          "source_updated": 1794312000
+        },
+        "rev": 3,
+        "created_at": 1794381313.084992,
+        "updated_at": 1794381315.56631,
+        "updated_by": "harness-fixture"
+      },
+      "expected": {
+        "collection": "papers",
+        "id": "src_b6796d8594b74099",
+        "data": {
+          "notes": "User note saved during refresh"
+        },
+        "source": {
+          "title": "Updated Public Research",
+          "summary": "A synthetic public research abstract.",
+          "url": "https://research.example/papers/1",
+          "authors": [
+            "Ada Example"
+          ],
+          "published": 1794312000.0,
+          "updated": 1794312000.0
+        },
+        "source_meta": {
+          "handler": "feed",
+          "source_id": "demo",
+          "url": "https://research.example/feed",
+          "fetched_at": 1794381315.564358,
+          "source_updated": 1794312000.0
+        },
+        "rev": 3,
+        "created_at": 1794381313.084992,
+        "updated_at": 1794381315.56631,
+        "updated_by": "harness-fixture"
+      }
+    },
+    {
+      "name": "stale writer changes no record",
+      "passed": true,
+      "observed": {
+        "collection": "papers",
+        "id": "src_b6796d8594b74099",
+        "data": {
+          "notes": "User note saved during refresh"
+        },
+        "source": {
+          "title": "Updated Public Research",
+          "summary": "A synthetic public research abstract.",
+          "url": "https://research.example/papers/1",
+          "authors": [
+            "Ada Example"
+          ],
+          "published": 1794312000.0,
+          "updated": 1794312000.0
+        },
+        "source_meta": {
+          "handler": "feed",
+          "source_id": "demo",
+          "url": "https://research.example/feed",
+          "fetched_at": 1794381315.564358,
+          "source_updated": 1794312000.0
+        },
+        "rev": 3,
+        "created_at": 1794381313.084992,
+        "updated_at": 1794381315.56631,
+        "updated_by": "harness-fixture"
+      },
+      "expected": {
+        "collection": "papers",
+        "id": "src_b6796d8594b74099",
+        "data": {
+          "notes": "User note saved during refresh"
+        },
+        "source": {
+          "title": "Updated Public Research",
+          "summary": "A synthetic public research abstract.",
+          "url": "https://research.example/papers/1",
+          "authors": [
+            "Ada Example"
+          ],
+          "published": 1794312000.0,
+          "updated": 1794312000.0
+        },
+        "source_meta": {
+          "handler": "feed",
+          "source_id": "demo",
+          "url": "https://research.example/feed",
+          "fetched_at": 1794381315.564358,
+          "source_updated": 1794312000.0
+        },
+        "rev": 3,
+        "created_at": 1794381313.084992,
+        "updated_at": 1794381315.56631,
+        "updated_by": "harness-fixture"
+      }
+    },
+    {
+      "name": "stale writer appends no change",
+      "passed": true,
+      "observed": {
+        "seq": 174,
+        "changes": [
+          {
+            "seq": 173,
+            "collection": "papers",
+            "id": "src_b6796d8594b74099",
+            "op": "put",
+            "rev": 2,
+            "actor": "app",
+            "at": 1794381315.560405
+          },
+          {
+            "seq": 174,
+            "collection": "papers",
+            "id": "src_b6796d8594b74099",
+            "op": "source",
+            "rev": 3,
+            "actor": "harness-fixture",
+            "at": 1794381315.56631
+          }
+        ]
+      },
+      "expected": {
+        "seq": 174,
+        "changes": [
+          {
+            "seq": 173,
+            "collection": "papers",
+            "id": "src_b6796d8594b74099",
+            "op": "put",
+            "rev": 2,
+            "actor": "app",
+            "at": 1794381315.560405
+          },
+          {
+            "seq": 174,
+            "collection": "papers",
+            "id": "src_b6796d8594b74099",
+            "op": "source",
+            "rev": 3,
+            "actor": "harness-fixture",
+            "at": 1794381315.56631
+          }
+        ]
+      }
+    },
+    {
+      "name": "partials-refresh fixture deleted",
+      "passed": true,
+      "observed": false,
+      "expected": false
+    },
+    {
+      "name": "research-desk protected snapshot is byte-identical",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "pair-play protected snapshot is byte-identical",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    }
+  ],
+  "fixtures": [
+    "partials-refresh"
+  ],
+  "evidence_class": "isolated Desktop; native host controls; guest bridge; canonical SQLite",
+  "refresh_fixture": "Real local core worker; injected gated public RSS bytes; real Desktop guest writes. No HTTP request or host Refresh now click.",
+  "guest_edit": {
+    "ok": true,
+    "value": {
+      "accepted": true,
+      "record": {
+        "collection": "papers",
+        "id": "src_b6796d8594b74099",
+        "data": {
+          "notes": "User note saved during refresh"
+        },
+        "source": {
+          "title": "Small Models for Imaginary Gardens",
+          "summary": "A synthetic public research abstract.",
+          "url": "https://research.example/papers/1",
+          "authors": [
+            "Ada Example"
+          ],
+          "published": 1794312000,
+          "updated": 1794312000
+        },
+        "source_meta": {
+          "handler": "feed",
+          "source_id": "demo",
+          "url": "https://research.example/feed",
+          "fetched_at": 1794381313.083512,
+          "source_updated": 1794312000
+        },
+        "rev": 2,
+        "created_at": 1794381313.084992,
+        "updated_at": 1794381315.560405,
+        "updated_by": "app"
+      }
+    }
+  },
+  "refresh_run": {
+    "id": "run_6a1813efa8434fb6",
+    "space": "partials-refresh",
+    "trigger": "manual",
+    "handler": "feed",
+    "actor": "harness-fixture",
+    "status": "succeeded",
+    "queued_at": 1794381315.544773,
+    "started_at": 1794381315.546002,
+    "ended_at": 1794381315.568842,
+    "source_as_of": 1794315600.0,
+    "changed": {
+      "added": 0,
+      "updated": 1,
+      "unchanged": 1,
+      "removed": 0
+    },
+    "error": null,
+    "detail": {
+      "sources": [
+        {
+          "id": "demo",
+          "ok": true,
+          "added": 0,
+          "updated": 1,
+          "unchanged": 1
+        }
+      ]
+    },
+    "heartbeat_at": 1794381315.568842
+  },
+  "stale_guest_reply": {
+    "ok": true,
+    "value": {
+      "accepted": false,
+      "code": "conflict",
+      "current": {
+        "collection": "papers",
+        "id": "src_b6796d8594b74099",
+        "data": {
+          "notes": "User note saved during refresh"
+        },
+        "source": {
+          "title": "Updated Public Research",
+          "summary": "A synthetic public research abstract.",
+          "url": "https://research.example/papers/1",
+          "authors": [
+            "Ada Example"
+          ],
+          "published": 1794312000,
+          "updated": 1794312000
+        },
+        "source_meta": {
+          "handler": "feed",
+          "source_id": "demo",
+          "url": "https://research.example/feed",
+          "fetched_at": 1794381315.564358,
+          "source_updated": 1794312000
+        },
+        "rev": 3,
+        "created_at": 1794381313.084992,
+        "updated_at": 1794381315.56631,
+        "updated_by": "harness-fixture"
+      },
+      "message": "Record changed; read current before retrying"
+    }
+  },
+  "cleanup_errors": [],
+  "passed": 25,
+  "total": 25
+}
