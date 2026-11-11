@@ -286,15 +286,9 @@ def pause_for_archive(conn, sid):
     link = _link(conn, sid)
     try:
         jobs = _cron()
-    except ImportError:
-        if link is None:
-            return  # No native scheduler is importable, so nothing of this Space's can run.
-        raise SpacesError("blocked", "Could not pause this Space's upkeep, so it was not archived",
-                          reason="Native Hermes cron is unavailable")
-    pending = [job["id"] for job in jobs.list_jobs(include_disabled=True)
-               if job.get("name") == _once_name(sid) and job.get("enabled")]
-    targets = ([link["cron_job_id"]] if link else []) + pending
-    try:
+        pending = [job["id"] for job in jobs.list_jobs(include_disabled=True)
+                   if job.get("name") == _once_name(sid) and job.get("enabled")]
+        targets = ([link["cron_job_id"]] if link else []) + pending
         for jid in targets:
             paused = jobs.pause_job(jid, reason="Living Space archived")
             if link and jid == link["cron_job_id"] and paused is None:
@@ -306,16 +300,16 @@ def pause_for_archive(conn, sid):
                           reason=f"{type(exc).__name__}: {exc}") from exc
 
 
-def on_delete(sid):
+def on_delete(conn, sid):
+    """Remove future native work within the caller's Space deletion transaction."""
     jobs = _jobs()
-    with db.write() as conn:
-        _space(conn, sid)
-        link = _link(conn, sid)
-        if link:
-            jobs.remove_job(link["cron_job_id"])
-        for job in jobs.list_jobs(include_disabled=True):
-            if job.get("name") == _once_name(sid):
-                jobs.remove_job(job["id"])
-        _shim(sid).unlink(missing_ok=True)
-        conn.execute("DELETE FROM upkeep_links WHERE space=?", (sid,))
+    _space(conn, sid)
+    link = _link(conn, sid)
+    if link:
+        jobs.remove_job(link["cron_job_id"])
+    for job in jobs.list_jobs(include_disabled=True):
+        if job.get("name") == _once_name(sid):
+            jobs.remove_job(job["id"])
+    _shim(sid).unlink(missing_ok=True)
+    conn.execute("DELETE FROM upkeep_links WHERE space=?", (sid,))
     return link is not None

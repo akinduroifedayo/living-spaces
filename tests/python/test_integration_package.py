@@ -8,10 +8,15 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from tests.python.review_customization_support import available_empty_cron_modules
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
 class PackagedApiTests(unittest.TestCase):
+    def setUp(self):
+        self.enterContext(patch.dict(sys.modules, available_empty_cron_modules()))
+
     def test_chat_handlers_use_real_core_and_injected_libraries(self):
         (ROOT / '.run').mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=ROOT / '.run') as home:

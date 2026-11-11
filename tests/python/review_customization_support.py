@@ -97,6 +97,20 @@ class SyntheticCron:
         return entry
 
 
+def available_empty_cron_modules():
+    cron = SyntheticCron()
+    parent = types.ModuleType("cron")
+    parent.__path__ = []
+    jobs = types.ModuleType("cron.jobs")
+    for name in ("get_job", "list_jobs", "pause_job"):
+        setattr(jobs, name, getattr(cron, name))
+    ledger = types.ModuleType("cron.executions")
+    setattr(ledger, "list_executions", cron.list_executions)
+    setattr(parent, "jobs", jobs)
+    setattr(parent, "executions", ledger)
+    return {"cron": parent, "cron.jobs": jobs, "cron.executions": ledger}
+
+
 class Response:
     def __init__(self, status=200, headers=None, body=b"ok"):
         self.status = status
