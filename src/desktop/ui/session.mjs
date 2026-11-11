@@ -77,7 +77,15 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
       const bundle = await lifecycleRest(`${base}/bundle`)
       if (closed) return close()
       if (bundle.rev !== opened.head_rev) throw new Error('The Space changed while opening. Reload Space to open the current revision.')
-      mounted = mount(container, { bundle, grants: opened.grants, call, onEvent: event => !closed && onEvent(event) })
+      mounted = mount(container, { bundle, grants: opened.grants, call, onEvent: event => {
+        if (closed) return
+        if (event.kind === 'write-rejected' && ['data.put', 'data.delete', 'data.batch'].includes(event.op)) {
+          const failure = { status: 'failed', token: ++nextWrite, op: event.op, reply: { ok: false, error: event.error } }
+          failures.set(failure.token, failure)
+          publish(failure)
+        }
+        onEvent(event)
+      } })
     } catch (error) {
       closed = true
       await close().catch(() => {})

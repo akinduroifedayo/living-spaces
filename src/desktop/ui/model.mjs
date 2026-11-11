@@ -93,6 +93,13 @@ export function runResult(run) {
   const c = run.changed || {}
   return (c.added || c.updated || c.removed) ? `${c.added || 0} added · ${c.updated || 0} updated · ${c.unchanged || 0} unchanged` : `no change · ${c.unchanged || 0} unchanged`
 }
+export function dispatchText(dispatch, format) {
+  if (!dispatch) return ''
+  const at = value => value == null ? 'Not reported' : format(typeof value === 'number' ? value : Date.parse(value) / 1000)
+  const catchUp = dispatch.kind === 'catch_up'
+  const delay = ['late', 'catch_up'].includes(dispatch.kind) && dispatch.lateness_seconds != null ? ` Delayed by ${dispatch.lateness_seconds} s.` : ''
+  return `${catchUp ? 'Catch-up refresh. Missed scheduled time' : 'Scheduled time'} ${at(dispatch.scheduled_at)}. Actual dispatch ${at(dispatch.dispatched_at)}.${delay}${catchUp ? ' Missed intervals were not replayed.' : ''}`
+}
 export const CATCH_UP = "Runs one current refresh when Hermes wakes. Missed intervals aren't replayed."
 export const PROMPTS = [
   'Build Research Desk: an overview, a searchable library and a reading queue. Keep my notes and reading status.',
@@ -103,9 +110,20 @@ export function restoreCopy(space, rev) {
   return `Restore revision ${rev}? This brings back the Space's earlier code as a new revision ${space.head_rev + 1}. ${kept} Your records, notes and statuses stay as they are now.`
 }
 export function errorText(error) {
-  const detail = error?.error || error?.body?.error || error
+  let detail = error?.error || error?.body?.error || error
+  if (!detail?.code && typeof detail?.message === 'string') {
+    const json = detail.message.indexOf('{')
+    if (json >= 0) {
+      try { detail = JSON.parse(detail.message.slice(json)).error || detail } catch {}
+    }
+  }
   const message = detail?.message || String(error)
-  return detail?.code === 'incompatible' || /incompatible/.test(message) ? `Incompatible revision: ${message}. Your current code and records are unchanged.` : message
+  if (detail?.code === 'incompatible' || /incompatible/.test(message)) {
+    const versions = detail.from_version != null && detail.to_version != null ? ` Current data version ${detail.from_version}; target data version ${detail.to_version}.` : ''
+    return `Incompatible revision: ${message}.${versions} Your current code and records are unchanged.`
+  }
+  if (detail?.code === 'limit') return `limit: ${message}${detail.limit != null ? ` · limit ${detail.limit}` : ''}${detail.actual != null ? ` · actual ${detail.actual}` : ''}`
+  return message
 }
 export function diagnosticText(value) {
   return String(value).replace(/\b(Bearer)\s+\S+/gi, '$1 [redacted]').replace(/\b(api[_-]?key|token|password|secret|authorization)(["']?\s*[:=]\s*["']?)[^\s,"';}]+/gi, '$1$2[redacted]').slice(0, 2000)

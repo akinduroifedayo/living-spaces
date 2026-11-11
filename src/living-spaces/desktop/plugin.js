@@ -103,6 +103,13 @@ function runResult(run) {
   const c = run.changed || {};
   return c.added || c.updated || c.removed ? `${c.added || 0} added \xB7 ${c.updated || 0} updated \xB7 ${c.unchanged || 0} unchanged` : `no change \xB7 ${c.unchanged || 0} unchanged`;
 }
+function dispatchText(dispatch, format) {
+  if (!dispatch) return "";
+  const at = (value) => value == null ? "Not reported" : format(typeof value === "number" ? value : Date.parse(value) / 1e3);
+  const catchUp = dispatch.kind === "catch_up";
+  const delay = ["late", "catch_up"].includes(dispatch.kind) && dispatch.lateness_seconds != null ? ` Delayed by ${dispatch.lateness_seconds} s.` : "";
+  return `${catchUp ? "Catch-up refresh. Missed scheduled time" : "Scheduled time"} ${at(dispatch.scheduled_at)}. Actual dispatch ${at(dispatch.dispatched_at)}.${delay}${catchUp ? " Missed intervals were not replayed." : ""}`;
+}
 var CATCH_UP = "Runs one current refresh when Hermes wakes. Missed intervals aren't replayed.";
 var PROMPTS = [
   "Build Research Desk: an overview, a searchable library and a reading queue. Keep my notes and reading status.",
@@ -113,9 +120,23 @@ function restoreCopy(space, rev) {
   return `Restore revision ${rev}? This brings back the Space's earlier code as a new revision ${space.head_rev + 1}. ${kept} Your records, notes and statuses stay as they are now.`;
 }
 function errorText(error) {
-  const detail = error?.error || error?.body?.error || error;
+  let detail = error?.error || error?.body?.error || error;
+  if (!detail?.code && typeof detail?.message === "string") {
+    const json = detail.message.indexOf("{");
+    if (json >= 0) {
+      try {
+        detail = JSON.parse(detail.message.slice(json)).error || detail;
+      } catch {
+      }
+    }
+  }
   const message = detail?.message || String(error);
-  return detail?.code === "incompatible" || /incompatible/.test(message) ? `Incompatible revision: ${message}. Your current code and records are unchanged.` : message;
+  if (detail?.code === "incompatible" || /incompatible/.test(message)) {
+    const versions = detail.from_version != null && detail.to_version != null ? ` Current data version ${detail.from_version}; target data version ${detail.to_version}.` : "";
+    return `Incompatible revision: ${message}.${versions} Your current code and records are unchanged.`;
+  }
+  if (detail?.code === "limit") return `limit: ${message}${detail.limit != null ? ` \xB7 limit ${detail.limit}` : ""}${detail.actual != null ? ` \xB7 actual ${detail.actual}` : ""}`;
+  return message;
 }
 function diagnosticText(value) {
   return String(value).replace(/\b(Bearer)\s+\S+/gi, "$1 [redacted]").replace(/\b(api[_-]?key|token|password|secret|authorization)(["']?\s*[:=]\s*["']?)[^\s,"';}]+/gi, "$1$2[redacted]").slice(0, 2e3);
@@ -403,7 +424,8 @@ function RunRow({ run }) {
       " \xB7 ",
       duration
     ] }),
-    /* @__PURE__ */ jsx3("p", { children: runResult(run) })
+    /* @__PURE__ */ jsx3("p", { children: runResult(run) }),
+    run.detail?.dispatch && /* @__PURE__ */ jsx3("p", { className: "ls-secondary", children: dispatchText(run.detail.dispatch, absolute) })
   ] });
 }
 function RevisionRow({ revision, space, onRestore }) {
@@ -616,7 +638,7 @@ import { Fragment as Fragment3, jsx as jsx4, jsxs as jsxs4 } from "react/jsx-run
 var CAPABILITIES = {
   data: { name: "Own data", icon: "folder", scope: "This Space's records only. Cannot see other Spaces.", purpose: "Store your records, notes and statuses.", leaves: "No ordinary network access. Space-readable data is subject to the WebRTC limit above." },
   refresh: { name: "Refresh", icon: "refresh", purpose: "Keep public-source records current.", leaves: "Yes \xB7 requests the approved public sources through Hermes." },
-  logs: { name: "Diagnostics", icon: "info", scope: "Error logs from this Space, secrets redacted.", purpose: "Let the owner see crashes and repair them.", leaves: "No ordinary network access. The owner can read these logs in chat." }
+  logs: { name: "Diagnostics", icon: "info", scope: "Error logs from this Space, secrets redacted. Only the latest 2,000 log entries are retained.", purpose: "Let the owner see crashes and repair them.", leaves: "No ordinary network access. The owner can read these logs in chat." }
 };
 var FUTURE = ["Approved sites", "Camera", "Microphone", "Location", "Hermes tools (per tool)", "Files and folders", "Cross-Space access", "Agent requests"];
 function WebRTCNote() {
@@ -662,6 +684,13 @@ function GrantCard({ grant, onDecide, busy }) {
     /* @__PURE__ */ jsx4("div", { className: "ls-actions", children: grant.status === "granted" ? /* @__PURE__ */ jsx4(Action, { danger: true, disabled: busy, onClick: () => onDecide(grant, "revoke"), children: "Revoke" }) : grant.status === "requested" ? /* @__PURE__ */ jsxs4(Fragment3, { children: [
       /* @__PURE__ */ jsx4(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" }),
       /* @__PURE__ */ jsx4(Action, { disabled: busy, onClick: () => onDecide(grant, "deny"), children: "Deny" })
+    ] }) : grant.capability === "refresh" ? /* @__PURE__ */ jsxs4(Fragment3, { children: [
+      /* @__PURE__ */ jsxs4("p", { className: "ls-secondary", children: [
+        "Refresh permission ",
+        grant.status,
+        ". Approving Refresh leaves scheduled upkeep paused until you resume it."
+      ] }),
+      /* @__PURE__ */ jsx4(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" })
     ] }) : /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: grant.status === "denied" ? `Denied. The Space shows \u201C${model.name} isn't available\u201D instead of prompting again.` : `${model.name} was revoked. Ask in chat to request access again.` }) })
   ] });
 }
@@ -785,7 +814,7 @@ function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
         schedule.refetch();
       }, children: "Try again" }) }) : query.isLoading ? /* @__PURE__ */ jsx4(Skeleton3, { style: { height: 180 } }) : /* @__PURE__ */ jsx4(PermissionsContent, { space, grants: query.data?.grants || [], audit: query.data?.audit || [], schedule: schedule.data, onDecide: decide, onSchedule: (decision) => change(`${base}/schedule`, { decision }), busy })
     ] }),
-    revoke && /* @__PURE__ */ jsx4(DecisionDialog, { danger: true, title: `Revoke ${CAPABILITIES[revoke.capability].name} for ${space.name}?`, description: revoke.capability === "refresh" ? "Scheduled and manual refreshes stop and show Blocked. Data already delivered to the Space can't be recalled, and completed requests can't be undone." : `The Space loses ${CAPABILITIES[revoke.capability].name.toLowerCase()} access. Data already delivered to the Space can't be recalled, and completed requests can't be undone.`, cancelLabel: "Keep access", confirmLabel: "Revoke", onClose: () => setRevoke(null), onConfirm: async () => {
+    revoke && /* @__PURE__ */ jsx4(DecisionDialog, { danger: true, title: `Revoke ${CAPABILITIES[revoke.capability].name} for ${space.name}?`, description: revoke.capability === "refresh" ? "Scheduled upkeep pauses and manual refreshes stop. Approve Refresh in Permissions, then resume upkeep to restart scheduled refreshes. Data already delivered to the Space can't be recalled, and completed requests can't be undone." : `The Space loses ${CAPABILITIES[revoke.capability].name.toLowerCase()} access. Data already delivered to the Space can't be recalled, and completed requests can't be undone.`, cancelLabel: "Keep access", confirmLabel: "Revoke", onClose: () => setRevoke(null), onConfirm: async () => {
       await ctx.rest(`${base}/grants/${revoke.capability}`, { method: "POST", body: { decision: "revoke" } });
       await query.refetch();
       await onChanged();
@@ -801,6 +830,12 @@ function ScheduleSheet({ ctx, space, onClose, onChanged, returnFocus }) {
   const [busy, setBusy] = useState5(false);
   const lock = useRef3(false);
   const schedule = space.schedule;
+  const refresh = space.grants?.find((grant) => grant.capability === "refresh");
+  const permissionReason = schedule?.reason?.match(/Refresh permission (revoked|denied)/i);
+  const permissionStatus = ["revoked", "denied"].includes(refresh?.status) ? refresh.status : permissionReason?.[1]?.toLowerCase();
+  const reason = permissionStatus ? refresh?.status === "granted" ? "Refresh permission approved. Select Resume upkeep to restart scheduled refreshes." : "Refresh permission revoked. Approve Refresh in Permissions, then resume upkeep." : schedule?.reason;
+  const nextRun = schedule?.next_run_at ?? space.freshness?.next_run_at;
+  const overdue = schedule?.status === "active" && nextRun != null && nextRun < Date.now() / 1e3;
   async function pause() {
     if (lock.current) return;
     lock.current = true;
@@ -834,7 +869,10 @@ function ScheduleSheet({ ctx, space, onClose, onChanged, returnFocus }) {
         ] }),
         /* @__PURE__ */ jsxs5("div", { children: [
           /* @__PURE__ */ jsx5("dt", { children: "Next run" }),
-          /* @__PURE__ */ jsx5("dd", { children: schedule.status === "active" ? /* @__PURE__ */ jsx5(Time, { at: schedule.next_run_at ?? space.freshness?.next_run_at }) : "Not scheduled while upkeep is inactive" })
+          /* @__PURE__ */ jsx5("dd", { children: schedule.status === "active" ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
+            overdue && "Delayed \xB7 awaiting Hermes. Scheduled for ",
+            /* @__PURE__ */ jsx5(Time, { at: nextRun })
+          ] }) : "Not scheduled while upkeep is inactive" })
         ] }),
         /* @__PURE__ */ jsxs5("div", { children: [
           /* @__PURE__ */ jsx5("dt", { children: "Last attempt" }),
@@ -843,6 +881,14 @@ function ScheduleSheet({ ctx, space, onClose, onChanged, returnFocus }) {
             " \xB7 ",
             space.freshness?.last_attempt_status || "No attempts"
           ] })
+        ] }),
+        reason && /* @__PURE__ */ jsxs5("div", { children: [
+          /* @__PURE__ */ jsx5("dt", { children: "Reason" }),
+          /* @__PURE__ */ jsx5("dd", { children: reason })
+        ] }),
+        schedule.last_dispatch && /* @__PURE__ */ jsxs5("div", { children: [
+          /* @__PURE__ */ jsx5("dt", { children: "Last dispatch" }),
+          /* @__PURE__ */ jsx5("dd", { children: dispatchText(schedule.last_dispatch, absolute) })
         ] })
       ] })
     ] }) : /* @__PURE__ */ jsx5("p", { children: "No schedule approved." }),
@@ -856,7 +902,7 @@ function ScheduleSheet({ ctx, space, onClose, onChanged, returnFocus }) {
       /* @__PURE__ */ jsx5("p", { children: CATCH_UP }),
       /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "Background execution depends on Hermes being available." })
     ] }),
-    schedule && ["active", "paused"].includes(schedule.status) && /* @__PURE__ */ jsx5(Action, { disabled: busy || space.status === "archived", icon: schedule.status === "paused" ? "play" : "debug-pause", onClick: pause, children: schedule.status === "paused" ? "Resume upkeep" : "Pause upkeep" }),
+    schedule && ["active", "paused"].includes(schedule.status) && /* @__PURE__ */ jsx5(Action, { disabled: busy || space.status === "archived" || schedule.status === "paused" && refresh?.status !== "granted", icon: schedule.status === "paused" ? "play" : "debug-pause", onClick: pause, children: schedule.status === "paused" ? "Resume upkeep" : "Pause upkeep" }),
     /* @__PURE__ */ jsx5("div", { className: "ls-section", children: /* @__PURE__ */ jsx5(CopyPrompt, { text: `${space.owner}, change the upkeep schedule for ${space.name}. Please confirm the cadence, timezone and purpose before requesting approval.`, label: "Change schedule in chat" }) })
   ] });
 }
@@ -948,7 +994,15 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, onW
       const bundle = await lifecycleRest(`${base}/bundle`);
       if (closed) return close();
       if (bundle.rev !== opened.head_rev) throw new Error("The Space changed while opening. Reload Space to open the current revision.");
-      mounted = mount(container, { bundle, grants: opened.grants, call, onEvent: (event) => !closed && onEvent(event) });
+      mounted = mount(container, { bundle, grants: opened.grants, call, onEvent: (event) => {
+        if (closed) return;
+        if (event.kind === "write-rejected" && ["data.put", "data.delete", "data.batch"].includes(event.op)) {
+          const failure = { status: "failed", token: ++nextWrite, op: event.op, reply: { ok: false, error: event.error } };
+          failures.set(failure.token, failure);
+          publish(failure);
+        }
+        onEvent(event);
+      } });
     } catch (error) {
       closed = true;
       await close().catch(() => {
@@ -984,7 +1038,7 @@ function SaveStatus({ write, announcement }) {
     announcement && /* @__PURE__ */ jsx6("span", { children: announcement })
   ] });
 }
-function WriteBanner({ write, setWrite, onCompare, onUpdated }) {
+function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
   if (!write || !["failed", "unknown", "conflict"].includes(write.status)) return null;
   const current = write.reply?.error?.current;
   const canKeep = write.op === "data.put" && current?.rev != null;
@@ -1000,8 +1054,8 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated }) {
           onUpdated(current);
         }, children: "Use updated record" }),
         /* @__PURE__ */ jsx6(Action, { onClick: onCompare, children: "Compare" })
-      ] }) : /* @__PURE__ */ jsx6(Action, { onClick: () => write.retry(), children: "Retry save" }),
-      children: write.reply?.error?.message || "Your change is kept in this view until you choose how to continue."
+      ] }) : write.retry ? /* @__PURE__ */ jsx6(Action, { onClick: () => write.retry(), children: "Retry save" }) : /* @__PURE__ */ jsx6(Action, { onClick: onDismiss, children: "Dismiss" }),
+      children: write.reply?.error ? errorText(write.reply.error) : "Your change is kept in this view until you choose how to continue."
     }
   );
 }
@@ -1203,7 +1257,7 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
     actionError && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: actionError }),
     detail.error && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "Space status could not be refreshed. You're seeing the last loaded state.", actions: /* @__PURE__ */ jsx6(Action, { onClick: () => detail.refetch(), children: "Try again" }), children: errorText(detail.error) }),
     changes.error && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "Live record updates are delayed. Your displayed data may be out of date.", actions: /* @__PURE__ */ jsx6(Action, { onClick: () => changes.refetch(), children: "Retry live updates" }), children: errorText(changes.error) }),
-    /* @__PURE__ */ jsx6(WriteBanner, { write, setWrite, onCompare: () => openSheet("compare"), onUpdated: () => {
+    /* @__PURE__ */ jsx6(WriteBanner, { write, setWrite, onDismiss: () => controller.current?.dismissWrite(write.token), onCompare: () => openSheet("compare"), onUpdated: () => {
       controller.current?.dismissWrite(write.token);
       setReload((n) => n + 1);
     } }),

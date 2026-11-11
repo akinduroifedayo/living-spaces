@@ -1,11 +1,11 @@
 import { Badge, EmptyState, ErrorState, Skeleton, Tabs, TabsList, TabsTrigger, useQuery } from '@hermes/plugin-sdk'
 import { useState } from 'react'
-import { Action, DecisionDialog, Drawer, Icon, StatusPill, Time } from './components.jsx'
-import { errorText, restoreCopy, runResult, spacePath } from './model.mjs'
+import { Action, DecisionDialog, Drawer, Icon, StatusPill, Time, absolute } from './components.jsx'
+import { dispatchText, errorText, restoreCopy, runResult, spacePath } from './model.mjs'
 
 export function RunRow({ run }) {
   const duration = run.ended_at != null && run.started_at != null ? `${Math.max(0, run.ended_at - run.started_at).toFixed(1)} s` : run.status === 'queued' ? 'Not started' : run.status === 'running' ? 'In progress' : 'No duration reported'
-  return <article className="ls-row"><div className="ls-row-top"><strong><Icon name={run.status === 'succeeded' ? 'check' : ['failed', 'blocked'].includes(run.status) ? 'warning' : 'watch'} />{run.status === 'succeeded' ? 'Refresh succeeded' : `Refresh ${run.status}`}</strong><StatusPill status={run.status} /></div><p className="ls-secondary">{run.trigger} · <Time at={run.started_at ?? run.queued_at} /> · {duration}</p><p>{runResult(run)}</p></article>
+  return <article className="ls-row"><div className="ls-row-top"><strong><Icon name={run.status === 'succeeded' ? 'check' : ['failed', 'blocked'].includes(run.status) ? 'warning' : 'watch'} />{run.status === 'succeeded' ? 'Refresh succeeded' : `Refresh ${run.status}`}</strong><StatusPill status={run.status} /></div><p className="ls-secondary">{run.trigger} · <Time at={run.started_at ?? run.queued_at} /> · {duration}</p><p>{runResult(run)}</p>{run.detail?.dispatch && <p className="ls-secondary">{dispatchText(run.detail.dispatch, absolute)}</p>}</article>
 }
 export function RevisionRow({ revision, space, onRestore }) {
   return <article className="ls-row"><div className="ls-row-top"><strong>Revision {revision.rev}</strong>{revision.rev === space.head_rev ? <Badge variant="outline">Current</Badge> : <Action onClick={() => onRestore(revision.rev)}>Restore…</Action>}</div><p className="ls-secondary"><Time at={revision.created_at} /></p><p>{revision.author} · {revision.summary}</p></article>
