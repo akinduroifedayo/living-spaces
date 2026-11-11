@@ -50,27 +50,35 @@ export function visibleSpaces(spaces, search, filter) {
     .filter(s => `${s.name} ${s.owner}`.toLocaleLowerCase().includes(q))
     .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || (b.last_opened_at ?? 0) - (a.last_opened_at ?? 0) || b.updated_at - a.updated_at || a.id.localeCompare(b.id))
 }
+export function headerFacts(space) {
+  const f = space.freshness || {}
+  if (space.status === 'archived') return [{ key: 'archive', label: 'Archived', at: space.archived_at ?? space.updated_at }]
+  if (space.status === 'building' || !space.head_rev) return [{ key: 'building', label: 'Building the first version' }]
+  if (f.last_success_at == null) return [{ key: 'success', label: ['failed', 'blocked'].includes(f.last_attempt_status) ? 'No successful update yet' : 'Not refreshed yet' }]
+  const facts = [{ key: 'success', label: 'Updated', at: f.last_success_at }]
+  if (f.source_as_of != null && Math.abs(f.source_as_of - f.last_success_at) >= 60) facts.push({ key: 'source', label: 'Source data from', at: f.source_as_of })
+  return facts
+}
 export function freshnessFacts(space, format) {
   const f = space.freshness || {}
-  const at = value => value == null ? 'Never' : format(value)
   return [
-    { key: 'success', label: 'Last successful update', value: at(f.last_success_at), at: f.last_success_at },
-    { key: 'attempt', label: 'Last attempt', value: f.last_attempt_at == null ? 'Never' : `${format(f.last_attempt_at)} · ${f.last_attempt_status || 'Unknown'}`, at: f.last_attempt_at },
-    { key: 'source', label: 'Source data from', value: f.source_as_of == null ? 'Not reported' : format(f.source_as_of), at: f.source_as_of },
-    { key: 'next', label: 'Next refresh', value: f.next_run_at == null ? 'Not scheduled' : format(f.next_run_at), at: f.next_run_at }
-  ]
+    { key: 'success', label: 'Last successful update', at: f.last_success_at },
+    { key: 'attempt', label: 'Last attempt', at: f.last_attempt_at },
+    { key: 'source', label: 'Source data from', at: f.source_as_of },
+    { key: 'next', label: 'Next refresh', at: f.next_run_at }
+  ].filter(fact => fact.at != null).map(fact => ({ ...fact, value: `${format(fact.at)}${fact.key === 'attempt' && f.last_attempt_status ? ` · ${f.last_attempt_status}` : ''}` }))
 }
 export function cardLines(space, format) {
   const f = space.freshness || {}
-  const at = value => value == null ? 'not yet available' : format(value)
+  const at = value => value == null ? '' : ` ${format(value)}`
   const state = spaceStatus(space)
-  if (state === 'building') return [`${space.owner} is building the first version`, `Started ${at(space.created_at ?? space.updated_at)}`]
-  if (state === 'archived') return [`Archived ${at(space.archived_at ?? space.updated_at)}`, 'Schedules stopped']
-  if (space.attention?.kind === 'crashed') return [`Stopped working ${at(f.last_attempt_at)}`, space.attention.message]
-  if (state === 'updating') return ['Refreshing now…', `Last good update ${at(f.last_success_at)}`]
-  if (state === 'failed') return [`Refresh failed ${at(f.last_attempt_at)}`, `Showing last good data from ${at(f.last_success_at)}`]
-  if (state === 'blocked') return [`Refresh blocked ${at(f.last_attempt_at)}`, space.attention?.message || 'Refresh needs your approval in Permissions']
-  return [f.last_success_at == null ? 'No successful update yet' : `Updated ${at(f.last_success_at)}`, space.upkeep && space.upkeep.enabled === false ? 'Upkeep paused' : `Next refresh ${f.next_run_at == null ? 'not scheduled' : format(f.next_run_at)}`]
+  if (state === 'building') return [`${space.owner} is building the first version`, space.created_at != null ? `Started${at(space.created_at)}` : '']
+  if (state === 'archived') return [`Archived${at(space.archived_at ?? space.updated_at)}`, 'Future upkeep paused']
+  if (space.attention?.kind === 'crashed') return [`Stopped working${at(f.last_attempt_at)}`, space.attention.message || '']
+  if (state === 'updating') return ['Refreshing now…', f.last_success_at != null ? `Last good update${at(f.last_success_at)}` : '']
+  if (state === 'failed') return [`Refresh failed${at(f.last_attempt_at)}`, f.last_success_at != null ? `Showing last good data from${at(f.last_success_at)}` : 'No successful update yet']
+  if (state === 'blocked') return [`Refresh blocked${at(f.last_attempt_at)}`, space.attention?.message || 'Review the last run for details']
+  return [f.last_success_at == null ? 'Not refreshed yet' : `Updated${at(f.last_success_at)}`, space.upkeep?.enabled === false ? 'Upkeep paused' : f.next_run_at != null ? `Next refresh${at(f.next_run_at)}` : '']
 }
 export function advanceCursor(cursor, page) {
   const changes = (page?.changes || []).filter(c => Number.isSafeInteger(c.seq) && c.seq > cursor).sort((a, b) => a.seq - b.seq)
@@ -94,14 +102,16 @@ export function runResult(run) {
 }
 export function dispatchText(dispatch, format) {
   if (!dispatch) return ''
-  const at = value => value == null ? 'Not reported' : format(typeof value === 'number' ? value : Date.parse(value) / 1000)
+  const at = value => value == null ? '' : format(typeof value === 'number' ? value : Date.parse(value) / 1000)
   const catchUp = dispatch.kind === 'catch_up'
   const delay = ['late', 'catch_up'].includes(dispatch.kind) && dispatch.lateness_seconds != null ? ` Delayed by ${dispatch.lateness_seconds} s.` : ''
-  return `${catchUp ? 'Catch-up refresh. Missed scheduled time' : 'Scheduled time'} ${at(dispatch.scheduled_at)}. Actual dispatch ${at(dispatch.dispatched_at)}.${delay}${catchUp ? ' Missed intervals were not replayed.' : ''}`
+  const scheduled = at(dispatch.scheduled_at)
+  const actual = at(dispatch.dispatched_at)
+  return `${catchUp ? 'Catch-up refresh. ' : ''}${scheduled ? `${catchUp ? 'Missed scheduled time' : 'Scheduled time'} ${scheduled}. ` : ''}${actual ? `Actual dispatch ${actual}.` : ''}${delay}${catchUp ? ' Missed intervals were not replayed.' : ''}`.trim()
 }
-export const CATCH_UP = "Runs one current refresh when Hermes wakes. Missed intervals aren't replayed."
+export const CATCH_UP = "If Hermes is asleep at run time, it runs once when it wakes. Missed runs aren't replayed."
 export const EXECUTION_LABELS = { succeeded: 'Succeeded', failed: 'Failed', running: 'Running', claimed: 'Claimed', queued: 'Queued', unknown: 'Outcome unknown, side effects may have run' }
-export const executionLabel = status => EXECUTION_LABELS[status] || String(status ?? 'Unknown')
+export const executionLabel = status => EXECUTION_LABELS[status] || String(status ?? '')
 export const toSeconds = value => value == null ? null : typeof value === 'number' ? value : Number.isFinite(Date.parse(value)) ? Date.parse(value) / 1000 : null
 export const PROMPTS = [
   'Build Research Desk: an overview, a searchable library and a reading queue. Keep my notes and reading status.',
