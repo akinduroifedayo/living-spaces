@@ -1,0 +1,143 @@
+{
+ "tree": "/Volumes/Expansion/Development/Projects/living-spaces-wt/cut-integration",
+ "head": "74b9a23b41b32505f6e962242807882df0bd4f32",
+ "dirty": [],
+ "results": [
+  {
+   "step": "build-sandbox",
+   "argv": [
+    "node",
+    "scripts/build-sandbox.mjs"
+   ],
+   "exit": 0,
+   "seconds": 0.6,
+   "counts": {}
+  },
+  {
+   "step": "build-renderer",
+   "argv": [
+    "esbuild",
+    "src/desktop/plugin.src.js",
+    "--bundle",
+    "--format=esm",
+    "--jsx=automatic",
+    "--external:@hermes/plugin-sdk",
+    "--external:react",
+    "--external:react/jsx-runtime",
+    "--outfile=src/living-spaces/desktop/plugin.js",
+    "--metafile=.run/package/desktop-metafile.json",
+    "--log-level=warning"
+   ],
+   "exit": 0,
+   "seconds": 0.1,
+   "counts": {}
+  },
+  {
+   "step": "graph-gate",
+   "argv": [
+    "node",
+    "scripts/check-renderer-graph.mjs",
+    ".run/package/desktop-metafile.json"
+   ],
+   "exit": 0,
+   "seconds": 0.1,
+   "counts": {}
+  },
+  {
+   "step": "python",
+   "argv": [
+    "/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests/python",
+    "-t",
+    "."
+   ],
+   "exit": 0,
+   "seconds": 19.4,
+   "counts": {
+    "ran": 384,
+    "ok": true
+   }
+  },
+  {
+   "step": "node",
+   "argv": [
+    "node",
+    "--test",
+    "--test-reporter=tap",
+    "tests/js/sandbox/",
+    "tests/js/ui/"
+   ],
+   "exit": 0,
+   "seconds": 3.0,
+   "counts": {
+    "tests": 125,
+    "pass": 125,
+    "fail": 0,
+    "skipped": 0,
+    "todo": 0
+   }
+  },
+  {
+   "step": "standalone-node",
+   "argv": [
+    "node",
+    "--import",
+    "./tests/js/sandbox/env.mjs",
+    "--test",
+    "--test-reporter=tap",
+    "tests/js/sandbox/c-guest.test.mjs",
+    "tests/js/sandbox/document.test.mjs",
+    "tests/js/sandbox/hooks.test.mjs",
+    "tests/js/sandbox/host.test.mjs",
+    "tests/js/sandbox/hosting.test.mjs",
+    "tests/js/sandbox/html.test.mjs",
+    "tests/js/sandbox/loader.test.mjs",
+    "tests/js/sandbox/theme.test.mjs",
+    "tests/js/sandbox/wire.test.mjs",
+    "tests/js/ui/canvas-actions.test.mjs",
+    "tests/js/ui/host-chrome.test.mjs",
+    "tests/js/ui/net-permissions.test.mjs",
+    "tests/js/ui/repair-components.test.mjs",
+    "tests/js/ui/repair-session.test.mjs",
+    "tests/js/ui/status.test.mjs"
+   ],
+   "exit": 0,
+   "seconds": 5.0,
+   "counts": {
+    "tests": 213,
+    "pass": 213,
+    "fail": 0,
+    "skipped": 0,
+    "todo": 0
+   }
+  },
+  {
+   "step": "reference",
+   "argv": [
+    "node",
+    "--no-warnings",
+    "--experimental-vm-modules",
+    "--import",
+    "./tests/js/reference/env.mjs",
+    "--test",
+    "--test-reporter=tap",
+    "tests/js/reference/compatibility.test.mjs"
+   ],
+   "exit": 0,
+   "seconds": 0.4,
+   "counts": {
+    "tests": 19,
+    "pass": 19,
+    "fail": 0,
+    "skipped": 0,
+    "todo": 0
+   }
+  }
+ ],
+ "rebuilt_artifacts_match_committed": true,
+ "green": true
+}

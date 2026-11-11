@@ -68,6 +68,8 @@ class NetGrantTests(CoreCase):
 
 
 class NetTests(CoreCase):
+    """Synthetic DNS and HTTP transport; header values are public test data."""
+
     def setUp(self):
         super().setUp()
         self.net = importlib.import_module('living_spaces_core.net')
@@ -187,13 +189,14 @@ class NetTests(CoreCase):
                 self.assertEqual(args[0], expected_method)
                 self.assertEqual(kwargs['body'], expected_body)
 
-    def test_credentials_and_framing_headers_are_stripped(self):
+    def test_space_credentials_forwarded_and_reserved_framing_headers_stripped(self):
         self.fetch(method='POST', body='demo', headers={'Cookie': 'secret', 'AUTHORIZATION': 'secret',
                    'Proxy-Authorization': 'secret', 'Proxy-Thing': 'secret', 'Host': 'localhost',
                    'X-Hermes-Token': 'secret', 'x-hermesanything': 'secret', 'X-Public': 'demo',
                    'Content-Length': '999', 'Transfer-Encoding': 'chunked', 'Connection': 'upgrade'})
         headers = self.requests[0][1]['headers']
-        self.assertEqual(headers, {'X-Public': 'demo', 'Host': 'example.com', 'Accept-Encoding': 'identity'})
+        self.assertEqual(headers, {'Cookie': 'secret', 'AUTHORIZATION': 'secret', 'X-Public': 'demo',
+                                   'Host': 'example.com', 'Accept-Encoding': 'identity'})
 
     def test_request_body_cap_has_numbers(self):
         error = self.error('limit', self.fetch, method='POST', body='x' * (limits.BRIDGE_BYTES + 1))
@@ -335,3 +338,180 @@ class NetTests(CoreCase):
         response.begin()
         self.responses = [response]
         self.assertEqual(self.error('blocked', self.fetch)['reason'], 'network_error')
+
+    def test_bridge_forwards_only_space_supplied_credentials(self):
+        session = sessions.open_session(self.sid)['session']
+        cases = ({}, {'Authorization': 'Bearer public-space-demo'},
+                 {'Cookie': 'space=public-demo'},
+                 {'Authorization': 'Bearer public-space-demo', 'Cookie': 'space=public-demo'})
+        for credentials in cases:
+            with self.subTest(credentials=list(credentials)):
+                self.responses = [Response()]
+                reply = bridge.dispatch(self.sid, session, 'net.fetch', {
+                    'url': 'https://example.com/data',
+                    'headers': {**credentials, 'X-Public': 'demo'},
+                })
+                self.assertTrue(reply['ok'], reply)
+                self.assertEqual(reply['result']['text'], 'hello')
+                self.assertEqual(self.requests[-1][1]['headers'], {
+                    **credentials, 'X-Public': 'demo',
+                    'Host': 'example.com', 'Accept-Encoding': 'identity',
+                })
+
+    def test_reserved_header_stripping_is_case_insensitive_with_own_credentials(self):
+        for spelling in (str.lower, str.upper, str.swapcase):
+            with self.subTest(spelling=spelling.__name__):
+                self.responses = [Response()]
+                supplied = {spelling(name): 'public-reserved-demo' for name in (
+                    'Host', 'Content-Length', 'Transfer-Encoding', 'Connection',
+                    'Keep-Alive', 'Upgrade', 'Te', 'Trailer', 'Accept-Encoding',
+                    'Proxy-Authorization', 'Proxy-Thing', 'X-Hermes-Token', 'X-HermesAnything',
+                )}
+                supplied.update({spelling('Authorization'): 'Bearer public-space-demo',
+                                 spelling('Cookie'): 'space=public-demo', 'X-Public': 'demo'})
+                self.assertEqual(self.fetch(method='POST', body='demo', headers=supplied)['text'], 'hello')
+                self.assertEqual({k.lower(): v for k, v in self.requests[-1][1]['headers'].items()}, {
+                    'authorization': 'Bearer public-space-demo', 'cookie': 'space=public-demo',
+                    'x-public': 'demo', 'host': 'example.com', 'accept-encoding': 'identity',
+                })
+
+    def test_same_origin_redirects_preserve_space_credentials(self):
+        supplied = {'aUtHoRiZaTiOn': 'Bearer public-space-demo', 'cOoKiE': 'space=public-demo',
+                    'X-Public': 'demo'}
+        for status in (301, 302, 303, 307, 308):
+            for location in ('/next', 'https://example.com/next', 'https://EXAMPLE.COM:443/next'):
+                with self.subTest(status=status, location=location):
+                    self.responses = [Response(status=status, headers={'Location': location}), Response()]
+                    result = self.fetch(headers=supplied)
+                    self.assertEqual((result['status'], result['text']), (200, 'hello'))
+                    self.assertEqual([c[:3] for c in self.connections[-2:]],
+                                     [('example.com', 443, PUBLIC)] * 2)
+                    self.assertEqual([request[1]['headers'] for request in self.requests[-2:]],
+                                     [{**supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity'}] * 2)
+
+    def test_cross_host_redirects_strip_space_credentials_case_insensitively(self):
+        for authorization, cookie in (('Authorization', 'Cookie'), ('authorization', 'cookie'),
+                                      ('AUTHORIZATION', 'COOKIE'), ('aUtHoRiZaTiOn', 'cOoKiE')):
+            for status in (301, 302, 303, 307, 308):
+                with self.subTest(authorization=authorization, status=status):
+                    supplied = {authorization: 'Bearer public-space-demo', cookie: 'space=public-demo',
+                                'X-Public': 'demo'}
+                    self.responses = [Response(status=status, headers={'Location': 'https://other.example/next'}),
+                                      Response()]
+                    result = self.fetch(headers=supplied)
+                    self.assertEqual((result['url'], result['text']), ('https://other.example/next', 'hello'))
+                    self.assertEqual([c[:3] for c in self.connections[-2:]],
+                                     [('example.com', 443, PUBLIC), ('other.example', 443, PUBLIC)])
+                    self.assertEqual([request[1]['headers'] for request in self.requests[-2:]], [
+                        {**supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity'},
+                        {'X-Public': 'demo', 'Host': 'other.example', 'Accept-Encoding': 'identity'},
+                    ])
+
+    def test_changed_port_redirects_strip_space_credentials(self):
+        supplied = {'Authorization': 'Bearer public-space-demo', 'Cookie': 'space=public-demo',
+                    'X-Public': 'demo'}
+        for origin, destination in (('example.com', 'example.com:8443'),
+                                    ('example.com:8443', 'example.com')):
+            with self.subTest(origin=origin, destination=destination):
+                self.responses = [Response(status=307, headers={'Location': f'https://{destination}/next'}),
+                                  Response()]
+                result = self.fetch(f'https://{origin}/start', headers=supplied)
+                self.assertEqual((result['url'], result['text']), (f'https://{destination}/next', 'hello'))
+                self.assertEqual([request[1]['headers'] for request in self.requests[-2:]], [
+                    {**supplied, 'Host': origin, 'Accept-Encoding': 'identity'},
+                    {'X-Public': 'demo', 'Host': destination, 'Accept-Encoding': 'identity'},
+                ])
+
+    def test_redirect_return_to_origin_never_resurrects_space_credentials(self):
+        supplied = {'aUtHoRiZaTiOn': 'Bearer public-space-demo', 'cOoKiE': 'space=public-demo',
+                    'X-Public': 'demo'}
+        for away in ('other.example', 'example.com:8443'):
+            with self.subTest(away=away):
+                self.responses = [
+                    Response(status=302, headers={'Location': '/same-origin'}),
+                    Response(status=307, headers={'Location': f'https://{away}/away'}),
+                    Response(status=308, headers={'Location': 'https://example.com/returned'}),
+                    Response(status=302, headers={'Location': '/final'}),
+                    Response(),
+                ]
+                result = self.fetch(headers=supplied)
+                self.assertEqual((result['url'], result['text']), ('https://example.com/final', 'hello'))
+                self.assertEqual([request[1]['headers'] for request in self.requests[-5:]], [
+                    {**supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity'},
+                    {**supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity'},
+                    {'X-Public': 'demo', 'Host': away, 'Accept-Encoding': 'identity'},
+                    {'X-Public': 'demo', 'Host': 'example.com', 'Accept-Encoding': 'identity'},
+                    {'X-Public': 'demo', 'Host': 'example.com', 'Accept-Encoding': 'identity'},
+                ])
+
+    def test_credentialed_fetch_still_refuses_private_addresses_before_connect(self):
+        supplied = {'Authorization': 'Bearer public-space-demo', 'Cookie': 'space=public-demo'}
+        self.assertEqual(self.fetch(headers=supplied)['text'], 'hello')
+        self.assertEqual(len(self.requests), 1)
+        for url, addresses in (('https://127.0.0.1/data', [PUBLIC]),
+                               ('https://[::1]/data', [PUBLIC]),
+                               ('https://example.com/data', ['10.0.0.1']),
+                               ('https://example.com/data', [PUBLIC, '192.168.1.1'])):
+            with self.subTest(url=url, addresses=addresses):
+                self.resolver.return_value = addresses
+                error = self.error('blocked', self.fetch, url, headers=supplied)
+                self.assertEqual(error['reason'], 'private_address')
+                self.assertEqual(len(self.connections), 1)
+                self.assertEqual(len(self.requests), 1)
+
+    def test_credentialed_redirect_rechecks_private_addresses(self):
+        supplied = {'Authorization': 'Bearer public-space-demo', 'Cookie': 'space=public-demo'}
+        for location, answers, allowed in (
+                ('/next', [[PUBLIC], [PUBLIC]], True),
+                ('https://127.0.0.1/next', [[PUBLIC]], False),
+                ('/next', [[PUBLIC], ['10.0.0.1']], False),
+                ('https://other.example/next', [[PUBLIC], [PUBLIC, '192.168.1.1']], False)):
+            with self.subTest(location=location, answers=answers):
+                self.resolver.side_effect = answers
+                self.responses = [Response(status=302, headers={'Location': location}), Response()]
+                before_connections, before_requests = len(self.connections), len(self.requests)
+                if allowed:
+                    self.assertEqual(self.fetch(headers=supplied)['text'], 'hello')
+                else:
+                    self.assertEqual(self.error('blocked', self.fetch, headers=supplied)['reason'], 'private_address')
+                self.assertEqual(len(self.connections) - before_connections, 2 if allowed else 1)
+                self.assertEqual(len(self.requests) - before_requests, 2 if allowed else 1)
+                self.assertEqual(self.requests[before_requests][1]['headers'], {
+                    **supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity',
+                })
+
+    def test_credentialed_redirect_rechecks_grant_before_next_request(self):
+        supplied = {'Authorization': 'Bearer public-space-demo', 'Cookie': 'space=public-demo'}
+        for revoke in (False, True):
+            with self.subTest(revoke=revoke):
+                self.responses = [Response(status=302, headers={'Location': 'https://other.example/next'}),
+                                  Response()]
+                self.on_response = (lambda: grants.decide(self.sid, 'net', 'revoke')) if revoke else None
+                before_connections, before_requests = len(self.connections), len(self.requests)
+                if revoke:
+                    self.error('not_granted', self.fetch, headers=supplied)
+                else:
+                    self.assertEqual(self.fetch(headers=supplied)['text'], 'hello')
+                self.assertEqual(len(self.connections) - before_connections, 1 if revoke else 2)
+                self.assertEqual(len(self.requests) - before_requests, 1 if revoke else 2)
+
+    def test_credentialed_redirect_rechecks_session_before_next_request(self):
+        supplied = {'Authorization': 'Bearer public-space-demo', 'Cookie': 'space=public-demo'}
+        for close in (False, True):
+            with self.subTest(close=close):
+                session = sessions.open_session(self.sid)['session']
+                self.responses = [Response(status=302, headers={'Location': 'https://other.example/next'}),
+                                  Response()]
+                self.on_response = (lambda: sessions.close_session(session)) if close else None
+                before_connections, before_requests = len(self.connections), len(self.requests)
+                reply = bridge.dispatch(self.sid, session, 'net.fetch', {
+                    'url': 'https://example.com/start', 'headers': supplied,
+                })
+                if close:
+                    self.assertEqual(reply['error']['code'], 'session_invalid')
+                    self.assertNotIn('result', reply)
+                else:
+                    self.assertTrue(reply['ok'], reply)
+                    self.assertEqual(reply['result']['text'], 'hello')
+                self.assertEqual(len(self.connections) - before_connections, 1 if close else 2)
+                self.assertEqual(len(self.requests) - before_requests, 1 if close else 2)

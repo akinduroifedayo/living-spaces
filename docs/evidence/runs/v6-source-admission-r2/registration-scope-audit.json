@@ -1,0 +1,34 @@
+{
+  "old_methods_unchanged": 24,
+  "one_added_method": [
+    "ToolTests.test_manifest_declares_exactly_the_registered_tools"
+  ],
+  "old_method_hashes": {
+    "ToolTests.test_registration_and_skill": "c1b826a4cbfcc8cf6275cff211de3d8fccb2884723b463e81784e9338fc94970",
+    "ToolTests.test_all_tools_preserve_every_core_error": "bbd8eb59bfa6618261228f1bfd3ffc83201a60ea888e2abdfcd2f7c5235fa17c",
+    "ToolTests.test_ambiguous_reference_never_guesses_or_writes": "148446192748636dd7395fc9477e9060fe1741ac4f1cd86d7bf8834ce0213ebf",
+    "ToolTests.test_owner_context_and_active_profile": "5e34e2b5c5286a3b038b353df0c44ed953d8b76905849b35e9363f454ffaeb84",
+    "ToolTests.test_mutation_attribution": "0519a36c43732024c4c67aa23e599481d06b0cb2d2bcb6a73c6bdb8a3255571c",
+    "ToolTests.test_create_defaults_manifest_extraction_and_open_card": "6184135eeee08587ed768a463356b3904115a6be93b3339895d3a2e965abc4f0",
+    "ToolTests.test_explicit_no_libraries_is_preserved": "49b5f302ed6cee368991d76a76dcf46900265ec51da0cc8ec3fbd57aeaa3a5c2",
+    "ToolTests.test_file_write_base_revision_manifest_and_delete": "c8a11bfdd51665a3b2c76190585dbe16038a40ca892834679e78c3e88b414da4",
+    "ToolTests.test_manifest_exact_edit_uses_head_revision": "bc8bd88a2b0b2669c3522672b7cbd129d07beaddf9c632ba37c66d83f8f14133",
+    "ToolTests.test_manifest_read_delegates_to_core": "53d0aefd6330250994b953c04f7d4416f59266352c4bdd1a153211530197ffd5",
+    "ToolTests.test_static_warnings_help_repair_the_project": "4f4179d41b2710d36b5c6afcb43fc074c952fb2fe0fd89da58f6565c75b9489e",
+    "ToolTests.test_deleted_dependency_warns_on_unchanged_importer": "e460945bf5d1f45009bdfcd37c9afe49c9f0230b784e2f18113cb8edb177ad23",
+    "ToolTests.test_invalid_arguments_are_json_errors": "7954d02c04d0f701e60e49352271b55d5b8d2301a88a75de53d8ee63fe55abbc",
+    "ToolTests.test_unexpected_error_is_json_without_exception_details": "5190778a957f7a26aff3b0b00c03ee4f8a88ad7c9d81980784d7382b23e8bf93",
+    "RestTests.test_all_routes_success": "ce0311b13186234d08ae7ea41d9a06a926c1a165ea9416c70e2b3d9f6031167c",
+    "RestTests.test_every_error_status_and_payload": "56de6fef7eb533a84c1ee8126ca3e9f9a036c843a8dcd21c74fbfb66f7e73825",
+    "RestTests.test_bridge_forwarding_uses_path_identity_and_preserves_args": "dcd30a7d5a7900169ff47ab7003ddba850387e313f76882e485e402df2dcfbea",
+    "RestTests.test_bridge_errors_always_http_200": "01cc60f264637332c7030c75f0c5938f58256d6883148cfdeb499bf9a67a623b",
+    "RestTests.test_invalid_space_id_never_loads_core": "a28e85db8d6508661c767e47842ebf23ed55952a650e70e337fdee016de1e166",
+    "RestTests.test_session_close_checks_space_binding": "49f60cb6c8250574209ff7a5505c59b6e5c2330e5db1636f800c109c07dd42c8",
+    "RestTests.test_host_actions_return_summary_without_project_details": "ec5e51fa7a6109272a5480c5a2e213d20f91eae302e1145b959cce74e4a86f03",
+    "RestTests.test_invalid_requests_are_contract_errors": "88c62c21cedb663c365bb62aa8273fe4a9aea6c863bd6ee4b01b163100f2d004",
+    "RestTests.test_index_and_status_aggregate_public_core_cursors": "ea99143c18a30a25da58557043faf4dd7d0b40ad151560ce5e214c213e426fef",
+    "RestTests.test_blocking_core_calls_do_not_stall_event_loop": "70d5484c64b0c5f94c9671df377f2df17dfb6fc0d8b5b54ba6dff177eab63567"
+  },
+  "test_file_sha256": "19d9dc1a2cab6f698d4624df1c1c00e694cb3c64ea34d91d17a26d7ac99c08e7",
+  "pre_repair_manifest_source": "74b9a23:src/living-spaces/plugin.yaml"
+}

@@ -19,12 +19,12 @@ version: "0.1.0"
 platforms: [macos]
 known_issues:
   - "Release 1 acceptance is incomplete. See docs/evidence/R1-STATUS.md in the repository for observed, partial and pending checks."
-  - "Upkeep uses the private cron.jobs and cron.executions APIs. Validation passes with a catalog rule 9 warning; compatibility and catalog maintainer review remain open."
+  - "Upkeep uses the private cron.jobs and cron.executions APIs. Maintaining-bot capture uses the private hermes_cli.plugin_session.session_key seam. Validation reports catalog rule 9 warnings. Compatibility and catalog maintainer review remain open."
   - "Frontend session cleanup pins its captured backend through window.hermesDesktop. Validation reports a catalog rule 8 raw-bridge warning. No supported pinned REST target was found in the inspected SDK. This is not an all-public-SDK or catalog-approved package."
   - "Internet access is on by default per Space. space.net.fetch mediates public HTTPS requests and can send data the Space can read. Turn Internet access off in the host-owned Permissions panel. At this commit direct frame networking, CDN imports, remote assets and embeds are still blocked; open internet in the frame is in progress, not qualified. Local/private destinations and Hermes backends are blocked. Off is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle."
   - "Upkeep is an ordinary Hermes cron job created when the user asks in chat; the native job is the only schedule record and the plugin keeps only a link. It runs only while Hermes is running. Catch-up runs one current refresh when Hermes wakes, without replaying all missed intervals. Each Space's Upkeep panel shows what runs and offers pause, resume, run now and remove. Upkeep was reworked under amendment A-03 and its qualification evidence is being rerun, so release acceptance is not passed."
   - "Agent upkeep makes model/tool calls using the active Hermes profile and can consume its subscription quota. It is not a restricted sandbox. Feed upkeep has no model call. Space code can trigger only the no-model feed refresh, not agent upkeep."
-  - "In progress, not qualified, and not shipped at this commit: open internet in the frame, file-by-reference for generated images, fonts and libraries, a canvas-to-bot control that asks the owning bot to act, and the premium design pass. Do not rely on them."
+  - "File-by-reference and maintaining-bot controls are implemented in source, but real-host and native-admission acceptance remain incomplete. The premium kit and bounded live references are integrated. Regenerated-Space functional and design qualification is separate. Open internet in the frame is not enabled and still awaits the header/exposure evidence and owner decision. See docs/evidence/R1-STATUS.md."
   - "Offline optional dependencies and fonts are pinned in runtime/vendor/SHELF.json with licenses in THIRD-PARTY.md. The bundled shelf is not a general package installer. See README for included items."
 # Pending Forge: capture final screenshots from the validated running candidate.
 # Add up to 6 GitHub-hosted screenshots pinned to the final candidate SHA.
@@ -37,6 +37,7 @@ capabilities:
     - spaces_list
     - spaces_get
     - spaces_create
+    - spaces_bind_maintainer
     - spaces_read_file
     - spaces_write_files
     - spaces_edit_file

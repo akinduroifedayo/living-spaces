@@ -128,6 +128,12 @@ class AdapterCase(unittest.TestCase):
 
 
 class ToolTests(AdapterCase):
+    def test_manifest_declares_exactly_the_registered_tools(self):
+        import yaml
+        manifest = yaml.safe_load((PACKAGE / "plugin.yaml").read_text())
+        registered = [call.kwargs["name"] for call in self.ctx.register_tool.call_args_list]
+        self.assertCountEqual(manifest["provides_tools"], registered)
+
     def test_registration_and_skill(self):
         self.assertEqual(set(self.tools), set(PARAMS) | {"spaces_bind_maintainer"})
         for name, tool in self.tools.items():

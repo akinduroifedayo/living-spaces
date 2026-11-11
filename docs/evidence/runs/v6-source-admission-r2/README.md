@@ -1,0 +1,9 @@
+# Source admission repair
+
+The native package validator at 74b9a23 rejects one undeclared registered tool, spaces_bind_maintainer. Fifteen other checks pass. The one-line plugin.yaml correction at b182ac0 passes all sixteen checks on an exact Git archive. The package's other 83 source files match the earlier archive. Private cron/session APIs and the raw Desktop bridge remain disclosed warnings, not catalog approval.
+
+A permanent stock regression compares actual plugin registrations with the manifest's declarations. The old manifest produces the intended missing-tool assertion failure, with no errors or skips. All 39 adapter cases pass with the corrected manifest. The 24 preexisting explicitly authored test method bodies remain unchanged. The larger execution count includes the module's generated cases. The catalog draft is aligned with the corrected declaration and still separates source implementation from runtime acceptance.
+
+The initial command omits --install-deps, yet the Hermes launcher prepares dependencies for the fresh throwaway data root. Its stderr is retained. This was an unrequested bootstrap side effect, not evidence of no installation. The second command reuses that existing validator home and has empty stderr. No second fresh-root bootstrap, auth copy, login, gateway restart, live-app reload or shared Spaces-store access occurred.
+
+The separate full gate at clean commit 74b9a23 passes 384 Python, 125 stock Node, 213 overlapping standalone Node, and 19 reference cases. Both builds, renderer graph and committed artifact parity pass. Later manifest and registration-test changes require their own final gate. Fresh source review at 74b9a23 remains separately attributable. Neither validator nor source tests establish Desktop, native model admission, regenerated-Space function, design acceptance or owner acceptance.

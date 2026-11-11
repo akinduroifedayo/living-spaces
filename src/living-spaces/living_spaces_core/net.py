@@ -18,7 +18,7 @@ TIMEOUT = 20
 RESPONSE_BYTES = 5 * 1024 * 1024
 _METHODS = {'GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'}
 _REDIRECTS = {301, 302, 303, 307, 308}
-_STRIPPED = {'cookie', 'authorization', 'host', 'content-length', 'transfer-encoding',
+_STRIPPED = {'host', 'content-length', 'transfer-encoding',
              'connection', 'keep-alive', 'upgrade', 'te', 'trailer', 'accept-encoding'}
 
 
@@ -218,6 +218,8 @@ def _fetch_public(url, *, authorize, max_bytes, method='GET', headers=None, body
                     if hop == 5 or not location:
                         _blocked('redirect')
                     url = urljoin(request_url, location)
+                    if _target(url)[:2] != (host, port):
+                        headers = {k: v for k, v in headers.items() if k.lower() not in ('authorization', 'cookie')}
                     if (response.status == 303 and method != 'HEAD') or (response.status in (301, 302) and method == 'POST'):
                         method, body = 'GET', None
                         headers = {k: v for k, v in headers.items() if not k.lower().startswith('content-')}

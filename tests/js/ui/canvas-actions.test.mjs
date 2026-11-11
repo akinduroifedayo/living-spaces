@@ -456,3 +456,275 @@ test('ambiguous transport loss remains unresolved across reload until exact-ID e
   assert.equal(f.intent(original.activation_id).settled, true)
   assert.deepEqual(f.protocolErrors, [])
 })
+
+function completedAdmissionRecoveryFixture(submitSteps) {
+  const nativeAdmissions = new Map(), observedReceipts = new Map(), intents = new Map(), keys = new Map()
+  const submissions = [], lookups = [], posts = [], statuses = [], protocolErrors = [], adapters = []
+  const steps = [...submitSteps]
+  const copy = value => structuredClone(value)
+  const intent = id => id ? intents.get(id) : [...intents.values()].at(-1) || null
+  const requireProtocol = (condition, message) => {
+    if (!condition) {
+      protocolErrors.push(message)
+      throw new Error(message)
+    }
+  }
+  const host = {
+    profileRoutes: async () => [copy(ownerRoute)],
+    retainProfile: async () => () => {},
+    requestProfile: async (route, method, params) => {
+      requireProtocol(JSON.stringify(route) === JSON.stringify(ownerRoute), 'Native calls must use the owner route')
+      if (method === 'runtime.describe') return { profile_id: binding.profile_id, capabilities: ['durable-admission-v1'] }
+      if (method === 'session.resume') {
+        requireProtocol(['physical', 'canonical'].includes(params.session_id), 'Resume must use the bound session')
+        return { session_id: 'canonical', stored_session_id: 'canonical', running: false, pending: [] }
+      }
+      if (method === 'prompt.submit') {
+        submissions.push(copy(params))
+        requireProtocol(params.session_id === 'canonical' && !!params.input_id && !!params.text, 'Submit must carry the canonical session, input ID and text')
+        const step = steps.shift() || 'deliver'
+        if (step === 'runtime_draining') throw Object.assign(new Error('Runtime is draining before admission lookup'), { data: { reason: step } })
+        requireProtocol(['deliver', 'complete_then_drop'].includes(step), 'Unknown synthetic submit step')
+        lookups.push(params.input_id)
+        let entry = nativeAdmissions.get(params.input_id)
+        if (entry) {
+          requireProtocol(JSON.stringify(entry.params) === JSON.stringify(params), 'An exact-ID retry must preserve the native payload')
+        } else {
+          const receipt = { admission_id: `completed-${nativeAdmissions.size + 1}`,
+            ref: { profile_id: binding.profile_id, session_id: params.session_id }, sequence: nativeAdmissions.size + 1,
+            status: 'terminal', outcome: 'completed', authority_epoch: 3, execution_generation: 1,
+            result: { final_response: 'The original native answer.' } }
+          entry = { params: copy(params), receipt }
+          nativeAdmissions.set(params.input_id, entry)
+        }
+        if (step === 'complete_then_drop') throw new Error('Response lost after native admission and completion')
+        return copy(entry.receipt)
+      }
+      if (method === 'prompt.receipt') {
+        const entry = [...nativeAdmissions.values()].find(value => value.receipt.admission_id === params.admission_id)
+        requireProtocol(!!entry && entry.params.session_id === params.session_id, 'Receipt lookup must identify a native admission')
+        return copy(entry.receipt)
+      }
+      requireProtocol(false, `Unexpected native method ${method}`)
+    }
+  }
+  const post = async (op, body) => {
+    posts.push({ op, body: copy(body) })
+    if (op === 'context') return { maintainer: copy(binding), action: copy(intent(body.activation_id)) }
+    if (op === 'claim') {
+      requireProtocol(Array.isArray(body.records) && body.records.length === 0, 'Recovery requests have no selected records')
+      const payload = JSON.stringify({ text: body.text, records: body.records })
+      const key = keys.get(body.activation_id)
+      if (key) {
+        requireProtocol(key.payload === payload, 'An activation key must preserve its request')
+        return { dispatch: false, coalesced: key.intentId !== body.activation_id, action: copy(intent(key.intentId)) }
+      }
+      let action = [...intents.values()].find(value => !value.settled)
+      const dispatch = !action
+      if (dispatch) {
+        action = { activation_id: body.activation_id, input_id: `recovery-${body.activation_id}`, target: copy(body.target),
+          text: `Canvas context\n${JSON.stringify({ request: body.text, records: body.records })}`,
+          admission_id: null, settled: false, refusal_reason: null }
+        intents.set(action.activation_id, action)
+      }
+      keys.set(body.activation_id, { payload, intentId: action.activation_id })
+      return { dispatch, coalesced: !dispatch, action: copy(action) }
+    }
+    const action = intent(body.activation_id)
+    requireProtocol(!!action, 'Persistence must address an existing intent')
+    if (op === 'observe') {
+      const receipt = body.receipt
+      requireProtocol(receipt.ref?.profile_id === action.target.profile_id && receipt.ref?.session_id === action.target.session_id &&
+        !!receipt.admission_id && (!action.admission_id || action.admission_id === receipt.admission_id), 'Observed receipt must correlate to the intent')
+      observedReceipts.set(action.activation_id, copy(receipt))
+      action.admission_id = receipt.admission_id
+      action.settled = receipt.status === 'terminal' && ['completed', 'cancelled', 'failed', 'interrupted'].includes(receipt.outcome)
+      return { recorded: true, settled: action.settled }
+    }
+    if (op === 'reject') {
+      requireProtocol(body.input_id === action.input_id && action.admission_id === null && body.reason === 'runtime_draining', 'Refusal must identify the locally unobserved input')
+      action.refusal_reason = body.reason
+      action.settled = true
+      return { recorded: true, settled: true, action: copy(action) }
+    }
+    requireProtocol(false, `Unexpected persistence operation ${op}`)
+  }
+  const build = () => {
+    const adapter = createBotActions({ host,
+      backend: { api() {}, connectionId: ownerRoute.connectionId, profile: ownerRoute.profile }, post,
+      onStatus: value => statuses.push(copy(value)), isActive: () => true, userActivation: () => true })
+    adapters.push(adapter)
+    return adapter
+  }
+  return { adapter: build(), build, submissions, lookups, posts, statuses, protocolErrors,
+    intent: id => copy(intent(id)), intents: () => copy([...intents.values()]),
+    native: () => copy([...nativeAdmissions.values()]), observed: () => copy([...observedReceipts.values()]),
+    destroy: () => adapters.forEach(adapter => adapter.destroy()) }
+}
+
+test('completed admission with a lost response stays unresolved when an exact-ID retry is refused before lookup', async t => {
+  const f = completedAdmissionRecoveryFixture(['complete_then_drop', 'runtime_draining'])
+  t.after(() => f.destroy())
+  const original = { activation_id: 'lost-original', text: 'Explain the original record', records: [] }
+  const initial = await f.adapter.request(original)
+  assert.deepEqual(f.protocolErrors, [])
+  assert.deepEqual(f.submissions, [{ session_id: 'canonical', input_id: 'recovery-lost-original',
+    text: 'Canvas context\n{"request":"Explain the original record","records":[]}' }], 'The actual submit seam must be reached before crediting a regression failure')
+  assert.equal(f.native().length, 1)
+  assert.equal(f.native()[0].receipt.status, 'terminal')
+  assert.equal(f.native()[0].receipt.outcome, 'completed')
+  assert.deepEqual(f.observed(), [])
+  assert.equal(initial.status, 'unknown')
+  const unresolved = f.intent(original.activation_id)
+  assert.equal(unresolved.settled, false)
+  f.adapter.destroy()
+  const reopened = f.build()
+  assert.equal((await reopened.restore()).status, 'unknown')
+  assert.equal(f.submissions.length, 1, 'Reopening must not submit automatically')
+  const retried = await reopened.retry()
+  reopened.destroy()
+  const restored = await f.build().restore()
+  assert.deepEqual(f.protocolErrors, [])
+  assert.equal(f.submissions.length, 2, 'The explicit retry must reach prompt.submit')
+  assert.deepEqual(f.submissions[1], f.submissions[0])
+  assert.deepEqual(f.lookups, [f.submissions[0].input_id], 'Retry refusal must happen before native deduplication lookup')
+  assert.equal(f.native().length, 1)
+  assert.equal(f.native()[0].receipt.outcome, 'completed')
+  assert.deepEqual(f.observed(), [])
+  assert.equal(f.posts.filter(post => post.op === 'reject').length, 0, 'A retry refusal cannot durably reject the earlier uncertain attempt')
+  assert.deepEqual(f.intent(original.activation_id), unresolved)
+  for (const result of [retried, restored]) {
+    assert.equal(result.activationId, original.activation_id)
+    assert.equal(result.status, 'unknown')
+  }
+  assert.ok(f.statuses.every(status => !/\bno request was admitted\b/i.test(status.message)), 'Never tell the user that the completed original request was unadmitted')
+  assert.ok(!f.statuses.some(status => ['failed', 'completed'].includes(status.status)))
+})
+
+test('normal exact-ID retry after response loss recovers the original terminal receipt without another admission', async t => {
+  const f = completedAdmissionRecoveryFixture(['complete_then_drop', 'deliver'])
+  t.after(() => f.destroy())
+  const original = { activation_id: 'recover-original', text: 'Explain the original record', records: [] }
+  const initial = await f.adapter.request(original)
+  assert.deepEqual(f.protocolErrors, [])
+  assert.deepEqual(f.submissions, [{ session_id: 'canonical', input_id: 'recovery-recover-original',
+    text: 'Canvas context\n{"request":"Explain the original record","records":[]}' }])
+  assert.equal(f.native().length, 1)
+  const nativeBefore = f.native()
+  assert.equal(nativeBefore[0].receipt.status, 'terminal')
+  assert.equal(nativeBefore[0].receipt.outcome, 'completed')
+  assert.deepEqual(f.observed(), [])
+  assert.equal(initial.status, 'unknown')
+  assert.equal(f.intent(original.activation_id).settled, false)
+  f.adapter.destroy()
+  const reopened = f.build()
+  assert.equal((await reopened.restore()).status, 'unknown')
+  assert.equal(f.submissions.length, 1)
+  const recovered = await reopened.retry()
+  assert.deepEqual(f.protocolErrors, [])
+  assert.equal(f.submissions.length, 2)
+  assert.deepEqual(f.submissions[1], f.submissions[0])
+  assert.deepEqual(f.lookups, [f.submissions[0].input_id, f.submissions[0].input_id])
+  assert.deepEqual(f.native(), nativeBefore, 'Retry must recover the existing admission without creating another')
+  assert.equal(recovered.activationId, original.activation_id)
+  assert.equal(recovered.status, 'completed')
+  assert.equal(recovered.answer, 'The original native answer.')
+  assert.equal(f.statuses.at(-1).status, 'completed')
+  assert.deepEqual(f.observed(), [{ admission_id: nativeBefore[0].receipt.admission_id,
+    ref: nativeBefore[0].receipt.ref, status: 'terminal', outcome: 'completed' }])
+  assert.equal(f.intent(original.activation_id).settled, true)
+  assert.equal(f.intent(original.activation_id).admission_id, nativeBefore[0].receipt.admission_id)
+  assert.equal(f.intent(original.activation_id).refusal_reason, null)
+  assert.equal(f.posts.filter(post => post.op === 'reject').length, 0)
+  reopened.destroy()
+  const restored = await f.build().restore()
+  assert.equal(restored.status, 'completed')
+  assert.equal(restored.answer, recovered.answer)
+  assert.equal(f.submissions.length, 2)
+  assert.deepEqual(f.protocolErrors, [])
+})
+
+test('a genuine first-attempt runtime refusal settles and permits a fresh different intent', async t => {
+  const f = completedAdmissionRecoveryFixture(['runtime_draining', 'deliver'])
+  t.after(() => f.destroy())
+  const original = { activation_id: 'first-refused', text: 'Explain the original record', records: [] }
+  const refused = await f.adapter.request(original)
+  assert.deepEqual(f.protocolErrors, [])
+  assert.deepEqual(f.submissions, [{ session_id: 'canonical', input_id: 'recovery-first-refused',
+    text: 'Canvas context\n{"request":"Explain the original record","records":[]}' }])
+  assert.deepEqual(f.lookups, [])
+  assert.deepEqual(f.native(), [])
+  assert.deepEqual(f.observed(), [])
+  assert.equal(refused.status, 'failed')
+  assert.equal(f.statuses.at(-1).status, 'failed')
+  assert.deepEqual(f.posts.filter(post => post.op === 'reject').map(post => post.body), [{
+    activation_id: original.activation_id, input_id: f.submissions[0].input_id, reason: 'runtime_draining'
+  }])
+  const settled = f.intent(original.activation_id)
+  assert.equal(settled.settled, true)
+  assert.equal(settled.refusal_reason, 'runtime_draining')
+  assert.equal(settled.admission_id, null)
+  f.adapter.destroy()
+  const reopened = f.build()
+  assert.equal((await reopened.restore()).status, 'failed')
+  assert.equal((await reopened.retry()).status, 'failed')
+  assert.equal(f.submissions.length, 1, 'A settled first-attempt refusal must not be retried')
+  const fresh = await reopened.request({ activation_id: 'fresh-after-draining', text: 'Summarize a different record', records: [] })
+  assert.deepEqual(f.protocolErrors, [])
+  assert.equal(f.submissions.length, 2)
+  assert.deepEqual(f.submissions[1], { session_id: 'canonical', input_id: 'recovery-fresh-after-draining',
+    text: 'Canvas context\n{"request":"Summarize a different record","records":[]}' })
+  assert.notEqual(f.submissions[1].input_id, f.submissions[0].input_id)
+  assert.notEqual(f.submissions[1].text, f.submissions[0].text)
+  assert.equal(fresh.activationId, 'fresh-after-draining')
+  assert.equal(fresh.status, 'completed')
+  assert.equal(f.native().length, 1)
+  assert.deepEqual(f.native()[0].params, f.submissions[1])
+  assert.equal(f.intents().length, 2)
+  assert.equal(f.intent('fresh-after-draining').settled, true)
+  assert.deepEqual(f.intent(original.activation_id), settled)
+  assert.equal(f.posts.filter(post => post.op === 'reject').length, 1)
+})
+
+test('repeated retry refusals preserve uncertainty and block a different activation from dispatching fresh native input', async t => {
+  const f = completedAdmissionRecoveryFixture(['complete_then_drop', 'runtime_draining', 'runtime_draining', 'runtime_draining'])
+  t.after(() => f.destroy())
+  const original = { activation_id: 'repeated-loss', text: 'Explain the original record', records: [] }
+  const initial = await f.adapter.request(original)
+  assert.deepEqual(f.protocolErrors, [])
+  assert.deepEqual(f.submissions, [{ session_id: 'canonical', input_id: 'recovery-repeated-loss',
+    text: 'Canvas context\n{"request":"Explain the original record","records":[]}' }])
+  assert.equal(f.native().length, 1)
+  assert.equal(f.native()[0].receipt.outcome, 'completed')
+  assert.deepEqual(f.observed(), [])
+  assert.equal(initial.status, 'unknown')
+  const unresolved = f.intent(original.activation_id)
+  const nativeBefore = f.native()
+  f.adapter.destroy()
+  let reopened = f.build()
+  const results = [await reopened.restore()]
+  for (let attempt = 0; attempt < 3; attempt++) {
+    results.push(await reopened.retry())
+    reopened.destroy()
+    reopened = f.build()
+    results.push(await reopened.restore())
+  }
+  const submitsBeforeDifferent = copySubmissions()
+  const different = await reopened.request({ activation_id: 'blocked-different', text: 'A different request must wait', records: [] })
+  results.push(different)
+  assert.deepEqual(f.protocolErrors, [])
+  assert.equal(submitsBeforeDifferent.length, 4, 'All three explicit retries must reach prompt.submit after reopening')
+  assert.ok(submitsBeforeDifferent.every(params => JSON.stringify(params) === JSON.stringify(f.submissions[0])), 'Every retry must preserve the original exact ID and text')
+  assert.deepEqual(f.submissions, submitsBeforeDifferent, 'A different activation must not dispatch any fresh native input')
+  assert.deepEqual(f.lookups, [f.submissions[0].input_id])
+  assert.deepEqual(f.native(), nativeBefore)
+  assert.deepEqual(f.observed(), [])
+  assert.equal(f.posts.filter(post => post.op === 'reject').length, 0)
+  assert.deepEqual(f.intents(), [unresolved])
+  assert.equal(different.activationId, original.activation_id)
+  for (const result of results) assert.equal(result.status, 'unknown')
+  assert.ok(!f.statuses.some(status => ['failed', 'completed'].includes(status.status)))
+  assert.ok(f.statuses.every(status => !/\bno request was admitted\b/i.test(status.message)))
+
+  function copySubmissions() { return structuredClone(f.submissions) }
+})

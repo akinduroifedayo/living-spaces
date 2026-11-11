@@ -146,7 +146,7 @@ export function createBotActions({ host, backend, post, onStatus, isActive, user
     const receipt = await rpc(route, 'prompt.receipt', { session_id: current.target.session_id, admission_id: current.admission_id, include_result: true })
     return observe(receipt)
   }
-  async function submit(route) {
+  async function submit(route, attempt) {
     const identity = await rpc(route, 'runtime.describe')
     if (identity.profile_id !== current.target.profile_id) throw failure('Maintaining profile changed before submission', 'unknown')
     alive()
@@ -159,6 +159,7 @@ export function createBotActions({ host, backend, post, onStatus, isActive, user
     } catch (error) {
       if (!error.refusalReason) throw error
       alive()
+      if (attempt === 'retry') throw failure(`${error.message}. The earlier admission remains unknown`, 'unknown')
       try {
         const recorded = await post('reject', {
           activation_id: current.activation_id, input_id: current.input_id, reason: error.refusalReason
@@ -204,7 +205,7 @@ export function createBotActions({ host, backend, post, onStatus, isActive, user
           const status = await check()
           return claim.coalesced ? publish({ ...status, message: `An earlier request is already pending or finished. This activation did not send a new request. ${status.message}` }) : status
         }
-        return submit(route)
+        return submit(route, 'initial')
       }).catch(report).finally(() => { requestInFlight = null })
     },
     retry() {
@@ -213,7 +214,7 @@ export function createBotActions({ host, backend, post, onStatus, isActive, user
         const status = await check()
         if (!current || current.admission_id || current.settled) return status
         const route = await connect(current.target)
-        return submit(route)
+        return submit(route, 'retry')
       }).catch(report)
     },
     destroy() {

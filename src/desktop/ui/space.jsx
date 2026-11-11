@@ -1,5 +1,5 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState, Skeleton, host, useQuery } from '@hermes/plugin-sdk'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Action, Banner, CopyPrompt, DecisionDialog, Drawer, Icon, OwnerChip, SpaceTile, StatusPill, Freshness, DisabledReason, absolute } from './components.jsx'
 import { HistorySheet } from './history.jsx'
 import { PermissionsSheet } from './permissions.jsx'
@@ -7,6 +7,24 @@ import { UpkeepSheet } from './upkeep.jsx'
 import { advanceCursor, diagnosticText, errorText, headerFacts, inFlight, refreshReason, runResult, spacePath, spaceStatus } from './model.mjs'
 import { createSpaceSession } from './session.mjs'
 import { mountSpace } from '../sandbox/index.js'
+
+function useHeaderMode(hasSpace) {
+  const frame = useRef(null)
+  const [mode, setMode] = useState('narrow')
+  useLayoutEffect(() => {
+    const element = frame.current
+    if (!element || typeof ResizeObserver === 'undefined') return
+    const measure = () => {
+      const width = element.getBoundingClientRect().width
+      setMode(width < 600 ? 'narrow' : width < 900 ? 'compact' : 'wide')
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [hasSpace])
+  return [frame, mode]
+}
 
 function SaveStatus({ write, announcement }) {
   const labels = { saving: 'Saving…', saved: `Saved ${write?.at ? absolute(write.at) : ''}`, failed: 'Not saved — this change was rejected', unknown: 'Save outcome unknown — the change may have been stored', conflict: 'Conflict — this record changed elsewhere' }
@@ -25,6 +43,7 @@ export function SpaceView({ ctx, sid }) {
   const base = spacePath(sid)
   const detail = useQuery({ queryKey: ['living-spaces', ctx.queryScope || null, sid, 'detail'], queryFn: () => ctx.rest(base), refetchInterval: 2000, notifyOnChangeProps: ['data', 'error', 'dataUpdatedAt'] })
   const space = detail.data
+  const [frame, headerMode] = useHeaderMode(!!space)
   const [sheet, setSheet] = useState(null)
   const [confirmation, setConfirmation] = useState(null)
   const [reload, setReload] = useState(0)
@@ -131,17 +150,27 @@ export function SpaceView({ ctx, sid }) {
   const upkeep = space.upkeep
   const busy = refreshPending || inFlight(lastRun?.status) || status === 'updating'
   const reason = refreshReason(space)
-  const opener = () => document.activeElement?.getAttribute('role') === 'menuitem' ? overflow.current : document.activeElement
+  const opener = () => {
+    const element = document.activeElement?.getAttribute('role') === 'menuitem' ? overflow.current : document.activeElement
+    return { focus: () => {
+      if (element?.isConnected) {
+        element.focus()
+        if (document.activeElement === element) return
+      }
+      overflow.current?.focus()
+    } }
+  }
   const openSheet = (kind, tab) => setSheet({ kind, tab, returnFocus: opener() })
   const openHistory = tab => openSheet('history', tab || 'runs')
   const askConfirmation = kind => { confirmationTrigger.current = opener(); setConfirmation(kind) }
   const crashMessage = diagnosticText(crash || space.attention?.message || 'The Space hit repeated runtime errors.')
-  return <div className="ls-frame" data-testid="space-view"><header className="ls-framebar"><Action icon="chevron-left" onClick={() => host.navigate('/spaces')}>Spaces</Action><div className="ls-identity"><SpaceTile space={space} small /><div><div className="ls-name-row"><h1>{space.name}</h1><StatusPill status={status} /></div><div className="ls-frame-meta"><OwnerChip owner={space.owner} /><span> · <Freshness facts={headerFacts(space)} /></span></div></div></div>
+  return <div ref={frame} className="ls-frame" data-header-mode={headerMode} data-testid="space-view"><header className="ls-framebar"><Action icon="chevron-left" onClick={() => host.navigate('/spaces')}>Spaces</Action><div className="ls-identity"><SpaceTile space={space} small /><div><div className="ls-name-row"><h1>{space.name}</h1><StatusPill status={status} /></div><div className="ls-frame-meta"><OwnerChip owner={space.owner} /><span> · <Freshness facts={headerFacts(space)} /></span></div></div></div>
     <div className="ls-frame-actions"><SaveStatus write={write} announcement={announcement} />
       {!building && <div className="ls-upkeep-action"><Action icon="watch" onClick={() => openSheet('upkeep')}>{!upkeep ? 'Upkeep: none' : upkeep.missing ? 'Upkeep: job missing' : upkeep.enabled === true ? 'Upkeep: on' : upkeep.enabled === false ? 'Upkeep: paused' : 'Upkeep'}</Action></div>}
       <span className="ls-wide-only"><Action onClick={() => openHistory()}>History</Action></span>
+      {space.grants?.some(grant => grant.capability === 'net' && grant.status === 'granted') && <Action icon="globe" onClick={() => openSheet('permissions')}>Internet on</Action>}
       {!building && <><Action onClick={() => openSheet('permissions')}>Permissions</Action><DisabledReason reason={reason}><Action primary icon="refresh" aria-busy={busy} aria-disabled={!!reason || busy} title={reason || undefined} onClick={refresh}>{busy ? 'Refreshing…' : 'Refresh now'}</Action></DisabledReason></>}
-      <DropdownMenu><DropdownMenuTrigger asChild><Action ref={overflow} aria-label="More Space actions" icon="ellipsis" /></DropdownMenuTrigger><DropdownMenuContent align="end"><div className="ls-compact-only"><DropdownMenuItem onSelect={() => openHistory()}>History</DropdownMenuItem></div>{!building && <><div className="ls-upkeep-compact"><DropdownMenuItem onSelect={() => openSheet('upkeep')}>Upkeep</DropdownMenuItem></div><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => act('pin', { pinned: !space.pinned })}>{space.pinned ? 'Unpin Space' : 'Pin Space'}</DropdownMenuItem><DropdownMenuItem onSelect={() => archived ? act('unarchive') : askConfirmation('archive')}>{archived ? 'Restore Space' : 'Archive Space…'}</DropdownMenuItem>{archived && <DropdownMenuItem onSelect={() => askConfirmation('delete')}>Delete…</DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
+      <DropdownMenu><DropdownMenuTrigger asChild><Action ref={overflow} className="ls-action ls-overflow" aria-label="More Space actions" icon="ellipsis" /></DropdownMenuTrigger><DropdownMenuContent align="end">{headerMode !== 'wide' && <DropdownMenuItem onSelect={() => openHistory()}>History</DropdownMenuItem>}{!building && <>{headerMode === 'narrow' && <DropdownMenuItem onSelect={() => openSheet('upkeep')}>Upkeep</DropdownMenuItem>}<DropdownMenuSeparator /><DropdownMenuItem onSelect={() => act('pin', { pinned: !space.pinned })}>{space.pinned ? 'Unpin Space' : 'Pin Space'}</DropdownMenuItem><DropdownMenuItem onSelect={() => archived ? act('unarchive') : askConfirmation('archive')}>{archived ? 'Restore Space' : 'Archive Space…'}</DropdownMenuItem>{archived && <DropdownMenuItem onSelect={() => askConfirmation('delete')}>Delete…</DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
     </div></header>
     {botAction && <Banner kind={['failed', 'offline', 'unknown'].includes(botAction.status) ? 'failed' : undefined} title={`Bot request: ${botAction.status}`} actions={<>
       <Action onClick={() => controller.current?.checkAction()}>Check bot status</Action>

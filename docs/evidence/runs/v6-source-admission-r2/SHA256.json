@@ -1,0 +1,20 @@
+{
+  "registration-red.log": "32fb57e84c7ff530f8d47fd2fdd73b045df523e98e62c3736d98e7dc060e9ec4",
+  "adapters-green.log": "61f84562fa87a1accd2059b91e29f97097ba96f7df07a2168a74ff8fc83eaf05",
+  "README.md": "4a5ee6cc8a529a52245a1d6dbe52c562bcc577ec97e12c523985a813c0c938eb",
+  "registration-scope-audit.json": "3d420221c477def4ece3a4824e73fc782865dc058cb9ad63ada93c7dbfb08b89",
+  "validator-green/source-manifest.json": "fd72881c573990e6333e56211d0b0b79029b785f04909cfbcd5e99569378ddfd",
+  "validator-green/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "validator-green/raw.json": "9e0a789f6315f8288402966cb4a65618bb28a3ad7f3dd5ec1c55e6ad97879415",
+  "validator-red/source-manifest.json": "fa1d3d0c8864c23e0c5f08e98c3c0c9013fc7f8d1e3cac036c6393d54cb971e8",
+  "validator-red/stderr.log": "037768b6a3becca327686784103d28bba65ca30fc836e49c6d75aeb1e963c80d",
+  "validator-red/raw.json": "f7e0d61a83dcbc58b96d734aff5e57bc5a0c47f27786ab913cff027d391ca2e6",
+  "gate-74b9a23/standalone-node.log": "56c7ff217db2765a06ba7c7705338ba78e6f66cfe2c44b613e6687d2f0ef645c",
+  "gate-74b9a23/build-renderer.log": "d8760763be63067f00789fcf42648cb7e89259b37690e733415676ec0b8b6596",
+  "gate-74b9a23/node.log": "5b60a806aff6d7a686430bc9fc0c34969118db334bf14271c08c303e4d56d317",
+  "gate-74b9a23/build-sandbox.log": "c6507b4cca84bf6465469ea552e9949245231d2b66a9a803937211f712a21e5c",
+  "gate-74b9a23/graph-gate.log": "8b4c239b9212b9d8107e4203897a6f67bc0189952178e9f2f60b7814fc1e97c7",
+  "gate-74b9a23/reference.log": "230a2fe69b54ce80d285822ab6db98cb09aad972233799d4355989029b4b232f",
+  "gate-74b9a23/python.log": "c75016fea6829c51f517ea2b98ea4b2aa872ca4cedc6d4396fc6f730f337b22b",
+  "gate-74b9a23/receipt.json": "b002bf4968c65941e7c9ac20a7eeda8797d0fedc947d1dbecaf785793096f133"
+}

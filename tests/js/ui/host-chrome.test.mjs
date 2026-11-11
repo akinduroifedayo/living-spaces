@@ -374,3 +374,184 @@ test('a requested Internet switch stays Off and cannot bypass Approve or Deny', 
     assert.equal(calls, 1)
   } finally { await cleanup() }
 })
+
+function dialogWithFocusLifecycle(DialogContent) {
+  return function FocusDialogContent(props) {
+    React.useEffect(() => {
+      props.onOpenAutoFocus?.({ preventDefault() {} })
+      return () => props.onCloseAutoFocus?.({ preventDefault() {} })
+    }, [])
+    return React.createElement(DialogContent, props)
+  }
+}
+
+for (const status of [null, 'requested', 'denied', 'revoked', 'granted']) {
+  test(`Space header shows Internet on only for net granted: ${status ?? 'absent'}`, async () => {
+    setup()
+    data.detail = space({ grants: [{ capability: 'logs', status: 'granted' }, ...(status ? [{ capability: 'net', status }] : [])] })
+    try {
+      await render(SpaceView, { sid: 'demo-space', ctx: { rest: async () => ({}) } })
+      const header = document.querySelector('.ls-framebar')
+      const controls = [...header.querySelectorAll('button')].filter(button => button.textContent.trim() === 'Internet on')
+      assert.equal(controls.length, status === 'granted' ? 1 : 0)
+      if (status === 'granted') {
+        assert.equal(controls[0].disabled, false)
+        assert.notEqual(controls[0].getAttribute('aria-disabled'), 'true')
+      } else assert.doesNotMatch(header.textContent, /Internet on/)
+    } finally { await cleanup() }
+  })
+}
+
+for (const label of ['Permissions', 'Internet on']) {
+  test(`${label} opens existing Permissions and returns focus to its opener`, async () => {
+    setup()
+    data.detail = space({ grants: [{ capability: 'net', status: 'granted' }] })
+    data.grants = { grants: data.detail.grants }
+    const originalDialogContent = sdk.DialogContent
+    sdk.DialogContent = dialogWithFocusLifecycle(originalDialogContent)
+    try {
+      await render(SpaceView, { sid: 'demo-space', ctx: { rest: async () => ({}) } })
+      const opener = [...document.querySelectorAll('.ls-framebar button')].find(button => button.textContent.trim() === label)
+      assert.ok(opener, label)
+      opener.focus()
+      await click(label)
+      const dialogs = document.querySelectorAll('[role="dialog"]')
+      assert.equal(dialogs.length, 1)
+      assert.equal(dialogs[0].querySelector('h2').textContent, 'Permissions · Demo')
+      assert.equal(dialogs[0].querySelector('[role="switch"]').getAttribute('aria-checked'), 'true')
+      const close = [...dialogs[0].querySelectorAll('button')].find(button => button.textContent.trim() === 'Close')
+      assert.equal(document.activeElement, close)
+      await click('Close')
+      assert.equal(document.querySelector('[role="dialog"]'), null)
+      assert.equal(document.activeElement, opener)
+    } finally {
+      try { await cleanup() } finally { sdk.DialogContent = originalDialogContent }
+    }
+  })
+}
+
+for (const status of [null, 'requested', 'denied', 'revoked']) {
+  test(`Space detail update removes stale Internet on when net becomes ${status ?? 'absent'}`, async () => {
+    setup()
+    const otherGrant = { capability: 'logs', status: 'granted' }
+    data.detail = space({ grants: [otherGrant, { capability: 'net', status: 'granted' }] })
+    const viewProps = { sid: 'demo-space', ctx: { rest: async () => ({}) } }
+    try {
+      await render(SpaceView, viewProps)
+      assert.ok([...document.querySelectorAll('.ls-framebar button')].some(button => button.textContent.trim() === 'Internet on'))
+      data.detail = { ...data.detail, grants: [otherGrant, ...(status ? [{ capability: 'net', status }] : [])] }
+      await render(SpaceView, viewProps)
+      assert.doesNotMatch(document.querySelector('.ls-framebar').textContent, /Internet on/)
+    } finally { await cleanup() }
+  })
+}
+
+test('revoking Internet in Permissions refreshes Space detail and removes Internet on', async () => {
+  setup()
+  data.detail = space({ grants: [{ capability: 'net', status: 'granted' }] })
+  data.grants = { grants: data.detail.grants }
+  nextData.detail = { ...data.detail, grants: [{ capability: 'net', status: 'revoked' }] }
+  nextData.grants = { grants: nextData.detail.grants }
+  const calls = []
+  try {
+    await render(SpaceView, { sid: 'demo-space', ctx: { rest: async (path, request) => { calls.push({ path, request }); return {} } } })
+    await click('Internet on')
+    const toggle = document.querySelector('[role="switch"]')
+    assert.equal(toggle.getAttribute('aria-checked'), 'true')
+    await act(async () => toggle.click())
+    assert.deepEqual(calls.filter(call => call.path === '/spaces/demo-space/grants/net'), [{ path: '/spaces/demo-space/grants/net', request: { method: 'POST', body: { decision: 'revoke' } } }])
+    assert.deepEqual(refetches, ['grants', 'detail'])
+    assert.equal(toggle.getAttribute('aria-checked'), 'false')
+    await render(SpaceView, { sid: 'demo-space', ctx: { rest: async (path, request) => { calls.push({ path, request }); return {} } } })
+    assert.doesNotMatch(document.querySelector('.ls-framebar').textContent, /Internet on/)
+  } finally { await cleanup() }
+})
+
+for (const [label, title, startWidth, endWidth, hidden] of [
+  ['History', 'History & revisions', 900, 640, true],
+  ['History', 'History & revisions', 1000, 900, false],
+  ['Upkeep: none', 'Upkeep · Demo', 640, 599, true],
+  ['Upkeep: none', 'Upkeep · Demo', 900, 600, false]
+]) {
+  test(`${label} drawer returns focus to ${hidden ? 'overflow when its connected opener is hidden' : 'its still-visible opener'} after panel resize ${startWidth} to ${endWidth}`, async t => {
+    setup()
+    data.detail = space()
+    data.runs = []
+    data.upkeep = payload({ link: null, job: null })
+    const originalDialogContent = sdk.DialogContent
+    const globals = ['ResizeObserver', 'getComputedStyle'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)])
+    const stylesheet = document.createElement('style')
+    let panelWidth = startWidth
+    let resize
+    const originalRect = dom.window.Element.prototype.getBoundingClientRect
+    const hasRenderedBox = element => {
+      if (!element.isConnected) return false
+      for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
+        const style = window.getComputedStyle(ancestor)
+        if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') return false
+      }
+      return true
+    }
+    try {
+      stylesheet.textContent = load(resolve(root, 'src/desktop/ui/styles.js')).styles
+      document.head.append(stylesheet)
+      globalThis.getComputedStyle = window.getComputedStyle.bind(window)
+      globalThis.ResizeObserver = class {
+        constructor(callback) { resize = callback }
+        observe() {}
+        disconnect() {}
+      }
+      t.mock.method(dom.window.Element.prototype, 'getBoundingClientRect', function () {
+        return this.classList.contains('ls-frame') ? new dom.window.DOMRect(0, 0, panelWidth, 800) : originalRect.call(this)
+      })
+      sdk.DialogContent = dialogWithFocusLifecycle(originalDialogContent)
+      await render(SpaceView, { sid: 'demo-space', ctx: { rest: async () => ({}) } })
+      const opener = [...document.querySelectorAll('.ls-framebar button')].find(button => button.textContent.trim() === label)
+      const overflow = document.querySelector('button[aria-label="More Space actions"]')
+      assert.ok(opener, label)
+      assert.ok(overflow)
+      for (const element of [opener, overflow]) {
+        const focus = element.focus
+        t.mock.method(element, 'getClientRects', () => hasRenderedBox(element) ? [new dom.window.DOMRect(0, 0, 100, 32)] : [])
+        t.mock.method(element, 'getBoundingClientRect', () => hasRenderedBox(element) ? new dom.window.DOMRect(0, 0, 100, 32) : new dom.window.DOMRect())
+        t.mock.method(element, 'focus', function (...args) {
+          if (hasRenderedBox(this)) focus.apply(this, args)
+        })
+      }
+      assert.ok(hasRenderedBox(opener), 'the direct opener is visible before opening the drawer')
+      opener.focus()
+      assert.equal(document.activeElement, opener)
+      await click(label)
+      const dialog = document.querySelector('[role="dialog"]')
+      assert.ok(dialog)
+      assert.equal(dialog.querySelector('h2').textContent, title)
+      const close = [...dialog.querySelectorAll('button')].find(button => button.textContent.trim() === 'Close')
+      assert.ok(close)
+      assert.equal(document.activeElement, close)
+      assert.equal(typeof resize, 'function')
+      await act(async () => { panelWidth = endWidth; resize() })
+      assert.equal(document.querySelector('[role="dialog"]'), dialog, 'the drawer stays open during the panel resize')
+      assert.equal(opener.isConnected, true, 'responsive CSS retains the original opener in the document')
+      assert.equal(hasRenderedBox(opener), !hidden, 'actual responsive CSS determines opener visibility')
+      assert.equal(opener.getClientRects().length, hidden ? 0 : 1, 'JSDOM layout is modeled for hidden and visible controls')
+      assert.ok(hasRenderedBox(overflow), 'overflow remains a visible focus destination')
+      if (hidden) {
+        opener.focus()
+        assert.equal(document.activeElement, close, 'modeled browser focus ignores an opener under display:none')
+      }
+      await click('Close')
+      assert.equal(document.querySelector('[role="dialog"]'), null)
+      assert.ok(document.activeElement === (hidden ? overflow : opener), 'drawer close restores focus to the visible destination')
+    } finally {
+      try { await cleanup() } finally {
+        sdk.DialogContent = originalDialogContent
+        t.mock.restoreAll()
+        stylesheet.remove()
+        for (const [key, descriptor] of globals) {
+          if (descriptor) Object.defineProperty(globalThis, key, descriptor)
+          else delete globalThis[key]
+        }
+      }
+    }
+  })
+}
