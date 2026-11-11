@@ -1,0 +1,171 @@
+{
+  "schema": 1,
+  "libraries": {
+    "htm": {
+      "version": "3.1.1",
+      "license": "Apache-2.0",
+      "files": [
+        "vendor/htm.mjs",
+        "vendor/licenses/htm-LICENSE"
+      ],
+      "imports": {
+        "htm": "vendor/htm.mjs"
+      }
+    },
+    "lucide": {
+      "version": "1.71.0",
+      "license": "ISC AND MIT",
+      "files": [
+        "vendor/lucide.mjs",
+        "vendor/licenses/lucide-LICENSE"
+      ],
+      "imports": {
+        "lucide": "vendor/lucide.mjs"
+      }
+    },
+    "font:inter": {
+      "version": "5.3.0",
+      "license": "OFL-1.1",
+      "files": [
+        "vendor/fonts/inter-latin-400-normal.woff2",
+        "vendor/fonts/inter-latin-700-normal.woff2",
+        "vendor/fonts/inter.css",
+        "vendor/licenses/inter-LICENSE"
+      ]
+    },
+    "font:dm-sans": {
+      "version": "5.3.0",
+      "license": "OFL-1.1",
+      "files": [
+        "vendor/fonts/dm-sans-latin-400-normal.woff2",
+        "vendor/fonts/dm-sans-latin-700-normal.woff2",
+        "vendor/fonts/dm-sans.css",
+        "vendor/licenses/dm-sans-LICENSE"
+      ]
+    }
+  },
+  "files": {
+    "vendor/htm.mjs": {
+      "sha256": "ab33dd3f38059b9be4d5f5350128eefb2356639c4e0bbe9d9e8b3ba75847e9e4",
+      "bytes": 1207,
+      "source": "dist/htm.mjs",
+      "package": "htm",
+      "version": "3.1.1",
+      "license": "Apache-2.0"
+    },
+    "vendor/licenses/htm-LICENSE": {
+      "sha256": "740725f7252e750af735d0028cc534970772f513331e9f68150fede8fb3ce00f",
+      "bytes": 11341,
+      "source": "LICENSE",
+      "package": "htm",
+      "version": "3.1.1",
+      "license": "Apache-2.0"
+    },
+    "vendor/lucide.mjs": {
+      "sha256": "0c896aae847a48bc572d62e3a5c6ab6c467287539338a415836d48b73c1230f5",
+      "bytes": 1122163,
+      "source": "dist/esm/lucide.mjs (bundled with esbuild)",
+      "package": "lucide",
+      "version": "1.71.0",
+      "license": "ISC AND MIT"
+    },
+    "vendor/licenses/lucide-LICENSE": {
+      "sha256": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57",
+      "bytes": 3208,
+      "source": "LICENSE",
+      "package": "lucide",
+      "version": "1.71.0",
+      "license": "ISC AND MIT"
+    },
+    "vendor/fonts/inter-latin-400-normal.woff2": {
+      "sha256": "8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc",
+      "bytes": 23664,
+      "source": "files/inter-latin-400-normal.woff2",
+      "package": "@fontsource/inter",
+      "version": "5.3.0",
+      "license": "OFL-1.1"
+    },
+    "vendor/fonts/inter-latin-700-normal.woff2": {
+      "sha256": "6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491",
+      "bytes": 24356,
+      "source": "files/inter-latin-700-normal.woff2",
+      "package": "@fontsource/inter",
+      "version": "5.3.0",
+      "license": "OFL-1.1"
+    },
+    "vendor/fonts/inter.css": {
+      "sha256": "e282cfb4c9ddea77655d9b8f373298285c5299cbd18b64fc719d8ac93b13e298",
+      "bytes": 331,
+      "source": "latin-400.css + latin-700.css (adapted relative URLs)",
+      "package": "@fontsource/inter",
+      "version": "5.3.0",
+      "license": "OFL-1.1"
+    },
+    "vendor/licenses/inter-LICENSE": {
+      "sha256": "3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345",
+      "bytes": 4477,
+      "source": "LICENSE",
+      "package": "@fontsource/inter",
+      "version": "5.3.0",
+      "license": "OFL-1.1"
+    },
+    "vendor/fonts/dm-sans-latin-400-normal.woff2": {
+      "sha256": "4ab51eb2cd7305d177187908d6397474d4520663f6c6e572feb0a64f4fa80006",
+      "bytes": 14200,
+      "source": "files/dm-sans-latin-400-normal.woff2",
+      "package": "@fontsource/dm-sans",
+      "version": "5.3.0",
+      "license": "OFL-1.1"
+    },
+    "vendor/fonts/dm-sans-latin-700-normal.woff2": {
+      "sha256": "35c5efa0e5daa52ee5c6500f5be354bf751fb65c4e49e1d6806c6eb5883e8fe9",
+      "bytes": 14348,
+      "source": "files/dm-sans-latin-700-normal.woff2",
+      "package": "@fontsource/dm-sans",
+      "version": "5.3.0",
+      "license": "OFL-1.1"
+    },
+    "vendor/fonts/dm-sans.css": {
+      "sha256": "7a48c964a4fd5202e976251ca59208a891deeb8fc64229e44066cde246b1ad97",
+      "bytes": 339,
+      "source": "latin-400.css + latin-700.css (adapted relative URLs)",
+      "package": "@fontsource/dm-sans",
+      "version": "5.3.0",
+      "license": "OFL-1.1"
+    },
+    "vendor/licenses/dm-sans-LICENSE": {
+      "sha256": "6fbd040a29c2037a765dfb9f2561e9965b5c95c6dcb5dce516089d63d5f17af7",
+      "bytes": 4502,
+      "source": "LICENSE",
+      "package": "@fontsource/dm-sans",
+      "version": "5.3.0",
+      "license": "OFL-1.1"
+    }
+  },
+  "sources": [
+    {
+      "name": "htm",
+      "version": "3.1.1",
+      "url": "https://registry.npmjs.org/htm/-/htm-3.1.1.tgz",
+      "integrity": "sha512-983Vyg8NwUE7JkZ6NmOqpCZ+sh1bKv2iYTlUkzlWmA5JD2acKoxd4KVxbMmxX/85mtfdnDmTFoNKcg5DGAvxNQ=="
+    },
+    {
+      "name": "lucide",
+      "version": "1.71.0",
+      "url": "https://registry.npmjs.org/lucide/-/lucide-1.71.0.tgz",
+      "integrity": "sha512-n6KHs0byHCG6fAQKBb+UhZtrUZM6v0ithDErPte6PkWkSijH0tPQoETnMobubUSj4okhAMeE6xUc/5S8LndrRg=="
+    },
+    {
+      "name": "@fontsource/inter",
+      "version": "5.3.0",
+      "url": "https://registry.npmjs.org/@fontsource/inter/-/inter-5.3.0.tgz",
+      "integrity": "sha512-RofMylZmjlJEfELXeNHFWBRcSs75rGU/6bV2S2jfnvv/3rPXPGe0LgUJTklcHZ9lM4OZmAVFhcJPnACfb91A3g=="
+    },
+    {
+      "name": "@fontsource/dm-sans",
+      "version": "5.3.0",
+      "url": "https://registry.npmjs.org/@fontsource/dm-sans/-/dm-sans-5.3.0.tgz",
+      "integrity": "sha512-lYJtMXXO28q1z+yz+z8XKd0s4hXaa9QdkETzkyD760sidCv5heI86weYA0sx0Nc4pAMAQTUuyf4gO44cYKKS9g=="
+    }
+  ]
+}
