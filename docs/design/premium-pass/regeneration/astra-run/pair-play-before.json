@@ -1,0 +1,143 @@
+{
+  "spaces": [
+    {
+      "id": "pair-play",
+      "name": "Pair Play",
+      "description": "A small memory-match card game with six fruit pairs, saved rounds and a history of completed games.",
+      "owner": "Hermes",
+      "status": "active",
+      "head_rev": 5,
+      "data_version": 1,
+      "accent": "green",
+      "icon": "layers",
+      "pinned": 0,
+      "last_opened_at": 1794368709.050772,
+      "created_at": 1794351729.467991,
+      "updated_at": 1794388941.953768,
+      "archived_at": null
+    }
+  ],
+  "records": [
+    {
+      "space": "pair-play",
+      "collection": "game",
+      "id": "current",
+      "data": "{\"version\":1,\"roundId\":\"round-1794368722712-yk3hdt\",\"deck\":[\"\ud83c\udf4a\",\"\ud83c\udf53\",\"\ud83c\udf49\",\"\ud83c\udf53\",\"\ud83c\udf47\",\"\ud83c\udf4e\",\"\ud83c\udf49\",\"\ud83c\udf4a\",\"\ud83c\udf4e\",\"\ud83c\udf4c\",\"\ud83c\udf47\",\"\ud83c\udf4c\"],\"revealed\":[],\"matched\":[],\"turns\":1,\"status\":\"playing\",\"startedAt\":1794368722712}",
+      "source": null,
+      "source_meta": null,
+      "rev": 15,
+      "created_at": 1794352040.257039,
+      "updated_at": 1794368726.304748,
+      "updated_by": "app"
+    },
+    {
+      "space": "pair-play",
+      "collection": "settings",
+      "id": "prefs",
+      "data": "{\"cardBack\":\"star\",\"showNames\":true}",
+      "source": null,
+      "source_meta": null,
+      "rev": 2,
+      "created_at": 1794352680.655587,
+      "updated_at": 1794352680.925929,
+      "updated_by": "app"
+    }
+  ],
+  "revisions": [
+    {
+      "space": "pair-play",
+      "rev": 1,
+      "parent_rev": null,
+      "kind": "create",
+      "restored_from": null,
+      "manifest": "{\"schema\":1,\"name\":\"Pair Play\",\"description\":\"A small memory-match card game with six fruit pairs, saved rounds and a history of completed games.\",\"entry\":\"index.html\",\"imports\":{\"preact\":\"vendor/preact.mjs\",\"preact/hooks\":\"vendor/hooks.mjs\",\"spaces-kit\":\"kit/spaces-kit.mjs\"},\"accent\":\"green\",\"icon\":\"layers\",\"data\":{\"version\":1,\"collections\":{\"game\":{\"description\":\"The single in-progress or just-finished round (id: current)\"},\"rounds\":{\"description\":\"Completed rounds with turn counts\"},\"settings\":{\"description\":\"Player settings (id: prefs)\"}},\"migrations\":[]}}",
+      "files": "{\"index.html\":\"495a714e35dc6108fc35671ceca245a4a2ca686a15df23a0f44570f7338a8ff2\",\"game.js\":\"0c5421e6ffb0f6c8cdeb063b517ce43f6c1c0c70fe5ecaa21752c4e03867abe7\",\"store.js\":\"0f0a66f4dca9c95ad76b567e6a3ee434fdea39e1036b94c2b895e52958e96335\",\"app.js\":\"51bd7f4f9416de61977900beaf96b0755df8a6c6d3f6965dab2d29122e2580e4\",\"views/play.js\":\"35e5b7cb7e75d88fb7ca4778d33e1b8fb538154f573a2711d079fa118d016b73\",\"views/history.js\":\"a719a67d1c08fddd30b6f84073bc444da27ba490c666f5377f18a9ba29d946af\",\"styles.css\":\"b10c0132ad3e42d28f8dfbfe9316d0b5c82f280a6690f03c575ac98aa435d16d\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"7fcaec571f9a66fd1a8b05828a54852853f30dede76e3b9cd089417f8b12f22f\"}",
+      "author": "agent:Hermes",
+      "summary": "Created",
+      "created_at": 1794351729.469976
+    },
+    {
+      "space": "pair-play",
+      "rev": 2,
+      "parent_rev": 1,
+      "kind": "edit",
+      "restored_from": null,
+      "manifest": "{\"schema\":1,\"name\":\"Pair Play\",\"description\":\"A small memory-match card game with six fruit pairs, saved rounds and a history of completed games.\",\"entry\":\"index.html\",\"imports\":{\"preact\":\"vendor/preact.mjs\",\"preact/hooks\":\"vendor/hooks.mjs\",\"spaces-kit\":\"kit/spaces-kit.mjs\"},\"accent\":\"green\",\"icon\":\"layers\",\"data\":{\"version\":1,\"collections\":{\"game\":{\"description\":\"The single in-progress or just-finished round (id: current)\"},\"rounds\":{\"description\":\"Completed rounds with turn counts\"},\"settings\":{\"description\":\"Player settings (id: prefs)\"}},\"migrations\":[]}}",
+      "files": "{\"index.html\":\"60525d2c7a0ab547c986fb1cdac48fb2e5bf8312f1d00cc4828842f19d2b723e\",\"game.js\":\"0c5421e6ffb0f6c8cdeb063b517ce43f6c1c0c70fe5ecaa21752c4e03867abe7\",\"store.js\":\"0f0a66f4dca9c95ad76b567e6a3ee434fdea39e1036b94c2b895e52958e96335\",\"app.js\":\"342d98d61cb75ed937fb8e9869ddaf4b522dcf1ebf9c45299f18158f84242ca3\",\"views/play.js\":\"35e5b7cb7e75d88fb7ca4778d33e1b8fb538154f573a2711d079fa118d016b73\",\"views/history.js\":\"a719a67d1c08fddd30b6f84073bc444da27ba490c666f5377f18a9ba29d946af\",\"styles.css\":\"b10c0132ad3e42d28f8dfbfe9316d0b5c82f280a6690f03c575ac98aa435d16d\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"7fcaec571f9a66fd1a8b05828a54852853f30dede76e3b9cd089417f8b12f22f\",\"views/progress.js\":\"3383a6a8cb121b8c899d04f82e4221f075dc6783963b3129610fbcd2188f1876\",\"progress.css\":\"da73ec2d8c135d614f676822b3b98757ec2aed155c3ad1cdca01477fe3708ba5\"}",
+      "author": "agent:Hermes",
+      "summary": "Add Progress view (current round, totals, personal best); code only",
+      "created_at": 1794352921.517974
+    },
+    {
+      "space": "pair-play",
+      "rev": 3,
+      "parent_rev": 2,
+      "kind": "edit",
+      "restored_from": null,
+      "manifest": "{\"schema\":1,\"name\":\"Pair Play\",\"description\":\"A small memory-match card game with six fruit pairs, saved rounds and a history of completed games.\",\"entry\":\"index.html\",\"imports\":{\"preact\":\"vendor/preact.mjs\",\"preact/hooks\":\"vendor/hooks.mjs\",\"spaces-kit\":\"kit/spaces-kit.mjs\"},\"accent\":\"green\",\"icon\":\"layers\",\"data\":{\"version\":1,\"collections\":{\"game\":{\"description\":\"The single in-progress or just-finished round (id: current)\"},\"rounds\":{\"description\":\"Completed rounds with turn counts\"},\"settings\":{\"description\":\"Player settings (id: prefs)\"}},\"migrations\":[]}}",
+      "files": "{\"index.html\":\"60525d2c7a0ab547c986fb1cdac48fb2e5bf8312f1d00cc4828842f19d2b723e\",\"game.js\":\"0c5421e6ffb0f6c8cdeb063b517ce43f6c1c0c70fe5ecaa21752c4e03867abe7\",\"store.js\":\"0f0a66f4dca9c95ad76b567e6a3ee434fdea39e1036b94c2b895e52958e96335\",\"app.js\":\"342d98d61cb75ed937fb8e9869ddaf4b522dcf1ebf9c45299f18158f84242ca3\",\"views/play.js\":\"35e5b7cb7e75d88fb7ca4778d33e1b8fb538154f573a2711d079fa118d016b73\",\"views/history.js\":\"a719a67d1c08fddd30b6f84073bc444da27ba490c666f5377f18a9ba29d946af\",\"styles.css\":\"b10c0132ad3e42d28f8dfbfe9316d0b5c82f280a6690f03c575ac98aa435d16d\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"7fcaec571f9a66fd1a8b05828a54852853f30dede76e3b9cd089417f8b12f22f\",\"views/progress.js\":\"9b4ca658381e0dab94a9908c38cf617a9fb0f95a34a356bedb29210c5676ed4a\",\"progress.css\":\"da73ec2d8c135d614f676822b3b98757ec2aed155c3ad1cdca01477fe3708ba5\"}",
+      "author": "harness-fixture",
+      "summary": "Acceptance fixture: make Progress throw",
+      "created_at": 1794362756.1502452
+    },
+    {
+      "space": "pair-play",
+      "rev": 4,
+      "parent_rev": 3,
+      "kind": "edit",
+      "restored_from": null,
+      "manifest": "{\"schema\":1,\"name\":\"Pair Play\",\"description\":\"A small memory-match card game with six fruit pairs, saved rounds and a history of completed games.\",\"entry\":\"index.html\",\"imports\":{\"preact\":\"vendor/preact.mjs\",\"preact/hooks\":\"vendor/hooks.mjs\",\"spaces-kit\":\"kit/spaces-kit.mjs\"},\"accent\":\"green\",\"icon\":\"layers\",\"data\":{\"version\":1,\"collections\":{\"game\":{\"description\":\"The single in-progress or just-finished round (id: current)\"},\"rounds\":{\"description\":\"Completed rounds with turn counts\"},\"settings\":{\"description\":\"Player settings (id: prefs)\"}},\"migrations\":[]}}",
+      "files": "{\"index.html\":\"60525d2c7a0ab547c986fb1cdac48fb2e5bf8312f1d00cc4828842f19d2b723e\",\"game.js\":\"0c5421e6ffb0f6c8cdeb063b517ce43f6c1c0c70fe5ecaa21752c4e03867abe7\",\"store.js\":\"0f0a66f4dca9c95ad76b567e6a3ee434fdea39e1036b94c2b895e52958e96335\",\"app.js\":\"342d98d61cb75ed937fb8e9869ddaf4b522dcf1ebf9c45299f18158f84242ca3\",\"views/play.js\":\"35e5b7cb7e75d88fb7ca4778d33e1b8fb538154f573a2711d079fa118d016b73\",\"views/history.js\":\"a719a67d1c08fddd30b6f84073bc444da27ba490c666f5377f18a9ba29d946af\",\"styles.css\":\"b10c0132ad3e42d28f8dfbfe9316d0b5c82f280a6690f03c575ac98aa435d16d\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"7fcaec571f9a66fd1a8b05828a54852853f30dede76e3b9cd089417f8b12f22f\",\"views/progress.js\":\"3383a6a8cb121b8c899d04f82e4221f075dc6783963b3129610fbcd2188f1876\",\"progress.css\":\"da73ec2d8c135d614f676822b3b98757ec2aed155c3ad1cdca01477fe3708ba5\"}",
+      "author": "agent:Hermes",
+      "summary": "Remove stray throw that crashed Progress view",
+      "created_at": 1794363129.318671
+    },
+    {
+      "space": "pair-play",
+      "rev": 5,
+      "parent_rev": 4,
+      "kind": "edit",
+      "restored_from": null,
+      "manifest": "{\"schema\":1,\"name\":\"Pair Play\",\"description\":\"A small memory-match card game with six fruit pairs, saved rounds and a history of completed games.\",\"entry\":\"index.html\",\"imports\":{\"preact\":\"vendor/preact.mjs\",\"preact/hooks\":\"vendor/hooks.mjs\",\"spaces-kit\":\"kit/spaces-kit.mjs\"},\"accent\":\"green\",\"icon\":\"layers\",\"theme\":{\"preset\":\"game\"},\"data\":{\"version\":1,\"collections\":{\"game\":{\"description\":\"The single in-progress or just-finished round (id: current)\"},\"rounds\":{\"description\":\"Completed rounds with turn counts\"},\"settings\":{\"description\":\"Player settings (id: prefs)\"}},\"migrations\":[]}}",
+      "files": "{\"index.html\":\"60525d2c7a0ab547c986fb1cdac48fb2e5bf8312f1d00cc4828842f19d2b723e\",\"game.js\":\"0c5421e6ffb0f6c8cdeb063b517ce43f6c1c0c70fe5ecaa21752c4e03867abe7\",\"store.js\":\"0f0a66f4dca9c95ad76b567e6a3ee434fdea39e1036b94c2b895e52958e96335\",\"app.js\":\"342d98d61cb75ed937fb8e9869ddaf4b522dcf1ebf9c45299f18158f84242ca3\",\"views/play.js\":\"35e5b7cb7e75d88fb7ca4778d33e1b8fb538154f573a2711d079fa118d016b73\",\"views/history.js\":\"a719a67d1c08fddd30b6f84073bc444da27ba490c666f5377f18a9ba29d946af\",\"styles.css\":\"9711f0cfcda17621c2192a84e499e11839230e68a533ee2ecdafa1434715a851\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"7fcaec571f9a66fd1a8b05828a54852853f30dede76e3b9cd089417f8b12f22f\",\"views/progress.js\":\"3383a6a8cb121b8c899d04f82e4221f075dc6783963b3129610fbcd2188f1876\",\"progress.css\":\"da73ec2d8c135d614f676822b3b98757ec2aed155c3ad1cdca01477fe3708ba5\"}",
+      "author": "agent:Hermes",
+      "summary": "Adopt game theme preset + kit tokens as floor; frontend/manifest-theme only",
+      "created_at": 1794388941.953768
+    }
+  ],
+  "grants": [
+    {
+      "space": "pair-play",
+      "capability": "data",
+      "status": "granted",
+      "scope": "{}",
+      "purpose": "Save and use this Space's data",
+      "requested_scope": "{}",
+      "requested_at": 1794351729.4680839,
+      "decided_at": 1794351729.4687731,
+      "decided_by": "user"
+    },
+    {
+      "space": "pair-play",
+      "capability": "logs",
+      "status": "granted",
+      "scope": "{}",
+      "purpose": "Diagnose and repair this Space",
+      "requested_scope": "{}",
+      "requested_at": 1794351729.468809,
+      "decided_at": 1794351729.4688299,
+      "decided_by": "user"
+    },
+    {
+      "space": "pair-play",
+      "capability": "net",
+      "status": "granted",
+      "scope": "{}",
+      "purpose": "Load and send internet content",
+      "requested_scope": null,
+      "requested_at": null,
+      "decided_at": 1794371831.646755,
+      "decided_by": "user"
+    }
+  ]
+}

@@ -1,0 +1,163 @@
+{
+  "b-sky-window-mobile-verified.json": {
+    "hostViewport": [
+      390,
+      844,
+      1
+    ],
+    "canvasViewport": [
+      275,
+      637,
+      1
+    ],
+    "widths": [
+      260,
+      260
+    ],
+    "smallTargets": []
+  },
+  "b-research-desk-mobile-verified.json": {
+    "hostViewport": [
+      390,
+      844,
+      1
+    ],
+    "canvasViewport": [
+      275,
+      637,
+      1
+    ],
+    "widths": [
+      260,
+      260
+    ],
+    "smallTargets": []
+  },
+  "b-pair-play-mobile-verified.json": {
+    "hostViewport": [
+      390,
+      844,
+      1
+    ],
+    "canvasViewport": [
+      275,
+      637,
+      1
+    ],
+    "widths": [
+      260,
+      260
+    ],
+    "smallTargets": [
+      {
+        "text": "",
+        "label": null,
+        "w": 20,
+        "h": 20
+      }
+    ]
+  },
+  "b-host-600.json": {
+    "viewport": [
+      600,
+      844,
+      1
+    ],
+    "controls": [
+      [
+        "Spaces",
+        91.375,
+        32
+      ],
+      [
+        "Upkeep: none",
+        131.59375,
+        32
+      ],
+      [
+        "Permissions",
+        99.015625,
+        32
+      ],
+      [
+        "Refresh now",
+        122.75,
+        32
+      ],
+      [
+        "More Space actions",
+        40,
+        32
+      ]
+    ]
+  },
+  "b-host-900.json": {
+    "viewport": [
+      900,
+      844,
+      1
+    ],
+    "controls": [
+      [
+        "Spaces",
+        91.375,
+        32
+      ],
+      [
+        "Upkeep: none",
+        131.59375,
+        32
+      ],
+      [
+        "History",
+        68.84375,
+        32
+      ],
+      [
+        "Permissions",
+        99.015625,
+        32
+      ],
+      [
+        "Refresh now",
+        122.75,
+        32
+      ],
+      [
+        "More Space actions",
+        40,
+        32
+      ]
+    ]
+  },
+  "b-host-360.json": {
+    "viewport": [
+      360,
+      844,
+      1
+    ],
+    "controls": [
+      [
+        "Spaces",
+        91.375,
+        32
+      ],
+      [
+        "Permissions",
+        91.015625,
+        32
+      ],
+      [
+        "Refresh now",
+        114.75,
+        32
+      ],
+      [
+        "More Space actions",
+        32,
+        32
+      ]
+    ]
+  },
+  "score_sum": 13
+}

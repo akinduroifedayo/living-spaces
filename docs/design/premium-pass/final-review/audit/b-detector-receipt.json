@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/Users/ifedayoakinduro/.hermes/skills/creative/impeccable/scripts/impeccable",
+    "detect",
+    "--cdp",
+    "9341",
+    "--target",
+    "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=pair-play",
+    "--json"
+  ],
+  "exit": 2,
+  "stdout": "[\n  {\n    \"antipattern\": \"low-contrast\",\n    \"name\": \"Low contrast text\",\n    \"description\": \"Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.\",\n    \"severity\": \"warning\",\n    \"category\": \"quality\",\n    \"file\": \"file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=pair-play\",\n    \"line\": 0,\n    \"snippet\": \"3.0:1 (need 4.5:1) \u2014 text #5b6065 on #0d1015 (gradient on body)\",\n    \"selector\": \"span.shrink-0.text-\\\\[0\\\\.64rem\\\\]\"\n  },\n  {\n    \"antipattern\": \"low-contrast\",\n    \"name\": \"Low contrast text\",\n    \"description\": \"Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.\",\n    \"severity\": \"warning\",\n    \"category\": \"quality\",\n    \"file\": \"file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=pair-play\",\n    \"line\": 0,\n    \"snippet\": \"3.8:1 (need 4.5:1) \u2014 text #6b6f75 on #0d1015\",\n    \"selector\": \"span.truncate.text-muted-foreground\\\\/80\"\n  },\n  {\n    \"antipattern\": \"repeating-stripes-gradient\",\n    \"name\": \"Repeating-gradient stripes\",\n    \"description\": \"Repeating-gradient stripes used as surface decoration are a recurring generated-UI signature. Reach for a deliberate texture or leave the surface plain.\",\n    \"severity\": \"advisory\",\n    \"category\": \"slop\",\n    \"file\": \"file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=pair-play\",\n    \"line\": 0,\n    \"snippet\": \"repeating-gradient decorative stripes\",\n    \"advisory\": true,\n    \"selector\": \"body\"\n  }\n]\n",
+  "stderr": ""
+}

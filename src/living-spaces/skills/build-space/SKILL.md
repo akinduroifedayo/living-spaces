@@ -224,7 +224,9 @@ viewport. Then arrange the rest by importance, with real size contrast.
   Put measure, unit, period and denominator in titles and headers.
 - **Mini app / tracker:** the working surface leads (the board, the list, the
   calendar). Creation stays one step away, and status sits close to the
-  thing it describes.
+  thing it describes. Keep search, result count and results adjacent; a secondary
+  creation form belongs behind a labelled disclosure, not between query and results.
+  Preserve its draft and keyboard focus when opening or closing it.
 - **Game:** the board is the stage. Score, turn and restart are findable
   but quiet. Celebrate a win.
 - **Document:** a reading measure of about 65–75ch, generous margins, useful
@@ -253,6 +255,9 @@ Charts are part of the art direction. Draw them for this subject:
   values; preserve negative values and meaningful baselines. A sun arc represents
   time, not temperature. A pretty shape is not permission to change the measure.
   Show zero, empty and no-eligible states, not invented fallback values.
+  Label elapsed wall-clock duration separately from active time: a resumed game
+  measured from start to finish includes time away. Format long durations in
+  hours/minutes; never relabel existing timestamps as active play.
 
 ### 5. Add motion that means something
 
@@ -282,10 +287,15 @@ should not hide a result or delay a control. Offer pause for ongoing ambient art
 
 ### 7. Fit any width
 
-The canvas runs from about 320px (narrow window or phone) to 1600px. Use fluid
-type (`clamp()`), wrapping grids and container queries. At narrow widths, keep
-the hero and the main action in the first screen, stack secondary panels, and
-make touch targets at least 44px. Long names wrap and never overflow.
+The canvas can be narrower than the app window because the host's navigation
+and frame take space. Use fluid type (`clamp()`), wrapping grids and container
+queries; measure the actual canvas viewport, not just the outer window. At
+narrow widths, lead with the current reading, result list or playable board;
+compress decorative mastheads and slogans before shrinking essential text.
+Keep primary controls visible and secondary creation one step away. Make touch
+targets at least 44px. Long names wrap and never overflow. Record both app and
+canvas dimensions when checking wide, 390px and 320px app windows; a no-overflow
+measurement alone does not prove the main task is visible or reachable.
 
 ### 8. The floor (keep these whatever the style)
 

@@ -1,0 +1,80 @@
+{
+  ".ls-root": {
+    "rect": {
+      "x": 260,
+      "y": 34,
+      "width": 640,
+      "height": 790,
+      "top": 34,
+      "right": 900,
+      "bottom": 824,
+      "left": 260
+    },
+    "text": "Spaces\nPair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet\nUpkeep: none\nHistory\nPermissions\nRefresh now"
+  },
+  ".ls-identity": {
+    "rect": {
+      "x": 373.375,
+      "y": 46,
+      "width": 12.421875,
+      "height": 60.5,
+      "top": 46,
+      "right": 385.796875,
+      "bottom": 106.5,
+      "left": 373.375
+    },
+    "text": "Pair Play\nReady\nH\nHermes\n \u00b7 Not refreshed yet"
+  },
+  ".ls-name-row h1": {
+    "rect": {
+      "x": 415.375,
+      "y": 46,
+      "width": 0,
+      "height": 24,
+      "top": 46,
+      "right": 415.375,
+      "bottom": 70,
+      "left": 415.375
+    },
+    "text": "Pair Play"
+  },
+  ".ls-frame-meta": {
+    "rect": {
+      "x": 415.375,
+      "y": 70,
+      "width": 0,
+      "height": 36.5,
+      "top": 70,
+      "right": 415.375,
+      "bottom": 106.5,
+      "left": 415.375
+    },
+    "text": "H\nHermes\n \u00b7 Not refreshed yet"
+  },
+  ".ls-frame-actions": {
+    "rect": {
+      "x": 395.796875,
+      "y": 60.25,
+      "width": 492.203125,
+      "height": 32,
+      "top": 60.25,
+      "right": 888,
+      "bottom": 92.25,
+      "left": 395.796875
+    },
+    "text": "Upkeep: none\nHistory\nPermissions\nRefresh now"
+  },
+  ".ls-name-row .ls-pill": {
+    "rect": {
+      "x": 423.375,
+      "y": 46,
+      "width": 74.828125,
+      "height": 24,
+      "top": 46,
+      "right": 498.203125,
+      "bottom": 70,
+      "left": 423.375
+    },
+    "text": "Ready"
+  }
+}

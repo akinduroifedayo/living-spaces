@@ -1,0 +1,23 @@
+{
+  "grantsUnchanged": true,
+  "revs": [
+    {
+      "id": "pair-play",
+      "head_rev": 10
+    },
+    {
+      "id": "research-desk",
+      "head_rev": 18
+    },
+    {
+      "id": "sky-window",
+      "head_rev": 11
+    }
+  ],
+  "route": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=pair-play",
+  "viewport": [
+    1690,
+    858,
+    1
+  ]
+}

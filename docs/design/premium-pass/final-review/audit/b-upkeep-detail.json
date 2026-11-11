@@ -1,0 +1,223 @@
+{
+  "url": "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html#/spaces?space=pair-play",
+  "title": "Hermes",
+  "viewport": [
+    1690,
+    858,
+    1
+  ],
+  "visibility": "visible",
+  "scroll": [
+    0,
+    0
+  ],
+  "widths": [
+    1690,
+    1690
+  ],
+  "text": "Upkeep \u00b7 Pair Play\nClose\n\nThe Hermes cron job that keeps this Space current\n\nNo upkeep yet\n\nThis Space isn't updated automatically. Ask Hermes in chat to set up upkeep as a Hermes cron job.\n\nHermes, schedule upkeep for Pair Play. Please confirm the cadence and timezone, then create it as a Hermes cron job.\nCopy prompt",
+  "controls": [
+    {
+      "tag": "BUTTON",
+      "text": "Close",
+      "role": null,
+      "label": null,
+      "labelledby": null,
+      "describedby": null,
+      "checked": null,
+      "disabled": false,
+      "tab": 0,
+      "rect": {
+        "x": 1592.140625,
+        "y": 17,
+        "width": 80.859375,
+        "height": 32,
+        "top": 17,
+        "right": 1673,
+        "bottom": 49,
+        "left": 1592.140625
+      },
+      "color": "color(srgb 0.901961 0.929412 0.952941 / 0.74)",
+      "bg": "rgba(0, 0, 0, 0)",
+      "font": "13px",
+      "weight": "500",
+      "outline": "color(srgb 0.901961 0.929412 0.952941 / 0.74) none 3px",
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+    },
+    {
+      "tag": "BUTTON",
+      "text": "Copy prompt",
+      "role": null,
+      "label": "Copy prompt",
+      "labelledby": null,
+      "describedby": null,
+      "checked": null,
+      "disabled": false,
+      "tab": 0,
+      "rect": {
+        "x": 1548.84375,
+        "y": 174.5,
+        "width": 111.15625,
+        "height": 28,
+        "top": 174.5,
+        "right": 1660,
+        "bottom": 202.5,
+        "left": 1548.84375
+      },
+      "color": "color(srgb 0.901961 0.929412 0.952941 / 0.74)",
+      "bg": "rgba(0, 0, 0, 0)",
+      "font": "12px",
+      "weight": "500",
+      "outline": "color(srgb 0.901961 0.929412 0.952941 / 0.74) none 3px",
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+    }
+  ],
+  "headings": [
+    {
+      "tag": "H2",
+      "text": "Upkeep \u00b7 Pair Play",
+      "role": null,
+      "label": null,
+      "labelledby": null,
+      "describedby": null,
+      "checked": null,
+      "tab": -1,
+      "rect": {
+        "x": 1247,
+        "y": 22.5,
+        "width": 115.234375,
+        "height": 21,
+        "top": 22.5,
+        "right": 1362.234375,
+        "bottom": 43.5,
+        "left": 1247
+      },
+      "color": "color(srgb 0.901961 0.929412 0.952941 / 0.94)",
+      "bg": "rgba(0, 0, 0, 0)",
+      "font": "14px",
+      "weight": "600",
+      "outline": "color(srgb 0.901961 0.929412 0.952941 / 0.94) none 3px",
+      "shadow": "none"
+    },
+    {
+      "tag": "H3",
+      "text": "No upkeep yet",
+      "role": null,
+      "label": null,
+      "labelledby": null,
+      "describedby": null,
+      "checked": null,
+      "tab": -1,
+      "rect": {
+        "x": 1247,
+        "y": 84,
+        "width": 426,
+        "height": 19.5,
+        "top": 84,
+        "right": 1673,
+        "bottom": 103.5,
+        "left": 1247
+      },
+      "color": "color(srgb 0.901961 0.929412 0.952941 / 0.94)",
+      "bg": "rgba(0, 0, 0, 0)",
+      "font": "13px",
+      "weight": "600",
+      "outline": "color(srgb 0.901961 0.929412 0.952941 / 0.94) none 3px",
+      "shadow": "none"
+    }
+  ],
+  "frames": [
+    {
+      "tag": "IFRAME",
+      "text": "",
+      "role": null,
+      "label": null,
+      "labelledby": null,
+      "describedby": null,
+      "checked": null,
+      "tab": 0,
+      "rect": {
+        "x": 273,
+        "y": 114.5,
+        "width": 1404,
+        "height": 710.5,
+        "top": 114.5,
+        "right": 1677,
+        "bottom": 825,
+        "left": 273
+      },
+      "color": "color(srgb 0.901961 0.929412 0.952941 / 0.94)",
+      "bg": "rgba(0, 0, 0, 0)",
+      "font": "14px",
+      "weight": "400",
+      "outline": "color(srgb 0.901961 0.929412 0.952941 / 0.94) none 3px",
+      "shadow": "none"
+    }
+  ],
+  "special": [
+    {
+      "tag": "DIV",
+      "text": "",
+      "role": "status",
+      "label": null,
+      "labelledby": null,
+      "describedby": null,
+      "checked": null,
+      "tab": -1,
+      "rect": {
+        "x": 1247,
+        "y": 277.5,
+        "width": 426,
+        "height": 0,
+        "top": 277.5,
+        "right": 1673,
+        "bottom": 277.5,
+        "left": 1247
+      },
+      "color": "color(srgb 0.901961 0.929412 0.952941 / 0.94)",
+      "bg": "rgba(0, 0, 0, 0)",
+      "font": "12px",
+      "weight": "400",
+      "outline": "color(srgb 0.901961 0.929412 0.952941 / 0.94) none 3px",
+      "shadow": "none"
+    }
+  ],
+  "active": {
+    "tag": "BUTTON",
+    "text": "Close",
+    "role": null,
+    "label": null,
+    "labelledby": null,
+    "describedby": null,
+    "checked": null,
+    "disabled": false,
+    "tab": 0,
+    "rect": {
+      "x": 1592.140625,
+      "y": 17,
+      "width": 80.859375,
+      "height": 32,
+      "top": 17,
+      "right": 1673,
+      "bottom": 49,
+      "left": 1592.140625
+    },
+    "color": "color(srgb 0.901961 0.929412 0.952941 / 0.74)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "font": "13px",
+    "weight": "500",
+    "outline": "color(srgb 0.901961 0.929412 0.952941 / 0.74) none 3px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+  },
+  "styles": [
+    "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/assets/tooltip-BNbTfSqe.css",
+    "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/assets/glyph-spinner-DL5QKO4M.css",
+    "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/assets/capabilities-yvkYnyCi.css",
+    "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/assets/use-pet-zoom-gesture-BSUmG2fU.css",
+    "file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/assets/main-D01CRUNp.css",
+    "https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap",
+    null,
+    null,
+    null
+  ]
+}

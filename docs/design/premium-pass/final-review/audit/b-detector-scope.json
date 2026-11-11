@@ -1,0 +1,59 @@
+[
+  {
+    "rule": "low-contrast",
+    "selector": "span.shrink-0.text-\\[0\\.64rem\\]",
+    "scope": {
+      "tag": "SPAN",
+      "inSpace": false,
+      "inSidebar": false,
+      "rect": {
+        "x": 18,
+        "y": 556.6875,
+        "width": 72.890625,
+        "height": 14.609375,
+        "top": 556.6875,
+        "right": 90.890625,
+        "bottom": 571.296875,
+        "left": 18
+      }
+    }
+  },
+  {
+    "rule": "low-contrast",
+    "selector": "span.truncate.text-muted-foreground\\/80",
+    "scope": {
+      "tag": "SPAN",
+      "inSpace": false,
+      "inSidebar": false,
+      "rect": {
+        "x": 105.078125,
+        "y": 839.75,
+        "width": 29.4375,
+        "height": 16.5,
+        "top": 839.75,
+        "right": 134.515625,
+        "bottom": 856.25,
+        "left": 105.078125
+      }
+    }
+  },
+  {
+    "rule": "repeating-stripes-gradient",
+    "selector": "body",
+    "scope": {
+      "tag": "BODY",
+      "inSpace": false,
+      "inSidebar": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 1690,
+        "height": 858,
+        "top": 0,
+        "right": 1690,
+        "bottom": 858,
+        "left": 0
+      }
+    }
+  }
+]

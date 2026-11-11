@@ -1,0 +1,120 @@
+{
+  "spaces": [
+    {
+      "id": "research-desk",
+      "name": "Research Desk",
+      "head_rev": 18,
+      "status": "active"
+    },
+    {
+      "id": "pair-play",
+      "name": "Pair Play",
+      "head_rev": 10,
+      "status": "active"
+    },
+    {
+      "id": "sky-window",
+      "name": "Sky Window",
+      "head_rev": 11,
+      "status": "active"
+    }
+  ],
+  "grants": [
+    {
+      "space": "research-desk",
+      "capability": "data",
+      "status": "granted"
+    },
+    {
+      "space": "research-desk",
+      "capability": "logs",
+      "status": "granted"
+    },
+    {
+      "space": "pair-play",
+      "capability": "data",
+      "status": "granted"
+    },
+    {
+      "space": "pair-play",
+      "capability": "logs",
+      "status": "granted"
+    },
+    {
+      "space": "pair-play",
+      "capability": "net",
+      "status": "granted"
+    },
+    {
+      "space": "research-desk",
+      "capability": "net",
+      "status": "granted"
+    },
+    {
+      "space": "sky-window",
+      "capability": "data",
+      "status": "granted"
+    },
+    {
+      "space": "sky-window",
+      "capability": "logs",
+      "status": "granted"
+    },
+    {
+      "space": "sky-window",
+      "capability": "net",
+      "status": "granted"
+    }
+  ],
+  "links": [
+    {
+      "space": "research-desk",
+      "cron_job_id": "79a3a3af14ed",
+      "kind": "feed",
+      "created_at": 1794392909.243213,
+      "created_by": "migration"
+    },
+    {
+      "space": "delta-feed-demo",
+      "cron_job_id": "cf92ea6cd79d",
+      "kind": "feed",
+      "created_at": 1794395191.997195,
+      "created_by": "agent:harness-standin"
+    }
+  ],
+  "revisions": [
+    {
+      "space": "delta-feed-demo",
+      "rev": 1,
+      "files": "{\"index.html\":\"3364f1c12ed3fff5896d841614c630f71b18a1be30244d788e5a57bc133c1429\"}"
+    },
+    {
+      "space": "pair-play",
+      "rev": 10,
+      "files": "{\"index.html\":\"de547f559d2f0bc841ee2003d88dc1b338fefaae9beb1e192566adbb8ad2ec5b\",\"game.js\":\"0c5421e6ffb0f6c8cdeb063b517ce43f6c1c0c70fe5ecaa21752c4e03867abe7\",\"store.js\":\"0f0a66f4dca9c95ad76b567e6a3ee434fdea39e1036b94c2b895e52958e96335\",\"app.js\":\"e83737d3beacd72f031f913eff0f3f4ec13556c4611964cd3c2f142d797970e4\",\"views/play.js\":\"424d837e807af19c3a0e46be0f53d12ff02bb2f9e382f154dc4687fde257dd17\",\"views/history.js\":\"a719a67d1c08fddd30b6f84073bc444da27ba490c666f5377f18a9ba29d946af\",\"styles.css\":\"315ff6eaf0ba03953ae038230e32a07d339ac76a5173fa1c64ce8f9b238ac7ca\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"7fcaec571f9a66fd1a8b05828a54852853f30dede76e3b9cd089417f8b12f22f\",\"views/progress.js\":\"3383a6a8cb121b8c899d04f82e4221f075dc6783963b3129610fbcd2188f1876\",\"progress.css\":\"da73ec2d8c135d614f676822b3b98757ec2aed155c3ad1cdca01477fe3708ba5\",\"fit.css\":\"2bde0f8c71e294c74480ffc23e221bff5011d78e4972c2ed216df18b0d35912b\"}"
+    },
+    {
+      "space": "public-trip-board",
+      "rev": 1,
+      "files": "{\"index.html\":\"3a2bd4b86bf568a9e8ebc4ed6b0892aca3d684a36cb4e1b814c023ef8145f496\",\"styles.css\":\"7823bda9a594d8afe0acd1130764d509c6e33db9547ce8bf1876735baa270739\",\"app.js\":\"a5a15498d2a57b4b16b9283ee462e512fadc1b544a09b0ae54da43de014800de\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"7fcaec571f9a66fd1a8b05828a54852853f30dede76e3b9cd089417f8b12f22f\"}"
+    },
+    {
+      "space": "research-desk",
+      "rev": 18,
+      "files": "{\"index.html\":\"cb29ec6d68125a8d485b667941abb158ff3ab49cc163c5c0893f98f157a3f398\",\"app.js\":\"275676d54e283e31c5a9aa063a08f64a37d7527d7f14949d45521fa6a3e7a521\",\"styles.css\":\"d076f4e78e5058446b060874d0a07359bf0d30f08d0cf937573b581bb7f0ce5b\",\"views/editor.js\":\"12782c4ea0cffc7411ff39197b4bb462050f8727a5ecbe2e3caa2215a7cfeca2\",\"views/library.js\":\"e6ce3f2390b5cdb0f6d20ffa9c6bd53bd2c953d54247f346794f30f501f5f2cf\",\"views/overview.js\":\"63499eee4ed4b50876d450fb9fc11f21a069153a24e21259d5d850bc26dc146a\",\"views/queue.js\":\"9353b63a97e25a3dd2bb66b0cc5b3b708c76abb7a9c159a26a97a36116d72194\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"23dd66fe46b070877bf4590a2cc9d426b9b1534baadc9928cb1f1ddb992440d2\",\"views/review.js\":\"1884dc44114c9b44dcf55ce2feeca06ab58471646d73bb924883ca1d224515b0\",\"views/ui.js\":\"930744e90c4af0ca2db19c2d82c2fb3f43af50b7b0daacdc6962403bfe0249ef\"}"
+    },
+    {
+      "space": "runtime-probe",
+      "rev": 1,
+      "files": "{\"theme.css\":\"4390dd140332b83a345abdda829783fa279818d9612b409053f45de6f20f3d06\",\"index.html\":\"3f551fddf0cd8d94554928d239b90d4c5755b6787fb0405ad21b84d6da6a956b\",\"main.mjs\":\"c5ee980d23332ceda2b67db55618e1d6fa8c028160455cd3a438bba905892f7c\",\"classic.js\":\"741900bc68d4a97dbb14c85b072c60538163458c278cf8e137422813a748abe3\",\"images/logo.svg\":\"de3a4f08b9ca3ca01de6a38e30b94f2b9eb7778fe7cb7d4c9f192ddd38eb19be\",\"views/library.mjs\":\"55901728b1c26ca864afad876c7f2133833888af21d9863ab1f4a686c3fd110c\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"7fcaec571f9a66fd1a8b05828a54852853f30dede76e3b9cd089417f8b12f22f\"}"
+    },
+    {
+      "space": "sky-window",
+      "rev": 11,
+      "files": "{\"index.html\":\"9c6b62bf38c7f66a21909405c64d02ae770fa12b1efd095a2f23ccf0399ee77f\",\"app.js\":\"49586abc8b57809452920caa497b1ac8aad125e2f04706c75c7730c3388e738a\",\"vendor/preact.mjs\":\"a6d6bad989d34ff7e383532b8c12f48e6ebdde1c8c613756e36cef3b0268cd55\",\"vendor/hooks.mjs\":\"896fc8e546b96c3fca29743b493293820ad4e76396fd36ff05f18a52eaf303e1\",\"kit/spaces-kit.mjs\":\"8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc\",\"kit/spaces-kit.css\":\"88ea9130306b200d254b118c463a47dddeb60249eedbf31be3b327bef3d71347\",\"vendor/lightweight-charts.mjs\":\"1bb1ee79f9d4dd17261b53d930f7a8995748276f80e7ba0e24412b5068062f5f\",\"vendor/lucide.mjs\":\"0c896aae847a48bc572d62e3a5c6ab6c467287539338a415836d48b73c1230f5\",\"vendor/licenses/lucide-LICENSE\":\"b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57\",\"icons.js\":\"4a3c6265d80da9bbc1767b4b2834749efeebcf455cbeeb1faad652c49fa9a07b\",\"weather.js\":\"e0a813e61f9dbe3754fae174f044be2b696aeee472dccc243b9ab57d9b9c04d6\",\"views/panel.js\":\"cb41fe62acd388d0aecad0e93bda512ad80d99ab534a2c45400084e07b43caae\",\"views/today.js\":\"cbf6fb3260eccd084c0e404ba56ea0bbdba7799a876b8b575b356ec4fa9c8fc9\",\"views/week.js\":\"a8016356a0535393d0d8d27c597c80826c77fd4eaa86372cb7bbfc04cc6c07de\",\"views/cities.js\":\"19a152c86602daea5a74d3fbbe4500056ff9bc37dc86f553aa7f99aee567a722\",\"styles.css\":\"e28a0267c8032ed554ad409c01e4d99be03d049f704ca69321903a10f3ee150d\"}"
+    }
+  ],
+  "git": "b5bcfdabdf35df9781686e52282abf2ca2b93f3c",
+  "plugin_path": "/Volumes/Expansion/Development/Build/living-spaces-r1/home/desktop-plugins/living-spaces",
+  "bundle_sha256": "9b703959096f80de81ac28245bdd0bb3303f51f87bf340b6434dce1605e6c536"
+}

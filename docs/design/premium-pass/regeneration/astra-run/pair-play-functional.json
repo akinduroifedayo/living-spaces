@@ -1,0 +1,56 @@
+{
+  "space": "pair-play",
+  "rev": 10,
+  "verified_at": "2026-11-11T08:27-08:31 CST",
+  "host": "isolated Hermes Desktop (pid 27294, CDP 9341), real Space frame, clicks via guest realm",
+  "data_provenance": "local game only, no network; saved unfinished round (1 turn, 0/6) and settings {cardBack:star, showNames:true} pre-existed",
+  "checks": [
+    [
+      "resume unfinished round on open",
+      "pass",
+      "\"Round in progress 1 turn \u00b7 0/6 pairs\", \"Saved round loaded\""
+    ],
+    [
+      "mismatch flips, counts a turn, persists",
+      "pass",
+      "store status=mismatch revealed [0,1] turns 2; cards aria-disabled until \"Continue \u2192\" (deliberate confirm step, not auto-flip)"
+    ],
+    [
+      "matching and progress",
+      "pass",
+      "5/6 at 7 turns, then 6/6"
+    ],
+    [
+      "round completion",
+      "pass",
+      "\"Round complete 8 turns \u00b7 6/6 pairs\", \"Every pair, together\", Play again"
+    ],
+    [
+      "history records completed round",
+      "pass",
+      "rounds record written; History 1 round, best 8, avg 8.0"
+    ],
+    [
+      "personal best",
+      "pass",
+      "PERSONAL BEST 8 turns; Progress \"ties or beats your best\""
+    ],
+    [
+      "phone 390px",
+      "pass",
+      "innerWidth == scrollWidth == 390, 4-column card grid (pair-phone-390.png)"
+    ],
+    [
+      "saved data preserved",
+      "pass",
+      "2 original records byte-equal after regeneration; test round reverted via space.put(merge:false) + delete of test history row; data equal to pre-test, UI again shows round in progress / best unset"
+    ]
+  ],
+  "not_verified": [
+    "animated flip and reduced motion independently",
+    "settings editor (\"Make it yours\") changes",
+    "320px / 200% zoom independently",
+    "real touch"
+  ],
+  "observation_for_design": "History duration shows \"643m 59s\" because the resumed round began ~10.7h earlier (startedAt from the saved round); faithful but awkward for a resumed round."
+}

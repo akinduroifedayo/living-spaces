@@ -1,0 +1,28 @@
+{
+  "requested": {
+    "model": "gpt-6-astra",
+    "provider": "openai-codex",
+    "service_tier": "priority"
+  },
+  "observed_session_row": {
+    "id": "local-a17cd73fb35a6bbae9a20f178fea498e180382a91a968701dfcb2e5d893c7f1a",
+    "source": "local",
+    "model": "gpt-6-astra",
+    "model_config": "{\"_usage_anchor\": {\"prompt_tokens\": 95842, \"completion_tokens\": 163, \"base_count\": 127, \"base_last_role\": \"tool\", \"base_last_fp\": \"6eda670bdba824927b8ae3ad12251430d4165cf7870190a3bdfc70edea9055ad\", \"base_prefix_fp\": \"97d026d30723629f6ecb6842a7f3f24884684620a0e17a0efc7d0ea87058fc15\"}, \"gateway_runtime\": {\"provider\": \"openai-codex\", \"base_url\": \"https://chatgpt.com/backend-api/codex\", \"api_mode\": \"codex_responses\", \"fallback_active\": false}}",
+    "billing_provider": "openai-codex",
+    "billing_base_url": "https://chatgpt.com/backend-api/codex",
+    "billing_mode": "subscription_included",
+    "started_at": 1794404815.102735,
+    "ended_at": null,
+    "end_reason": null,
+    "message_count": 128,
+    "tool_call_count": 72,
+    "input_tokens": 79953,
+    "output_tokens": 17937,
+    "reasoning_tokens": 2294,
+    "title": "Redesign Research Desk Space for mobile"
+  },
+  "ui_picker_label_before_send": [
+    "GPT-6-astra \u00b7 Fast"
+  ]
+}

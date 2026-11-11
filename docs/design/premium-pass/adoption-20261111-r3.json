@@ -1,0 +1,12 @@
+{
+  "review_archive_sha256": "d251ed1594a3a87cc1e73476f1e5e454e50a3c64360dea1e7d7bce61d3650c19",
+  "review_files": 83,
+  "review_pngs": 47,
+  "source_design_commit": "6e0f7b78158fb1a45fb83242b88b1e18f05791a7",
+  "non_design_bytes_identical": true,
+  "skill_sha256": "983cf492f172d35ddff9d7fa815c7b4dd4e868db524d85a966f8d04d742b8754",
+  "design_links_resolve": true,
+  "loaded_in_chat": false,
+  "regeneration_source": "b5bcfdabdf35df9781686e52282abf2ca2b93f3c",
+  "regeneration_manifest_entries": 55
+}

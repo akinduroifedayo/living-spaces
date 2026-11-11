@@ -1,0 +1,84 @@
+[
+  {
+    "space": "sky-window",
+    "rev": 11,
+    "css": [
+      {
+        "file": "kit/spaces-kit.css",
+        "bytes": 27519,
+        "customPropertyReferences": 219,
+        "reducedMotion": true,
+        "forcedColors": true,
+        "mediaQueries": 5
+      },
+      {
+        "file": "styles.css",
+        "bytes": 17026,
+        "customPropertyReferences": 59,
+        "reducedMotion": true,
+        "forcedColors": false,
+        "mediaQueries": 7
+      }
+    ]
+  },
+  {
+    "space": "research-desk",
+    "rev": 18,
+    "css": [
+      {
+        "file": "styles.css",
+        "bytes": 12338,
+        "customPropertyReferences": 57,
+        "reducedMotion": true,
+        "forcedColors": false,
+        "mediaQueries": 5
+      },
+      {
+        "file": "kit/spaces-kit.css",
+        "bytes": 27613,
+        "customPropertyReferences": 219,
+        "reducedMotion": true,
+        "forcedColors": true,
+        "mediaQueries": 5
+      }
+    ]
+  },
+  {
+    "space": "pair-play",
+    "rev": 10,
+    "css": [
+      {
+        "file": "styles.css",
+        "bytes": 13314,
+        "customPropertyReferences": 49,
+        "reducedMotion": true,
+        "forcedColors": false,
+        "mediaQueries": 5
+      },
+      {
+        "file": "kit/spaces-kit.css",
+        "bytes": 2596,
+        "customPropertyReferences": 16,
+        "reducedMotion": true,
+        "forcedColors": false,
+        "mediaQueries": 2
+      },
+      {
+        "file": "progress.css",
+        "bytes": 1662,
+        "customPropertyReferences": 12,
+        "reducedMotion": false,
+        "forcedColors": false,
+        "mediaQueries": 0
+      },
+      {
+        "file": "fit.css",
+        "bytes": 2282,
+        "customPropertyReferences": 3,
+        "reducedMotion": false,
+        "forcedColors": false,
+        "mediaQueries": 3
+      }
+    ]
+  }
+]

@@ -1,0 +1,62 @@
+{
+  "space": "sky-window",
+  "rev": 11,
+  "verified_at": "2026-11-11T08:19-08:23 CST",
+  "host": "isolated Hermes Desktop (pid 27294, CDP 9341), real Space frame, interactions via guest realm click + native CDP Input.insertText",
+  "data_provenance": "Open-Meteo public forecast API via space.net.fetch, live; host shows \"3 of 3 live \u00b7 retrieved 08:19/08:20 AM\"; Chicago 7\u00b0C overcast, Lisbon 17\u00b0C rain, Tokyo 10\u00b0C at capture",
+  "checks": [
+    [
+      "live current conditions + today range for 3 cities",
+      "pass",
+      "Chicago 7\u00b0 \u219111\u00b0 \u21934\u00b0; Lisbon \u219118 \u219316; Tokyo 10\u00b0"
+    ],
+    [
+      "select city changes detail",
+      "pass",
+      "Lisbon detail: 38.72N/9.14W, 87.1 mm rain today"
+    ],
+    [
+      "seven-day forecast (Week)",
+      "pass",
+      "Nov 11\u201317 rows with ranges, rain chance, totals"
+    ],
+    [
+      "manual Refresh",
+      "pass",
+      "retrieved timestamp advanced 08:19 -> 08:20"
+    ],
+    [
+      "favourite toggle persists",
+      "pass",
+      "store lisbon favourite false->true (rev2) ->false (rev3); UI reorders Lisbon first while favourite"
+    ],
+    [
+      "add city persists and fetches live",
+      "pass",
+      "Reykjavik 64.1466,-21.9426 stored r_0680bdc78c5f; header 4 of 4 live 08:22"
+    ],
+    [
+      "remove city with confirm",
+      "pass",
+      "Confirm remove/Cancel step; record removed; 3 of 3 live"
+    ],
+    [
+      "phone 390px",
+      "pass",
+      "innerWidth 390 == scrollWidth 390; tabs/cards adapt (sky-phone-390.png)"
+    ],
+    [
+      "saved data preserved",
+      "pass",
+      "record data equal to pre-regeneration snapshot after test cleanup (lisbon rev counter now 3)"
+    ]
+  ],
+  "not_verified": [
+    "screen reader",
+    "real touch device",
+    "320px independent capture",
+    "offline/failure state independently (agent self-reported)",
+    "reduced motion independently"
+  ],
+  "agent_static_warnings": "spaces_write_files warned about network URLs in vendor/lightweight-charts.mjs and weather.js; runtime fetches go through space.net.fetch and succeeded"
+}

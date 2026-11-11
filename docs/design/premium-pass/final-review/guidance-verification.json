@@ -1,0 +1,11 @@
+{
+  "scope": "design section only",
+  "outside_section_byte_equal": true,
+  "changed_files": [
+    "src/living-spaces/skills/build-space/SKILL.md"
+  ],
+  "design_local_links": 4,
+  "missing_links": [],
+  "skill_sha256": "0f134db6a3e8bab461f0e37868de8d045b245e877f2bfd76c637f809961c0cde",
+  "behavioral_claim": "Guidance-only; no new canvas iteration implied"
+}

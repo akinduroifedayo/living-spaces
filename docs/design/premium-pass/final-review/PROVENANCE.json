@@ -1,0 +1,33 @@
+{
+  "status": "pre-iteration; actual one-pass polish reruns pending Forge",
+  "baseline_count": 8,
+  "regenerated_capture_count": 28,
+  "functional_checks_attributed_to_Forge": {
+    "sky-window": 9,
+    "research-desk": 10,
+    "pair-play": 8
+  },
+  "functional_checks_total": 27,
+  "showcase_checks_attributed_to_parent": 29,
+  "showcase_adopted_hashes_readback": {
+    "verified": 47,
+    "mismatches": 0
+  },
+  "guidance_commit": "6e0f7b78158fb1a45fb83242b88b1e18f05791a7",
+  "route_A": {
+    "delegation": "deleg_e97b721a",
+    "model": "gpt-6.1-terra",
+    "service_tier": "normal"
+  },
+  "route_B": {
+    "delegation": "deleg_db597ba6",
+    "model": "gpt-6-astra",
+    "service_tier": "normal"
+  },
+  "excluded_diagnostics": [
+    "b-*-390.*: invalid mobile emulation",
+    "b-permissions-off.*: misnamed On state",
+    "raw loaded application code and unrelated Space records"
+  ],
+  "questions": "skipped: bounded headless commission"
+}
