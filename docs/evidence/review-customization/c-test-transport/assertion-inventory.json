@@ -1,0 +1,88 @@
+{
+  "FeedLimitTests.test_feed_stream_byte_limit_stops_without_writes_and_recovers": {
+    "unchanged_assertions": [
+      "self.rejected(limits.FEED_BYTES, limits.FEED_BYTES + 1,\n                          lambda: feeds.fetch(self.sid, \"https://example.org/feed\"))",
+      "self.assertEqual(feeds.fetch(self.sid, \"https://example.org/feed\"), feed_xml())"
+    ],
+    "removed_obsolete_assertions": [],
+    "new_assertions": []
+  },
+  "RunTests.test_manual_refresh_through_injected_https_transport_has_provenance": {
+    "unchanged_assertions": [
+      "self.assertEqual(run[\"status\"], \"succeeded\")",
+      "self.assertEqual(run[\"changed\"][\"added\"], 2)",
+      "self.assertEqual(meta[\"handler\"], \"feed\")",
+      "self.assertEqual(meta[\"source_id\"], \"demo\")",
+      "self.assertEqual(meta[\"url\"], \"https://research.example/feed\")",
+      "self.assertIsInstance(meta[\"source_updated\"], float)",
+      "self.assertGreaterEqual(meta[\"fetched_at\"], run[\"started_at\"])",
+      "self.assertLessEqual(meta[\"fetched_at\"], run[\"ended_at\"])",
+      "self.assertIsInstance(json.loads(row[\"source\"])[\"published\"], float)",
+      "self.assertGreater(row[\"created_at\"], 0)"
+    ],
+    "removed_obsolete_assertions": [],
+    "new_assertions": []
+  },
+  "RunTests.test_manual_refresh_has_provenance_and_timestamps": {
+    "unchanged_assertions": [
+      "self.assertEqual(run[\"status\"], \"succeeded\")",
+      "self.assertEqual(run[\"changed\"], {\"added\": 2, \"updated\": 0, \"unchanged\": 0, \"removed\": 0})",
+      "self.assertEqual(meta[\"handler\"], \"feed\")",
+      "self.assertEqual(meta[\"source_id\"], \"demo\")",
+      "self.assertEqual(meta[\"url\"], \"https://research.example/feed\")",
+      "self.assertIsInstance(meta[\"fetched_at\"], float)",
+      "self.assertIsInstance(meta[\"source_updated\"], float)",
+      "self.assertGreater(row[\"created_at\"], 0)",
+      "self.assertEqual(row[\"updated_by\"], \"user\")",
+      "self.assertLess(run[\"source_as_of\"], run[\"ended_at\"])"
+    ],
+    "removed_obsolete_assertions": [],
+    "new_assertions": []
+  },
+  "FeedTests.test_production_fetch_uses_streaming_timeout_and_per_request_grants": {
+    "unchanged_assertions": [
+      "self.assertEqual(len(requests), 2)",
+      "self.assertEqual(len(feeds.parse(payload)), 2)"
+    ],
+    "removed_obsolete_assertions": [
+      "factory.assert_called_once_with(timeout=20.0, follow_redirects=False)",
+      "self.assertEqual(check.call_count, 2)"
+    ],
+    "new_assertions": [
+      "self.assertEqual(len(transport.connections), 2)",
+      "self.assertEqual([request[\"target\"] for request in requests], [\"/feed\", \"/current\"])",
+      "self.assertLess(redirect, next_connection)",
+      "self.assertIn(grant, transport.events[redirect + 1:next_connection])",
+      "self.assertEqual((host, port, ip), (\"research.example\", 443, PUBLIC))",
+      "self.assertGreater(timeout, 0)",
+      "self.assertLessEqual(timeout, 20)",
+      "self.assertGreater(index, 0)",
+      "self.assertEqual(transport.events[index - 1], grant)",
+      "self.assertEqual(event[1][\"headers\"][\"Host\"], \"research.example\")"
+    ]
+  },
+  "FeedTests.test_off_host_redirect_is_refused_even_if_other_host_is_also_granted": {
+    "unchanged_assertions": [
+      "self.assertEqual(len(requests), 1)",
+      "self.assertRaisesRegex(SpacesError, \"changed host\")"
+    ],
+    "removed_obsolete_assertions": [],
+    "new_assertions": []
+  },
+  "FeedTests.test_http_and_credentialed_sources_are_refused_before_request": {
+    "unchanged_assertions": [
+      "factory.assert_not_called()",
+      "self.assertRaises(SpacesError)"
+    ],
+    "removed_obsolete_assertions": [],
+    "new_assertions": []
+  },
+  "FeedTests.test_streaming_body_limit": {
+    "unchanged_assertions": [
+      "self.assertEqual(caught.exception.code, \"limit\")",
+      "self.assertRaises(SpacesError)"
+    ],
+    "removed_obsolete_assertions": [],
+    "new_assertions": []
+  }
+}

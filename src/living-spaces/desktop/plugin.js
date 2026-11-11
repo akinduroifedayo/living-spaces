@@ -478,8 +478,7 @@ import { useRef as useRef3, useState as useState5 } from "react";
 // src/desktop/ui/schedule.jsx
 import { useRef as useRef2, useState as useState4 } from "react";
 import { Fragment as Fragment3, jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
-function UpkeepCost({ space }) {
-  const upkeep = space.manifest?.upkeep;
+function UpkeepCost({ space, upkeep = space?.manifest?.upkeep }) {
   return upkeep?.handler === "agent" ? /* @__PURE__ */ jsxs4(Fragment3, { children: [
     /* @__PURE__ */ jsx4("p", { children: "Uses model calls. Runs a Hermes agent with the tools enabled for native cron jobs." }),
     /* @__PURE__ */ jsx4("p", { className: "ls-secondary", children: "The agent is instructed to update only this Space through spaces_* tools and preserve user notes and statuses." }),
@@ -612,7 +611,8 @@ function GrantCard({ grant, onDecide, busy }) {
   const model = CAPABILITIES[grant.capability];
   if (!model) return null;
   const scope = grant.requested_scope || grant.scope || {};
-  const scopeText = grant.capability === "refresh" ? `Host-owned public-source handler. Approved hosts: ${(scope.hosts || []).join(", ") || "No hosts requested"}.` : model.scope;
+  const agent = grant.capability === "refresh" && scope.upkeep?.handler === "agent";
+  const scopeText = grant.capability === "refresh" ? agent ? "Run the exact Hermes agent task below, on request or through separately approved scheduled upkeep." : `Host-owned public-source handler. Approved hosts: ${(scope.hosts || []).join(", ") || "No hosts requested"}.` : model.scope;
   return /* @__PURE__ */ jsxs5("article", { className: `ls-grant${grant.status === "requested" ? " ls-pending" : ""}`, children: [
     /* @__PURE__ */ jsxs5("div", { className: "ls-row-top", children: [
       /* @__PURE__ */ jsxs5("strong", { children: [
@@ -632,13 +632,14 @@ function GrantCard({ grant, onDecide, busy }) {
       ] }),
       /* @__PURE__ */ jsxs5("div", { children: [
         /* @__PURE__ */ jsx5("dt", { children: "Data leaves device" }),
-        /* @__PURE__ */ jsx5("dd", { children: model.leaves })
+        /* @__PURE__ */ jsx5("dd", { children: agent ? "Yes \xB7 model calls and the tools enabled for native cron jobs can send data." : model.leaves })
       ] }),
       /* @__PURE__ */ jsxs5("div", { children: [
         /* @__PURE__ */ jsx5("dt", { children: "Access" }),
         /* @__PURE__ */ jsx5("dd", { children: "Continuing" })
       ] })
     ] }),
+    agent && /* @__PURE__ */ jsx5(UpkeepCost, { upkeep: scope.upkeep }),
     /* @__PURE__ */ jsx5("div", { className: "ls-actions", children: grant.status === "granted" ? /* @__PURE__ */ jsx5(Action, { danger: true, disabled: busy, onClick: () => onDecide(grant, "revoke"), children: "Revoke" }) : grant.status === "requested" ? /* @__PURE__ */ jsxs5(Fragment4, { children: [
       /* @__PURE__ */ jsx5(Action, { primary: true, disabled: busy, onClick: () => onDecide(grant, "grant"), children: "Approve" }),
       /* @__PURE__ */ jsx5(Action, { disabled: busy, onClick: () => onDecide(grant, "deny"), children: "Deny" })
@@ -758,7 +759,7 @@ function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
       await Promise.all([query.refetch(), schedule.refetch(), onChanged()]);
     } catch (e) {
       if ((e?.error || e?.body?.error || e)?.code === "conflict") {
-        setError("Permission request changed. Review the new request before approving.");
+        setError(path === `${base}/schedule` ? "Schedule request changed. Review the current cadence, timezone, purpose and upkeep prompt before approving again." : "Permission request changed. Review the new request before approving.");
       } else setError(`${errorText(e)} Review the current request before trying again.`);
       await Promise.all([query.refetch(), schedule.refetch(), onChanged()]);
     } finally {
@@ -772,7 +773,7 @@ function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
       query.error || schedule.error ? /* @__PURE__ */ jsx5(ErrorState3, { title: "Permissions could not be loaded", description: errorText(query.error || schedule.error), children: /* @__PURE__ */ jsx5(Action, { onClick: () => {
         query.refetch();
         schedule.refetch();
-      }, children: "Try again" }) }) : query.isLoading ? /* @__PURE__ */ jsx5(Skeleton3, { style: { height: 180 } }) : /* @__PURE__ */ jsx5(PermissionsContent, { space, grants: query.data?.grants || [], audit: query.data?.audit || [], schedule: schedule.data, onDecide: decide, onSchedule: (decision) => change(`${base}/schedule`, { decision, ...decision === "approve" ? { requested_upkeep: space.manifest?.upkeep } : {} }), busy })
+      }, children: "Try again" }) }) : query.isLoading ? /* @__PURE__ */ jsx5(Skeleton3, { style: { height: 180 } }) : /* @__PURE__ */ jsx5(PermissionsContent, { space, grants: query.data?.grants || [], audit: query.data?.audit || [], schedule: schedule.data, onDecide: decide, onSchedule: (decision) => change(`${base}/schedule`, { decision, ...decision === "approve" ? { requested_upkeep: space.manifest?.upkeep, requested_schedule: { cadence: schedule.data.cadence, timezone: schedule.data.timezone, purpose: schedule.data.purpose, requested_at: schedule.data.requested_at } } : {} }), busy })
     ] }),
     revoke && /* @__PURE__ */ jsx5(DecisionDialog, { danger: true, title: `Revoke ${CAPABILITIES[revoke.capability].name} for ${space.name}?`, description: revoke.capability === "refresh" ? "Scheduled upkeep pauses and manual refreshes stop. Approve Refresh in Permissions, then resume upkeep to restart scheduled refreshes. Data already delivered to the Space can't be recalled, and completed requests can't be undone." : `The Space loses ${CAPABILITIES[revoke.capability].name.toLowerCase()} access. Data already delivered to the Space can't be recalled, and completed requests can't be undone.`, cancelLabel: "Keep access", confirmLabel: "Revoke", onClose: () => setRevoke(null), onConfirm: async () => {
       await ctx.rest(`${base}/grants/${revoke.capability}`, { method: "POST", body: { decision: "revoke" } });

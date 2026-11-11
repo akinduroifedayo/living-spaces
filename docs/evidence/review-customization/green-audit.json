@@ -1,0 +1,33 @@
+{
+ "case_order_exact": true,
+ "regression_methods": 27,
+ "previously_red_methods_now_green": 14,
+ "frozen_ast_sha256_match": true,
+ "full_stock_python": {
+  "count": 332,
+  "exit": 0,
+  "log": "fixes-full-python.log"
+ },
+ "legacy_method_migrations": {
+  "tests/python/test_agent_adapters.py": [
+   "RestTests.test_all_routes_success"
+  ],
+  "tests/python/test_agent_upkeep.py": [
+   "AgentIntegrationSeamTests.test_manifest_hooks_in_integrated_tree",
+   "AgentIntegrationSeamTests.test_host_approval_snapshot_reaches_core_in_integrated_tree"
+  ],
+  "tests/python/test_core_limits.py": [
+   "FeedLimitTests.test_feed_stream_byte_limit_stops_without_writes_and_recovers"
+  ],
+  "tests/python/test_upkeep_runs.py": [
+   "RunTests.test_manual_refresh_through_injected_https_transport_has_provenance",
+   "RunTests.test_manual_refresh_has_provenance_and_timestamps",
+   "FeedTests.test_production_fetch_uses_streaming_timeout_and_per_request_grants",
+   "FeedTests.test_off_host_redirect_is_refused_even_if_other_host_is_also_granted",
+   "FeedTests.test_http_and_credentialed_sources_are_refused_before_request",
+   "FeedTests.test_streaming_body_limit"
+  ]
+ },
+ "review_evidence_class": "real core and SQLite; synthetic network/cron leaves; not Desktop acceptance",
+ "baseline_ast_test_methods_preserved": 309
+}

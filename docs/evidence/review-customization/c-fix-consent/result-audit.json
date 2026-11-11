@@ -1,0 +1,54 @@
+{
+  "owned-final": {
+    "count": 16,
+    "failure_assertions": 0,
+    "error_methods": 0,
+    "failing_methods": [],
+    "errors": [],
+    "passed_methods": 16,
+    "exit_code": 0
+  },
+  "customization-final": {
+    "count": 27,
+    "failure_assertions": 8,
+    "error_methods": 0,
+    "failing_methods": [
+      "tests.python.test_review_customization.ReviewCustomizationTests.test_f03_bridge_passes_bound_session_to_real_net_fetch",
+      "tests.python.test_review_customization.ReviewCustomizationTests.test_f03_closed_session_prevents_redirect_post",
+      "tests.python.test_review_customization.ReviewCustomizationTests.test_f04_stale_source_revision_conflicts_and_rolls_back_whole_batch",
+      "tests.python.test_review_customization.ReviewCustomizationTests.test_f08_feed_rejects_approved_loopback_before_transport",
+      "tests.python.test_review_customization.ReviewCustomizationTests.test_f08_public_feed_uses_vetted_pinned_destination"
+    ],
+    "errors": [],
+    "passed_methods": 22,
+    "exit_code": 1
+  },
+  "full-python-final": {
+    "count": 332,
+    "failure_assertions": 11,
+    "error_methods": 10,
+    "failing_methods": [
+      "tests.python.test_agent_adapters.RestTests.test_all_routes_success",
+      "tests.python.test_agent_upkeep.AgentIntegrationSeamTests.test_host_approval_snapshot_reaches_core_in_integrated_tree",
+      "tests.python.test_review_customization.ReviewCustomizationTests.test_f03_bridge_passes_bound_session_to_real_net_fetch",
+      "tests.python.test_review_customization.ReviewCustomizationTests.test_f03_closed_session_prevents_redirect_post",
+      "tests.python.test_review_customization.ReviewCustomizationTests.test_f04_stale_source_revision_conflicts_and_rolls_back_whole_batch",
+      "tests.python.test_review_customization.ReviewCustomizationTests.test_f08_feed_rejects_approved_loopback_before_transport",
+      "tests.python.test_review_customization.ReviewCustomizationTests.test_f08_public_feed_uses_vetted_pinned_destination"
+    ],
+    "errors": [
+      "tests.python.test_agent_upkeep.AgentIntegrationSeamTests.test_manifest_hooks_in_integrated_tree",
+      "tests.python.test_upkeep_runs.ScheduleTests.test_approval_and_resume_require_refresh_permission",
+      "tests.python.test_upkeep_runs.ScheduleTests.test_catchup_dispatch_survives_in_run_history",
+      "tests.python.test_upkeep_runs.ScheduleTests.test_create_job_failure_removes_shim_and_reports_disabled",
+      "tests.python.test_upkeep_runs.ScheduleTests.test_delete_fails_visibly_when_native_cron_cannot_be_loaded",
+      "tests.python.test_upkeep_runs.ScheduleTests.test_failed_catchup_keeps_dispatch_and_last_good_data",
+      "tests.python.test_upkeep_runs.ScheduleTests.test_missing_cron_disables_with_persisted_visible_reason",
+      "tests.python.test_upkeep_runs.ScheduleTests.test_native_get_refreshes_next_run_and_missing_job_is_visible",
+      "tests.python.test_upkeep_runs.ScheduleTests.test_native_schedule_approve_pause_resume_archive_and_delete_in_temp_home",
+      "tests.python.test_upkeep_runs.ScheduleTests.test_re_request_pauses_old_job_and_requires_new_approval"
+    ],
+    "passed_methods": 315,
+    "exit_code": 1
+  }
+}

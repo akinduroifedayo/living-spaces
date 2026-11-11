@@ -1,0 +1,116 @@
+{
+  "base_commit": "e45e094b81c19e3cfc0950cb4148f7f7188cd06e",
+  "changed_files": [
+    "src/living-spaces/living_spaces_core/bridge.py",
+    "src/living-spaces/living_spaces_core/feeds.py",
+    "src/living-spaces/living_spaces_core/net.py"
+  ],
+  "baseline_files": 382,
+  "unchanged_nonowned_files": 379,
+  "frozen_test_files_verified": 62,
+  "frozen_methods_verified": 27,
+  "frozen_packet_shards_verified": 20,
+  "test_runs": {
+    "before-review.log": {
+      "direct_exit": 1,
+      "tests": 27,
+      "failure_events": 27,
+      "failing_methods": [
+        "test_f01_agent_prompt_change_blocks_manual_and_scheduled_admission",
+        "test_f01_feed_to_agent_requires_fresh_refresh_approval",
+        "test_f01_stale_agent_scope_cannot_approve_changed_prompt",
+        "test_f02_matching_displayed_schedule_approves_exact_fields",
+        "test_f02_stale_displayed_schedule_conflicts_at_rest_boundary",
+        "test_f03_bridge_passes_bound_session_to_real_net_fetch",
+        "test_f03_closed_session_prevents_redirect_post",
+        "test_f04_stale_source_revision_conflicts_and_rolls_back_whole_batch",
+        "test_f05_revoke_discovers_unmirrored_running_execution",
+        "test_f06_denial_preserves_unmirrored_completed_history",
+        "test_f07_history_backfill_includes_501st_execution",
+        "test_f08_feed_rejects_approved_loopback_before_transport",
+        "test_f08_public_feed_uses_vetted_pinned_destination",
+        "test_f09_feed_approval_rechecks_separately_committed_revocation"
+      ],
+      "error_events": 0,
+      "error_methods": [],
+      "skips": 0,
+      "sha256": "d71773468394668fb3ec9eae927867f1ddc76873f79eff4cac7a04f8c1db17e1"
+    },
+    "after-review.log": {
+      "direct_exit": 1,
+      "tests": 27,
+      "failure_events": 22,
+      "failing_methods": [
+        "test_f01_agent_prompt_change_blocks_manual_and_scheduled_admission",
+        "test_f01_feed_to_agent_requires_fresh_refresh_approval",
+        "test_f01_stale_agent_scope_cannot_approve_changed_prompt",
+        "test_f02_matching_displayed_schedule_approves_exact_fields",
+        "test_f02_stale_displayed_schedule_conflicts_at_rest_boundary",
+        "test_f04_stale_source_revision_conflicts_and_rolls_back_whole_batch",
+        "test_f05_revoke_discovers_unmirrored_running_execution",
+        "test_f06_denial_preserves_unmirrored_completed_history",
+        "test_f07_history_backfill_includes_501st_execution",
+        "test_f09_feed_approval_rechecks_separately_committed_revocation"
+      ],
+      "error_events": 0,
+      "error_methods": [],
+      "skips": 0,
+      "sha256": "8c46a855335e2e4ee498987528c748583024ad814670307b9ad104548bddba85"
+    },
+    "net.log": {
+      "direct_exit": 0,
+      "tests": 32,
+      "failure_events": 0,
+      "failing_methods": [],
+      "error_events": 0,
+      "error_methods": [],
+      "skips": 0,
+      "sha256": "ae2eed77d67d8c15c58a5e6e30ab5e65a7b8193460ac8a9b2fb95e21e8b286f2"
+    },
+    "full.log": {
+      "direct_exit": 1,
+      "tests": 332,
+      "failure_events": 22,
+      "failing_methods": [
+        "test_f01_agent_prompt_change_blocks_manual_and_scheduled_admission",
+        "test_f01_feed_to_agent_requires_fresh_refresh_approval",
+        "test_f01_stale_agent_scope_cannot_approve_changed_prompt",
+        "test_f02_matching_displayed_schedule_approves_exact_fields",
+        "test_f02_stale_displayed_schedule_conflicts_at_rest_boundary",
+        "test_f04_stale_source_revision_conflicts_and_rolls_back_whole_batch",
+        "test_f05_revoke_discovers_unmirrored_running_execution",
+        "test_f06_denial_preserves_unmirrored_completed_history",
+        "test_f07_history_backfill_includes_501st_execution",
+        "test_f09_feed_approval_rechecks_separately_committed_revocation"
+      ],
+      "error_events": 8,
+      "error_methods": [
+        "test_feed_stream_byte_limit_stops_without_writes_and_recovers",
+        "test_http_and_credentialed_sources_are_refused_before_request",
+        "test_manual_refresh_has_provenance_and_timestamps",
+        "test_manual_refresh_through_injected_https_transport_has_provenance",
+        "test_off_host_redirect_is_refused_even_if_other_host_is_also_granted",
+        "test_production_fetch_uses_streaming_timeout_and_per_request_grants",
+        "test_streaming_body_limit"
+      ],
+      "skips": 0,
+      "sha256": "cf47cca7598b93af4cc18c369a838f0f028b219e91bc62a4aebd966bb54899f3"
+    },
+    "focused.log": {
+      "direct_exit": 0,
+      "tests": 8,
+      "failure_events": 0,
+      "failing_methods": [],
+      "error_events": 0,
+      "error_methods": [],
+      "skips": 0,
+      "sha256": "28348bf07658121e044b9228c252d272ac35a6605fe9276b02cffe4b18103532"
+    }
+  },
+  "owned_sha256": {
+    "src/living-spaces/living_spaces_core/bridge.py": "eaf69ac942a294616561cf39fd8c330e68f1f798e315b84f3bd7676c2c1b1e76",
+    "src/living-spaces/living_spaces_core/feeds.py": "9b52d0888644abe40f46dd0bb70d4536ee8b8c6e202e8dde12d69e88c796a4b2",
+    "src/living-spaces/living_spaces_core/net.py": "eae55020012ec54ba68a3bd71f1bd19cc0ba55f22a8ed434edf24b10a9fcea20"
+  },
+  "diff_check_exit": 0
+}

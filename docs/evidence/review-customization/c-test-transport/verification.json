@@ -1,0 +1,77 @@
+{
+  "base": "d4b14c06d7442a156729c68db447feb6cb55692f",
+  "changed_files": [
+    "tests/python/test_core_limits.py",
+    "tests/python/test_upkeep_runs.py"
+  ],
+  "new_file": "tests/python/feed_transport_support.py",
+  "unchanged_baseline_files": 389,
+  "changed_methods": [
+    "FeedLimitTests.test_feed_stream_byte_limit_stops_without_writes_and_recovers",
+    "UpkeepCase.setUp",
+    "RunTests.test_manual_refresh_through_injected_https_transport_has_provenance",
+    "RunTests.test_manual_refresh_has_provenance_and_timestamps",
+    "FeedTests.test_production_fetch_uses_streaming_timeout_and_per_request_grants",
+    "FeedTests.test_off_host_redirect_is_refused_even_if_other_host_is_also_granted",
+    "FeedTests.test_http_and_credentialed_sources_are_refused_before_request",
+    "FeedTests.test_streaming_body_limit"
+  ],
+  "unchanged_methods_in_owned_files": 78,
+  "test_methods_in_owned_files": 67,
+  "preserved_assertions_in_migrated_methods": 30,
+  "removed_obsolete_assertions": [
+    "factory.assert_called_once_with(timeout=20.0, follow_redirects=False)",
+    "self.assertEqual(check.call_count, 2)"
+  ],
+  "diff_check_exit": 0,
+  "runs": {
+    "before-focused": {
+      "tests": 7,
+      "passed": 0,
+      "failed_methods": [],
+      "failure_events": 0,
+      "errored_methods": [
+        "test_feed_stream_byte_limit_stops_without_writes_and_recovers",
+        "test_http_and_credentialed_sources_are_refused_before_request",
+        "test_manual_refresh_has_provenance_and_timestamps",
+        "test_manual_refresh_through_injected_https_transport_has_provenance",
+        "test_off_host_redirect_is_refused_even_if_other_host_is_also_granted",
+        "test_production_fetch_uses_streaming_timeout_and_per_request_grants",
+        "test_streaming_body_limit"
+      ],
+      "error_events": 8,
+      "skips": 0,
+      "exit": 1
+    },
+    "after-focused": {
+      "tests": 7,
+      "passed": 7,
+      "failed_methods": [],
+      "failure_events": 0,
+      "errored_methods": [],
+      "error_events": 0,
+      "skips": 0,
+      "exit": 0
+    },
+    "full": {
+      "tests": 332,
+      "passed": 323,
+      "failed_methods": [
+        "test_f01_agent_prompt_change_blocks_manual_and_scheduled_admission",
+        "test_f01_feed_to_agent_requires_fresh_refresh_approval",
+        "test_f01_stale_agent_scope_cannot_approve_changed_prompt",
+        "test_f02_matching_displayed_schedule_approves_exact_fields",
+        "test_f02_stale_displayed_schedule_conflicts_at_rest_boundary",
+        "test_f05_revoke_discovers_unmirrored_running_execution",
+        "test_f06_denial_preserves_unmirrored_completed_history",
+        "test_f07_history_backfill_includes_501st_execution",
+        "test_f09_feed_approval_rechecks_separately_committed_revocation"
+      ],
+      "failure_events": 19,
+      "errored_methods": [],
+      "error_events": 0,
+      "skips": 0,
+      "exit": 1
+    }
+  }
+}

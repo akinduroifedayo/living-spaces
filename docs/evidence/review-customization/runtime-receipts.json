@@ -1,0 +1,92 @@
+[
+ {
+  "seat": "c-regress",
+  "thread_id": "01a1c915-c669-7330-850f-dc4cc47a9b32",
+  "recorded_model": "gpt-6-astra",
+  "recorded_provider": "openai",
+  "recorded_effort": "high",
+  "recorded_tiers": [
+   "priority"
+  ],
+  "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-regress",
+  "exit": 0,
+  "completed_events": 1,
+  "failed_events": 0,
+  "qualification": "runtime attribution, not proof of provider weights"
+ },
+ {
+  "seat": "c-fix-net",
+  "thread_id": "01a1c91f-ab6f-7e03-b7a0-ab8121de857f",
+  "recorded_model": "gpt-6-astra",
+  "recorded_provider": "openai",
+  "recorded_effort": "high",
+  "recorded_tiers": [
+   "priority"
+  ],
+  "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-fix-net",
+  "exit": 0,
+  "completed_events": 1,
+  "failed_events": 0,
+  "qualification": "runtime attribution, not proof of provider weights"
+ },
+ {
+  "seat": "c-fix-consent",
+  "thread_id": "01a1c91f-ab6f-72f2-a62c-ec0c15e806b6",
+  "recorded_model": "gpt-6-astra",
+  "recorded_provider": "openai",
+  "recorded_effort": "high",
+  "recorded_tiers": [
+   "priority"
+  ],
+  "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-fix-consent",
+  "exit": 0,
+  "completed_events": 1,
+  "failed_events": 0,
+  "qualification": "runtime attribution, not proof of provider weights"
+ },
+ {
+  "seat": "c-fix-source",
+  "thread_id": "01a1c91f-ab6f-7eb3-82bf-7971e825a06d",
+  "recorded_model": "gpt-6-astra",
+  "recorded_provider": "openai",
+  "recorded_effort": "high",
+  "recorded_tiers": [
+   "priority"
+  ],
+  "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-fix-source",
+  "exit": 0,
+  "completed_events": 1,
+  "failed_events": 0,
+  "qualification": "runtime attribution, not proof of provider weights"
+ },
+ {
+  "seat": "c-test-transport",
+  "thread_id": "01a1c925-f2aa-7340-9643-8c533da6708b",
+  "recorded_model": "gpt-6-astra",
+  "recorded_provider": "openai",
+  "recorded_effort": "high",
+  "recorded_tiers": [
+   "priority"
+  ],
+  "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-test-transport",
+  "exit": 0,
+  "completed_events": 1,
+  "failed_events": 0,
+  "qualification": "runtime attribution, not proof of provider weights"
+ },
+ {
+  "seat": "c-comment-repairs",
+  "thread_id": "01a1c92c-5f7a-7601-b5d7-9499cb1c5354",
+  "recorded_model": "gpt-6-astra",
+  "recorded_provider": "openai",
+  "recorded_effort": "high",
+  "recorded_tiers": [
+   "priority"
+  ],
+  "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-comment-repairs",
+  "exit": null,
+  "completed_events": 0,
+  "failed_events": 0,
+  "qualification": "runtime attribution, not proof of provider weights"
+ }
+]

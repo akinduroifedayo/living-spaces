@@ -1,0 +1,16 @@
+{
+  "base_commit": "e45e094b81c19e3cfc0950cb4148f7f7188cd06e",
+  "changed_owned_paths": {
+    "src/desktop/ui/permissions.jsx": "1b5129495eeec4fc1771e6859dc46373046aad16738a56c1e90b53c9cb24901f",
+    "src/desktop/ui/schedule.jsx": "84e40985585f8ec709c5058336f4feac85faf33775aad12e7fa1905f783f1f30",
+    "src/living-spaces/dashboard/plugin_api.py": "e0060b06e16da39dbf91588cd0f2cdf6b6873c3dbc91a5d39ed8e9a30462262a",
+    "src/living-spaces/living_spaces_core/grants.py": "f41aceced3d2af1f7648763e8580a021adb171ed9282e408e8dc006c46904c29",
+    "src/living-spaces/living_spaces_core/runs.py": "f2934073bb16209420a97b1a04270a05f449d8b3e7cbb03f09f151c9abaf2bfc",
+    "src/living-spaces/living_spaces_core/schedules.py": "9a902d814daa44343faf1689e84378c172acbc407bd52d3c9e3ad9dde6c04229"
+  },
+  "unchanged_baseline_paths": 376,
+  "frozen_test_files": 62,
+  "frozen_methods": 27,
+  "frozen_shards": 32,
+  "diff_check_exit": 0
+}
