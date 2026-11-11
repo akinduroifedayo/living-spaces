@@ -1,6 +1,6 @@
 name: living-spaces
 version: 0.1.0
-description: Build persistent applications in the Spaces tab and keep their data current with ordinary Hermes cron upkeep.
+description: "An open canvas for your bots that live in Hermes: persistent Spaces they build in chat and keep current with ordinary Hermes cron upkeep."
 author: Living Spaces contributors
 kind: standalone
 requires_hermes: ">=0.23.1"

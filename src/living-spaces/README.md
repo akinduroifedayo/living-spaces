@@ -1,5 +1,12 @@
 # Living Spaces
 
+> "I see spaces as an open canvas for your bots that live in Hermes." (Ife)
+
+The bot is the trusted author and the Space is its canvas. The sandbox protects
+the Desktop app and keeps one canvas from breaking another. Living Spaces gives
+your bots a persistent display, a shared one that you and the bot both use, for
+dashboards, data and mini apps.
+
 Build persistent applications in normal Hermes chat and use them in the Desktop
 **Spaces** tab. An app can have multiple views, local modules, bundled libraries,
 and structured records. Chat and the app read and change the same records.
@@ -17,6 +24,13 @@ running.
   enabled tools. It uses model calls and can consume subscription quota. The
   Upkeep panel shows the full prompt and says "Uses model calls".
 - Space code can trigger only the no-model feed refresh, never agent upkeep.
+
+**In progress, not qualified, and not shipped at this commit:** open internet in
+the frame (web images, fonts, CDN libraries and embeds), file-by-reference for
+generated images, fonts and libraries, a canvas-to-bot control that asks the owning
+bot to act, and the premium design pass. Today `space.net.fetch` mediates public
+HTTPS and binary files enter as base64 inside the tool call. The direction is in
+[AMENDMENTS](../../docs/spec/AMENDMENTS.md) A-04 to A-06.
 
 This is an unreleased candidate in a private repository. Package validation passed
 at `872480426c70fb7cfac1eda3d0837809a66e6955` with 16 checks and one private-import
@@ -65,8 +79,11 @@ recurring upkeep, open **Upkeep** and select **Pause**, or **Remove** to delete 
 job. A job that is running when you pause or remove it finishes. Permissions
 control Internet access and data, not the cron job.
 
-Release 1 has no approved-site embeds, device access, arbitrary tool invocation,
-file access, or cross-Space access. Generated applications run inside a sandbox.
+At this commit a Space has no approved-site embeds, device access, arbitrary tool
+invocation, file access, or cross-Space access of its own. When a canvas needs more,
+the direction is that it asks its bot (A-05), which acts with Hermes's own tools under
+Hermes's own approval rules; that path is in progress, not qualified. Generated
+applications run inside a sandbox.
 The host supplies their own records, the no-model feed refresh, and scoped logs
 through `window.space`. Public feed retrieval runs on the host over HTTPS and
 needs Internet access on. Credentials are not required and must not enter projects.
@@ -119,7 +136,7 @@ The Permissions panel shows the WebRTC network note in [Limits](#limits).
 
 ## Limits
 
-Spaces block ordinary internet connections unless you approve a site or capability. This is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle.
+A Space frame has no direct network access at this commit. Public HTTPS is mediated through `space.net.fetch` while the Space's Internet access is on. With it off the frame has no network path, but that is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle.
 
 - Upkeep needs Hermes running. The plugin supplies no cloud service.
 - Catch-up policy: "Runs one current refresh when Hermes wakes. Missed intervals aren't replayed."

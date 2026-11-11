@@ -1,6 +1,6 @@
 # Living Spaces: frozen release-1 contracts
 
-Owner: Forge. Status: frozen for the release-1 swarm. Product behaviour comes from `docs/spec/SPEC.md` (v5.1). Experience direction comes from `docs/design/DIRECTION.md` (Miro, branch `miro/design-direction-v1`). Change this file only through Forge. Lanes that need a change post it to Forge instead of editing.
+Owner: Forge. Status: frozen for the release-1 swarm. Order of authority: Ife's decisions in `docs/spec/AMENDMENTS.md`, then SPEC v6 when it lands, then `docs/spec/SPEC.md` (v5.1), which is superseded where it conflicts. Experience direction comes from `docs/design/DIRECTION.md` (Miro, branch `miro/design-direction-v1`). Change this file only through Forge. Lanes that need a change post it to Forge instead of editing.
 
 ## 0. Package layout (one installable plugin folder)
 

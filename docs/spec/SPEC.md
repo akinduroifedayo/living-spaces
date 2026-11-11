@@ -1,3 +1,5 @@
+> Superseded where it conflicts. Order of authority: Ife's decisions in AMENDMENTS.md, then SPEC v6 when it lands, then this file.
+
 # Spaces — full product specification v5.1
 
 **Status:** proposed for Ife's approval; not authorization to build.  
