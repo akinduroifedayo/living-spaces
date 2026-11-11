@@ -8,7 +8,7 @@
     ],
     "exit_code": 0,
     "tail": [
-      "\u2714 unsupported sandbox wire closes the backend session with an actionable error (0.059583ms)",
+      "\u2714 unsupported sandbox wire closes the backend session with an actionable error (0.082292ms)",
       "\u2139 tests 112",
       "\u2139 suites 0",
       "\u2139 pass 112",
@@ -16,7 +16,7 @@
       "\u2139 cancelled 0",
       "\u2139 skipped 0",
       "\u2139 todo 0",
-      "\u2139 duration_ms 1439.173875"
+      "\u2139 duration_ms 2244.782667"
     ]
   },
   {
@@ -31,7 +31,7 @@
     ],
     "exit_code": 0,
     "tail": [
-      "\u2714 Planner pending check-in locks immediate repeat toggles and creation (0.748042ms)",
+      "\u2714 Planner pending check-in locks immediate repeat toggles and creation (1.003584ms)",
       "\u2139 tests 19",
       "\u2139 suites 0",
       "\u2139 pass 19",
@@ -39,7 +39,7 @@
       "\u2139 cancelled 0",
       "\u2139 skipped 0",
       "\u2139 todo 0",
-      "\u2139 duration_ms 115.414208"
+      "\u2139 duration_ms 451.967125"
     ]
   }
 ]

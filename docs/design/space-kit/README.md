@@ -61,16 +61,16 @@ All data below is synthetic. `screens/` holds the original PNGs.
 | Receipt | Purpose |
 |---|---|
 | research-desk-light.png / research-desk-dark.png | Reading-led entry, compact counts, freshness disclosure |
-| research-library-light.png / research-library-dark.png | Real list/detail/editor layout |
+| research-library-dark.png | Real list/detail/editor layout; light library capture is diagnostic only |
 | habit-planner-light.png / habit-planner-dark.png | Warm, focused check-in app, bounded 720px measure |
 | gallery-light.png / gallery-dark.png | Entire component vocabulary and static states |
 | weather-off-light.png / weather-off-dark.png | Explicit **simulated** Internet Off state |
 | weather-sample-light.png / weather-sample-dark.png | User-chosen, labelled synthetic chart; no silent fake-live fallback |
-| weather-sandbox-sample.png | Same sample works in the real network-off sandbox |
+| weather-sandbox-sample.png | Diagnostic capture only; actual sandbox sample checked through DOM/state, not accepted pixels |
 | weather-mobile-dark.png / research-desk-mobile-dark.png | Representative narrow chart/reading hierarchy |
 | preset-*.png | Seven optional palette/type/geometry starts; not seven different app flows |
 
-**Diagnostic only:** habit-planner-mobile-dark.png (and its duplicate `-final`) repeatedly captures a blank nested surface despite valid inner DOM measurements. Cause unproven; not visual acceptance. Original B's narrow habit render is visible but predates final target sizing. Do not ship the blank image as a success receipt. No browser-level zoom, VoiceOver, physical-touch or cross-engine acceptance is claimed.
+**Diagnostic only:** habit-planner-mobile-dark.png (and its duplicate `-final`), research-library-light.png and weather-sandbox-sample.png capture blank nested surfaces in the final run despite valid inner DOM measurements. Cause unproven; not visual acceptance. Earlier runs produced visible Library and sandbox weather frames, but the final files do not establish that. Original B's narrow habit render is visible but predates final target sizing. Do not ship blank images as success receipts. No browser-level zoom, VoiceOver, physical-touch or cross-engine acceptance is claimed.
 
 ## Forge merge seam / remaining integration gates
 

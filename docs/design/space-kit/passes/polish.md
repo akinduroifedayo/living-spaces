@@ -16,7 +16,7 @@ See audit.md for executed commands, exact test scope and untouched tests. Browse
 
 ## Evidence failure retained
 
-Some early OOPIF captures were blank despite DOM readiness. The runner binds contexts to the current parent and forces a viewport recompose before capture. Library/editor captures became usable; the narrow habit capture remains blank. That image is diagnostic only. Do not call the entire screenshot set accepted or use the checker PASS as a pixel verdict. The original independent B captures are retained unchanged and predate some final fixes.
+Some early OOPIF captures were blank despite DOM readiness. The runner binds contexts to the current parent and forces a viewport recompose before capture. Some earlier Library/editor captures became usable; the final light Library, narrow habit and actual-sandbox weather captures are blank. Those images are diagnostic only. Do not call the entire screenshot set accepted or use the checker PASS as a pixel verdict. The original independent B captures are retained unchanged and predate some final fixes.
 
 ## Remaining gates
 

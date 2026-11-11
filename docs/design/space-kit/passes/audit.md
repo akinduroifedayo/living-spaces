@@ -35,7 +35,7 @@
 
 ## Visual evidence limitations
 
-Final light/dark desktop references, gallery, weather Off/sample pair, library/editor and representative narrow frames/crops were inspected. A narrow habit PNG repeatedly captures a white nested-frame surface despite valid inner DOM geometry and working source/state tests. It is retained as a diagnostic, **not visual acceptance**. This may be a capture/compositor defect; its cause is not proven. Do not infer absence of an implementation defect from the passing DOM measurements. Desktop habit light/dark renders are valid.
+Final light/dark desktop reference overviews, gallery, weather Off/sample fixture pair, dark library/editor and representative narrow frames/crops were inspected. The final narrow habit, light library and actual-sandbox weather PNGs capture white nested-frame surfaces despite valid inner DOM geometry and working source/state tests. Earlier runs produced usable Library/weather pixels; the final files are diagnostic only. Cause is not proven. Do not infer absence of an implementation defect from the passing DOM measurements. Desktop habit light/dark and Research Desk overview light/dark renders are valid.
 
 No physical touch gestures, screen reader, Safari/Firefox, browser-level 200% zoom, exhaustive long-content/localization matrix, or production Electron theme switching was qualified here. Canvas/WebGL/game interaction is not tested; gallery board is explicitly a disabled static anatomy specimen. Optional downloaded font wiring and the network broker are not present on this branch.
 
