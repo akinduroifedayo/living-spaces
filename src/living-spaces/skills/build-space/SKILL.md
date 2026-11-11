@@ -55,10 +55,22 @@ Also unavailable in the frame: `localStorage`, IndexedDB, cookies, Node, Hermes
 internals and parent-frame access. Do not create a second backend or store user
 data in project files.
 
-Project files can be text or binary. Pass binary files (PNG, WebP, audio, WOFF2)
-in `files` as `{"b64": "<base64>", "mime": "image/png"}`. Images you make with
-Hermes's image generation tool can be placed in a Space this way (hero art,
-illustrations, sprites). Static references in HTML and CSS are resolved at load.
+Project files can be text or binary. Place binary files (PNG, WebP, audio, WOFF2,
+vendored libraries) by reference, with one line per file in `files`:
+- `{"from_path": "/absolute/path/art.png"}` copies a local file. Use it for
+  images from Hermes's image generation tool (hero art, illustrations, sprites)
+  and for files you downloaded. The path must be inside the Hermes home, the
+  temp folder or your home folder. Credential files (`.env`, `auth.json`, keys,
+  tokens, secrets, `.ssh`) are refused.
+- `{"from_url": "https://..."}` downloads public HTTPS bytes at write time. Use
+  it for fonts, libraries and images. You are fetching, not the Space, so it
+  works with the Space's Internet access off. It does not let the frame load
+  remote URLs; the file becomes a local project file.
+- `{"b64": "<base64>"}` stays for small inline bytes.
+
+MIME follows the path extension, so use the right one. Limits count bytes:
+8 MB per file, 25 MB and 600 files per Space. If any entry fails, nothing in that
+call is written. Static references in HTML and CSS are resolved at load.
 For a path built at runtime (a Preact `src`, `srcset`, SVG `href`, `new Audio()`),
 use `space.asset('images/hero.png')`, which returns a frame-local URL or `null`.
 

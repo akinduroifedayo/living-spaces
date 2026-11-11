@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import importlib
 import json
 import posixpath
 import re
@@ -18,16 +19,26 @@ SKILL_PATH = Path(__file__).resolve().parent / "skills" / "build-space" / "SKILL
 NEXT = "End your reply with the directive paragraph so the user gets an Open Space card."
 
 SPACE_ARG = {"type": "string", "description": "Space id or exact Space name, as shown by spaces_list."}
+MIME_PROP = {"type": "string", "description": "Optional. MIME follows the path extension."}
 FILES_ARG = {
     "type": "object",
-    "description": ("Map of relative path to full UTF-8 text or {\"b64\":\"<base64>\",\"mime\":\"<optional>\"} "
-                    "for binary assets. null deletes a file on writes only. Include \"space.json\" to set the "
-                    "manifest. Every file is written whole; size limits count decoded bytes. MIME is inferred "
-                    "from the path, so use the correct file extension."),
+    "description": ("Map of relative path to full UTF-8 text, or a descriptor with exactly one source: "
+                    "{\"from_path\":\"/absolute/local/file\"} copies a local file (Hermes image generation "
+                    "output, downloads), {\"from_url\":\"https://...\"} downloads public HTTPS bytes (fonts, "
+                    "libraries, images), {\"b64\":\"<base64>\"} for small inline bytes. null deletes a file on "
+                    "writes only. Include \"space.json\" to set the manifest. Every file is written whole. Limits "
+                    "count bytes: 8 MB per file, 25 MB and 600 files per Space. MIME is inferred from the path, so "
+                    "use the correct file extension."),
     "additionalProperties": {"anyOf": [
         {"type": "string"}, {"type": "null"},
-        {"type": "object", "properties": {"b64": {"type": "string"}, "mime": {"type": "string"}},
+        {"type": "object", "properties": {"b64": {"type": "string"}, "mime": MIME_PROP},
          "required": ["b64"], "additionalProperties": False},
+        {"type": "object", "properties": {"from_path": {"type": "string", "description": "Absolute local path."},
+                                          "mime": MIME_PROP},
+         "required": ["from_path"], "additionalProperties": False},
+        {"type": "object", "properties": {"from_url": {"type": "string", "description": "Public https:// URL."},
+                                          "mime": MIME_PROP},
+         "required": ["from_url"], "additionalProperties": False},
     ]},
 }
 LIBRARIES_ARG = {"type": "array", "items": {"type": "string", "enum": LIBRARIES},
@@ -85,25 +96,64 @@ def _space(core, args):
     return core.resolve_space(_text(core, args, "space"))
 
 
+SOURCE_KEYS = ("b64", "from_path", "from_url")
+
+
+def _descriptor_source(value):
+    if not isinstance(value, dict) or not set(value) <= {*SOURCE_KEYS, "mime"}:
+        return None
+    if "mime" in value and not isinstance(value["mime"], str):
+        return None
+    keys = [key for key in SOURCE_KEYS if key in value]
+    if len(keys) != 1 or not isinstance(value[keys[0]], str):
+        return None
+    return keys[0]
+
+
+def _decode_b64(core, path, encoded):
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except (ValueError, binascii.Error):
+        raise _invalid(core, f"{path}: invalid base64 file content") from None
+    core.limits.check(len(raw), core.limits.FILE_BYTES, "file bytes")
+    if base64.b64encode(raw).decode("ascii") != encoded:
+        raise _invalid(core, f"{path}: invalid base64 padding or pad bits")
+    return raw
+
+
+def _with_path(core, path, read):
+    try:
+        return read()
+    except core.SpacesError as exc:
+        raise core.SpacesError(exc.code, f"{path}: {exc.message}", **exc.extra) from None
+
+
+def _file_refs(core):
+    return importlib.import_module(core.__name__ + ".file_refs")
+
+
 def _files(core, args, *, deleting=False):
-    prepared = {}
+    """Resolve every entry to text or bytes before the core write, so one bad entry writes nothing."""
+    prepared, sources = {}, []
     for path, value in _json_arg(core, args, "files", dict).items():
+        source = _descriptor_source(value)
         if isinstance(value, str) or (value is None and deleting):
             prepared[path] = value
-        elif (isinstance(value, dict) and isinstance(value.get("b64"), str)
-              and set(value) <= {"b64", "mime"}
-              and ("mime" not in value or isinstance(value["mime"], str))):
-            try:
-                prepared[path] = base64.b64decode(value["b64"], validate=True)
-            except (ValueError, binascii.Error):
-                raise _invalid(core, f"{path}: invalid base64 file content") from None
-            core.limits.check(len(prepared[path]), core.limits.FILE_BYTES, "file bytes")
-            if base64.b64encode(prepared[path]).decode("ascii") != value["b64"]:
-                raise _invalid(core, f"{path}: invalid base64 padding or pad bits")
+        elif source == "b64":
+            prepared[path] = _decode_b64(core, path, value["b64"])
+        elif source == "from_path":
+            prepared[path] = _with_path(core, path, lambda: _file_refs(core).read_path(value["from_path"]))
+        elif source == "from_url":
+            prepared[path], note = _with_path(core, path, lambda: _file_refs(core).fetch_url(value["from_url"]))
+            sources.append(f"{path} from {note}")
         else:
-            raise _invalid(core, f"{path}: expected file text or a {{b64, mime?}} descriptor"
-                           + (" or null to delete" if deleting else ""))
-    return prepared
+            raise _invalid(core, f"{path}: expected file text or one of {{b64}}, {{from_path}} or {{from_url}} "
+                           "with optional mime" + (", or null to delete" if deleting else ""))
+    return prepared, sources
+
+
+def _summary_with_sources(summary, sources):
+    return summary if not sources else f"{summary} (" + "; ".join(sources) + ")"
 
 
 def _open(sid):
@@ -189,8 +239,10 @@ def _change_result(core, sid, rev, extra_warnings=()):
     warnings = list(dict.fromkeys([*extra_warnings, *_warnings(texts, paths, project["manifest"])]))
     notes = []
     if "kit/spaces-kit.css" in paths:
-        notes.append('To use the kit styles, add <link rel="stylesheet" href="kit/spaces-kit.css"> '
-                     'to your HTML (adjust the relative path for a nested entry).')
+        notes.append("Optional: link kit/spaces-kit.css for the quiet Hermes look. "
+                     "Most Spaces should bring their own styles.css. "
+                     'The tag is <link rel="stylesheet" href="kit/spaces-kit.css"> '
+                     "(adjust the relative path for a nested entry).")
     return {"space": sid, "rev": rev, "open": _open(sid), "grants_pending": pending, "warnings": warnings,
             "notes": notes, "next": NEXT}
 
@@ -211,8 +263,8 @@ def spaces_create(core, args, owner):
     description = args.get("description", "")
     if not isinstance(description, str):
         raise _invalid(core, "description must be a string")
-    files, manifest = _split_manifest(core, _files(core, args),
-                                      _json_arg(core, args, "manifest", dict, required=False))
+    files, sources = _files(core, args)
+    files, manifest = _split_manifest(core, files, _json_arg(core, args, "manifest", dict, required=False))
     libraries = _json_arg(core, args, "libraries", list, required=False)
     if libraries is None:
         libraries = list(DEFAULT_LIBRARIES)
@@ -220,7 +272,7 @@ def spaces_create(core, args, owner):
         raise _invalid(core, "libraries contains an unsupported library")
     actor = f"agent:{owner}"
     detail = core.create_space(name, description=description, owner=owner, files=files, manifest=manifest,
-                               libraries=libraries, author=actor, summary="Created")
+                               libraries=libraries, author=actor, summary=_summary_with_sources("Created", sources))
     sid = detail["id"]
     return _change_result(core, sid, detail.get("head_rev"), detail.get("warnings") or ())
 
@@ -233,9 +285,10 @@ def spaces_read_file(core, args, owner):
 
 def spaces_write_files(core, args, owner):
     sid = _space(core, args)
-    files, manifest = _split_manifest(core, _files(core, args, deleting=True), None)
+    files, sources = _files(core, args, deleting=True)
+    files, manifest = _split_manifest(core, files, None)
     libraries = _json_arg(core, args, "libraries", list, required=False)
-    summary = _text(core, args, "summary")
+    summary = _summary_with_sources(_text(core, args, "summary"), sources)
     info = core.write_files(sid, files=files, manifest=manifest, author=f"agent:{owner}", summary=summary,
                             base_rev=_int(core, args, "base_rev", required=False),
                             **({"libraries": libraries} if libraries is not None else {}))
@@ -344,9 +397,13 @@ REF_NOTE = (" An ambiguous or unknown space fails with code ambiguous/not_found 
 WRITE_NOTE = (" Returns {space, rev, open, grants_pending, warnings, notes}. Fix every warning and follow notes "
               "for stylesheet links. End your reply with "
               "open.directive on its own line and say what changed, the revision, and any pending grants.")
-BINARY_NOTE = (" Pass binary images, audio and fonts as {\"b64\":\"<base64>\",\"mime\":\"<optional>\"} "
-               "file values. Hermes's image generation output can be placed this way by base64-encoding the "
-               "generated file bytes. Use the correct path extension for MIME; limits count decoded bytes.")
+BINARY_NOTE = (" Place binary files by reference in one line: {\"from_path\":\"/absolute/path\"} copies a local "
+               "file such as Hermes image generation output or a downloaded file, and {\"from_url\":\"https://...\"} "
+               "downloads fonts, libraries and images over public HTTPS (no Internet grant needed; this is you "
+               "acting, not the Space). Keep {\"b64\":\"<base64>\"} for small inline bytes. from_path must be "
+               "inside the Hermes home, the temp folder or your home folder, and credential files (.env, "
+               "auth.json, keys, tokens, secrets, .ssh) are refused. Use the correct path extension for MIME. "
+               "Limits: 8 MB per file, 25 MB and 600 files per Space.")
 
 TOOLS = [
     (spaces_list, _schema(

@@ -250,6 +250,15 @@ def _fetch_public(url, *, authorize, max_bytes, method='GET', headers=None, body
         raise SpacesError('invalid', 'Malformed internet request') from exc
 
 
+def fetch_for_agent(url, *, max_bytes):
+    """GET public HTTPS bytes for an agent tool call. Same pinning and redirect checks, no credentials sent."""
+    result, content = _fetch_public(url, authorize=lambda _url: None, max_bytes=max_bytes)
+    if not 200 <= result['status'] < 300:
+        raise SpacesError('blocked', f"Download returned HTTP {result['status']}", reason='http_status',
+                          status=result['status'])
+    return result, content
+
+
 def fetch(sid, url, method='GET', headers=None, body=None, as_='text', session=None):
     def authorize(_url):
         if session is not None:
