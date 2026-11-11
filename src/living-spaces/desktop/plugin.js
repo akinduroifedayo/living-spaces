@@ -757,7 +757,7 @@ function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
       setRevoke(grant);
       return;
     }
-    await change(`${base}/grants/${grant.capability}`, { decision });
+    await change(`${base}/grants/${grant.capability}`, { decision, ...decision === "grant" ? { requested_scope: grant.requested_scope ?? grant.scope ?? {} } : {} });
   }
   async function change(path, body) {
     if (lock.current) return;
@@ -768,7 +768,10 @@ function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
       await ctx.rest(path, { method: "POST", body });
       await Promise.all([query.refetch(), schedule.refetch(), onChanged()]);
     } catch (e) {
-      setError(errorText(e));
+      if ((e?.error || e?.body?.error || e)?.code === "conflict") {
+        setError("Permission request changed. Review the new request before approving.");
+      } else setError(`${errorText(e)} Review the current request before trying again.`);
+      await Promise.all([query.refetch(), schedule.refetch()]);
     } finally {
       lock.current = false;
       setBusy(false);
@@ -859,10 +862,11 @@ function ScheduleSheet({ ctx, space, onClose, onChanged, returnFocus }) {
 }
 
 // src/desktop/ui/session.mjs
-function createSpaceSession({ rest, sid, container, mount, onEvent, onWrite = () => {
-}, onCloseError = () => {
-} }) {
+function createSpaceSession({ rest, backend, sid, container, mount, onEvent, onWrite = () => {
+}, onCloseError = (error) => console.warn("Space session cleanup failed", error) }) {
   const base = spacePath(sid);
+  const { api, connectionId, profile } = backend || {};
+  const lifecycleRest = api ? (path, options = {}) => api({ ...options, path: `/api/plugins/living-spaces${path}`, connectionId, profile, timeoutMs: options.method === "DELETE" ? 5e3 : void 0 }) : rest;
   let closed = false;
   let session = null;
   let mounted = null;
@@ -874,21 +878,49 @@ function createSpaceSession({ rest, sid, container, mount, onEvent, onWrite = ()
   const publish = (event) => onWrite(failures.values().next().value || (pendingWrites ? { status: "saving" } : event));
   const close = () => {
     if (!session) return Promise.resolve();
-    closePromise ??= rest(`${base}/sessions/${encodeURIComponent(session)}`, { method: "DELETE" }).catch(onCloseError);
+    closePromise ??= (async () => {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          return await lifecycleRest(`${base}/sessions/${encodeURIComponent(session)}`, { method: "DELETE" });
+        } catch (error) {
+          onCloseError(error);
+          if (attempt === 3) throw error;
+          await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+        }
+      }
+    })().catch((error) => {
+      closePromise = null;
+      throw error;
+    });
     return closePromise;
   };
   const call = async (op, args, retryToken) => {
     if (closed) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
     const writing = ["data.put", "data.delete", "data.batch"].includes(op);
+    if (writing && retryToken == null) {
+      args = structuredClone(args);
+      const identify = (put) => {
+        if (put.id == null) {
+          put.id = "r_" + Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => byte.toString(16).padStart(2, "0")).join("");
+          put.base_rev = 0;
+        }
+      };
+      if (op === "data.put") identify(args);
+      if (op === "data.batch" && Array.isArray(args.ops)) args.ops.forEach((item) => {
+        if (item?.op === "put") identify(item);
+      });
+    }
     const token = retryToken ?? ++nextWrite;
     if (writing) {
       pendingWrites++;
       publish({ status: "saving", op, args });
     }
     let reply;
+    let unknown = false;
     try {
       reply = await rest(`${base}/bridge`, { method: "POST", body: { session, op, args } });
     } catch (error) {
+      unknown = true;
       reply = { ok: false, error: { code: "unavailable", message: error.message || String(error) } };
     }
     if (closed) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
@@ -900,7 +932,8 @@ function createSpaceSession({ rest, sid, container, mount, onEvent, onWrite = ()
         retries.set(token, promise);
         return promise;
       };
-      const event = { status: reply.ok ? "saved" : reply.error?.code === "conflict" ? "conflict" : "failed", token, op, args, reply, at: Date.now() / 1e3, retry };
+      unknown ||= failures.get(token)?.status === "unknown";
+      const event = { status: reply.ok ? "saved" : reply.error?.code === "conflict" ? "conflict" : unknown ? "unknown" : "failed", token, op, args, reply, at: Date.now() / 1e3, retry };
       if (reply.ok) failures.delete(token);
       else failures.set(token, event);
       publish(event);
@@ -908,17 +941,18 @@ function createSpaceSession({ rest, sid, container, mount, onEvent, onWrite = ()
     return reply;
   };
   const ready = (async () => {
-    const opened = await rest(`${base}/sessions`, { method: "POST" });
+    const opened = await lifecycleRest(`${base}/sessions`, { method: "POST" });
     session = opened.session;
     if (closed) return close();
     try {
-      const bundle = await rest(`${base}/bundle`);
+      const bundle = await lifecycleRest(`${base}/bundle`);
       if (closed) return close();
       if (bundle.rev !== opened.head_rev) throw new Error("The Space changed while opening. Reload Space to open the current revision.");
       mounted = mount(container, { bundle, grants: opened.grants, call, onEvent: (event) => !closed && onEvent(event) });
     } catch (error) {
       closed = true;
-      await close();
+      await close().catch(() => {
+      });
       throw error;
     }
   })();
@@ -943,22 +977,22 @@ function createSpaceSession({ rest, sid, container, mount, onEvent, onWrite = ()
 // src/desktop/ui/space.jsx
 import { Fragment as Fragment5, jsx as jsx6, jsxs as jsxs6 } from "react/jsx-runtime";
 function SaveStatus({ write, announcement }) {
-  const labels = { saving: "Saving\u2026", saved: `Saved ${write?.at ? absolute(write.at) : ""}`, failed: "Not saved \u2014 this change was not stored", conflict: "Conflict \u2014 this record changed elsewhere" };
+  const labels = { saving: "Saving\u2026", saved: `Saved ${write?.at ? absolute(write.at) : ""}`, failed: "Not saved \u2014 this change was rejected", unknown: "Save outcome unknown \u2014 the change may have been stored", conflict: "Conflict \u2014 this record changed elsewhere" };
   return /* @__PURE__ */ jsxs6("span", { className: "ls-save", role: "status", "aria-live": "polite", "aria-atomic": "true", children: [
-    /* @__PURE__ */ jsx6(Icon, { name: write?.status === "saving" ? "refresh" : ["failed", "conflict"].includes(write?.status) ? "warning" : "check", spin: write?.status === "saving" }),
+    /* @__PURE__ */ jsx6(Icon, { name: write?.status === "saving" ? "refresh" : ["failed", "unknown", "conflict"].includes(write?.status) ? "warning" : "check", spin: write?.status === "saving" }),
     write ? labels[write.status] : "No unsaved changes",
     announcement && /* @__PURE__ */ jsx6("span", { children: announcement })
   ] });
 }
 function WriteBanner({ write, setWrite, onCompare, onUpdated }) {
-  if (!write || !["failed", "conflict"].includes(write.status)) return null;
+  if (!write || !["failed", "unknown", "conflict"].includes(write.status)) return null;
   const current = write.reply?.error?.current;
   const canKeep = write.op === "data.put" && current?.rev != null;
   return /* @__PURE__ */ jsx6(
     Banner,
     {
       kind: write.status === "conflict" ? "conflict" : "failed",
-      title: write.status === "conflict" ? "Conflict \u2014 this record changed elsewhere" : "Not saved \u2014 this change was not stored",
+      title: write.status === "conflict" ? "Conflict \u2014 this record changed elsewhere" : write.status === "unknown" ? "Save outcome unknown \u2014 the change may have been stored" : "Not saved \u2014 this change was rejected",
       actions: write.status === "conflict" ? /* @__PURE__ */ jsxs6(Fragment5, { children: [
         canKeep && /* @__PURE__ */ jsx6(Action, { onClick: () => write.retry({ ...write.args, base_rev: current.rev }), children: "Keep my note" }),
         /* @__PURE__ */ jsx6(Action, { onClick: () => {
@@ -994,6 +1028,7 @@ function SpaceView({ ctx, sid }) {
   const cursor = useRef4(0);
   const seenRun = useRef4(null);
   const grantsKey = JSON.stringify(space?.grants || []);
+  const hasData = space?.grants?.some((grant) => grant.capability === "data" && grant.status === "granted") === true;
   const building = !space || space.status === "building" || !space.head_rev;
   const archived = space?.status === "archived";
   const remoteCrash = space?.attention?.kind === "crashed" && ignoredCrashRev !== space?.head_rev;
@@ -1015,7 +1050,10 @@ function SpaceView({ ctx, sid }) {
     let errors = 0;
     cursor.current = 0;
     setReady(false);
+    const [connectionId, profile] = ctx.queryScope ? JSON.parse(ctx.queryScope) : [host2.state.connectionId.get(), host2.state.profile.get()];
+    const backend = { api: window.hermesDesktop?.api, connectionId, profile };
     const session = createSpaceSession({
+      backend,
       rest: (path, options) => ctx.rest(path, options),
       sid,
       container: content.current,
@@ -1041,19 +1079,19 @@ Location: ${event.location || event.filename || "Not reported by runtime"}`));
       disposed = true;
       setReady(false);
       session.postEvent("session.closed", { reason: "Space view closed or reloaded" });
-      session.destroy();
+      session.destroy().catch((e) => host2.notifyError(e, "A Space session could not be closed after retries."));
       if (controller.current === session) controller.current = null;
     };
   }, [ctx, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
-  const changes = useQuery4({ queryKey: ["living-spaces", ctx.queryScope || null, sid, "changes", space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: ready && !building && !archived && !crash, refetchInterval: 1500 });
+  const changes = useQuery4({ queryKey: ["living-spaces", ctx.queryScope || null, sid, "changes", space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 });
   useEffect(() => {
-    if (!ready || !changes.data || !controller.current) return;
+    if (!hasData || !ready || !changes.data || !controller.current) return;
     const page = advanceCursor(cursor.current, changes.data);
     if (page.changes.length) {
       controller.current.postEvent("data.changed", page);
       cursor.current = page.seq;
     }
-  }, [ready, changes.data, changes.dataUpdatedAt]);
+  }, [hasData, ready, changes.data, changes.dataUpdatedAt]);
   useEffect(() => {
     if (!lastRun) return;
     if (ready) controller.current?.postEvent("run.updated", lastRun);

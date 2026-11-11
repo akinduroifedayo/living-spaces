@@ -9,14 +9,14 @@ import { createSpaceSession } from './session.mjs'
 import { mountSpace } from '../sandbox/index.js'
 
 function SaveStatus({ write, announcement }) {
-  const labels = { saving: 'Saving…', saved: `Saved ${write?.at ? absolute(write.at) : ''}`, failed: 'Not saved — this change was not stored', conflict: 'Conflict — this record changed elsewhere' }
-  return <span className="ls-save" role="status" aria-live="polite" aria-atomic="true"><Icon name={write?.status === 'saving' ? 'refresh' : ['failed', 'conflict'].includes(write?.status) ? 'warning' : 'check'} spin={write?.status === 'saving'} />{write ? labels[write.status] : 'No unsaved changes'}{announcement && <span>{announcement}</span>}</span>
+  const labels = { saving: 'Saving…', saved: `Saved ${write?.at ? absolute(write.at) : ''}`, failed: 'Not saved — this change was rejected', unknown: 'Save outcome unknown — the change may have been stored', conflict: 'Conflict — this record changed elsewhere' }
+  return <span className="ls-save" role="status" aria-live="polite" aria-atomic="true"><Icon name={write?.status === 'saving' ? 'refresh' : ['failed', 'unknown', 'conflict'].includes(write?.status) ? 'warning' : 'check'} spin={write?.status === 'saving'} />{write ? labels[write.status] : 'No unsaved changes'}{announcement && <span>{announcement}</span>}</span>
 }
 function WriteBanner({ write, setWrite, onCompare, onUpdated }) {
-  if (!write || !['failed', 'conflict'].includes(write.status)) return null
+  if (!write || !['failed', 'unknown', 'conflict'].includes(write.status)) return null
   const current = write.reply?.error?.current
   const canKeep = write.op === 'data.put' && current?.rev != null
-  return <Banner kind={write.status === 'conflict' ? 'conflict' : 'failed'} title={write.status === 'conflict' ? 'Conflict — this record changed elsewhere' : 'Not saved — this change was not stored'}
+  return <Banner kind={write.status === 'conflict' ? 'conflict' : 'failed'} title={write.status === 'conflict' ? 'Conflict — this record changed elsewhere' : write.status === 'unknown' ? 'Save outcome unknown — the change may have been stored' : 'Not saved — this change was rejected'}
     actions={write.status === 'conflict' ? <>{canKeep && <Action onClick={() => write.retry({ ...write.args, base_rev: current.rev })}>Keep my note</Action>}<Action onClick={() => { setWrite(null); onUpdated(current) }}>Use updated record</Action><Action onClick={onCompare}>Compare</Action></> : <Action onClick={() => write.retry()}>Retry save</Action>}>
     {write.reply?.error?.message || 'Your change is kept in this view until you choose how to continue.'}
   </Banner>
@@ -44,6 +44,7 @@ export function SpaceView({ ctx, sid }) {
   const cursor = useRef(0)
   const seenRun = useRef(null)
   const grantsKey = JSON.stringify(space?.grants || [])
+  const hasData = space?.grants?.some(grant => grant.capability === 'data' && grant.status === 'granted') === true
   const building = !space || space.status === 'building' || !space.head_rev
   const archived = space?.status === 'archived'
   const remoteCrash = space?.attention?.kind === 'crashed' && ignoredCrashRev !== space?.head_rev
@@ -63,7 +64,9 @@ export function SpaceView({ ctx, sid }) {
     let errors = 0
     cursor.current = 0
     setReady(false)
-    const session = createSpaceSession({ rest: (path, options) => ctx.rest(path, options), sid, container: content.current, mount: mountSpace,
+    const [connectionId, profile] = ctx.queryScope ? JSON.parse(ctx.queryScope) : [host.state.connectionId.get(), host.state.profile.get()]
+    const backend = { api: window.hermesDesktop?.api, connectionId, profile }
+    const session = createSpaceSession({ backend, rest: (path, options) => ctx.rest(path, options), sid, container: content.current, mount: mountSpace,
       onWrite: event => !disposed && setWrite(event),
       onEvent: event => {
         if (disposed) return
@@ -80,17 +83,17 @@ export function SpaceView({ ctx, sid }) {
       disposed = true
       setReady(false)
       session.postEvent('session.closed', { reason: 'Space view closed or reloaded' })
-      session.destroy()
+      session.destroy().catch(e => host.notifyError(e, 'A Space session could not be closed after retries.'))
       if (controller.current === session) controller.current = null
     }
   }, [ctx, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload])
 
-  const changes = useQuery({ queryKey: ['living-spaces', ctx.queryScope || null, sid, 'changes', space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: ready && !building && !archived && !crash, refetchInterval: 1500 })
+  const changes = useQuery({ queryKey: ['living-spaces', ctx.queryScope || null, sid, 'changes', space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 })
   useEffect(() => {
-    if (!ready || !changes.data || !controller.current) return
+    if (!hasData || !ready || !changes.data || !controller.current) return
     const page = advanceCursor(cursor.current, changes.data)
     if (page.changes.length) { controller.current.postEvent('data.changed', page); cursor.current = page.seq }
-  }, [ready, changes.data, changes.dataUpdatedAt])
+  }, [hasData, ready, changes.data, changes.dataUpdatedAt])
   useEffect(() => {
     if (!lastRun) return
     if (ready) controller.current?.postEvent('run.updated', lastRun)

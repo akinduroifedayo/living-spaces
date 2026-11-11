@@ -138,7 +138,7 @@ def request(sid, capability, *, scope, purpose, actor):
         return _request(conn, sid, capability, scope=scope, purpose=purpose, actor=actor)
 
 
-def decide(sid, capability, decision, *, actor="user", scope=None):
+def decide(sid, capability, decision, *, actor="user", scope=None, requested_scope=None):
     limits.text(capability, "capability")
     if decision not in ("grant", "deny", "revoke"):
         raise SpacesError("invalid", "Decision must be grant, deny or revoke")
@@ -149,6 +149,11 @@ def decide(sid, capability, decision, *, actor="user", scope=None):
         if row is None:
             raise SpacesError("not_found", "Capability request not found")
         current = _grant(row)
+        if decision == "grant" and requested_scope is not None:
+            displayed = _scope(capability, requested_scope)
+            if displayed != (current["requested_scope"] if current["requested_scope"] is not None else current["scope"]):
+                raise SpacesError("conflict", "Permission request changed. Review the current request before approving.",
+                                  current=current)
         selected = _scope(capability, scope if scope is not None else current["requested_scope"] or current["scope"])
         if decision == "grant" and not _subset(selected, current["requested_scope"] or current["scope"]):
             raise SpacesError("invalid", "Grant scope exceeds the requested scope")
