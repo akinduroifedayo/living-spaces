@@ -13,8 +13,6 @@ import types
 import unittest
 from unittest.mock import Mock, patch
 
-import httpx
-
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "src" / "living-spaces"
 FIXTURES = Path(__file__).parent / "fixtures" / "feeds"
@@ -23,6 +21,7 @@ sys.path.insert(0, str(PACKAGE))
 import living_spaces_core as core
 from living_spaces_core import db, feeds, runs, schedules
 from living_spaces_core.errors import SpacesError
+from .feed_transport_support import PUBLIC, PinnedTransport, Response
 
 HTTP_FETCH = feeds.fetch
 
@@ -52,6 +51,7 @@ class UpkeepCase(unittest.TestCase):
         item = patch.object(feeds, "fetch", self.fetch)
         item.start()
         self.addCleanup(item.stop)
+        self.fetch_patch = item
 
     @staticmethod
     def source(source_id, host="research.example"):
@@ -110,8 +110,8 @@ class UpkeepCase(unittest.TestCase):
 class RunTests(UpkeepCase):
     def test_manual_refresh_through_injected_https_transport_has_provenance(self):
         payload = (FIXTURES / "research.rss").read_bytes()
-        client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, content=payload)))
-        with patch.object(feeds, "fetch", HTTP_FETCH), patch.object(feeds.httpx, "Client", return_value=client):
+        self.fetch_patch.stop()
+        with PinnedTransport([Response(payload)]).installed():
             run = self.refresh()
         self.assertEqual(run["status"], "succeeded")
         self.assertEqual(run["changed"]["added"], 2)
@@ -128,8 +128,8 @@ class RunTests(UpkeepCase):
 
     def test_manual_refresh_has_provenance_and_timestamps(self):
         body = (FIXTURES / "research.rss").read_bytes()
-        client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, content=body)))
-        with patch.object(feeds, "fetch", HTTP_FETCH), patch.object(feeds.httpx, "Client", return_value=client):
+        self.fetch_patch.stop()
+        with PinnedTransport([Response(body)]).installed():
             run = self.refresh()
         self.assertEqual(run["status"], "succeeded")
         self.assertEqual(run["changed"], {"added": 2, "updated": 0, "unchanged": 0, "removed": 0})
@@ -455,47 +455,57 @@ class FeedTests(UpkeepCase):
         self.assertIsInstance(run["source_as_of"], float)
 
     def test_production_fetch_uses_streaming_timeout_and_per_request_grants(self):
-        requests = []
+        transport = PinnedTransport([
+            Response(status=302, headers={"location": "/current"}),
+            Response((FIXTURES / "research.rss").read_bytes()),
+        ])
+        requests = transport.requests
 
-        def serve(request):
-            requests.append(request)
-            if request.url.path == "/feed":
-                return httpx.Response(302, headers={"location": "/current"})
-            return httpx.Response(200, content=(FIXTURES / "research.rss").read_bytes())
+        def check(sid, capability, scope_need=None):
+            self.check(sid, capability, scope_need)
+            transport.events.append(("grant", sid, capability, scope_need))
 
-        client = httpx.Client(transport=httpx.MockTransport(serve))
-        check = Mock(side_effect=self.check)
-        with patch.object(feeds.httpx, "Client", return_value=client) as factory, patch.object(self.grants, "check", check):
+        with transport.installed(), patch.object(self.grants, "check", check):
             payload = HTTP_FETCH("research-desk", "https://research.example/feed")
-        factory.assert_called_once_with(timeout=20.0, follow_redirects=False)
+        self.assertEqual(len(transport.connections), 2)
+        for host, port, ip, timeout in transport.connections:
+            self.assertEqual((host, port, ip), ("research.example", 443, PUBLIC))
+            self.assertGreater(timeout, 0)
+            self.assertLessEqual(timeout, 20)
         self.assertEqual(len(requests), 2)
         self.assertEqual(len(feeds.parse(payload)), 2)
-        self.assertEqual(check.call_count, 2)
+        self.assertEqual([request["target"] for request in requests], ["/feed", "/current"])
+        grant = ("grant", "research-desk", "refresh", {"hosts": ["research.example"]})
+        for index, event in enumerate(transport.events):
+            if event[0] == "request":
+                self.assertGreater(index, 0)
+                self.assertEqual(transport.events[index - 1], grant)
+                self.assertEqual(event[1]["headers"]["Host"], "research.example")
+        redirect = transport.events.index(("response", requests[0], 302))
+        next_connection = transport.events.index(("connect", transport.connections[1]), redirect + 1)
+        self.assertLess(redirect, next_connection)
+        self.assertIn(grant, transport.events[redirect + 1:next_connection])
 
     def test_off_host_redirect_is_refused_even_if_other_host_is_also_granted(self):
         self.allowed.add("other.example")
-        requests = []
-
-        def serve(request):
-            requests.append(request)
-            return httpx.Response(302, headers={"location": "https://other.example/feed"})
-
-        client = httpx.Client(transport=httpx.MockTransport(serve))
-        with patch.object(feeds.httpx, "Client", return_value=client):
+        transport = PinnedTransport([Response(status=302, headers={"location": "https://other.example/feed"})])
+        requests = transport.requests
+        with transport.installed():
             with self.assertRaisesRegex(SpacesError, "changed host"):
                 HTTP_FETCH("research-desk", "https://research.example/feed")
         self.assertEqual(len(requests), 1)
 
     def test_http_and_credentialed_sources_are_refused_before_request(self):
         for url in ("http://research.example/feed", "https://demo:example@research.example/feed"):
-            with self.subTest(url=url), patch.object(feeds.httpx, "Client") as factory:
+            transport = PinnedTransport([])
+            factory = transport.factory
+            with self.subTest(url=url), transport.installed():
                 with self.assertRaises(SpacesError):
                     HTTP_FETCH("research-desk", url)
                 factory.assert_not_called()
 
     def test_streaming_body_limit(self):
-        client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, content=b"x" * (feeds.MAX_BYTES + 1))))
-        with patch.object(feeds.httpx, "Client", return_value=client):
+        with PinnedTransport([Response(b"x" * (feeds.MAX_BYTES + 1))]).installed():
             with self.assertRaises(SpacesError) as caught:
                 HTTP_FETCH("research-desk", "https://research.example/feed")
         self.assertEqual(caught.exception.code, "limit")
