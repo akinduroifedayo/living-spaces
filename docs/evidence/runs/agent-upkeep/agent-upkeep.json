@@ -1,0 +1,234 @@
+{
+  "evidence_class": "Disposable public fixture; real native Hermes cron model calls; host decisions through native mouse input",
+  "space": "agent-upkeep-qualification-1794372139",
+  "cron_job_id": "b4c00b415c1a",
+  "manual_run": {
+    "id": "run_f7d7a4b5cc9d40c6",
+    "space": "agent-upkeep-qualification-1794372139",
+    "trigger": "manual",
+    "handler": "agent",
+    "actor": "user",
+    "status": "succeeded",
+    "queued_at": 1794372142.029807,
+    "started_at": 1794372184.157887,
+    "ended_at": 1794372199.458831,
+    "source_as_of": null,
+    "changed": {
+      "added": 0,
+      "updated": 0,
+      "unchanged": 0,
+      "removed": 0
+    },
+    "error": null,
+    "detail": {
+      "cron_job_id": "27fb4d4bfb6b",
+      "one_shot": true,
+      "changed_unavailable": true,
+      "cron_run_id": "e1e65215285b458b958a3e3fc809f95c",
+      "cron_status": "completed"
+    },
+    "heartbeat_at": 1794372199.4877539
+  },
+  "scheduled_run": {
+    "id": "run_cron_bb42d343bea24bfdb24c1f28eb4c631d",
+    "space": "agent-upkeep-qualification-1794372139",
+    "trigger": "schedule",
+    "handler": "agent",
+    "actor": "upkeep:schedule",
+    "status": "succeeded",
+    "queued_at": 1794372244.144649,
+    "started_at": 1794372244.162653,
+    "ended_at": 1794372263.375017,
+    "source_as_of": null,
+    "changed": {},
+    "error": null,
+    "detail": {
+      "cron_job_id": "b4c00b415c1a",
+      "cron_run_id": "bb42d343bea24bfdb24c1f28eb4c631d",
+      "cron_status": "completed",
+      "changed_unavailable": true
+    },
+    "heartbeat_at": 1794372263.42319
+  },
+  "fixture_deleted": true,
+  "checks": [
+    {
+      "name": "model cost and exact prompt are visible before schedule approval",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "approval creates a native local agent job",
+      "passed": true,
+      "observed": [
+        false,
+        "local",
+        true
+      ],
+      "expected": [
+        false,
+        "local",
+        true
+      ]
+    },
+    {
+      "name": "native prompt is bound to the fixture Space",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "native job inherits configured cron tools",
+      "passed": true,
+      "observed": null,
+      "expected": null
+    },
+    {
+      "name": "native model run succeeded",
+      "passed": true,
+      "observed": "succeeded",
+      "expected": "succeeded"
+    },
+    {
+      "name": "run has native job and execution identifiers",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "model wrote fresh source fields",
+      "passed": true,
+      "observed": "Agent upkeep demo refreshed",
+      "expected": "Agent upkeep demo refreshed"
+    },
+    {
+      "name": "user note and status survived",
+      "passed": true,
+      "observed": {
+        "notes": "Keep this public demo note",
+        "status": "reading"
+      },
+      "expected": {
+        "notes": "Keep this public demo note",
+        "status": "reading"
+      }
+    },
+    {
+      "name": "source metadata identifies agent upkeep",
+      "passed": true,
+      "observed": "agent",
+      "expected": "agent"
+    },
+    {
+      "name": "source metadata retains public provenance",
+      "passed": true,
+      "observed": "https://example.org/demo",
+      "expected": "https://example.org/demo"
+    },
+    {
+      "name": "rapid Refresh now produces one run",
+      "passed": true,
+      "observed": 1,
+      "expected": 1
+    },
+    {
+      "name": "manual trigger is recorded",
+      "passed": true,
+      "observed": "manual",
+      "expected": "manual"
+    },
+    {
+      "name": "native model run succeeded",
+      "passed": true,
+      "observed": "succeeded",
+      "expected": "succeeded"
+    },
+    {
+      "name": "run has native job and execution identifiers",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "model wrote fresh source fields",
+      "passed": true,
+      "observed": "Agent upkeep demo refreshed",
+      "expected": "Agent upkeep demo refreshed"
+    },
+    {
+      "name": "user note and status survived",
+      "passed": true,
+      "observed": {
+        "notes": "Keep this public demo note",
+        "status": "reading"
+      },
+      "expected": {
+        "notes": "Keep this public demo note",
+        "status": "reading"
+      }
+    },
+    {
+      "name": "source metadata identifies agent upkeep",
+      "passed": true,
+      "observed": "agent",
+      "expected": "agent"
+    },
+    {
+      "name": "source metadata retains public provenance",
+      "passed": true,
+      "observed": "https://example.org/demo",
+      "expected": "https://example.org/demo"
+    },
+    {
+      "name": "native fire while Space is closed is recorded as schedule",
+      "passed": true,
+      "observed": "schedule",
+      "expected": "schedule"
+    },
+    {
+      "name": "host pause disables the native agent job",
+      "passed": true,
+      "observed": false,
+      "expected": false
+    },
+    {
+      "name": "prompt change requires fresh schedule approval",
+      "passed": true,
+      "observed": "requested",
+      "expected": "requested"
+    },
+    {
+      "name": "prompt change leaves old native job paused",
+      "passed": true,
+      "observed": false,
+      "expected": false
+    },
+    {
+      "name": "archive prevents another agent refresh",
+      "passed": true,
+      "observed": "blocked",
+      "expected": "blocked"
+    },
+    {
+      "name": "other Spaces remained unchanged",
+      "passed": true,
+      "observed": "7c172358229a7eeb0fddcc35e5dfb3a5b2a4af76b4f07e4ee9521385289b3c08",
+      "expected": "7c172358229a7eeb0fddcc35e5dfb3a5b2a4af76b4f07e4ee9521385289b3c08"
+    },
+    {
+      "name": "deletion removes the native agent job",
+      "passed": true,
+      "observed": null,
+      "expected": null
+    },
+    {
+      "name": "deletion removes only the disposable Space",
+      "passed": true,
+      "observed": false,
+      "expected": false
+    }
+  ],
+  "passed": 26,
+  "total": 26
+}
