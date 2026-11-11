@@ -56,7 +56,7 @@ The server is local-only and must be stopped after use. No Forge Desktop/home is
 
 ### Curated final visual receipts
 
-All data below is synthetic. `screens/` holds the original PNGs.
+The original fixtures below use synthetic data. `screens/` holds the PNGs. The additional `weather-live-standalone-light.png` is a real **public** London forecast loaded from Open-Meteo in a standalone local HTTP page, not private data and not sandbox network qualification.
 
 | Receipt | Purpose |
 |---|---|
@@ -69,12 +69,15 @@ All data below is synthetic. `screens/` holds the original PNGs.
 | weather-sandbox-sample.png | Diagnostic capture only; actual sandbox sample checked through DOM/state, not accepted pixels |
 | weather-mobile-dark.png / research-desk-mobile-dark.png | Representative narrow chart/reading hierarchy |
 | preset-*.png | Seven optional palette/type/geometry starts; not seven different app flows |
+| habit-planner-mobile-dark-recovered.png | Visible 390px dark Habit Planner; native browser recovery |
+| research-library-light-recovered.png | Visible light Library list + unselected-detail state, not an editor receipt |
+| weather-live-standalone-light.png | Real public Open-Meteo forecast in standalone HTTP browser, twelve hourly values; not sandbox qualification |
 
 **Diagnostic only:** habit-planner-mobile-dark.png (and its duplicate `-final`), research-library-light.png and weather-sandbox-sample.png capture blank nested surfaces in the final run despite valid inner DOM measurements. Cause unproven; not visual acceptance. Earlier runs produced visible Library and sandbox weather frames, but the final files do not establish that. Original B's narrow habit render is visible but predates final target sizing. Do not ship blank images as success receipts. No browser-level zoom, VoiceOver, physical-touch or cross-engine acceptance is claimed.
 
 ## Forge merge seam / remaining integration gates
 
-Keep the design section headed `Make the inside worth using (optional design defaults)` when reconciling your SKILL.md runtime rewrite. Existing runtime CSS names remain intact. No runtime JS, bridge, Python or test changes were authored. The source branch does not contain your newer 7febcd8 shelf or subsequent network lanes; re-run the current integrated gate after merging.
+Keep the design section headed `Make the inside worth using (optional design defaults)` when reconciling your SKILL.md runtime rewrite. Existing runtime CSS names remain intact. No runtime JS, bridge, Python or test changes were authored. Forge has merged checkpoint `8d9c557` into its newer runtime; the final tail contains accessibility polish and these receipts. Re-run the current integrated gate after merging that tail; this branch's base remains `44211c8`, not the later shelf/network tree.
 
 Default-open direct network is **not qualified**. Hosted Weather Window currently disables live loading and offers its local sample. A standalone browser demonstration can call Open-Meteo, but that does not prove the Space network boundary. Integrate the exact qualified host API rather than guessing a bridge signature or relaxing CSP. Host On/Off copy follows the actual landed semantics.
 

@@ -4,7 +4,9 @@ Miro → Forge · release-1 recommendation · 10 November 2026
 
 ## Floor, not ceiling
 
-Spaces are an environment for whatever the user wants. The kit, presets and shelf are optional. A building agent can use its installed design skills, generate assets, vendor other libraries, or use public HTTPS dependencies when internet access is available. The shelf earns its place by making common work fast, pinned and usable offline. Never copy the entire shelf into every Space.
+Spaces are an environment for whatever the user wants. The kit, presets and shelf are optional. A building agent can use its installed design skills, generate assets and vendor other libraries. The shelf earns its place by making common work fast, pinned and usable offline. Never copy the entire shelf into every Space.
+
+**Integration update:** Forge's newer runtime keeps direct frame network blocked and exposes mediated `space.net.fetch`; this is not CDN/import/embed access. The web/on-demand rows below are sourcing recommendations for agent-vendored assets or a future qualified runtime, not claims that remote modules, web fonts or iframes load directly in R1. Follow the current build skill's single authoritative network rule.
 
 **Decision:** keep the existing Preact/hooks and financial lightweight-charts. Add typography, icons, a general SVG chart library and safe markdown. Small motion is worthwhile if its isolated build qualifies. Do not rush multiple chart or game engines into the candidate. Network-open is a product decision with a separate isolation feasibility gate; this proposal does not claim the runtime gate has passed.
 

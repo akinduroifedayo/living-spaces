@@ -20,4 +20,6 @@ Some early OOPIF captures were blank despite DOM readiness. The runner binds con
 
 ## Remaining gates
 
-Forge: merge and re-run current integration gates; regenerate demo Spaces through real chat; qualify actual Desktop theme switches and optional shelf fonts/theme loader; land one authoritative network rule and align Weather Window to a qualified host network API if available. Ife retains final design acceptance. No PR or deployment was opened.
+Recovery: native browser captures now supply a visible narrow habit view and light Library list view; their separate `-recovered` files do not silently replace diagnostics. The standalone public forecast loaded successfully with twelve hourly rows and real attribution; receipt in recovery-browser.json. This does not prove Space network access. Stock 112 and reference 19 tests were re-executed successfully.
+
+Forge has already merged checkpoint 8d9c557; merge the final polish/evidence tail and rerun current integration gates. Regenerate demo Spaces through real chat; qualify actual Desktop theme switches and optional shelf fonts/theme loader. Forge's newer runtime has one authoritative mediated-network rule; Weather Window on this older-base branch still disables hosted live loading, so wire it to the qualified host API during runtime integration if it is used as a live demo. Ife retains final design acceptance. No PR or deployment was opened.

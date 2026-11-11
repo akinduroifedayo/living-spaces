@@ -1,0 +1,7 @@
+{
+  "status": "Live public forecast loaded. No account or location permission used.",
+  "provenance": "Public forecast from Open-Meteo \u00b7 retrieved 05:00:40 UTC",
+  "rows": 12,
+  "scope": "Standalone local HTTP browser demonstration with public London forecast. Not Space net.fetch or production sandbox qualification. No account/geolocation.",
+  "url": "http://127.0.0.1:8769/src/living-spaces/skills/build-space/references/weather-window/index.html"
+}
