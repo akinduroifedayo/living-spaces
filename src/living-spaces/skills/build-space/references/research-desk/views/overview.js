@@ -11,15 +11,15 @@ export function Overview({ records, runs }) {
   return html`
     <section aria-labelledby="overview-heading">
       <h2 id="overview-heading">Overview</h2>
-      <div class="counts">
+      <div class="counts space-stat-grid">
         ${[['In library', records.length], ['Queued', records.filter(r => status(r) === 'queued').length],
           ['Reading', records.filter(r => status(r) === 'reading').length],
           ['Completed', records.filter(r => status(r) === 'done').length]].map(([label, count]) => html`
-          <div class="count" key=${label}><strong>${count}</strong><span>${label}</span></div>`)}
+          <div class="count space-card space-stat" key=${label}><strong class="space-stat-value">${count}</strong><span class="space-stat-label">${label}</span><span class="space-tile space-tile--small" data-accent=${label === 'Completed' ? 'green' : label === 'Reading' ? 'amber' : 'blue'} aria-hidden="true"><span class="space-icon" data-icon=${label === 'Completed' ? 'check' : label === 'Reading' ? 'book' : 'list'}></span></span></div>`)}
       </div>
-      <section class="panel" aria-labelledby="freshness-heading">
+      <section class="panel space-card" aria-labelledby="freshness-heading">
         <h3 id="freshness-heading">Public source freshness</h3>
-        <dl>
+        <dl class="space-facts">
           <dt>Last attempt</dt><dd>${latest ? `${time(latest.started_at || latest.queued_at)} (${latest.status})` : 'Never run'}</dd>
           <dt>Last successful refresh</dt><dd>${success ? time(success.ended_at) : 'No success in recent history'}</dd>
           <dt>Source as of</dt><dd>${success ? time(success.source_as_of) : 'Not available yet'}</dd>

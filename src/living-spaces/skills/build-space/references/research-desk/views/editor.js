@@ -49,7 +49,7 @@ export function Editor({ record, reload }) {
   };
   const resolvedConflict = save.state === 'conflict' && !conflict;
   return html`
-    <section class="editor" aria-label="Edit paper">
+    <section class="editor space-card" aria-label="Edit paper">
       <h3>${window.space.field(record, 'title') || 'Untitled'}</h3>
       <p class="summary">${window.space.field(record, 'summary') || 'No summary supplied.'}</p>
       ${record.source_meta && html`<p class="provenance">Source ${record.source_meta.source_id}.
@@ -62,7 +62,7 @@ export function Editor({ record, reload }) {
           <option value="high">High</option><option value="normal">Normal</option><option value="low">Low</option>
         </select></label>
         <label>Notes<textarea rows="5" value=${draft.notes} onInput=${e => change('notes', e.target.value)} /></label>
-        <button type="button" onClick=${submit} disabled=${save.state === 'saving' || !dirty || !!conflict}>Save changes</button>
+        <button class="space-button--primary" type="button" onClick=${submit} disabled=${save.state === 'saving' || !dirty || !!conflict}>Save changes</button>
       </fieldset>
       <${SaveIndicator} state=${resolvedConflict || dirty && save.state === 'saved' ? 'idle' : save.state}
         message=${resolvedConflict ? (dirty ? 'Draft kept. Save changes to retry.' : 'Updated record loaded') : dirty && save.state === 'saved' ? 'Unsaved draft' : save.message} />

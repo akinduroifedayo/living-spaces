@@ -18,8 +18,8 @@ export function Queue({ records, reload }) {
         <option value="normal">Normal</option><option value="low">Low</option>
       </select></label>
       <p>Save a status, priority, or note on each item. Completed papers stay in Library.</p>
-      ${queue.length ? html`<ul class="paper-list">${queue.map(record => html`
-        <li key=${record.id}><button type="button" aria-pressed=${record.id === selected?.id}
+      ${queue.length ? html`<ul class="paper-list space-list">${queue.map(record => html`
+        <li key=${record.id}><button class="space-list-button" type="button" aria-pressed=${record.id === selected?.id}
           onClick=${() => setSelected(record)}>${window.space.field(record, 'title') || 'Untitled'}</button>
           <small>${record.data.status || 'queued'} · ${record.data.priority || 'normal'}</small></li>`)}</ul>` :
         html`<${EmptyState} title="Nothing waiting here"><p>Add papers in Library or choose another priority.</p><//>`}

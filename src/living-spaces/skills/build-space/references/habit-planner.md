@@ -37,13 +37,14 @@ The selected day is UI state. Check-ins survive closing the app.
   <title>Daily Practice</title>
   <link rel="stylesheet" href="./kit/spaces-kit.css">
   <style>
-    main { max-width: 650px; padding: 24px; margin: auto; font-family: system-ui; }
-    label { display: flex; align-items: center; gap: 12px; margin-block: 18px; }
-    input, button { font: inherit; min-height: 32px; }
-    li { list-style: none; } ul { padding: 0; }
+    main { max-width: 720px; margin: auto; }
+    .practice-day { max-width: 240px; margin: 0; }
+    .practice-add { padding-block: var(--space-4); border-block: 1px solid var(--space-line); }
+    .practice-list label { margin: 0; }
+    .practice-list label:has(:checked) { color: var(--space-success); }
   </style>
 </head>
-<body><main id="app"></main><script type="module" src="./app.js"></script></body>
+<body><main id="app" class="space-app"></main><script type="module" src="./app.js"></script></body>
 </html>
 ```
 
@@ -113,17 +114,17 @@ function Planner() {
   };
   const resolvedConflict = save.state === 'conflict' && !pending;
   return html`
-    <h1>Daily Practice</h1>
-    ${(habits.loading || checkins.loading) && html`<p role="status">Loading your practice...</p>`}
-    ${(habits.error || checkins.error) && html`<p role="alert">Could not load your habits.
+    <header class="space-header"><div class="space-heading"><span class="space-tile" data-accent="green" aria-hidden="true"><span class="space-icon" data-icon="checklist"></span></span><h1>Daily Practice</h1></div></header>
+    ${(habits.loading || checkins.loading) && html`<p class="space-loading" role="status">Loading your practice...</p>`}
+    ${(habits.error || checkins.error) && html`<p class="space-notice space-notice--error" role="alert">Could not load your habits.
       ${(habits.error || checkins.error).message}</p>`}
-    <label>Day<input type="date" required disabled=${save.state === 'saving' || !!pending} value=${day} onChange=${event => {
+    <label class="practice-day">Day<input type="date" required disabled=${save.state === 'saving' || !!pending} value=${day} onChange=${event => {
       if (event.target.value) setDay(event.target.value);
     }} /></label>
-    <div role="group" aria-label="Add a habit">
+    <div class="practice-add space-form-row" role="group" aria-label="Add a habit">
       <label>New habit<input ref=${nameInput} required disabled=${save.state === 'saving' || !!pending} value=${name}
         onInput=${e => setName(e.target.value)} onKeyDown=${addOnEnter} /></label>
-      <button type="button" onClick=${add} disabled=${save.state === 'saving' || !!pending || !name.trim()}>Add habit</button>
+      <button class="space-button--primary" type="button" onClick=${add} disabled=${save.state === 'saving' || !!pending || !name.trim()}>Add habit</button>
     </div>
     <${SaveIndicator} state=${resolvedConflict || name.trim() && save.state === 'saved' ? 'idle' : save.state}
       message=${resolvedConflict ? 'Updated check-in loaded' : name.trim() && save.state === 'saved' ? 'Draft not saved' : save.message} />
@@ -136,9 +137,9 @@ function Planner() {
     ${pending && save.state === 'failed' && html`
       <button type="button" onClick=${() => persist(pending)}>Retry check-in</button>
       <button type="button" onClick=${useUpdated}>Discard check-in draft</button>`}
-    ${habits.records.length ? html`<ul>${habits.records.map(habit => {
+    ${habits.records.length ? html`<ul class="practice-list space-list">${habits.records.map(habit => {
       const current = checkins.records.find(record => record.id === `${habit.id}:${day}`);
-      return html`<li key=${habit.id}><label><input type="checkbox" checked=${!!current?.data.done}
+      return html`<li key=${habit.id}><label class="space-check"><input type="checkbox" checked=${!!current?.data.done}
         disabled=${save.state === 'saving' || !!pending || checkins.loading || !!checkins.error} onChange=${() => toggle(habit)} />${habit.data.name}</label></li>`;
     })}</ul>` : html`<${EmptyState} title="Choose your first habit"><p>Add something small you want to do each day.</p><//>`}
     ${habits.records.length === 500 && html`<p>Showing the first 500 habits.</p>`}`;

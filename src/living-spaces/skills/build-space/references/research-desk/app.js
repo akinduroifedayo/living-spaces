@@ -33,15 +33,15 @@ function App() {
     return () => { mounted = false; unsubscribe(); };
   }, []);
   return html`
-    <main class="desk">
-      <header class="desk-header">
-        <div><p class="eyebrow">Your reading workspace</p><h1>Research Desk</h1></div>
+    <main class="desk space-app">
+      <header class="desk-header space-header">
+        <div class="space-heading"><span class="space-tile" data-accent="blue" aria-hidden="true"><span class="space-icon" data-icon="book"></span></span><div><h1>Research Desk</h1><p>Your reading workspace</p></div></div>
         <${RefreshButton} />
       </header>
       <${Nav} items=${items} />
-      ${runError && html`<p role="alert">Could not read refresh history. ${runError}</p>`}
-      ${collection.error && html`<p role="alert">Could not load papers. ${collection.error.message}</p>`}
-      ${collection.loading && html`<p role="status">Loading your library...</p>`}
+      ${runError && html`<p class="space-notice space-notice--error" role="alert">Could not read refresh history. ${runError}</p>`}
+      ${collection.error && html`<p class="space-notice space-notice--error" role="alert">Could not load papers. ${collection.error.message}</p>`}
+      ${collection.loading && html`<p class="space-loading" role="status">Loading your library...</p>`}
       <${View} records=${collection.records} runs=${runs} reload=${collection.reload} />
       ${collection.records.length === 500 && html`<p>Showing the first 500 papers. Ask chat to narrow the collection query.</p>`}
     </main>`;

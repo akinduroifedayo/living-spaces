@@ -81,6 +81,65 @@ its result. Run them inside the callback after `space.put` confirms, or check
 that the returned record exists. Disable editable creation fields while saving
 so a confirmation cannot clear newer input.
 
+## Design the inside, kit first
+
+Compose plain HTML with `kit/spaces-kit.css`; use app CSS only for domain layout.
+The kit follows Desktop's light/dark preference. Never hard-code a white canvas,
+load web fonts/CDNs, or imitate the host's permission, schedule or chat controls.
+Use the system font, semantic tokens (`--space-*`), and real saved records.
+
+- **Shell:** `space-app` → `space-header` (one h1, optional `space-tile` +
+  `space-icon`, short description, one primary action) → `Nav` → view. Keep
+  view navigation visible and label it; do not put every section in a card.
+- **Dashboard:** `space-stat-grid` + `space-card space-stat` for a few useful
+  measures, then a wide `space-chart` or table and a supporting list. Name the
+  measure, unit, period and denominator. No arbitrary big-number hero.
+- **Tracker/planner:** date or period control, `space-list` of labeled
+  `space-check` checkboxes, then `space-form-row` for creation. Completion must
+  be text/checkmark as well as color; a selected date is not a saved check-in.
+- **Document:** `space-document`, readable headings and ≤72ch measure; use
+  navigation only for real chapters. **Tool:** input group beside output with
+  `space-split`; on narrow screens inputs precede results. Label every field.
+- **Game:** `space-game`, visible rules/turn/result, `space-board` with native
+  `space-cell` buttons and names (row/column, contents). Keep reset deliberate;
+  offer keyboard equivalents to drag, and persist only what the user expects.
+- **Multi-view app:** shell + `Nav`, list/detail `space-split`, focused editor.
+  Preserve mounted editors/drafts on reload; current location uses aria-current.
+
+Use 14px body, 20px page title, 16px sections (kit defaults). Keep secondary
+text readable, numeric table columns `space-numeric`, 12–16px within groups,
+24–32px between jobs. `space-card` groups related work, never another card.
+Tile accents (`data-accent="blue|green|amber|purple|teal|rose|orange|grey"`)
+identify subjects, not status. `space-tile` is for a meaningful app/subject icon,
+not decoration on every block. Decorative `space-icon` spans need aria-hidden;
+icon-only controls need an accessible name. Available icons are in the CSS.
+
+Use `space-button--primary` once per task group; secondary buttons are default.
+Use labels, native inputs, visible required hints and nearby `space-field-error`
+text with aria-describedby/aria-invalid. Default controls are 36px, 44px on
+narrow screens. Never hide focus. Do not reduce disabled controls to opacity.
+
+First run: `EmptyState` says what belongs here and the next action; no fake
+records or congratulatory metrics. Distinguish empty search from no records.
+Keep last-good data during load/failure; `space-loading` + role=status names
+what is loading. Skeletons are optional, aria-hidden, with real loading text.
+Use `space-notice space-notice--error` + role=alert for new failures, state what
+was retained and provide a real retry. SaveIndicator and ConflictBanner retain
+truthful text; never rely on tint, a spinner, or a disappearing toast alone.
+
+Charts: use bundled lightweight-charts only when needed, or accessible local
+SVG/CSS for simple plots. `space-chart`/`space-chart-plot` provide a frame, not
+a calculation. Use real domain calculations; label axes, units and series, give
+an equivalent table/summary, and handle empty/no-eligible data without a fake
+trend. Series need labels or patterns, not color alone. Respect reduced motion.
+
+Avoid gradients/glass, emoji-as-icons, eyebrow kickers, decorative sparklines,
+card-inside-card layouts, giant stacked forms, invented freshness, and fixed
+widths that overflow. Check light/dark, narrow width, long text, keyboard focus,
+loading/empty/error and a real confirmed-save path before calling it finished.
+See the [kit gallery](references/kit-gallery.html) for composable markup and
+[Three in a row](references/three-in-a-row.md) for a small game.
+
 ## JavaScript-controlled forms
 
 The accepted frame has `sandbox="allow-scripts"` and CSP `form-action 'none'`.
