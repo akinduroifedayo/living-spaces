@@ -70,11 +70,10 @@ test('no-change refreshes remain successful results', () => {
   assert.equal(m.runResult({ status: 'succeeded', changed: { added: 2, updated: 3 } }), '2 added · 3 updated · 0 unchanged')
   assert.equal(m.runResult({ status: 'blocked', detail: { reason: 'not_granted' } }), 'Blocked: not_granted')
 })
-test('refresh reasons cover handler, grant and archived restrictions', () => {
+test('refresh reasons cover handler and archived restrictions only', () => {
   assert.match(m.refreshReason(space()), /No refresh handler/)
-  assert.match(m.refreshReason(space({ manifest: { upkeep: {} } })), /approval in Permissions/)
   assert.match(m.refreshReason(space({ status: 'archived' })), /archived/)
-  assert.equal(m.refreshReason(space({ manifest: { upkeep: {} }, grants: [{ capability: 'refresh', status: 'granted' }] })), '')
+  assert.equal(m.refreshReason(space({ manifest: { upkeep: {} } })), '')
 })
 test('restore confirmation makes retained history and records explicit', () => {
   assert.equal(m.restoreCopy(space(), 5), "Restore revision 5? This brings back the Space's earlier code as a new revision 8. Revisions 6–7 stay in history. Your records, notes and statuses stay as they are now.")

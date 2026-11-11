@@ -35,11 +35,11 @@ function load(path) {
 const baseSdk = load(resolve(root, 'tests/js/ui/sdk-stub.js'))
 const sdk = { ...baseSdk, useQuery(options) {
   const key = options.queryKey[3]
-  return { data: data[key], dataUpdatedAt: data.tick || 1, refetch: async () => {} }
+  return { data: data[key], dataUpdatedAt: data.tick || 1, refetch: async () => { data.refetches = (data.refetches || 0) + 1 } }
 } }
 const { SpaceView } = load(resolve(root, 'src/desktop/ui/space.jsx'))
 const { RunRow, HistorySheet } = load(resolve(root, 'src/desktop/ui/history.jsx'))
-const { ScheduleSheet } = load(resolve(root, 'src/desktop/ui/schedule.jsx'))
+const { UpkeepSheet } = load(resolve(root, 'src/desktop/ui/upkeep.jsx'))
 const { PermissionsSheet, GrantCard } = load(resolve(root, 'src/desktop/ui/permissions.jsx'))
 const { absolute } = load(resolve(root, 'src/desktop/ui/components.jsx'))
 before(() => {
@@ -138,52 +138,125 @@ for (const kind of ['late', 'on_time']) {
     } finally { await act(async () => view.unmount()) }
   })
 }
-test('schedule shows overdue awaiting Hermes, last dispatch and disabled reason', async () => {
+const job = (patch = {}) => ({ id: 'job1', name: 'living-spaces:demo-space', prompt: 'Update Demo from public sources.', schedule_display: 'every 1h', cadence: '0 * * * *', timezone: 'America/Chicago', enabled: true, state: 'scheduled', next_run_at: '2026-11-11T16:00:00+00:00', last_run_at: '2026-11-11T15:00:00+00:00', last_status: 'ok', last_error: null, ...patch })
+const upkeepPayload = (patch = {}) => ({ link: { cron_job_id: 'job1', kind: 'agent', created_at: 1, created_by: 'agent' }, job: job(), executions: [{ id: 'e1', status: 'succeeded', claimed_at: 1794312000, started_at: 1794312001, finished_at: 1794312010, error: null, scheduled_instant: 1794312000 }, { id: 'e2', status: 'unknown', claimed_at: 1794300000, started_at: 1794300001, finished_at: null, error: null, scheduled_instant: 1794300000 }], missing: false, error: null, ...patch })
+const upkeepProps = (calls, reply) => ({ space: demo(), onClose() {}, onChanged() {}, ctx: { rest: async (path, options = {}) => { calls.push({ path, body: options.body }); return reply ? reply(path, options) : {} } } })
+test('Upkeep sheet renders the native prompt, cadence, next run and executions', async () => {
   setup()
-  const props = { space: { ...demo(), schedule: { status: 'active', cadence: 'every 1h', timezone: 'UTC', next_run_at: 1, last_dispatch: dispatch } }, ctx: {}, onClose() {}, onChanged() {} }
+  data.upkeep = upkeepPayload()
   try {
-    await render(ScheduleSheet, props)
-    assert.match(document.body.textContent, /Delayed.*awaiting Hermes/i)
-    assert.match(document.body.textContent, /Catch-up refresh/)
-    assert.ok(document.body.textContent.includes(absolute(Date.parse(dispatch.dispatched_at) / 1000)))
-    props.space = { ...props.space, schedule: { status: 'disabled', reason: 'Native cron job is missing', cadence: 'every 1h', timezone: 'UTC' } }
-    await render(ScheduleSheet, props)
-    assert.match(document.body.textContent, /Native cron job is missing/)
+    await render(UpkeepSheet, upkeepProps([]))
+    const text = document.body.textContent
+    assert.match(text, /Update Demo from public sources\./)
+    assert.match(text, /every 1h/)
+    assert.match(text, /0 \* \* \* \*/)
+    assert.match(text, /America\/Chicago/)
+    assert.ok(text.includes(absolute(Date.parse('2026-11-11T16:00:00+00:00') / 1000)), 'next run')
+    assert.match(text, /Succeeded/)
+    assert.match(text, /Uses model calls/)
+    assert.doesNotMatch(text, /No model calls/)
+    assert.equal(document.querySelectorAll('[aria-label="Upkeep executions"] li').length, 2)
   } finally { await act(async () => view.unmount()) }
 })
-for (const status of ['revoked', 'denied']) {
-  test(`${status} Refresh can be reapproved but upkeep resumes only explicitly`, async () => {
-    setup()
-    const grant = { capability: 'refresh', status, scope: { hosts: ['example.com'] } }
-    const space = { ...demo(), grants: [grant], schedule: { status: 'paused', cadence: 'every 1h', timezone: 'UTC', reason: `Refresh permission ${status}; approve Refresh and resume upkeep to restart.` } }
-    const calls = []
-    const ctx = { rest: async (path, options) => { calls.push({ path, body: options.body }); if (path.endsWith('/grants/refresh')) grant.status = 'granted'; return {} } }
-    const props = { space, ctx, onClose() {}, onChanged() {} }
-    data.grants = { grants: [grant] }; data.schedule = space.schedule
-    try {
-      await render(ScheduleSheet, props)
-      assert.match(document.body.textContent, /Refresh permission revoked\. Approve Refresh in Permissions, then resume upkeep\./)
-      await render(PermissionsSheet, props)
-      await click('Approve')
-      assert.deepEqual(calls, [{ path: '/spaces/demo-space/grants/refresh', body: { decision: 'grant', requested_scope: { hosts: ['example.com'] } } }])
-      assert.equal(space.schedule.status, 'paused')
-      await render(ScheduleSheet, props)
-      assert.match(document.body.textContent, /Refresh permission approved.*Resume upkeep/i)
-      await click('Resume upkeep')
-      assert.deepEqual(calls.at(-1), { path: '/spaces/demo-space/schedule', body: { paused: false } })
-    } finally { await act(async () => view.unmount()) }
-  })
-}
-test('Refresh revoke explains paused upkeep and explicit reapproval and resume', async () => {
+test('unknown execution reads outcome unknown with side-effects copy', async () => {
   setup()
-  data.grants = { grants: [{ capability: 'refresh', status: 'granted' }] }
+  data.upkeep = upkeepPayload()
+  try {
+    await render(UpkeepSheet, upkeepProps([]))
+    assert.match(document.querySelector('li[data-status="unknown"]').textContent, /Outcome unknown, side effects may have run/)
+  } finally { await act(async () => view.unmount()) }
+})
+test('feed kind shows No model calls and no prompt', async () => {
+  setup()
+  data.upkeep = upkeepPayload({ link: { cron_job_id: 'job1', kind: 'feed', created_at: 1, created_by: 'agent' }, job: job({ prompt: null }) })
+  try {
+    await render(UpkeepSheet, upkeepProps([]))
+    assert.match(document.body.textContent, /No model calls/)
+    assert.doesNotMatch(document.body.textContent, /Uses model calls/)
+  } finally { await act(async () => view.unmount()) }
+})
+test('Upkeep buttons post the right action and re-read', async () => {
+  for (const [enabled, label, action] of [[true, 'Pause', 'pause'], [false, 'Resume', 'resume'], [true, 'Run now', 'run']]) {
+    setup()
+    data.upkeep = upkeepPayload({ job: job({ enabled }) })
+    const calls = []
+    try {
+      await render(UpkeepSheet, upkeepProps(calls))
+      await click(label)
+      assert.deepEqual(calls, [{ path: '/spaces/demo-space/upkeep', body: { action } }], label)
+      assert.equal(data.refetches, 1, `${label} re-reads`)
+    } finally { await act(async () => view.unmount()) }
+  }
+})
+test('Remove asks for confirmation, posts remove and re-reads', async () => {
+  setup()
+  data.upkeep = upkeepPayload()
+  const calls = []
+  try {
+    await render(UpkeepSheet, upkeepProps(calls))
+    await click('Remove')
+    assert.deepEqual(calls, [])
+    assert.match(document.querySelector('[role="alertdialog"]').textContent, /Remove upkeep for Demo\?/)
+    const confirm = [...document.querySelectorAll('[role="alertdialog"] button')].find(b => b.textContent.trim() === 'Remove')
+    await act(async () => confirm.click())
+    assert.deepEqual(calls, [{ path: '/spaces/demo-space/upkeep', body: { action: 'remove' } }])
+    assert.equal(data.refetches, 1)
+  } finally { await act(async () => view.unmount()) }
+})
+test('missing job shows the missing copy and Remove link', async () => {
+  setup()
+  data.upkeep = upkeepPayload({ job: null, missing: true, executions: [] })
+  const calls = []
+  try {
+    await render(UpkeepSheet, upkeepProps(calls))
+    assert.match(document.body.textContent, /The linked Hermes job no longer exists/)
+    assert.doesNotMatch(document.body.textContent, /Run now|Pause/)
+    await click('Remove link')
+    assert.match(document.querySelector('[role="alertdialog"]').textContent, /Remove upkeep/)
+  } finally { await act(async () => view.unmount()) }
+})
+test('native cron error shows a banner', async () => {
+  setup()
+  data.upkeep = upkeepPayload({ job: null, error: 'cron module unavailable' })
+  try {
+    await render(UpkeepSheet, upkeepProps([]))
+    assert.match(document.querySelector('[role="alert"]').textContent, /cron module unavailable/)
+  } finally { await act(async () => view.unmount()) }
+})
+test('no link shows No upkeep scheduled and a CopyPrompt', async () => {
+  setup()
+  data.upkeep = { link: null, job: null, executions: [], missing: false, error: null }
+  try {
+    await render(UpkeepSheet, upkeepProps([]))
+    assert.match(document.body.textContent, /No upkeep scheduled/)
+    const copy = document.querySelector('[data-copy]')
+    assert.match(copy.getAttribute('data-copy'), /Hermes, schedule upkeep for Demo/)
+    assert.doesNotMatch(document.body.textContent, /Run now|Remove/)
+  } finally { await act(async () => view.unmount()) }
+})
+test('failed action surfaces an error and re-reads', async () => {
+  setup()
+  data.upkeep = upkeepPayload()
+  try {
+    await render(UpkeepSheet, upkeepProps([], () => { throw new Error('boom') }))
+    await click('Pause')
+    assert.match(document.body.textContent, /boom/)
+    assert.equal(data.refetches, 1)
+  } finally { await act(async () => view.unmount()) }
+})
+test('Permissions has no Refresh row or schedule approval, even if a stale refresh grant is returned', async () => {
+  setup()
+  data.grants = { grants: [{ capability: 'data', status: 'granted' }, { capability: 'refresh', status: 'requested', requested_scope: { hosts: ['example.com'] } }] }
   try {
     await render(PermissionsSheet, { space: demo(), ctx: {}, onClose() {}, onChanged() {} })
-    await click('Revoke')
-    assert.match(document.querySelector('[role="alertdialog"]').textContent, /Scheduled upkeep pauses/)
-    assert.match(document.querySelector('[role="alertdialog"]').textContent, /Approve Refresh in Permissions, then resume upkeep/)
-    assert.doesNotMatch(document.querySelector('[role="alertdialog"]').textContent, /show Blocked/)
+    const text = document.body.textContent
+    assert.doesNotMatch(text, /Refresh|Scheduled upkeep|schedule/i)
+    assert.match(text, /Own data/)
   } finally { await act(async () => view.unmount()) }
+})
+test('refreshReason has no grant clause', () => {
+  assert.equal(model.refreshReason({ status: 'active', manifest: { upkeep: { handler: 'feed' } }, grants: [] }), '')
+  assert.doesNotMatch(model.refreshReason({ status: 'active', manifest: { upkeep: {} }, grants: [{ capability: 'refresh', status: 'revoked' }] }), /approval|Permissions/)
 })
 test('Diagnostics discloses the latest 2,000 retained log entries', async () => {
   setup()
