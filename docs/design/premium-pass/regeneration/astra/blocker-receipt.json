@@ -1,0 +1,41 @@
+{
+  "task": "t_294ce114",
+  "attempt": 3,
+  "outcome": "BLOCKED",
+  "at": "2026-11-11T07:18:14-06:00",
+  "requested_route": {
+    "model": "gpt-6-astra",
+    "provider": "openai-codex",
+    "service_tier": "priority",
+    "authority": "t_d40eb81d comments 2222/2224"
+  },
+  "session": "local-57b8d5538175eadab57f2d852cb1b26c9e3aedbb6d5cc0a748e4e0b87ec13a2d",
+  "prompt_space": "Sky Window (exact prompt 0)",
+  "blocker": "Isolated HERMES_HOME has no Codex OAuth credential (no auth.json); gateway route resolution raised codex_auth_missing; UI shows \"The AI service rejected your API key\". Copying credentials / new auth is not authorized.",
+  "unsent": [
+    "Research Desk",
+    "Pair Play"
+  ],
+  "checks": {
+    "ui_label_astra_fast": true,
+    "session_row_model_astra": true,
+    "no_messages_persisted_no_tools": true,
+    "gateway_codex_auth_missing_logged": true,
+    "isolated_auth_json_absent": true,
+    "sky_store_unchanged": true
+  },
+  "all_pass": true,
+  "artifact_sha256": {
+    "README.md": "50718f7490c6b675be3b207cafc2f07bf541ea1e681b0c9e4eec782cc75fb634",
+    "clipshot.py": "f3f71e75a500de90ea4c42fc66ad0f79bb867b6e62d3f5735b976dbd163a622c",
+    "gateway-log-excerpt.txt": "f8b14fb8367f62cba5b9a1644d1b18139dc210dedd9b65f8de6a769fd3a4795f",
+    "regen.py": "8d45b48a21efcb3628c558d6f9ec0d6735be450b6bd0ae98964034d05d0f8669",
+    "sky-window-after.json": "4dfc776f039e9d1b39689256943f318f87b1be3bed1dfcd31689d7c077e94c06",
+    "sky-window-before.json": "4dfc776f039e9d1b39689256943f318f87b1be3bed1dfcd31689d7c077e94c06",
+    "sky-window-codex-auth-missing.png": "842032faa9bf738b301b87eb8857e754c5ebc1007a9e58d0922b66686dc19326",
+    "sky-window-route.json": "29cdac82412cfcbff09d61f95e82f126ed291a8ced1b992910a1955246e275df",
+    "sky-window-submission.json": "bcdf398b05e270d218dbe37c278887d8513d8dab1c494febdafaab36fc0f85da",
+    "sky-window-trace.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "ui.py": "e2587681da1e032f3173c1cacd89e73ff7ee5c65865d1a154e2a140ad9266420"
+  }
+}

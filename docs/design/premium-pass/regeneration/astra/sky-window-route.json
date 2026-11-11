@@ -1,0 +1,28 @@
+{
+  "requested": {
+    "model": "gpt-6-astra",
+    "provider": "openai-codex",
+    "service_tier": "priority"
+  },
+  "observed_session_row": {
+    "id": "local-57b8d5538175eadab57f2d852cb1b26c9e3aedbb6d5cc0a748e4e0b87ec13a2d",
+    "source": "local",
+    "model": "gpt-6-astra",
+    "model_config": null,
+    "billing_provider": null,
+    "billing_base_url": null,
+    "billing_mode": null,
+    "started_at": 1794403093.967929,
+    "ended_at": null,
+    "end_reason": null,
+    "message_count": 0,
+    "tool_call_count": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "reasoning_tokens": 0,
+    "title": null
+  },
+  "ui_picker_label_before_send": [
+    "GPT-6-astra \u00b7 Fast"
+  ]
+}

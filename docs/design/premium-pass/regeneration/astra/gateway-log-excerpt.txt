@@ -1,0 +1,3 @@
+2026-11-11 07:18:14,100 WARNING agent.auxiliary_client: resolve_provider_client: openai-codex requested but no Codex OAuth token found (run: hermes model)
+2026-11-11 07:18:14,106 WARNING agent.auxiliary_client: resolve_provider_client: openai-codex requested but no Codex OAuth token found (run: hermes model)
+2026-11-11 07:18:14,531 WARNING gateway.run: Model resolution failed for session agent:main:local:dm:local-57b8d5538175eadab57f2d852cb1b26c9e3aedbb6d5cc0a748e4e0b87ec13a2d: No Codex credentials stored. Run `hermes auth add openai-codex --type oauth` to authenticate.
