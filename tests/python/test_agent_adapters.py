@@ -308,6 +308,7 @@ for tool_name in PARAMS:
 
 class RestTests(AdapterCase):
     def test_all_routes_success(self):
+        snapshot = {"cadence": "0 7 * * *", "timezone": "UTC", "purpose": "Public demo", "requested_at": 1.0}
         cases = [("GET", "/spaces", None), ("GET", "/status", None), ("GET", f"/spaces/{SID}", None),
                  ("GET", f"/spaces/{SID}/bundle", None), ("POST", f"/spaces/{SID}/sessions", None),
                  ("DELETE", f"/spaces/{SID}/sessions/session_demo", None),
@@ -315,7 +316,7 @@ class RestTests(AdapterCase):
                  ("POST", f"/spaces/{SID}/refresh", None), ("GET", f"/spaces/{SID}/grants", None),
                  ("POST", f"/spaces/{SID}/grants/refresh", {"decision": "grant", "scope": {"hosts": ["example.org"]}, "requested_scope": {"hosts": ["example.org"]}}),
                  ("GET", f"/spaces/{SID}/schedule", None),
-                 ("POST", f"/spaces/{SID}/schedule", {"decision": "approve"}),
+                 ("POST", f"/spaces/{SID}/schedule", {"decision": "approve", "requested_schedule": snapshot}),
                  ("POST", f"/spaces/{SID}/schedule", {"paused": True}),
                  ("GET", f"/spaces/{SID}/revisions", None),
                  ("POST", f"/spaces/{SID}/revisions/1/restore", None),
@@ -329,7 +330,7 @@ class RestTests(AdapterCase):
                 self.assertEqual(response.status_code, 200, response.text)
         self.core.start_refresh.assert_called_once_with(SID, trigger="manual", actor="user")
         self.core.decide.assert_called_once_with(SID, "refresh", "grant", actor="user", scope={"hosts": ["example.org"]}, requested_scope={"hosts": ["example.org"]})
-        self.core.decide_schedule.assert_called_once_with(SID, "approve", actor="user")
+        self.core.decide_schedule.assert_called_once_with(SID, "approve", actor="user", requested_schedule=snapshot)
         self.core.pause_schedule.assert_called_once_with(SID, True, actor="user")
         self.core.restore_revision.assert_called_once_with(SID, 1, author="user")
         self.core.delete_space.assert_called_once_with(SID, actor="user", confirm=SID)

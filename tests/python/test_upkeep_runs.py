@@ -43,7 +43,13 @@ class UpkeepCase(unittest.TestCase):
             conn.execute("INSERT INTO spaces(id,name,owner,status,created_at,updated_at) VALUES('research-desk','Research Desk','Demo','active',?,?)", (db.now(), db.now()))
         self.projects = types.SimpleNamespace(get_space=self.get_space, bundle=lambda sid: {"manifest": copy.deepcopy(self.manifest)})
         self.records = types.SimpleNamespace(upsert_source=self.upsert_source, upsert_sources=self.upsert_sources)
-        self.grants = types.SimpleNamespace(check=self.check)
+        self.grants = types.SimpleNamespace(
+            check=self.check,
+            _check=lambda conn, sid, capability, scope_need=None: (
+                self.grant_status == "granted"
+                and set((scope_need or {}).get("hosts", [])).issubset(self.allowed)
+            ),
+        )
         for name, module in (("projects", self.projects), ("records", self.records), ("grants", self.grants)):
             item = patch.object(core, name, module, create=True)
             item.start()

@@ -371,6 +371,8 @@ class AgentIntegrationSeamTests(unittest.TestCase):
             core.write_files(sid, files={}, manifest=revised, author="agent:demo", summary="New prompt")
             self.assertEqual(core.get_schedule(sid)["status"], "requested")
             cron.pause_job.assert_called_once()
+            refresh = next(grant for grant in core.list_grants(sid) if grant["capability"] == "refresh")
+            core.decide(sid, "refresh", "grant", requested_scope=refresh["requested_scope"])
             self.assertEqual(core.decide_schedule(sid, "approve")["status"], "active")
             core.restore_revision(sid, 1, author="agent:demo")
             self.assertEqual(core.get_schedule(sid)["status"], "requested")
@@ -413,20 +415,21 @@ class AgentIntegrationSeamTests(unittest.TestCase):
         upkeep = {"handler": "agent", "prompt": "Current public demo task"}
         sid = core.create_space("Approval Demo", owner="Demo", author="agent:demo", manifest={"upkeep": upkeep})["id"]
         core.decide(sid, "refresh", "grant")
-        core.request_schedule(sid, cadence="0 * * * *", timezone="UTC", purpose="Demo", actor="agent:demo")
+        schedule = core.request_schedule(sid, cadence="0 * * * *", timezone="UTC", purpose="Demo", actor="agent:demo")
+        snapshot = {key: schedule[key] for key in ("cadence", "timezone", "purpose", "requested_at")}
         app = FastAPI()
         app.include_router(api.router)
         cron = Mock()
         cron.create_job.side_effect = lambda **kw: {**kw, "id": "demo-cron", "next_run_at": db.now() + 3600}
         with TestClient(app) as client, patch.object(core.schedules, "_cron", return_value=cron):
-            response = client.post(f"/spaces/{sid}/schedule", json={"decision": "approve", "requested_upkeep": {"handler": "agent", "prompt": "Old task"}})
+            response = client.post(f"/spaces/{sid}/schedule", json={"decision": "approve", "requested_upkeep": {"handler": "agent", "prompt": "Old task"}, "requested_schedule": snapshot})
             self.assertEqual(response.status_code, 409)
             self.assertEqual(response.json()["error"]["code"], "conflict")
             cron.create_job.assert_not_called()
-            response = client.post(f"/spaces/{sid}/schedule", json={"decision": "approve", "requested_upkeep": upkeep})
+            response = client.post(f"/spaces/{sid}/schedule", json={"decision": "approve", "requested_upkeep": upkeep, "requested_schedule": snapshot})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["status"], "active")
-            response = client.post(f"/spaces/{sid}/schedule", json={"decision": "approve", "requested_upkeep": None})
+            response = client.post(f"/spaces/{sid}/schedule", json={"decision": "approve", "requested_upkeep": None, "requested_schedule": snapshot})
             self.assertEqual(response.status_code, 400)
 
     def test_host_cost_and_prompt_render_before_approval_in_integrated_tree(self):
