@@ -1,0 +1,204 @@
+{
+  "evidence_class": "actual isolated Desktop; one real model turn typed into the existing Pair Play Desktop chat; one disclosed harness fault revision",
+  "prompt": "Pair Play's Progress view stopped working. Read Pair Play's logs to find the cause, then fix the app code. Keep every saved game, history and settings record exactly as it is. Change only Pair Play.",
+  "chat_session": "local-43245b727cb7576c65e6ef7892ef2b23d705b092542d836419a23ac46e3eeaa1",
+  "resumed_from_existing_fixture": true,
+  "revs": {
+    "good": 2,
+    "fault": 3
+  },
+  "diagnostic": {
+    "id": 7,
+    "space": "pair-play",
+    "session": "Q73_jsntHGLdpqlSkWgGBRWB-v-K2cDYYa5dxi_ELmI",
+    "rev": 3,
+    "at": 1794363111.6544158,
+    "level": "error",
+    "msg": "unhandled rejection: Error: acceptance fault: progress view\n    at k.Progress [as constructor] (blob:[REDACTED]:9:9)\n    at k.q [as render] (blob:[REDACTED]:1:9190)\n    at O (blob:[REDACTED]:1:6363)\n    at S (blob:[REDACTED]:1:1828)\n    at z (blob:[REDACTED]:1:8320)\n    at O (blob:[REDACTED]:1:6973)\n    at S (blob:[REDACTED]:1:1828)\n    at O (blob:[REDACTED]:1:6581)\n    at P (blob:[REDACTED]:1:1484)"
+  },
+  "turn": {
+    "sent_at": 1794363116.167595,
+    "finished_at": 1794363132.830359,
+    "seconds": 16.7,
+    "finish_reason": "stop",
+    "reply": "The Progress view crashed because of a stray `throw new Error('acceptance fault: progress view')` as the first line of `Progress` in `views/progress.js`. Both logged errors had that message. The line wasn't in my revision 2, so it arrived with revision 3. I removed that one line, which makes the fix revision 4. I haven't reopened the Space, so I haven't confirmed the fix in the live app. After you open the Progress view, I can read the logs again to confirm it loads without errors.\n\nAll three record sets are exactly as they were. The round is still at revision 9 with the same deck, 2 turns and the \ud83c\udf49 pair matched. Settings are still star backs with names shown (revision 2), and History is empty. Only Pair Play changed, and there are no new permissions, network calls, refresh or schedule.\n\n::living-space{id=\"pair-play\"}"
+  },
+  "turn_seconds": 47.2,
+  "tool_calls": [
+    {
+      "name": "spaces_read_logs",
+      "args": "{\"space\": \"pair-play\"}"
+    },
+    {
+      "name": "spaces_get",
+      "args": "{\"space\": \"pair-play\"}"
+    },
+    {
+      "name": "spaces_read_file",
+      "args": "{\"space\": \"pair-play\", \"path\": \"views/progress.js\"}"
+    },
+    {
+      "name": "spaces_edit_file",
+      "args": "{\"space\": \"pair-play\", \"path\": \"views/progress.js\", \"old_string\": \"  throw new Error('acceptance fault: progress view');\\n\", \"new_string\": \"\"}"
+    },
+    {
+      "name": "spaces_edit_file",
+      "args": "{\"space\": \"pair-play\", \"path\": \"views/progress.js\", \"old\": \"  throw new Error('acceptance fault: progress view');\\n\", \"new\": \"\", \"summary\": \"Remove stray throw that crashed Progress view\"}"
+    },
+    {
+      "name": "spaces_query",
+      "args": "{\"collection\": \"game\", \"space\": \"pair-play\"}"
+    },
+    {
+      "name": "spaces_query",
+      "args": "{\"collection\": \"settings\", \"space\": \"pair-play\"}"
+    },
+    {
+      "name": "spaces_query",
+      "args": "{\"collection\": \"rounds\", \"space\": \"pair-play\"}"
+    }
+  ],
+  "repair_revision": {
+    "rev": 4,
+    "kind": "edit",
+    "author": "agent:Hermes",
+    "summary": "Remove stray throw that crashed Progress view"
+  },
+  "progress_text_after": "MEMORY MATCH\n\nPair Play\nPlay\nProgress\nHistory\nCurrent round\n\n1 of 6 pairs found \u00b7 2 turns so far\n\n?\nNot yet\n, not found\n?\nNot yet\n, not found\n?\nNot yet\n, not found\n?\nNot yet\n, not found\n?\nNot yet\n, not found\n\ud83c\udf49\nWatermelon\n, found\n\nRound in progress. Perfect play takes 6 turns.\n\nCompleted rounds\n0\nRounds\n0\nTotal turns\n\u2014\nPersonal best\n\u2014\nAverage\n\nNo completed rounds yet. Finish a round on the Play view and your totals and personal best will appear here.",
+  "checks": [
+    {
+      "name": "fixture anchor present in the current Progress view",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "fault revision is harness-authored",
+      "passed": true,
+      "observed": "harness-fixture",
+      "expected": "harness-fixture"
+    },
+    {
+      "name": "controlled runtime error reaches a Space-scoped diagnostic",
+      "passed": true,
+      "observed": [
+        "pair-play",
+        "error",
+        3
+      ],
+      "expected": [
+        "pair-play",
+        "error",
+        3
+      ]
+    },
+    {
+      "name": "diagnostic is bounded",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "fault never lands in another Space log",
+      "passed": true,
+      "observed": false,
+      "expected": false
+    },
+    {
+      "name": "repair turn completed through the Desktop composer",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "maintainer read the Space logs through the tool",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "every Space tool call targeted Pair Play only",
+      "passed": true,
+      "observed": [
+        "pair-play"
+      ],
+      "expected": [
+        "pair-play"
+      ]
+    },
+    {
+      "name": "repair is a new revision after the fault",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "repair revision is not harness-authored",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "thrown fault removed from the code",
+      "passed": true,
+      "observed": false,
+      "expected": false
+    },
+    {
+      "name": "no saved game, history or settings record changed",
+      "passed": true,
+      "observed": [
+        [
+          "game",
+          "current",
+          "{\"version\":1,\"roundId\":\"round-1794352679249-5l2qjy\",\"deck\":[\"\ud83c\udf49\",\"\ud83c\udf53\",\"\ud83c\udf47\",\"\ud83c\udf4a\",\"\ud83c\udf47\",\"\ud83c\udf4e\",\"\ud83c\udf53\",\"\ud83c\udf4e\",\"\ud83c\udf4c\",\"\ud83c\udf49\",\"\ud83c\udf4a\",\"\ud83c\udf4c\"],\"revealed\":[],\"matched\":[0,9],\"turns\":2,\"status\":\"playing\",\"startedAt\":1794352679249}",
+          null,
+          9
+        ],
+        [
+          "settings",
+          "prefs",
+          "{\"cardBack\":\"star\",\"showNames\":true}",
+          null,
+          2
+        ]
+      ],
+      "expected": [
+        [
+          "game",
+          "current",
+          "{\"version\":1,\"roundId\":\"round-1794352679249-5l2qjy\",\"deck\":[\"\ud83c\udf49\",\"\ud83c\udf53\",\"\ud83c\udf47\",\"\ud83c\udf4a\",\"\ud83c\udf47\",\"\ud83c\udf4e\",\"\ud83c\udf53\",\"\ud83c\udf4e\",\"\ud83c\udf4c\",\"\ud83c\udf49\",\"\ud83c\udf4a\",\"\ud83c\udf4c\"],\"revealed\":[],\"matched\":[0,9],\"turns\":2,\"status\":\"playing\",\"startedAt\":1794352679249}",
+          null,
+          9
+        ],
+        [
+          "settings",
+          "prefs",
+          "{\"cardBack\":\"star\",\"showNames\":true}",
+          null,
+          2
+        ]
+      ]
+    },
+    {
+      "name": "Progress renders after the repair",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "no new fault diagnostics on the repaired revision",
+      "passed": true,
+      "observed": [],
+      "expected": []
+    },
+    {
+      "name": "other Space logs untouched by the repair",
+      "passed": true,
+      "observed": 0,
+      "expected": 0
+    }
+  ],
+  "passed": 15,
+  "total": 15
+}

@@ -1,0 +1,22 @@
+{"passed": 0, "total": 0}
+PASS fixture anchor present in the current Progress view true
+PASS controlled runtime error reaches a Space-scoped diagnostic ["pair-play", "error", 3]
+PASS diagnostic is bounded true
+PASS fault never lands in another Space log false
+{"passed": 4, "total": 4}
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/harness/qualify_repair.py", line 96, in <module>
+    turn = submit(CHAT, PROMPT, timeout=900)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Volumes/Expansion/Development/Projects/living-spaces/harness/chat_turn.py", line 19, in submit
+    with connect(url, open_timeout=15, max_size=None, additional_headers={'Origin': url.split('/api/')[0].replace('ws:', 'http:')}) as ws:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<hermes-runtime-venv>/lib/python3.11/site-packages/websockets/sync/client.py", line 378, in connect
+    connection.handshake(
+  File "<hermes-runtime-venv>/lib/python3.11/site-packages/websockets/sync/client.py", line 101, in handshake
+    raise self.protocol.handshake_exc
+  File "<hermes-runtime-venv>/lib/python3.11/site-packages/websockets/client.py", line 325, in parse
+    self.process_response(response)
+  File "<hermes-runtime-venv>/lib/python3.11/site-packages/websockets/client.py", line 142, in process_response
+    raise InvalidStatus(response)
+websockets.exceptions.InvalidStatus: server rejected WebSocket connection: HTTP 403

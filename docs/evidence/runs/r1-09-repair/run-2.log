@@ -1,0 +1,17 @@
+{"passed": 0, "total": 0}
+PASS fixture anchor present in the current Progress view true
+PASS fault revision is harness-authored "harness-fixture"
+PASS controlled runtime error reaches a Space-scoped diagnostic ["pair-play", "error", 3]
+PASS diagnostic is bounded true
+PASS fault never lands in another Space log false
+PASS repair turn completed through the Desktop composer true
+PASS maintainer read the Space logs through the tool true
+PASS every Space tool call targeted Pair Play only ["pair-play"]
+PASS repair is a new revision after the fault true
+PASS repair revision is not harness-authored true
+PASS thrown fault removed from the code false
+PASS no saved game, history or settings record changed [["game", "current", "{\"version\":1,\"roundId\":\"round-1794352679249-5l2qjy\",\"deck\":[\"\ud83c\udf49\",\"\ud83c\udf53\",\"\ud83c\udf47\",\"\ud83c\udf4a\",\"\ud83c\udf47\",\"\ud
+PASS Progress renders after the repair true
+PASS no new fault diagnostics on the repaired revision []
+PASS other Space logs untouched by the repair 0
+{"passed": 15, "total": 15}

@@ -1,0 +1,165 @@
+{
+  "evidence_class": "actual isolated Desktop, native input on host controls, guest realm bridge calls, canonical SQLite",
+  "fixture_space": "authority-probe",
+  "webrtc_note": {
+    "text": " Before you approve anything\n\nSpaces block ordinary internet connections unless you approve a site or capability. This is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle.",
+    "visible": true,
+    "first": true
+  },
+  "requested_card_converged_s": 2.03,
+  "grant_cards": [
+    "Own data\nAllowed\nScope\nThis Space's records only. Cannot see other Spaces.\nPurpose\nSave and use this Space's data\nData leaves device\nNo ordinary network access. Space-readable data is subject to the WebRTC limit above.\nAccess\nContinuing\nRevoke",
+    "Diagnostics\nAllowed\nScope\nError logs from this Space, secrets redacted.\nPurpose\nDiagnose and repair this Space\nData leaves device\nNo ordinary network access. The owner can read these logs in chat.\nAccess\nContinuing\nRevoke",
+    "Refresh\nNeeds your decision\nScope\nHost-owned public-source handler. Approved hosts: export.arxiv.org.\nPurpose\nKeep this Space's sources current\nData leaves device\nYes \u00b7 requests the approved public sources through Hermes.\nAccess\nContinuing\nApprove\nDeny"
+  ],
+  "guest_refresh_when_denied": {
+    "ok": false,
+    "code": "not_granted",
+    "message": "Approve refresh in Permissions"
+  },
+  "denied_runs": [
+    {
+      "id": "run_b3797095bb714e57",
+      "space": "authority-probe",
+      "trigger": "manual",
+      "handler": "feed",
+      "actor": "harness",
+      "status": "blocked",
+      "queued_at": 1794362075.491412,
+      "started_at": null,
+      "ended_at": 1794362075.491412,
+      "source_as_of": null,
+      "changed": {
+        "added": 0,
+        "updated": 0,
+        "unchanged": 0,
+        "removed": 0
+      },
+      "error": null,
+      "detail": {
+        "reason": "not_granted"
+      },
+      "heartbeat_at": 1794362075.491412
+    }
+  ],
+  "fixture_deleted": {
+    "deleted": true,
+    "removed": {
+      "records": 0,
+      "revisions": 1,
+      "schedule": false
+    }
+  },
+  "checks": [
+    {
+      "name": "new Space gets own-data and logs, refresh only requested",
+      "passed": true,
+      "observed": {
+        "data": "granted",
+        "logs": "granted",
+        "refresh": "requested"
+      },
+      "expected": {
+        "data": "granted",
+        "logs": "granted",
+        "refresh": "requested"
+      }
+    },
+    {
+      "name": "WebRTC note is visible without scrolling",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "WebRTC note precedes every grant card",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "note does not promise complete outbound blocking",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "three grant cards show scope and purpose",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "refresh card names the exact requested host",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "host Deny records refresh as denied by the user",
+      "passed": true,
+      "observed": [
+        "denied",
+        "user"
+      ],
+      "expected": [
+        "denied",
+        "user"
+      ]
+    },
+    {
+      "name": "guest refresh is refused while denied",
+      "passed": true,
+      "observed": [
+        false,
+        "not_granted"
+      ],
+      "expected": [
+        false,
+        "not_granted"
+      ]
+    },
+    {
+      "name": "backend refresh is blocked while denied",
+      "passed": true,
+      "observed": "blocked",
+      "expected": "blocked"
+    },
+    {
+      "name": "denied refresh never started, fetched nothing and wrote nothing",
+      "passed": true,
+      "observed": [
+        true,
+        [
+          [
+            "blocked",
+            null,
+            null,
+            0,
+            "not_granted"
+          ]
+        ]
+      ],
+      "expected": [
+        true,
+        [
+          [
+            "blocked",
+            null,
+            null,
+            0,
+            "not_granted"
+          ]
+        ]
+      ]
+    },
+    {
+      "name": "denied card explains the outcome without re-prompting",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    }
+  ],
+  "passed": 11,
+  "total": 11
+}

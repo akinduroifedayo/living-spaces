@@ -1,0 +1,14 @@
+{"passed": 0, "total": 0}
+PASS new Space gets own-data and logs, refresh only requested {"data": "granted", "logs": "granted", "refresh": "requested"}
+PASS WebRTC note is visible without scrolling true
+PASS WebRTC note precedes every grant card true
+PASS note does not promise complete outbound blocking true
+PASS three grant cards show scope and purpose true
+FAIL refresh card names the exact requested host false
+{"passed": 5, "total": 6}
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/harness/qualify_authority.py", line 98, in <module>
+    check('refresh card names the exact requested host', any('export.arxiv.org' in c and 'Approve' in c and 'Deny' in c for c in cards))
+  File "/Volumes/Expansion/Development/Projects/living-spaces/harness/qualify_authority.py", line 37, in check
+    raise AssertionError(checks[-1])
+AssertionError: {'name': 'refresh card names the exact requested host', 'passed': False, 'observed': False, 'expected': True}

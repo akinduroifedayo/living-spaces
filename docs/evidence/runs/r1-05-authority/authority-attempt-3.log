@@ -1,0 +1,19 @@
+{"passed": 0, "total": 0}
+PASS new Space gets own-data and logs, refresh only requested {"data": "granted", "logs": "granted", "refresh": "requested"}
+PASS WebRTC note is visible without scrolling true
+PASS WebRTC note precedes every grant card true
+PASS note does not promise complete outbound blocking true
+PASS three grant cards show scope and purpose true
+PASS refresh card names the exact requested host true
+PASS host Deny records refresh as denied by the user ["denied", "user"]
+PASS guest refresh is refused while denied [false, "not_granted"]
+PASS backend refresh is blocked while denied "blocked"
+PASS denied refresh never started, fetched nothing and wrote nothing [true, [["blocked", null, null, 0, "not_granted"]]]
+PASS denied card explains the outcome without re-prompting true
+{"passed": 11, "total": 11}
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/harness/qualify_authority.py", line 126, in <module>
+    click(card_button('export.arxiv.org', 'Approve'))
+  File "/Volumes/Expansion/Development/Projects/living-spaces/harness/qualify_authority.py", line 44, in click
+    raise LookupError(f'control unavailable: {find_js[:80]} -> {point}')
+LookupError: control unavailable: [...document.querySelectorAll('[role=dialog] article')].find(a => a.innerText.in -> None

@@ -1,0 +1,54 @@
+{
+  "evidence_class": "actual isolated Desktop; one real model turn in the existing Pair Play chat; one disclosed harness fault revision",
+  "prompt": "Pair Play's Progress view stopped working. Read Pair Play's logs to find the cause, then fix the app code. Keep every saved game, history and settings record exactly as it is. Change only Pair Play.",
+  "chat_session": "local-43245b727cb7576c65e6ef7892ef2b23d705b092542d836419a23ac46e3eeaa1",
+  "revs": {
+    "good": 2,
+    "fault": 3
+  },
+  "diagnostic": {
+    "id": 6,
+    "space": "pair-play",
+    "session": "09Ko6bJL7S7tM_xgpYZNRip6qz5QBDOy7tMAMiKodL0",
+    "rev": 3,
+    "at": 1794362759.615044,
+    "level": "error",
+    "msg": "unhandled rejection: Error: acceptance fault: progress view\n    at k.Progress [as constructor] (blob:[REDACTED]:9:9)\n    at k.q [as render] (blob:[REDACTED]:1:9190)\n    at O (blob:[REDACTED]:1:6363)\n    at S (blob:[REDACTED]:1:1828)\n    at z (blob:[REDACTED]:1:8320)\n    at O (blob:[REDACTED]:1:6973)\n    at S (blob:[REDACTED]:1:1828)\n    at O (blob:[REDACTED]:1:6581)\n    at P (blob:[REDACTED]:1:1484)"
+  },
+  "checks": [
+    {
+      "name": "fixture anchor present in the current Progress view",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "controlled runtime error reaches a Space-scoped diagnostic",
+      "passed": true,
+      "observed": [
+        "pair-play",
+        "error",
+        3
+      ],
+      "expected": [
+        "pair-play",
+        "error",
+        3
+      ]
+    },
+    {
+      "name": "diagnostic is bounded",
+      "passed": true,
+      "observed": true,
+      "expected": true
+    },
+    {
+      "name": "fault never lands in another Space log",
+      "passed": true,
+      "observed": false,
+      "expected": false
+    }
+  ],
+  "passed": 4,
+  "total": 4
+}

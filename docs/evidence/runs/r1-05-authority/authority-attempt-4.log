@@ -1,0 +1,27 @@
+{"passed": 0, "total": 0}
+PASS new Space gets own-data and logs, refresh only requested {"data": "granted", "logs": "granted", "refresh": "requested"}
+PASS WebRTC note is visible without scrolling true
+PASS WebRTC note precedes every grant card true
+PASS note does not promise complete outbound blocking true
+PASS three grant cards show scope and purpose true
+PASS refresh card names the exact requested host true
+PASS host Deny records refresh as denied by the user ["denied", "user"]
+PASS guest refresh is refused while denied [false, "not_granted"]
+PASS backend refresh is blocked while denied "blocked"
+PASS denied refresh never started, fetched nothing and wrote nothing [true, [["blocked", null, null, 0, "not_granted"]]]
+PASS denied card explains the outcome without re-prompting true
+PASS host Approve grants exactly the requested host {"hosts": ["export.arxiv.org"]}
+PASS code revision asking for a new host returns refresh to requested ["requested", {"hosts": ["example.org", "export.arxiv.org"]}]
+PASS new-host revision gained no authority silently "blocked"
+PASS revoke confirmation says delivered data cannot be recalled true
+PASS host Revoke records refresh as revoked "revoked"
+PASS guest refresh refused after revoke on a fresh mount [false, "not_granted"]
+PASS guest log reached the Space log true
+PASS secret-shaped values are redacted before storage false
+PASS guest cannot reach the Hermes backend directly true
+{"passed": 20, "total": 20}
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/harness/qualify_authority.py", line 175, in <module>
+    check('guest realm has no process, parent document or cookies', json.loads(probe_env['value']), {'process': 'undefined', 'parentDoc': 'denied', 'cookie': ''})
+                                                                               ~~~~~~~~~^^^^^^^^^
+KeyError: 'value'

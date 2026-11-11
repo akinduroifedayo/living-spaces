@@ -1,0 +1,18 @@
+{"passed": 0, "total": 0}
+PASS new Space gets own-data and logs, refresh only requested {"data": "granted", "logs": "granted", "refresh": "requested"}
+PASS WebRTC note is visible without scrolling true
+PASS WebRTC note precedes every grant card true
+PASS note does not promise complete outbound blocking true
+PASS three grant cards show scope and purpose true
+PASS refresh card names the exact requested host true
+PASS host Deny records refresh as denied by the user ["denied", "user"]
+PASS guest refresh is refused while denied [false, "not_granted"]
+PASS backend refresh is blocked while denied "blocked"
+FAIL denied refresh performed no fetch and wrote nothing [[], [{"id": "run_4d585b3a6e294bfa", "space": "authority-probe", "trigger": "manual", "handler": "feed", "actor": "harness", "status": "blocked", "queued_at": 1794362030.090077, "s
+{"passed": 9, "total": 10}
+Traceback (most recent call last):
+  File "/Volumes/Expansion/Development/Projects/living-spaces/harness/qualify_authority.py", line 111, in <module>
+    check('denied refresh performed no fetch and wrote nothing', (core.query(pid, 'papers', limit=500)['records'], [r for r in runs(pid) if r['id'] not in known and r.get('changed')]), (before_records, []))
+  File "/Volumes/Expansion/Development/Projects/living-spaces/harness/qualify_authority.py", line 37, in check
+    raise AssertionError(checks[-1])
+AssertionError: {'name': 'denied refresh performed no fetch and wrote nothing', 'passed': False, 'observed': ([], [{'id': 'run_4d585b3a6e294bfa', 'space': 'authority-probe', 'trigger': 'manual', 'handler': 'feed', 'actor': 'harness', 'status': 'blocked', 'queued_at': 1794362030.090077, 'started_at': None, 'ended_at': 1794362030.090077, 'source_as_of': None, 'changed': {'added': 0, 'updated': 0, 'unchanged': 0, 'removed': 0}, 'error': None, 'detail': {'reason': 'not_granted'}, 'heartbeat_at': 1794362030.090077}]), 'expected': ([], [])}
