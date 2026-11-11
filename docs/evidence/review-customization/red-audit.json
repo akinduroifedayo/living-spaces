@@ -1,0 +1,22 @@
+{
+ "method_count": 27,
+ "failing_methods": [
+  "test_f01_agent_prompt_change_blocks_manual_and_scheduled_admission",
+  "test_f01_feed_to_agent_requires_fresh_refresh_approval",
+  "test_f01_stale_agent_scope_cannot_approve_changed_prompt",
+  "test_f02_matching_displayed_schedule_approves_exact_fields",
+  "test_f02_stale_displayed_schedule_conflicts_at_rest_boundary",
+  "test_f03_bridge_passes_bound_session_to_real_net_fetch",
+  "test_f03_closed_session_prevents_redirect_post",
+  "test_f04_stale_source_revision_conflicts_and_rolls_back_whole_batch",
+  "test_f05_revoke_discovers_unmirrored_running_execution",
+  "test_f06_denial_preserves_unmirrored_completed_history",
+  "test_f07_history_backfill_includes_501st_execution",
+  "test_f08_feed_rejects_approved_loopback_before_transport",
+  "test_f08_public_feed_uses_vetted_pinned_destination",
+  "test_f09_feed_approval_rechecks_separately_committed_revocation"
+ ],
+ "subtest_failures": 27,
+ "errors": [],
+ "evidence": "real core SQLite and adapters; synthetic network and cron leaves"
+}

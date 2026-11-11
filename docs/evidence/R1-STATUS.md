@@ -4,6 +4,30 @@ The goal is a real application built and evolved from normal Hermes chat, used i
 
 ## Current checkpoint
 
+Private build branch `forge/r1-contracts`. Release acceptance is **not passed**. The customization review at `234134b` found nine reproduced defects in approval, upkeep history/cancellation, source conflicts and network authority. Regression commit `e45e094` freezes 27 new cases. Fourteen methods are red, thirteen pass, and there are no setup errors or skips. Three file-separated Astra high Priority repair seats are in progress. These failures reopen R1-05, R1-06, R1-07 and R1-11. A green stock suite before these cases is not acceptance.
+
+Implemented and observed since the historical checkpoint below:
+
+- Binary tool descriptors, opt-in shelf selection, manifest theme tokens/presets, root-attribute copying and `space.asset` are integrated.
+- Real Desktop `qualify_custom_assets.py` passed 13/13 after fixing kit CSS ordering. It exercised PNG create/read/write bytes, dynamic image decoding, offline htm/Lucide, actual Inter WOFF2 loading, theme tokens and app CSS precedence. Receipts and two failed attempts are in `docs/evidence/runs/custom-assets/`.
+- Mediated `space.net.fetch` passed 12/12 in the isolated Desktop. Public HTTPS returned 200, private/loopback/gateway targets failed, ordinary frame networking stayed blocked, host revoke refused further retrieval and reapproval restored it. `docs/evidence/runs/net/` retains both the passing receipt and the initial harness assumption failure. Independent review subsequently found redirect-session and feed-path defects, so this does not pass all network lifecycle requirements.
+- Agent upkeep passed 26/26 with real native cron model calls. Manual and closed-Space scheduled executions wrote source fields while retaining user data. Cost/prompt visibility, dedupe, pause/change/archive/delete were exercised. Receipts are in `docs/evidence/runs/agent-upkeep/`. Independent review subsequently reopened consent and run-history/cancellation cases.
+- Feed offline catch-up and revoke passed 41/41 and 35/35, cleanup 4/4. The fixture now seeds a currently live feed id. Jobs/shims and the disposable Space were removed, with canonical readback. Raw receipts are in `docs/evidence/runs/schedule-offline/`. The separate activation-versus-revoke race remains a review defect.
+- Miro's final kit branch through `9e3bb57` is merged. The subsequent parent gate `gate-kit-final-assets` passed 305 Python, 125 stock Node, 148 standalone Node and 19 reference cases. Node commands overlap and are not a unique combined count. Rebuilt artifacts match. This gate predates the newly frozen regression cases and is not current green acceptance.
+- Normal Desktop chat created Sky Window with Today/Week/Cities, theme overrides and optional libraries. First-open exposed an application response-shape error, `.body` instead of `.json`. The exact return contract is now documented in the build skill at `234134b`. Two real-chat repair attempts encountered upstream Claude HTTP 429. Operator supplied a 02:00 America/Chicago reset. Real-chat regeneration is held until then. No failover credentials exist in the isolated home, and none were copied.
+
+Still required before a candidate:
+
+1. Repair and independently verify the nine findings, with unchanged regression identities and full-suite execution.
+2. Requalify affected real-Desktop authority, network, refresh and scheduling paths.
+3. Resume the same Sky Window chat after the provider reset, repair its response handling, and regenerate Research Desk/Pair Play with the accepted kit without losing data.
+4. Reconcile contracts, README/catalog disclosures and this acceptance table with the amendments and evidence. Rerun the full plugin validator at the exact final commit and pin that SHA.
+5. Product/design qualification of the running candidate, including R1-12, and Ife's final acceptance remain separate. No main merge, public publication or catalog submission is claimed.
+
+The initial HOW/Architect and frozen-input omissions remain procedural gaps. Current repair seats have private worktrees, packets and preflight requirements. They do not retroactively qualify earlier work. The recent independent reviewer is Sol xhigh against Astra authors, not cross-family acceptance; the Claude review route is currently rate-limited.
+
+## Historical wave-two checkpoint
+
 Wave 2 integrated coverage at `44211c83a0836b69d47761daba6cae02a79cfc0d`, privately pushed. Parent stock execution passed 183 Python, 112 sandbox/UI and 19 reference cases, plus deterministic artifact rebuild and renderer graph checks. The directory-style Node gate does not discover new standalone `*.test.mjs` files automatically; those must also run explicitly before a candidate gate is claimed. This discovery gap remains open in the current gate runner.
 
 Actual Desktop qualification at that state passed 86 hosting checks, 25 concurrent-refresh checks, 12 incompatible-restore checks and 14 guest-frame-reload checks. Resource-limit qualification was **104/107**, with three real failures in the local oversized bridge error and host save-status path. It is not a limit acceptance pass. All disposable fixture Spaces were deleted and protected Space snapshots remained byte-identical.

@@ -1,0 +1,173 @@
+{
+ "before": {
+  "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-review",
+  "sha": "234134b6fd2a8553041664d8ad7cbf827a6df230",
+  "tracked_files": 376,
+  "baseline_files": 376,
+  "tracked_path_set_equal": true,
+  "baseline_mismatches": [],
+  "required_shards": 38,
+  "bad_shards": [],
+  "bad_sources": [],
+  "git_status": ""
+ },
+ "commands": [
+  {
+   "name": "mode_escalation",
+   "argv": [
+    "/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python",
+    "-B",
+    "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-review/.run/review/probe.py",
+    "mode_escalation"
+   ],
+   "exit_code": 0,
+   "stdout": "{\n  \"case\": \"mode_escalation\",\n  \"observed\": {\n    \"before_refresh\": \"granted\",\n    \"after_refresh\": \"granted\",\n    \"schedule\": null,\n    \"bridge_ok\": true,\n    \"run_status\": \"queued\",\n    \"no_agent\": false,\n    \"prompt_contains_new_task\": true\n  },\n  \"class\": \"real core/SQLite with synthetic network and native cron leaves; no end-to-end claim\"\n}\n",
+   "stderr": ""
+  },
+  {
+   "name": "stale_schedule",
+   "argv": [
+    "/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python",
+    "-B",
+    "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-review/.run/review/probe.py",
+    "stale_schedule"
+   ],
+   "exit_code": 0,
+   "stdout": "{\n  \"case\": \"stale_schedule\",\n  \"observed\": {\n    \"http_status\": 200,\n    \"displayed\": {\n      \"cadence\": \"0 7 1 * *\",\n      \"timezone\": \"UTC\",\n      \"purpose\": \"Once a month\"\n    },\n    \"approved\": {\n      \"status\": \"active\",\n      \"cadence\": \"* * * * *\",\n      \"timezone\": \"Pacific/Auckland\",\n      \"purpose\": \"Every minute\"\n    },\n    \"native_schedule\": \"* * * * *\"\n  },\n  \"class\": \"real core/SQLite with synthetic network and native cron leaves; no end-to-end claim\"\n}\n",
+   "stderr": ""
+  },
+  {
+   "name": "closed_session_egress",
+   "argv": [
+    "/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python",
+    "-B",
+    "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-review/.run/review/probe.py",
+    "closed_session_egress"
+   ],
+   "exit_code": 0,
+   "stdout": "{\n  \"case\": \"closed_session_egress\",\n  \"observed\": {\n    \"session_closed\": {\n      \"requests\": [\n        {\n          \"host\": \"first.example\",\n          \"method\": \"POST\",\n          \"closed\": false\n        },\n        {\n          \"host\": \"second.example\",\n          \"method\": \"POST\",\n          \"closed\": true\n        }\n      ],\n      \"reply\": {\n        \"ok\": false,\n        \"error\": {\n          \"code\": \"session_invalid\",\n          \"message\": \"Session is closed, unknown or belongs to another Space\"\n        }\n      }\n    },\n    \"control_net_revoked\": {\n      \"requests\": [\n        {\n          \"host\": \"first.example\",\n          \"method\": \"POST\",\n          \"closed\": false\n        }\n      ],\n      \"reply\": {\n        \"ok\": false,\n        \"error\": {\n          \"code\": \"not_granted\",\n          \"message\": \"Capability or requested scope is not granted\",\n          \"capability\": \"net\"\n        }\n      }\n    }\n  },\n  \"class\": \"real core/SQLite with synthetic network and native cron leaves; no end-to-end claim\"\n}\n",
+   "stderr": ""
+  },
+  {
+   "name": "source_conflict",
+   "argv": [
+    "/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python",
+    "-B",
+    "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-review/.run/review/probe.py",
+    "source_conflict"
+   ],
+   "exit_code": 0,
+   "stdout": "{\n  \"case\": \"source_conflict\",\n  \"observed\": {\n    \"stale_base_rev\": 2,\n    \"newer_rev\": 3,\n    \"returned\": {\n      \"added\": 0,\n      \"updated\": 1,\n      \"unchanged\": 0\n    },\n    \"final_source\": {\n      \"title\": \"stale overwrites newer\"\n    },\n    \"user_data\": {\n      \"notes\": \"Keep my note\"\n    },\n    \"regular_data_control\": \"conflict\"\n  },\n  \"class\": \"real core/SQLite with synthetic network and native cron leaves; no end-to-end claim\"\n}\n",
+   "stderr": ""
+  },
+  {
+   "name": "unmirrored_revoke",
+   "argv": [
+    "/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python",
+    "-B",
+    "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-review/.run/review/probe.py",
+    "unmirrored_revoke"
+   ],
+   "exit_code": 0,
+   "stdout": "{\n  \"case\": \"unmirrored_revoke\",\n  \"observed\": {\n    \"not_previously_mirrored\": {\n      \"cancel_requests\": [],\n      \"history_statuses\": [\n        \"running\"\n      ],\n      \"native_execution_status\": \"running\",\n      \"schedule\": \"paused\"\n    },\n    \"control_already_mirrored\": {\n      \"cancel_requests\": [\n        [\n          \"cancel\",\n          \"review-cron-1\"\n        ]\n      ],\n      \"history_statuses\": [\n        \"canceled\"\n      ],\n      \"native_execution_status\": \"cancelled\",\n      \"schedule\": \"paused\"\n    }\n  },\n  \"class\": \"real core/SQLite with synthetic network and native cron leaves; no end-to-end claim\"\n}\n",
+   "stderr": ""
+  },
+  {
+   "name": "feed_private",
+   "argv": [
+    "/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python",
+    "-B",
+    "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-review/.run/review/probe.py",
+    "feed_private"
+   ],
+   "exit_code": 0,
+   "stdout": "{\n  \"case\": \"feed_private\",\n  \"observed\": {\n    \"feed_requests\": [\n      \"https://127.0.0.1:8443/feed\"\n    ],\n    \"feed_result\": \"private fixture content\",\n    \"mediated_net_control\": {\n      \"code\": \"blocked\",\n      \"message\": \"Internet destination is not allowed\",\n      \"reason\": \"private_address\"\n    }\n  },\n  \"class\": \"real core/SQLite with synthetic network and native cron leaves; no end-to-end claim\"\n}\n",
+   "stderr": ""
+  },
+  {
+   "name": "feed_revoke_race",
+   "argv": [
+    "/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python",
+    "-B",
+    "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-review/.run/review/probe.py",
+    "feed_revoke_race"
+   ],
+   "exit_code": 0,
+   "stdout": "{\n  \"case\": \"feed_revoke_race\",\n  \"observed\": {\n    \"child\": {\n      \"exit\": 0,\n      \"stdout\": \"refresh revoked in separate process\",\n      \"stderr\": \"\"\n    },\n    \"grant_after_concurrent_revoke\": \"revoked\",\n    \"approval_status\": \"active\",\n    \"native_enabled_after_revoke\": true,\n    \"schedule_after_regrant_without_resume\": \"active\"\n  },\n  \"class\": \"real core/SQLite with synthetic network and native cron leaves; no end-to-end claim\"\n}\n",
+   "stderr": ""
+  },
+  {
+   "name": "history_denial",
+   "argv": [
+    "/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python",
+    "-B",
+    "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-review/.run/review/history-requested.py"
+   ],
+   "exit_code": 0,
+   "stdout": "{\n  \"not_previously_mirrored\": {\n    \"request_status\": \"requested\",\n    \"native_execution_retained\": true,\n    \"space_history_count\": 0,\n    \"last_success_at\": null\n  },\n  \"control_previously_mirrored\": {\n    \"request_status\": \"requested\",\n    \"native_execution_retained\": true,\n    \"space_history_count\": 1,\n    \"last_success_at\": 1794374921.165942\n  }\n}\n",
+   "stderr": ""
+  },
+  {
+   "name": "history_backlog",
+   "argv": [
+    "/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python",
+    "-B",
+    "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-review/.run/review/additional.py",
+    "history_backlog"
+   ],
+   "exit_code": 0,
+   "stdout": "{\n  \"case\": \"history_backlog\",\n  \"observed\": {\n    \"native_ledger_count\": 501,\n    \"durable_space_run_count\": 500,\n    \"oldest_execution_imported\": false\n  },\n  \"class\": \"real core/SQLite with synthetic cron leaves; no native ticker or model executed\"\n}\n",
+   "stderr": ""
+  },
+  {
+   "name": "prompt_change",
+   "argv": [
+    "/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python",
+    "-B",
+    "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-review/.run/review/additional.py",
+    "prompt_change"
+   ],
+   "exit_code": 0,
+   "stdout": "{\n  \"case\": \"prompt_change\",\n  \"observed\": {\n    \"schedule\": \"requested\",\n    \"scheduled_status\": \"blocked\",\n    \"scheduled_reason\": \"schedule_not_approved\",\n    \"bridge_status\": \"queued\",\n    \"new_prompt_queued\": true\n  },\n  \"class\": \"real core/SQLite with synthetic cron leaves; no native ticker or model executed\"\n}\n",
+   "stderr": ""
+  },
+  {
+   "name": "stock",
+   "argv": [
+    "/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python",
+    "-B",
+    "-m",
+    "unittest",
+    "tests.python.test_net",
+    "tests.python.test_agent_upkeep.AgentUpkeepTests",
+    "tests.python.test_agent_upkeep.AgentIntegrationSeamTests.test_manifest_hooks_in_integrated_tree",
+    "tests.python.test_agent_upkeep.AgentIntegrationSeamTests.test_source_owned_adapter_in_integrated_tree",
+    "tests.python.test_agent_upkeep.AgentIntegrationSeamTests.test_host_approval_snapshot_reaches_core_in_integrated_tree",
+    "-v"
+   ],
+   "exit_code": 0,
+   "stdout": "",
+   "stderr": "test_existing_database_migrates_once_and_preserves_decisions (tests.python.test_net.NetGrantTests.test_existing_database_migrates_once_and_preserves_decisions) ... ok\ntest_new_space_has_internet_access (tests.python.test_net.NetGrantTests.test_new_space_has_internet_access) ... ok\ntest_revoke_and_rerequest_require_host_approval (tests.python.test_net.NetGrantTests.test_revoke_and_rerequest_require_host_approval) ... ok\ntest_audit_is_bounded_and_contains_no_query_or_body (tests.python.test_net.NetTests.test_audit_is_bounded_and_contains_no_query_or_body) ... ok\ntest_bridge_dispatches_as_and_validates_arguments (tests.python.test_net.NetTests.test_bridge_dispatches_as_and_validates_arguments) ... ok\ntest_credentials_and_framing_headers_are_stripped (tests.python.test_net.NetTests.test_credentials_and_framing_headers_are_stripped) ... ok\ntest_deadline_is_shared_across_redirects (tests.python.test_net.NetTests.test_deadline_is_shared_across_redirects) ... ok\ntest_dns_timeout_and_all_record_families (tests.python.test_net.NetTests.test_dns_timeout_and_all_record_families) ... ok\ntest_exact_response_limit_is_allowed (tests.python.test_net.NetTests.test_exact_response_limit_is_allowed) ... ok\ntest_five_redirects_allowed_and_sixth_refused (tests.python.test_net.NetTests.test_five_redirects_allowed_and_sixth_refused) ... ok\ntest_invalid_inputs_never_send (tests.python.test_net.NetTests.test_invalid_inputs_never_send) ... ok\ntest_invalid_json_and_nonfinite_json_fail (tests.python.test_net.NetTests.test_invalid_json_and_nonfinite_json_fail) ... ok\ntest_legacy_ipv4_literals_cannot_bypass_policy (tests.python.test_net.NetTests.test_legacy_ipv4_literals_cannot_bypass_policy) ... ok\ntest_literals_and_mixed_dns_are_checked_before_connect (tests.python.test_net.NetTests.test_literals_and_mixed_dns_are_checked_before_connect) ... ok\ntest_methods_and_http_errors_are_results (tests.python.test_net.NetTests.test_methods_and_http_errors_are_results) ... ok\ntest_network_errors_do_not_expose_url_or_credentials (tests.python.test_net.NetTests.test_network_errors_do_not_expose_url_or_credentials) ... ok\ntest_no_sqlite_lock_and_no_delivery_after_revoke (tests.python.test_net.NetTests.test_no_sqlite_lock_and_no_delivery_after_revoke) ... ok\ntest_pinned_transport_uses_numeric_socket_and_hostname_tls (tests.python.test_net.NetTests.test_pinned_transport_uses_numeric_socket_and_hostname_tls) ... ok\ntest_public_ipv6_and_8443 (tests.python.test_net.NetTests.test_public_ipv6_and_8443) ... ok\ntest_rebinding_pins_first_vetted_answer_without_second_resolution (tests.python.test_net.NetTests.test_rebinding_pins_first_vetted_answer_without_second_resolution) ... ok\ntest_redirect_downgrade_is_refused (tests.python.test_net.NetTests.test_redirect_downgrade_is_refused) ... ok\ntest_redirect_method_rules (tests.python.test_net.NetTests.test_redirect_method_rules) ... ok\ntest_redirect_to_private_is_refused (tests.python.test_net.NetTests.test_redirect_to_private_is_refused) ... ok\ntest_refused_address_classes (tests.python.test_net.NetTests.test_refused_address_classes) ... ok\ntest_request_body_cap_has_numbers (tests.python.test_net.NetTests.test_request_body_cap_has_numbers) ... ok\ntest_response_cap_has_numbers_with_and_without_content_length (tests.python.test_net.NetTests.test_response_cap_has_numbers_with_and_without_content_length) ... ok\ntest_revoke_stops_redirects (tests.python.test_net.NetTests.test_revoke_stops_redirects) ... ok\ntest_scheme_and_port_policy (tests.python.test_net.NetTests.test_scheme_and_port_policy) ... ok\ntest_session_closed_during_fetch_suppresses_result (tests.python.test_net.NetTests.test_session_closed_during_fetch_suppresses_result) ... ok\ntest_text_json_and_bytes (tests.python.test_net.NetTests.test_text_json_and_bytes) ... ok\ntest_total_deadline_interrupts_slow_response (tests.python.test_net.NetTests.test_total_deadline_interrupts_slow_response) ... ok\ntest_truncated_http_response_is_a_network_error (tests.python.test_net.NetTests.test_truncated_http_response_is_a_network_error) ... ok\ntest_agent_approval_uses_native_prompt_and_default_toolsets (tests.python.test_agent_upkeep.AgentUpkeepTests.test_agent_approval_uses_native_prompt_and_default_toolsets) ... ok\ntest_approval_rejects_a_prompt_different_from_the_host_display (tests.python.test_agent_upkeep.AgentUpkeepTests.test_approval_rejects_a_prompt_different_from_the_host_display) ... ok\ntest_archive_and_delete_control_native_agent_job (tests.python.test_agent_upkeep.AgentUpkeepTests.test_archive_and_delete_control_native_agent_job) ... ok\ntest_cancel_pending_removes_one_shot (tests.python.test_agent_upkeep.AgentUpkeepTests.test_cancel_pending_removes_one_shot) ... ok\ntest_cancel_running_agent_requests_native_interrupt (tests.python.test_agent_upkeep.AgentUpkeepTests.test_cancel_running_agent_requests_native_interrupt) ... ok\ntest_concurrent_refresh_requests_share_one_native_fire (tests.python.test_agent_upkeep.AgentUpkeepTests.test_concurrent_refresh_requests_share_one_native_fire) ... ok\ntest_feed_approval_keeps_script_and_no_agent (tests.python.test_agent_upkeep.AgentUpkeepTests.test_feed_approval_keeps_script_and_no_agent) ... ok\ntest_grant_and_archive_block_agent_refresh (tests.python.test_agent_upkeep.AgentUpkeepTests.test_grant_and_archive_block_agent_refresh) ... ok\ntest_handler_and_prompt_changes_require_fresh_approval (tests.python.test_agent_upkeep.AgentUpkeepTests.test_handler_and_prompt_changes_require_fresh_approval) ... ok\ntest_invalid_upkeep_is_rejected (tests.python.test_agent_upkeep.AgentUpkeepTests.test_invalid_upkeep_is_rejected) ... ok\ntest_manual_refresh_does_not_resume_paused_schedule (tests.python.test_agent_upkeep.AgentUpkeepTests.test_manual_refresh_does_not_resume_paused_schedule) ... ok\ntest_missing_native_job_fails_pending_run (tests.python.test_agent_upkeep.AgentUpkeepTests.test_missing_native_job_fails_pending_run) ... ok\ntest_native_import_failure_is_visible (tests.python.test_agent_upkeep.AgentUpkeepTests.test_native_import_failure_is_visible) ... ok\ntest_native_status_updates_and_long_runs_do_not_expire_as_feed_workers (tests.python.test_agent_upkeep.AgentUpkeepTests.test_native_status_updates_and_long_runs_do_not_expire_as_feed_workers) ... ok\ntest_old_execution_cannot_complete_a_new_manual_run (tests.python.test_agent_upkeep.AgentUpkeepTests.test_old_execution_cannot_complete_a_new_manual_run) ... ok\ntest_old_feed_shim_cannot_run_a_new_unapproved_agent_prompt (tests.python.test_agent_upkeep.AgentUpkeepTests.test_old_feed_shim_cannot_run_a_new_unapproved_agent_prompt) ... ok\ntest_refresh_dedupes_an_already_running_schedule (tests.python.test_agent_upkeep.AgentUpkeepTests.test_refresh_dedupes_an_already_running_schedule) ... ok\ntest_refresh_triggers_once_and_dedupes (tests.python.test_agent_upkeep.AgentUpkeepTests.test_refresh_triggers_once_and_dedupes) ... ok\ntest_revocation_between_check_and_approval_stops_agent (tests.python.test_agent_upkeep.AgentUpkeepTests.test_revocation_between_check_and_approval_stops_agent) ... ok\ntest_revocation_between_check_and_enqueue_stops_agent (tests.python.test_agent_upkeep.AgentUpkeepTests.test_revocation_between_check_and_enqueue_stops_agent) ... ok\ntest_revocation_pauses_agent_schedule (tests.python.test_agent_upkeep.AgentUpkeepTests.test_revocation_pauses_agent_schedule) ... ok\ntest_schedule_execution_is_imported_once_with_failure (tests.python.test_agent_upkeep.AgentUpkeepTests.test_schedule_execution_is_imported_once_with_failure) ... ok\ntest_schedule_pause_does_not_strand_queued_manual_refresh (tests.python.test_agent_upkeep.AgentUpkeepTests.test_schedule_pause_does_not_strand_queued_manual_refresh) ... ok\ntest_scheduled_entrypoint_cannot_bypass_agent_approval (tests.python.test_agent_upkeep.AgentUpkeepTests.test_scheduled_entrypoint_cannot_bypass_agent_approval) ... ok\ntest_stale_native_snapshot_cannot_reopen_finished_run (tests.python.test_agent_upkeep.AgentUpkeepTests.test_stale_native_snapshot_cannot_reopen_finished_run) ... ok\ntest_trigger_failure_is_a_failed_run_and_cleans_one_shot (tests.python.test_agent_upkeep.AgentUpkeepTests.test_trigger_failure_is_a_failed_run_and_cleans_one_shot) ... ok\ntest_unchanged_prompt_keeps_approval (tests.python.test_agent_upkeep.AgentUpkeepTests.test_unchanged_prompt_keeps_approval) ... ok\ntest_manifest_hooks_in_integrated_tree (tests.python.test_agent_upkeep.AgentIntegrationSeamTests.test_manifest_hooks_in_integrated_tree) ... ok\ntest_source_owned_adapter_in_integrated_tree (tests.python.test_agent_upkeep.AgentIntegrationSeamTests.test_source_owned_adapter_in_integrated_tree) ... ok\ntest_host_approval_snapshot_reaches_core_in_integrated_tree (tests.python.test_agent_upkeep.AgentIntegrationSeamTests.test_host_approval_snapshot_reaches_core_in_integrated_tree) ... ok\n\n----------------------------------------------------------------------\nRan 62 tests in 1.390s\n\nOK\n",
+   "executed_tests": 62,
+   "ok_cases": 62
+  }
+ ],
+ "after": {
+  "cwd": "/Volumes/Expansion/Development/Projects/living-spaces-wt/c-review",
+  "sha": "234134b6fd2a8553041664d8ad7cbf827a6df230",
+  "tracked_files": 376,
+  "baseline_files": 376,
+  "tracked_path_set_equal": true,
+  "baseline_mismatches": [],
+  "required_shards": 38,
+  "bad_shards": [],
+  "bad_sources": [],
+  "git_status": ""
+ },
+ "source_sha256": {
+  ".run/review/probe.py": "a2003aefb0dc94c3e0d747103145423175edbd731b562daea1e9dec6ac36a3c8",
+  ".run/review/additional.py": "f30c1b5dc4a628bcd656d6b2f4f1360926c692176333575be2bcfd210292ab91",
+  ".run/review/history-requested.py": "c0e9280853c0eef04264511c249819bc229c42c15f9c0ff0ccabfe13912ba8d4",
+  ".run/review/reproduce.py": "40a24520da6a092031c840a37e5178d79650921d04d8a02409c4c1024951d791"
+ }
+}
