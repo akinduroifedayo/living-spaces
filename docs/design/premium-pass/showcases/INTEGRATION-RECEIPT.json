@@ -65,10 +65,22 @@
     "full weather contrast sweep"
   ],
   "pending": [
-    "Miro final visual scoring receipt; first-round two-fix receipt is included",
-    "receiving-tree full gate"
+    "Miro final visual scoring receipt; first-round two-fix receipt is included"
   ],
   "parent_checks": {
+    "receiving_tree_gate": {
+      "source_commit": "55e6ddf",
+      "receipt": "evidence/gate-live-showcases-e26f955-20261111",
+      "build_sandbox_exit": 0,
+      "build_renderer_exit": 0,
+      "graph_gate_exit": 0,
+      "python_tests_passed": 308,
+      "stock_node_tests_passed": 125,
+      "standalone_node_tests_passed": 193,
+      "reference_tests_passed": 19,
+      "rebuilt_artifacts_match_committed": true,
+      "note": "Node suites overlap and are not additive. This gate does not rerun or replace Miro's 29 live-reference assertions."
+    },
     "all_adopted_hashes_match": true,
     "runtime_and_upkeep_skill_bytes_preserved": true,
     "other_existing_files_unchanged": true,
