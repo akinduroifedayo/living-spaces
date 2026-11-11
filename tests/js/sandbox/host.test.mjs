@@ -41,7 +41,8 @@ test('both frames carry identical frozen CSP and the exact disclosure', () => {
   assert.equal(SHELL_CSP, SPACE_CSP)
   for (const source of [spaceSrcdoc(), shellSrcdoc()]) assert.ok(source.includes(`content="${SPACE_CSP}"`))
   assert.equal(BRIDGE_VERSION, 1)
-  assert.ok(readFileSync('docs/spec/SPEC.md', 'utf8').includes(WEBRTC_NOTE))
+  assert.ok(readFileSync('docs/spec/history/SPEC-v5.1.md', 'utf8').includes(WEBRTC_NOTE))
+  assert.match(readFileSync('docs/spec/SPEC.md', 'utf8'), /WebRTC remains a disclosed exception: Off is not a promise of zero outbound data/)
 })
 test('project resolver handles query strings, fragments, static and computed dynamic imports', () => {
   const r = projectResolver()
