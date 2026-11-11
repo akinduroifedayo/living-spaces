@@ -12,7 +12,7 @@ src/living-spaces/                    # the plugin package (plugin id: living-sp
 ├── living_spaces_core/               # pure Python. stdlib + httpx only. No hermes imports except optional get_hermes_home
 │   ├── __init__.py                   # re-exports the public API in section 3
 │   ├── db.py  projects.py  records.py  grants.py  sessions.py  logs.py  limits.py  errors.py  migrations.py
-│   ├── runs.py  feeds.py  schedules.py
+│   ├── runs.py  feeds.py  schedules.py   # schedules.py: native-cron upkeep links (A-03)
 │   └── bridge.py                     # dispatch(space, session, op, args) -> reply  (the only frame entry point)
 ├── dashboard/manifest.json           # {"name":"living-spaces","label":"Spaces","api":"plugin_api.py","tab":{"path":"/spaces","hidden":true}}
 ├── dashboard/plugin_api.py           # FastAPI router. Loose module: loads core through ../_core.py by path
@@ -78,13 +78,14 @@ runs(id TEXT PRIMARY KEY, space TEXT NOT NULL, trigger TEXT NOT NULL CHECK(trigg
   queued_at REAL NOT NULL, started_at REAL, ended_at REAL, source_as_of REAL,
   changed TEXT NOT NULL DEFAULT '{}',        -- {"added":n,"updated":n,"unchanged":n,"removed":0}
   error TEXT, detail TEXT NOT NULL DEFAULT '{}', heartbeat_at REAL)
-schedules(space TEXT PRIMARY KEY REFERENCES spaces(id) ON DELETE CASCADE,
-  status TEXT NOT NULL CHECK(status IN ('requested','active','paused','disabled')),
-  cadence TEXT NOT NULL, timezone TEXT NOT NULL, purpose TEXT NOT NULL DEFAULT '',
-  cron_job_id TEXT, catch_up TEXT NOT NULL DEFAULT 'one', requested_at REAL, decided_at REAL, next_run_at REAL)
+upkeep_links(space TEXT NOT NULL REFERENCES spaces(id), cron_job_id TEXT NOT NULL UNIQUE,
+  kind TEXT NOT NULL CHECK(kind IN ('agent','feed')), created_at REAL NOT NULL, created_by TEXT NOT NULL,
+  PRIMARY KEY(space, cron_job_id))          -- link only (A-03). At most one per space in R1, enforced in code
 logs(id INTEGER PRIMARY KEY AUTOINCREMENT, space TEXT NOT NULL, session TEXT, rev INTEGER, at REAL NOT NULL,
   level TEXT NOT NULL, msg TEXT NOT NULL)
 ```
+The native Hermes cron job (`cron.jobs`) is the only truth for a schedule. The plugin stores no prompt, cadence, timezone, enabled or approval state. Migration (idempotent): each former `schedules` row with a `cron_job_id` becomes a link (kind from the head manifest `upkeep.handler`, default `feed`), then `schedules` is dropped and `grants` rows for the old `refresh` grant are deleted. `audit` rows are untouched. `runs` stays for feed runs and their source-owned writes. Agent run history is read live from `cron.executions`, not mirrored.
+
 Indexes: `changes(space, seq)`, `records(space, collection, updated_at)`, `runs(space, queued_at)`, `logs(space, id)`, `audit(space, id)`.
 
 Every record write bumps `records.rev` and appends one `changes` row in the same transaction. `seq` is the live-update cursor.
@@ -131,8 +132,8 @@ edit_file(sid, path, *, old: str, new: str, author, summary, base_rev=None) -> R
 list_revisions(sid) -> [RevisionInfo]
 restore_revision(sid, rev, *, author) -> RevisionInfo   # new 'restore' revision; data untouched; incompatible if data.version differs
 bundle(sid, rev=None) -> {"space": SpaceSummary, "rev", "manifest", "files":[{"path","mime","text"|"b64"}]}
-set_status(sid, status, *, actor)  # archive/unarchive; archive pauses schedule + cancels queued runs
-delete_space(sid, *, actor, confirm: str)  # confirm must equal sid; removes schedule cron job first
+set_status(sid, status, *, actor)  # archive pauses the linked job + cancels queued runs; unarchive does not resume
+delete_space(sid, *, actor, confirm: str)  # confirm must equal sid; removes the linked job, its shim, the link and any living-spaces:<sid>:once jobs first
 touch_opened(sid); set_pinned(sid, bool)
 # records.py
 query(sid, collection, *, where: dict|None=None, order: str|None=None, limit=500, offset=0) -> {"records":[Record],"total","seq"}
@@ -147,7 +148,7 @@ changes_since(sid, seq: int, limit=500) -> {"seq": latest, "changes":[{"seq","co
 create_recovery_point(sid, reason) -> id;  list_recovery_points(sid);  restore_recovery_point(sid, id, *, actor)
 # Record = {"collection","id","data":{},"source":{}|None,"source_meta":{}|None,"rev","created_at","updated_at","updated_by"}
 # grants.py
-CAPABILITIES = {"data": ..., "logs": ..., "refresh": ...}   # labels, descriptions, default purposes (section 5)
+CAPABILITIES = {"data": ..., "logs": ..., "net": ...}   # labels, descriptions, default purposes (section 5). No refresh capability
 list_grants(sid) -> [Grant];  check(sid, capability, scope_need: dict|None=None) -> None | raises not_granted
 request(sid, capability, *, scope, purpose, actor) -> Grant      # code/manifest changes call this; never grants
 decide(sid, capability, decision: 'grant'|'deny'|'revoke', *, actor='user', scope=None) -> Grant
@@ -157,16 +158,16 @@ open_session(sid) -> {"session","grants","head_rev"};  close_session(session);  
 # logs.py
 add_logs(sid, session, entries) -> int;  read_logs(sid, limit=100, level=None) -> [Log]   # secrets redacted on write
 # runs.py
-start_refresh(sid, *, trigger, actor) -> Run       # dedupes: returns the in-flight run if one exists; blocked if not granted/archived
-get_run(run_id);  list_runs(sid, limit=50) -> [Run];  freshness(sid) -> Freshness
-# schedules.py
-request_schedule(sid, *, cadence, timezone, purpose, actor) -> Schedule   # status requested; no cron job yet
-decide_schedule(sid, decision: 'approve'|'deny', *, actor='user') -> Schedule   # approve creates the cron job
-pause_schedule(sid, paused: bool, *, actor) -> Schedule;  get_schedule(sid) -> Schedule|None;  remove_schedule(sid)
+start_refresh(sid, trigger, actor, ...)   # Refresh now. See section 6 for semantics per handler
+get_run(run_id);  list_runs(sid, limit=50) -> [Run];  freshness(sid) -> Freshness   # next_run_at comes from the linked native job
+# schedules.py (native-cron upkeep)
+schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor) -> Upkeep   # creates one native job; replaces any existing one
+get_upkeep(sid) -> {link, job, executions, missing, error}
+upkeep_action(sid, action: 'pause'|'resume'|'run'|'remove', *, actor) -> Upkeep
 # bridge.py
 dispatch(sid, session, op, args) -> {"ok": True, "result": ...} | {"ok": False, "error": {"code","message",...}}
 ```
-SpaceSummary is `{id,name,description,owner,status,head_rev,accent,icon,pinned,updated_at,last_opened_at,freshness,schedule,attention}`. SpaceDetail adds `manifest, grants, recent_runs, data_version, collections:{name: count}, error_count_24h`.
+SpaceSummary is `{id,name,description,owner,status,head_rev,accent,icon,pinned,updated_at,last_opened_at,freshness,upkeep,attention}`, where `upkeep` is `{cron_job_id, kind, enabled, state, next_run_at, missing}` or `null`. SpaceDetail adds `manifest, grants, recent_runs, data_version, collections:{name: count}, error_count_24h`.
 `freshness` is `{"last_success_at","last_attempt_at","last_attempt_status","source_as_of","next_run_at"}`. These are separate facts and must never be merged. `attention` is `null` or `{"kind":"failed"|"blocked"|"crashed","message"}`.
 
 ## 5. Grants (release 1)
@@ -175,20 +176,30 @@ SpaceSummary is `{id,name,description,owner,status,head_rev,accent,icon,pinned,u
 |---|---|---|---|
 | `data` | granted (visible) | `{}` | read/write this Space's own records. Never another Space's. |
 | `logs` | granted (visible) | `{}` | submit runtime console/errors; agent reads them |
-| `refresh` | `requested` when the manifest has `upkeep`, otherwise absent | `{"hosts":["export.arxiv.org"]}` | run the declared host-owned upkeep handler against those hosts only |
+| `net` | granted (visible) | `{}` | Internet access: `space.net.fetch` to public HTTPS (section 14) |
 
 - A grant counts only when `status == 'granted'` and the needed scope is a subset of the granted scope.
-- A new revision whose upkeep hosts are not a subset of the granted scope sets `refresh` back to `requested` with `requested_scope`. The previous grant stops working until approved. Silent widening is impossible.
-- `deny` and `revoke` cancel queued runs and make scheduled runs end `blocked`. An app calling `refresh` without the grant gets `not_granted`, with no fetch and no write.
+- There is no `refresh` capability (A-03). A request for it is `not_found`. Feed fetching is gated by Internet access (`net`) and the public-address check.
+- `deny` and `revoke` of `net` make `net.fetch` and Refresh now of a feed return `not_granted`, with no fetch and no write.
 - Release-2 capabilities (`sites`, `camera`, `microphone`, `location`, `tool:*`, `files`, `cross_space`, `agent.ask`) are named in `grants.FUTURE` for the UI's "Not available yet" rows. Bridge ops for them do not exist and return `not_granted`.
 
-## 6. Upkeep
+## 6. Upkeep (A-03: an ordinary Hermes cron job)
 
-- `start_refresh` inserts a run (`queued`), then runs the handler in a worker thread (REST/tool) or inline (cron shim). One non-terminal run per Space is allowed: a second request returns the same run. A run with no heartbeat for over 120 s is marked `failed` ("interrupted") on the next start.
-- `feed` handler: for each source, check `refresh` covers its host, then fetch over https only (httpx, 20 s timeout, 3 MB cap, no redirects off-host). Parse RSS 2.0 or Atom with `xml.etree` (defusedxml-like guards: reject DOCTYPE/ENTITY). Map each entry to `{title, summary, url, authors, published, updated}` with record id `src_<sha1(entry id or link)[:16]>`. Call `upsert_source` per entry in one transaction per source. A partial failure records which source failed and leaves the others' records intact. On failure every existing record keeps its source fields and the run is `failed` with a useful error. Upkeep never deletes records in release 1.
-- Run statuses: `succeeded` (with `changed` counts, "no change" is a valid success), `failed` (`error`), `blocked` (`detail.reason`: `not_granted` | `archived` | `no_handler`), `canceled`.
-- Schedule: `approve` writes `<HERMES_HOME>/scripts/living-spaces-refresh-<sid>.py` from `scripts/refresh_space.py` (the shim loads core by path and calls `start_refresh(sid, trigger="schedule", actor="upkeep:schedule")` inline). It then creates a no-agent cron job through `cron.jobs.create_job(prompt=None, schedule=cadence, name=f"living-spaces:{sid}", script=..., no_agent=True, deliver="local", catch_up=True, timezone=tz)`. Pause and resume call `cron.jobs.pause_job`/`resume_job`. Archive pauses. Delete removes the job and the shim. `next_run_at` is read from the cron job. If the cron import is unavailable, report `blocked` and say so. Never fake it.
-- Catch-up policy, shown in the UI: "Runs one current refresh when Hermes wakes. Missed intervals aren't replayed."
+The native cron job is the only truth for a schedule. The plugin stores only `upkeep_links` (section 2). Chat creation is consent, as for any Hermes cron job. There is no approval step.
+
+- **Refresh now** (`start_refresh`) inserts a run (`queued`), then runs in a worker thread (REST/tool) or inline (cron shim). One non-terminal run per Space is allowed: a second request returns the same run. A run with no heartbeat for over 120 s is marked `failed` ("interrupted") on the next start.
+  - Feed handler: the in-process feed run, gated by Internet access (`net`) plus the public-address check.
+  - Agent handler with a linked job: `trigger_job(linked)`. Returns `{kind:'cron', cron_job_id, triggered:true}`.
+  - Agent handler with no link: creates a native one-shot agent job named `living-spaces:<sid>:once` with the same prompt wrapper and returns the same shape. One-shots are not linked.
+  - Guest bridge `refresh` with an agent handler: `blocked`, reason `agent_from_guest`, message "Agent upkeep runs from Refresh now in Hermes or from chat".
+- **`feed` handler:** for each source, check the host is public, then fetch over https only (httpx, 20 s timeout, 3 MB cap, no redirects off-host). Parse RSS 2.0 or Atom with `xml.etree` (reject DOCTYPE/ENTITY). Map each entry to `{title, summary, url, authors, published, updated}` with record id `src_<sha1(entry id or link)[:16]>`. Upsert per source in one transaction. A partial failure records which source failed and leaves the others intact. On failure every record keeps its source fields and the run is `failed` with a useful error. Upkeep never deletes records in release 1.
+- **Run statuses (feed runs):** `succeeded` (with `changed` counts; "no change" is a valid success), `failed` (`error`), `blocked` (`detail.reason`: `not_granted` | `archived` | `no_handler` | `agent_from_guest`), `canceled`.
+- **`schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor)`** creates one native job through `cron.jobs.create_job` named `living-spaces:<sid>`, `deliver="local"`, `catch_up=True`. Agent: `prompt=agent_prompt(sid, prompt)` (names the Space and `spaces_*` tools, source-owned writes, preserve user fields), `no_agent=False`. Feed: the generated shim script `<HERMES_HOME>/scripts/living-spaces-refresh-<sid>.py`, `no_agent=True`. An existing link's job is removed first (replace). An archived Space returns `archived`. Returns `get_upkeep`.
+- **`get_upkeep(sid)`** returns `{link: {cron_job_id, kind, created_at, created_by} | null, job: {id, name, prompt, schedule_display, cadence, timezone, enabled, state, next_run_at, last_run_at, last_status, last_error} | null, executions: [up to 20 newest], missing: bool, error: str | null}`, read live from `get_job` and `cron.executions.list_executions`. Execution fields are `{id, status, claimed_at, started_at, finished_at, error, scheduled_instant}` with native status verbatim, including `unknown`. `prompt` is null for feed. `missing` means a link exists but the job does not. `error` is set, not raised, when native cron is unavailable.
+- **`upkeep_action(sid, action, *, actor)`** passes `pause|resume|run|remove` to `pause_job`/`resume_job`/`trigger_job`/`remove_job`. `remove` also deletes the link and shim. `resume` and `run` on an archived Space return `archived`.
+- **Lifecycle defaults.** Archive pauses the linked job. Unarchive does not resume it. Delete removes the job, shim, link and any `living-spaces:<sid>:once` jobs. A running job finishes when paused or removed. A manifest prompt change does not touch an existing job; the panel shows the native prompt, which is what runs, and the agent replaces the job in chat when asked.
+- **Removed (A-03):** the schedule states, the old schedule-request and decision functions (`decide_schedule`, `pause_schedule`, `reconcile_refresh`, `on_refresh_revoked`, `_sync_agent_runs`, `_withdraw_pending`, the agent parts of `cancel_pending`, the `refresh` capability and its gate, and job pausing on manifest change.
+- Catch-up policy, shown in the UI: "Runs one current refresh when Hermes wakes. Missed intervals aren't replayed." If the cron import is unavailable, `get_upkeep` sets `error` and says so. Never fake it.
 
 ## 7. Bridge protocol v1 (frame ⇄ host ⇄ backend)
 
@@ -206,7 +217,7 @@ Host → frame event: `{v:1, type:"event", event:"data.changed", payload:{seq, c
 | `data.put` | data | `{collection, id?, data, base_rev?, merge?}` | Record (`conflict` carries `current`) |
 | `data.delete` | data | `{collection, id, base_rev?}` | `{deleted:true}` |
 | `data.batch` | data | `{ops:[...]}` | `{results, seq}` |
-| `refresh` | refresh | `{}` | Run |
+| `refresh` | `net` (feed only) | `{}` | Run. With an agent handler: `blocked`, reason `agent_from_guest` |
 | `runs.list` | none | `{limit?}` | `[Run]` |
 | `log` | logs | `{entries:[{level,msg}]}` (≤ 50 per call, msg ≤ 4000 chars) | `{stored:n}` |
 
@@ -231,26 +242,27 @@ space.field(record, name)  // data[name] ?? source[name]
 | method + path | body | returns |
 |---|---|---|
 | GET `/spaces` | | `{spaces:[SpaceSummary], seq_global}` |
-| GET `/spaces/{sid}` | | SpaceDetail plus `schedule`, `freshness` |
+| GET `/spaces/{sid}` | | SpaceDetail plus `upkeep`, `freshness` |
 | GET `/spaces/{sid}/bundle` | | bundle(sid) |
 | POST `/spaces/{sid}/sessions` | | `{session, grants, head_rev}` |
 | DELETE `/spaces/{sid}/sessions/{session}` | | `{closed:true}` |
 | POST `/spaces/{sid}/bridge` | `{session, op, args}` | bridge reply (always HTTP 200 with `ok`) |
 | GET `/spaces/{sid}/changes?since=` | | changes_since |
-| GET `/spaces/{sid}/runs` · POST `/spaces/{sid}/refresh` | | `[Run]` · Run (actor `user`, trigger `manual`) |
-| GET `/spaces/{sid}/grants` · POST `/spaces/{sid}/grants/{cap}` | `{decision, scope?}` | `{grants, future, audit}` · Grant |
-| GET `/spaces/{sid}/schedule` · POST `/spaces/{sid}/schedule` | `{decision:'approve'|'deny'}` or `{paused:bool}` | Schedule |
+| GET `/spaces/{sid}/runs` · POST `/spaces/{sid}/refresh` | | `[Run]` · `start_refresh` result (actor `user`, trigger `manual`) |
+| GET `/spaces/{sid}/grants` (no `refresh` capability; requests for it are `not_found`) · POST `/spaces/{sid}/grants/{cap}` | `{decision, scope?}` | `{grants, future, audit}` · Grant |
+| GET `/spaces/{sid}/upkeep` · POST `/spaces/{sid}/upkeep` | `{action:'pause'|'resume'|'run'|'remove'}` | `get_upkeep` · `upkeep_action` |
 | GET `/spaces/{sid}/revisions` · POST `/spaces/{sid}/revisions/{rev}/restore` | | `[RevisionInfo]` · RevisionInfo |
 | GET `/spaces/{sid}/logs` | | `[Log]` |
 | POST `/spaces/{sid}/archive` · `/unarchive` · `/pin` `{pinned}` · `/opened` | | SpaceSummary |
-| DELETE `/spaces/{sid}?confirm=<sid>` | | `{deleted:true, removed:{records,revisions,schedule}}` |
+| DELETE `/spaces/{sid}?confirm=<sid>` | | `{deleted:true, removed:{records,revisions,upkeep}}` |
 | GET `/status` | | `{seq_global, spaces:n, attention:n}` |
 
 Errors use HTTP 4xx with `{"error":{"code","message",...}}` (404 not_found, 400 invalid, 409 conflict, 403 not_granted/session_invalid, 413 limit, 423 archived).
 
 ## 9. Agent tools (toolset `living_spaces`, emoji 🪴). Every handler returns a JSON string `{"ok":true,"result":...}` or `{"ok":false,"error":{...}}`
 
-`spaces_list` · `spaces_get(space)` · `spaces_create(name, description, files, manifest?, libraries?)` · `spaces_read_file(space, path)` · `spaces_write_files(space, files, summary, base_rev?)` · `spaces_edit_file(space, path, old, new, summary)` · `spaces_query(space, collection, where?, limit?)` · `spaces_write_records(space, ops)` (batch of put/delete with base_rev) · `spaces_read_logs(space, level?)` · `spaces_revisions(space)` · `spaces_restore(space, rev)` · `spaces_refresh(space)` · `spaces_request_schedule(space, cadence, timezone, purpose)`.
+`spaces_list` · `spaces_get(space)` · `spaces_create(name, description, files, manifest?, libraries?)` · `spaces_read_file(space, path)` · `spaces_write_files(space, files, summary, base_rev?)` · `spaces_edit_file(space, path, old, new, summary)` · `spaces_query(space, collection, where?, limit?)` · `spaces_write_records(space, ops)` (batch of put/delete with base_rev) · `spaces_read_logs(space, level?)` · `spaces_revisions(space)` · `spaces_restore(space, rev)` · `spaces_refresh(space)` (Refresh now) · `spaces_schedule_upkeep(space, kind: agent|feed, cadence, timezone, prompt?)` · `spaces_upkeep(space, action: status|pause|resume|run|remove)`.
+- `spaces_schedule_upkeep` creates an ordinary Hermes cron job now. The user asking is the consent. Agent jobs use model calls, and the agent must say so to the user. It replaces any existing upkeep job. `prompt` is required for `agent`. `spaces_get` and `spaces_list` expose `upkeep`.
 - `space` accepts an id or an exact name. Ambiguous or unknown refs fail with `ambiguous`/`not_found` and the candidates, never a guess (R1-03).
 - `spaces_create` and `spaces_write_files` return `{space, rev, open: {directive: "::living-space{id=\"<sid>\"}", route: "/spaces?space=<sid>"}, grants_pending:[...], warnings:[...]}`. Warnings cover missing entry, unresolved relative imports, and network URLs in code (blocked at runtime).
 - The skill tells the agent to end creation and update replies with the directive paragraph `::living-space{id="<sid>"}`. The desktop half registers `TRANSCRIPT_DIRECTIVE_AREA` name `living-space`, which renders an **Open Space** card that navigates to `/spaces?space=<sid>`.
@@ -267,10 +279,10 @@ Nested srcdoc frames, `sandbox="allow-scripts"` only (opaque origin), the CSP be
 ## 12. Cross-lane seams (who calls whom; lazy imports so each lane tests alone)
 
 - Core (`projects`, `grants`, `bridge`) calls upkeep only through these functions, imported lazily inside the function with `from . import runs, schedules`. Upkeep implements them:
-  `runs.cancel_pending(sid, reason) -> int` · `runs.freshness(sid) -> Freshness` · `runs.list_runs(sid, limit)` · `runs.start_refresh(sid, *, trigger, actor) -> Run` · `schedules.get_schedule(sid) -> Schedule|None` · `schedules.on_archive(sid)` · `schedules.on_unarchive(sid)` · `schedules.on_delete(sid)`.
-  Until upkeep lands, core treats an `ImportError` or `AttributeError` there as "no upkeep": empty freshness `{all None}`, schedule `None`, no-op hooks. Core tests must not depend on upkeep.
-- Grant revoke/deny for `refresh` calls `runs.cancel_pending(sid, "refresh revoked")`. Archive calls `runs.cancel_pending(sid, "archived")` and `schedules.on_archive(sid)`.
-- Upkeep calls core: `records.upsert_source`, `grants.check(sid, "refresh", {"hosts":[host]})`, `projects.get_space`, `projects.bundle(sid)["manifest"]`, `db.write/read`, `errors.SpacesError`.
+  `runs.cancel_pending(sid, reason) -> int` (feed runs only) · `runs.freshness(sid) -> Freshness` · `runs.list_runs(sid, limit)` · `runs.start_refresh(sid, trigger, actor, ...)` · `schedules.get_upkeep(sid)` · `schedules.on_archive(sid)` (pauses) · `schedules.on_unarchive(sid)` (no-op) · `schedules.on_delete(sid)`.
+  Until upkeep lands, core treats an `ImportError` or `AttributeError` there as "no upkeep": empty freshness `{all None}`, upkeep `None`, no-op hooks. Core tests must not depend on upkeep.
+- Archive calls `runs.cancel_pending(sid, "archived")` and `schedules.on_archive(sid)`.
+- Upkeep calls core: `records.upsert_source`, `grants.check(sid, "net")`, `projects.get_space`, `projects.bundle(sid)["manifest"]`, `db.write/read`, `errors.SpacesError`.
 - The desktop host (UI lane) mounts Spaces only through `src/desktop/sandbox/index.js` (sandbox lane):
   ```js
   export const BRIDGE_VERSION = 1
@@ -285,7 +297,7 @@ Nested srcdoc frames, `sandbox="allow-scripts"` only (opaque origin), the CSP be
 ## 13. Amendments found during the swarm (Forge applies at integration)
 
 - **A1 (upkeep → core):** "one transaction per source" can't be built from a single-record `upsert_source`. Core adds `records.upsert_sources(sid, collection, entries: list[(rid, source, source_meta)], *, actor) -> {"added","updated","unchanged"}`, which runs in one IMMEDIATE transaction. Upkeep calls it when present and falls back to per-record calls.
-- **A2 (upkeep → schema):** `schedules` gains `reason TEXT` so `disabled` can carry a visible reason (e.g. "Hermes cron is unavailable in this process"). Migration: `ALTER TABLE schedules ADD COLUMN reason TEXT` when missing.
+- **A2 (superseded by A-03; the `schedules` table is dropped):** `schedules` gained `reason TEXT` so `disabled` can carry a visible reason (e.g. "Hermes cron is unavailable in this process"). Migration: `ALTER TABLE schedules ADD COLUMN reason TEXT` when missing.
 - **A3 (admission, Forge):** The REST bundle response in section 8 gains `sandbox: {format: 1, shell_srcdoc: string}`. Only the fixed installed backend producer supplies it from the deterministic packaged guest document. Core `bundle()` and persisted project/revision data stay unchanged. Renderer-private parsing rejects malformed or unsupported sandbox wire data. Section 12 mounting becomes `mountSpace(container, {bundle, grants, call, onEvent})`; the session remains only in the host REST closure. The section 7 boot envelope drops `session` and receives only the existing project-bundle fields, grants, and port. Neither session nor sandbox wire metadata reaches the guest. Both opaque frames and section 11's exact CSP remain unchanged. Guest producers move out of renderer dependencies into build-time modules and one reviewed static package asset. Format changes when the boot/bridge schema or immutable policy floor becomes incompatible. Unsupported formats fail closed with session cleanup and an actionable reinstall message. See `docs/architecture/SANDBOX-ADMISSION.md` for the selected refinement shape, required repairs, test migrations, and unexecuted runtime gates. This amendment authorizes implementation, not release acceptance.
 
 ## 14. Integrated customization and authority amendments
@@ -308,21 +320,19 @@ The guest calls `space.net.fetch(url, {method?, headers?, body?, as?})`. The bri
 
 Responses include `status`, `url`, and `headers`. Text mode adds `text`. JSON mode adds `json`. Bytes mode adds `b64` and `mime`. This is not a browser Fetch Response. It has no `.body` or `.json()` method.
 
-The host permits public HTTPS, checks every DNS answer, pins the socket destination, and rechecks redirects. Net checks the bound session and grant before new sends and delivery. Feed retrieval uses the same public-address transport under Refresh host authority. Revoking Net does not revoke separately approved feed Refresh. Neither path attaches Hermes credentials or cookies.
+The host permits public HTTPS, checks every DNS answer, pins the socket destination, and rechecks redirects. Net checks the bound session and grant before new sends and delivery. Feed retrieval uses the same public-address transport and is gated by Internet access (A-03). Neither path attaches Hermes credentials or cookies.
 
 Direct CDN imports, frames, and ordinary guest networking stay blocked. The WebRTC disclosure remains required. A closed session or revoked grant cannot recall bytes already sent before revocation.
 
-### Agent upkeep and exact approval
+### Agent upkeep (A-03, native cron only)
 
-Upkeep supports `handler: 'feed'` or `handler: 'agent'`. Agent upkeep supplies an exact prompt. Refresh approval scope for an agent task includes `{hosts, upkeep: {handler: 'agent', prompt}}`. Feed-only approval contains hosts without an agent task. Switching modes or changing the exact prompt requires new Refresh approval, including for manual and guest calls.
+This replaces the earlier exact-approval design. Upkeep supports `handler: 'feed'` or `handler: 'agent'`. An agent job is an ordinary Hermes native cron job that runs the full Hermes agent with its model calls and enabled native tools. It is not an independently restricted agent runtime. Section 6 defines creation, the Upkeep panel API, lifecycle defaults and what was removed.
 
-Agent upkeep uses normal Hermes native cron jobs, model calls, and enabled native tools. It is not an independently restricted agent runtime. The host shows the exact prompt, model-call cost, and access consequence before approval.
+There is no approval step for schedules or prompts, and no separate Refresh grant. The user asking in chat is the consent. The Upkeep panel shows the native prompt, which is what runs, and agent kind always shows "Uses model calls".
 
-REST schedule approval requires `requested_schedule` containing the displayed `cadence`, `timezone`, `purpose`, and `requested_at`. Agent approval also supplies the displayed `requested_upkeep`. The backend compares the snapshot inside the activation transaction. Denial needs no approval snapshot. Activation and Resume recheck current Refresh authority in that transaction.
+`spaces_write_records(..., source_owned: true)` is allowed for upkeep writes. A supplied `base_rev` must match, and a conflict rolls back the whole batch. Source-owned omission retains idempotent upsert behavior without a revision check. User-owned data keeps its existing revision rules.
 
-`spaces_write_records(..., source_owned: true)` requires current Refresh authority. A supplied `base_rev` must match, and a conflict rolls back the whole batch. Source-owned omission retains idempotent upsert behavior without a revision check. User-owned data keeps its existing revision rules.
-
-Before native job pointers disappear, retained executions synchronize into durable Space history. Revoke discovers unmirrored running work before cancellation. History pagination follows the installed native API's timestamp cursor. Equal timestamps across a page boundary remain an upstream cursor limitation, not a claim of complete import under that condition. Native cron and Space SQLite are separate stores. These changes do not claim distributed crash atomicity.
+Native cron and Space SQLite are separate stores. The plugin keeps a link, not a copy. These changes do not claim distributed crash atomicity.
 
 ### Qualification runtime
 

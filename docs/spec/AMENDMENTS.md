@@ -54,6 +54,34 @@ Anything else is allowed. That includes any file types and layout, any framework
 - Optional offline dependency shelf.
 - `space.asset()`.
 - Build-skill rules rewritten as guidance rather than prohibitions.
-- **Agent upkeep mode:** Refresh now and approved schedules can run a native Hermes cron agent job with a prompt, alongside the cheap no-agent feed handler. Approval shows that it uses model calls.
+- **Agent upkeep mode:** a native Hermes cron agent job with a prompt can run alongside the cheap no-agent feed handler. Chat creates it and the Space's Upkeep panel shows that it uses model calls. See A-03, which replaced the approval flow this bullet first described.
 
 **Open item for Ife.** A host-side package install tool lets the agent request `name@version`. The host fetches it, verifies integrity, bundles it and stores it in the Space. It is a release 2 design item.
+
+## A-03. Upkeep is an ordinary Hermes cron job (Nov 11, 2026)
+
+**Question (Ife).** "Why is this a blocker? Won't scheduled refresh be a potential cron or routine with the full Hermes agent capability and tools updating the space?"
+
+**Decision (Ife).** At about 04:00 CT on Nov 11, 2026 Ife answered "Yes" to making the native-cron-only design the shipping path and to stopping the R03 repair of the approval layer.
+
+This supersedes SPEC.md v5.1's host-owned schedule approval and the Refresh capability, and the approval text in A-02 and in CONTRACTS.md section 14.
+
+**Rule.**
+- The native Hermes cron job is the only truth for a schedule. The plugin stores a link to it and nothing else: no copy of the prompt, cadence, timezone, enabled state or approval state.
+- Chat creation is consent, as for any Hermes cron job. The agent creates the job with `spaces_schedule_upkeep` when the user asks. There is no pending state and no host Approve step.
+- Each Space has a live **Upkeep** panel. It reads the native job and shows what runs: the full prompt for an agent job, cadence, timezone, state, next and last run, and recent executions. It offers Pause, Resume, Run now and Remove. Agent upkeep is labeled "Uses model calls".
+- **Refresh now** runs the feed handler directly. For an agent handler it triggers the linked cron job, or a one-shot agent job when none is linked.
+- Removed: the schedule states (requested, active, paused, disabled), `spaces_request_schedule`, host schedule approval and Resume rechecks, the Refresh permission and its host-scope reapproval, exact-prompt approval binding, and the copy of agent run history into Space history.
+- Kept: the Internet access (`net`) permission, Data and Diagnostics grants, the public-address check and last-good feed behavior, source-owned writes, the WebRTC disclosure, the private `cron.jobs` and `cron.executions` imports and the backend-pinned frontend cleanup. Existing `audit` rows are untouched.
+
+**Four defaults.**
+1. Guest code can trigger only the no-model feed handler. A guest `refresh` against an agent handler returns `blocked` (`agent_from_guest`). Agent upkeep runs from Refresh now in Hermes or from chat.
+2. Archiving a Space pauses its job. Unarchiving does not resume it. The user resumes it in the Upkeep panel or in chat.
+3. A job that is running when the user pauses or removes it finishes. Pause and remove stop future runs, not the current one.
+4. Migration is idempotent. Each existing schedule row with a native job becomes a link, then the `schedules` table is dropped and `refresh` grants are deleted.
+
+**Why.** Three review rounds each found defects in the plugin-side sync layer that mirrored schedule state and approval (reviewer report: `/Volumes/Expansion/Development/Build/living-spaces-r1/run/seats/r02-xreview/REPORT.md`; frozen R03 tests at commit `8b5f758` on `forge/r1-r03-tests`). That evidence is why the layer was removed rather than repaired. The native job already has one owner and one schedule, so the plugin no longer keeps a second copy that can disagree.
+
+**Evidence to rerun.** R1-05 (shortened: Internet access, Data and Diagnostics grants and revocation, with no Refresh grant), R1-06, R1-07 and R1-11. Earlier receipts for the removed approval flow do not count toward these.
+
+**Engineering status: in progress, not qualified.** The contract is `docs/contracts/CONTRACTS.md` section 14.
