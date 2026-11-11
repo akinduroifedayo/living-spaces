@@ -18,8 +18,10 @@ class RestDocumentTests(AdapterCase):
         self.assertEqual(second.json(), first.json())
         wire = first.json()
         self.assertEqual(wire.pop("sandbox"), {
-            "format": 1,
+            "format": 2,
             "shell_srcdoc": (PACKAGE / "guest" / "space-host.html").read_text(encoding="utf-8"),
+            "partition_off": (PACKAGE / "guest" / "partition-off.html").read_text(encoding="utf-8"),
+            "partition_https": (PACKAGE / "guest" / "partition-https.html").read_text(encoding="utf-8"),
         })
         self.assertEqual(wire, project)
         self.assertEqual(self.core.bundle.return_value, project)
@@ -70,10 +72,15 @@ class InstalledDocumentTests(unittest.TestCase):
             asset = package / "guest" / "space-host.html"
             expected = (PACKAGE / "guest" / "space-host.html").read_bytes()
             asset.write_bytes(expected)
+            variants = {}
+            for key, filename in (("partition_off", "partition-off.html"), ("partition_https", "partition-https.html")):
+                contents = (PACKAGE / "guest" / filename).read_bytes()
+                (package / "guest" / filename).write_bytes(contents)
+                variants[key] = contents.decode("utf-8")
             module = load("installed_document_reader", reader)
             first = module.trusted_document()
             self.assertEqual(first, module.trusted_document())
-            self.assertEqual(first, {"format": 1, "shell_srcdoc": expected.decode("utf-8")})
+            self.assertEqual(first, {"format": 2, "shell_srcdoc": expected.decode("utf-8"), **variants})
             with self.assertRaises(TypeError):
                 module.trusted_document("untrusted-path")
             asset.unlink()

@@ -78,7 +78,7 @@ export function SpaceView({ ctx, sid }) {
     return () => { disposed = true }
   }, [ctx, base])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (building || archived || crash || remoteCrash || !content.current) return
     let disposed = false
     let errors = 0

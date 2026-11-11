@@ -1,3 +1,5 @@
+import { mountPartition } from './partition.mjs'
+
 export const BRIDGE_VERSION = 1
 export const WEBRTC_NOTE = 'Spaces block ordinary internet connections unless you approve a site or capability. This is not a complete block: a browser feature called WebRTC can still send data that this Space can read. It does not give the Space access to Hermes, credentials, your unapproved files or other Spaces. Only put data in a Space that you trust it to handle.'
 export const OP_GRANT = Object.freeze({
@@ -45,19 +47,27 @@ export function checkGrant(op, grants) {
 function parseBundle(value) {
   const sandbox = value?.sandbox
   if (!sandbox || typeof sandbox !== 'object' || Array.isArray(sandbox) ||
-      Object.keys(sandbox).length !== 2 || !Object.hasOwn(sandbox, 'format') || !Object.hasOwn(sandbox, 'shell_srcdoc') ||
-      sandbox.format !== 1 || typeof sandbox.shell_srcdoc !== 'string' || !sandbox.shell_srcdoc.trim()) {
+      !Object.hasOwn(sandbox, 'format') || !Object.hasOwn(sandbox, 'shell_srcdoc') ||
+      typeof sandbox.shell_srcdoc !== 'string' || !sandbox.shell_srcdoc.trim() ||
+      !(sandbox.format === 1 && Object.keys(sandbox).length === 2 ||
+        sandbox.format === 2 && Object.keys(sandbox).length === 4 &&
+        ['partition_off', 'partition_https'].every(key => Object.hasOwn(sandbox, key) && typeof sandbox[key] === 'string' && sandbox[key].trim()))) {
     throw new Error('Living Spaces Desktop and backend are incompatible. Reinstall Living Spaces to load the packaged sandbox.')
   }
   const { space, rev, manifest, files } = value
-  return { project: { space, rev, manifest, files }, document: sandbox.shell_srcdoc }
+  return { project: { space, rev, manifest, files }, document: sandbox.shell_srcdoc, sandbox }
 }
 
 export function mountSpace(container, { bundle, grants = [], call, onEvent = () => {} }) {
-  const { project, document: shellDocument } = parseBundle(bundle)
+  const { project, document: shellDocument, sandbox } = parseBundle(bundle)
   const channel = new MessageChannel()
   const port = channel.port1
   let frame
+  let partition
+  let resolveReady
+  let rejectReady
+  const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject })
+  ready.catch(() => {})
   let state = 'created'
   let lastLog = -Infinity
   let overflowReported = false
@@ -69,6 +79,8 @@ export function mountSpace(container, { bundle, grants = [], call, onEvent = () 
   const stop = () => {
     if (state === 'closed') return
     state = 'closed'
+    partition?.destroy()
+    rejectReady(new Error('Space mount closed before readiness'))
     frame?.removeEventListener('load', onLoad)
     port.onmessage = null
     port.close()
@@ -88,6 +100,7 @@ export function mountSpace(container, { bundle, grants = [], call, onEvent = () 
     if (state === 'booted') return reloaded()
     state = 'booted'
     frame.contentWindow.postMessage({ type: 'space-boot', v: 1, bundle: project, grants }, '*', [channel.port2])
+    resolveReady()
     onEvent({ kind: 'booted' })
   }
   port.onmessage = async e => {
@@ -136,6 +149,19 @@ export function mountSpace(container, { bundle, grants = [], call, onEvent = () 
     }
   }
   try {
+    const desktopPartition = Boolean(window.hermesDesktop)
+    if (desktopPartition) {
+      if (sandbox.format !== 2) throw new Error('Reinstall Living Spaces to load the partition sandbox')
+      partition = mountPartition(container, {
+        document: checkGrant('net.fetch', grants) ? sandbox.partition_off : sandbox.partition_https,
+        boot: { type: 'space-boot', v: 1, bundle: project, grants },
+        port: channel.port2,
+        onReady: () => { if (state === 'closed') return; state = 'booted'; resolveReady(); onEvent({ kind: 'booted' }) },
+        onReload: reloaded,
+        onError: error => { rejectReady(error); stop(); onEvent({ kind: 'error', fatal: true, message: String(error.message || error) }) }
+      })
+      frame = partition.frame
+    } else {
     frame = document.createElement('iframe')
     frame.setAttribute('sandbox', 'allow-scripts')
     frame.setAttribute('referrerpolicy', 'no-referrer')
@@ -145,12 +171,14 @@ export function mountSpace(container, { bundle, grants = [], call, onEvent = () 
     frame.addEventListener('load', onLoad)
     frame.srcdoc = shellDocument
     container.append(frame)
+    }
   } catch (error) {
     stop()
     frame?.remove()
     throw error
   }
   return {
+    ready,
     postEvent(event, payload) {
       if (state !== 'booted') return
       if (event === 'data.changed' && checkGrant('data.query', grants)) return

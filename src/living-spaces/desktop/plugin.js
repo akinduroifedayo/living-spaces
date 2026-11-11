@@ -1250,9 +1250,12 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
         }
         onEvent(event);
       } });
+      await mounted.ready;
+      if (closed) return close();
       actions?.restore();
     } catch (error) {
       closed = true;
+      mounted?.destroy();
       await close().catch(() => {
       });
       throw error;
@@ -1281,6 +1284,94 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
       return close();
     }
   };
+}
+
+// src/desktop/sandbox/partition.mjs
+function mountPartition(container, { document: shell, boot, port, onReady, onReload, onError }) {
+  const frame = document.createElement("webview");
+  if (typeof frame.executeJavaScript !== "function") throw new Error("Living Spaces requires Desktop partition support for direct HTTPS");
+  let state = "loading";
+  let deliveries = 0;
+  const timer = setTimeout(() => fail(new Error("Space partition did not become ready")), 1e4);
+  const evaluate = (expression) => frame.executeJavaScript(expression);
+  const argument = (value) => `JSON.parse(${JSON.stringify(JSON.stringify(value))})`;
+  const stop = () => {
+    if (state === "closed") return;
+    state = "closed";
+    clearTimeout(timer);
+    port.onmessage = null;
+    port.close();
+    frame.remove();
+  };
+  const fail = (error) => {
+    if (state === "closed") return;
+    stop();
+    onError(error);
+  };
+  const reload = () => {
+    if (state === "closed") return;
+    stop();
+    onReload();
+  };
+  port.onmessage = async (event) => {
+    if (state !== "active") return;
+    if (++deliveries > 64) return fail(new Error("Space reply queue exceeded its limit"));
+    try {
+      const accepted = await evaluate(`window.__lsDeliver(${argument(event.data)})`);
+      if (state === "active" && accepted !== true) fail(new Error("Space transport refused a reply"));
+    } catch (error) {
+      fail(error);
+    } finally {
+      deliveries--;
+    }
+  };
+  const drain = async () => {
+    while (state !== "closed") {
+      const items = await evaluate("window.__lsDrain()");
+      if (state === "closed") return;
+      if (!Array.isArray(items) || items.length > 64) throw new Error("Invalid Space transport batch");
+      for (const item of items) {
+        if (state === "closed") return;
+        if (item?.kind === "booted" && state === "booting") {
+          state = "active";
+          clearTimeout(timer);
+          onReady();
+        } else if (item?.kind === "request" && state === "active") port.postMessage(item.message);
+        else if (item?.kind === "reloaded") return reload();
+        else throw new Error(item?.kind === "fatal" ? item.message : "Invalid Space transport event");
+      }
+    }
+  };
+  frame.addEventListener("dom-ready", async () => {
+    if (state === "closed") return;
+    if (state !== "loading") return reload();
+    state = "booting";
+    try {
+      const accepted = await evaluate(`window.__lsBoot(${argument(boot)})`);
+      if (state === "closed") return;
+      if (accepted !== true) throw new Error("Space transport refused boot");
+      await drain();
+    } catch (error) {
+      fail(error);
+    }
+  });
+  frame.addEventListener("did-start-navigation", (event) => {
+    if (state !== "loading" && event.isMainFrame && !event.isInPlace) reload();
+  });
+  frame.addEventListener("render-process-gone", () => fail(new Error("Space partition stopped")));
+  frame.addEventListener("destroyed", () => fail(new Error("Space partition was destroyed")));
+  frame.setAttribute("partition", `living-spaces-${crypto.randomUUID()}`);
+  frame.setAttribute("webpreferences", "contextIsolation=yes,sandbox=yes,nodeIntegration=no,webSecurity=yes");
+  frame.style.cssText = "border:0;width:100%;height:100%;display:flex;background:transparent";
+  frame.title = `Space: ${boot.bundle.space.name}`;
+  frame.src = `data:text/html,${encodeURIComponent(shell)}`;
+  try {
+    container.append(frame);
+  } catch (error) {
+    stop();
+    throw error;
+  }
+  return { frame, destroy: stop };
 }
 
 // src/desktop/sandbox/index.js
@@ -1322,18 +1413,27 @@ function checkGrant(op, grants) {
 }
 function parseBundle(value) {
   const sandbox = value?.sandbox;
-  if (!sandbox || typeof sandbox !== "object" || Array.isArray(sandbox) || Object.keys(sandbox).length !== 2 || !Object.hasOwn(sandbox, "format") || !Object.hasOwn(sandbox, "shell_srcdoc") || sandbox.format !== 1 || typeof sandbox.shell_srcdoc !== "string" || !sandbox.shell_srcdoc.trim()) {
+  if (!sandbox || typeof sandbox !== "object" || Array.isArray(sandbox) || !Object.hasOwn(sandbox, "format") || !Object.hasOwn(sandbox, "shell_srcdoc") || typeof sandbox.shell_srcdoc !== "string" || !sandbox.shell_srcdoc.trim() || !(sandbox.format === 1 && Object.keys(sandbox).length === 2 || sandbox.format === 2 && Object.keys(sandbox).length === 4 && ["partition_off", "partition_https"].every((key) => Object.hasOwn(sandbox, key) && typeof sandbox[key] === "string" && sandbox[key].trim()))) {
     throw new Error("Living Spaces Desktop and backend are incompatible. Reinstall Living Spaces to load the packaged sandbox.");
   }
   const { space, rev, manifest, files } = value;
-  return { project: { space, rev, manifest, files }, document: sandbox.shell_srcdoc };
+  return { project: { space, rev, manifest, files }, document: sandbox.shell_srcdoc, sandbox };
 }
 function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
 } }) {
-  const { project, document: shellDocument } = parseBundle(bundle);
+  const { project, document: shellDocument, sandbox } = parseBundle(bundle);
   const channel = new MessageChannel();
   const port = channel.port1;
   let frame;
+  let partition;
+  let resolveReady;
+  let rejectReady;
+  const ready = new Promise((resolve, reject) => {
+    resolveReady = resolve;
+    rejectReady = reject;
+  });
+  ready.catch(() => {
+  });
   let state = "created";
   let lastLog = -Infinity;
   let overflowReported = false;
@@ -1345,6 +1445,8 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
   const stop = () => {
     if (state === "closed") return;
     state = "closed";
+    partition?.destroy();
+    rejectReady(new Error("Space mount closed before readiness"));
     frame?.removeEventListener("load", onLoad);
     port.onmessage = null;
     port.close();
@@ -1364,6 +1466,7 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
     if (state === "booted") return reloaded();
     state = "booted";
     frame.contentWindow.postMessage({ type: "space-boot", v: 1, bundle: project, grants }, "*", [channel.port2]);
+    resolveReady();
     onEvent({ kind: "booted" });
   }
   port.onmessage = async (e) => {
@@ -1411,21 +1514,45 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
     }
   };
   try {
-    frame = document.createElement("iframe");
-    frame.setAttribute("sandbox", "allow-scripts");
-    frame.setAttribute("referrerpolicy", "no-referrer");
-    frame.style.cssText = "border:0;width:100%;height:100%;display:block;background:transparent";
-    frame.title = `Space: ${project.space.name}`;
-    window.addEventListener("message", onShellMessage);
-    frame.addEventListener("load", onLoad);
-    frame.srcdoc = shellDocument;
-    container.append(frame);
+    const desktopPartition = Boolean(window.hermesDesktop);
+    if (desktopPartition) {
+      if (sandbox.format !== 2) throw new Error("Reinstall Living Spaces to load the partition sandbox");
+      partition = mountPartition(container, {
+        document: checkGrant("net.fetch", grants) ? sandbox.partition_off : sandbox.partition_https,
+        boot: { type: "space-boot", v: 1, bundle: project, grants },
+        port: channel.port2,
+        onReady: () => {
+          if (state === "closed") return;
+          state = "booted";
+          resolveReady();
+          onEvent({ kind: "booted" });
+        },
+        onReload: reloaded,
+        onError: (error) => {
+          rejectReady(error);
+          stop();
+          onEvent({ kind: "error", fatal: true, message: String(error.message || error) });
+        }
+      });
+      frame = partition.frame;
+    } else {
+      frame = document.createElement("iframe");
+      frame.setAttribute("sandbox", "allow-scripts");
+      frame.setAttribute("referrerpolicy", "no-referrer");
+      frame.style.cssText = "border:0;width:100%;height:100%;display:block;background:transparent";
+      frame.title = `Space: ${project.space.name}`;
+      window.addEventListener("message", onShellMessage);
+      frame.addEventListener("load", onLoad);
+      frame.srcdoc = shellDocument;
+      container.append(frame);
+    }
   } catch (error) {
     stop();
     frame?.remove();
     throw error;
   }
   return {
+    ready,
     postEvent(event, payload) {
       if (state !== "booted") return;
       if (event === "data.changed" && checkGrant("data.query", grants)) return;
@@ -1530,7 +1657,7 @@ function SpaceView({ ctx, sid }) {
       disposed = true;
     };
   }, [ctx, base]);
-  useEffect2(() => {
+  useLayoutEffect(() => {
     if (building || archived || crash || remoteCrash || !content.current) return;
     let disposed = false;
     let errors = 0;

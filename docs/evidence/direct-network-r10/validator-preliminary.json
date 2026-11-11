@@ -1,0 +1,101 @@
+{
+  "ok": false,
+  "checks": [
+    {
+      "name": "manifest",
+      "ok": true,
+      "detail": "plugin.yaml parses"
+    },
+    {
+      "name": "manifest fields",
+      "ok": true,
+      "detail": "name, version, description present"
+    },
+    {
+      "name": "requires_hermes",
+      "ok": true,
+      "detail": "spec '>=0.23.1' parses"
+    },
+    {
+      "name": "config schema",
+      "ok": true,
+      "detail": "not declared"
+    },
+    {
+      "name": "requires_env",
+      "ok": true,
+      "detail": "all entries UPPER_SNAKE"
+    },
+    {
+      "name": "oauth",
+      "ok": true,
+      "detail": "not declared"
+    },
+    {
+      "name": "loadable",
+      "ok": true,
+      "detail": "entry: __init__.py, desktop/plugin.js"
+    },
+    {
+      "name": "python dependencies",
+      "ok": true,
+      "detail": "none declared"
+    },
+    {
+      "name": "capability probe",
+      "ok": true,
+      "detail": "register() ran in isolation"
+    },
+    {
+      "name": "declared tools",
+      "ok": true,
+      "detail": "matches registrations"
+    },
+    {
+      "name": "declared hooks",
+      "ok": true,
+      "detail": "matches registrations"
+    },
+    {
+      "name": "declared middleware",
+      "ok": true,
+      "detail": "matches registrations"
+    },
+    {
+      "name": "built-in tool collisions",
+      "ok": true,
+      "detail": "no collisions"
+    },
+    {
+      "name": "security scan",
+      "ok": true,
+      "detail": "safe"
+    },
+    {
+      "name": "no core override",
+      "ok": true,
+      "detail": "no runtime rebinds of Hermes core"
+    },
+    {
+      "name": "desktop surface",
+      "ok": false,
+      "detail": "preview guest reach (desktop/plugin.js:1291)"
+    }
+  ],
+  "warnings": [
+    "private core imports (catalog rule 9: public surfaces only; these can break on any release): __init__.py:618 hermes_cli.plugin_session.session_key; living_spaces_core/upkeep.py:22 cron.jobs; living_spaces_core/upkeep.py:26 cron.executions. Use ctx.* / documented plugin APIs, or open an issue for the seam you need.",
+    "desktop surface review (catalog rule 8: SDK surface only): raw bridge window.hermesDesktop (desktop/plugin.js:1517); raw bridge window.hermesDesktop (desktop/plugin.js:1668). Use ctx.files / ctx.os / host.request and SDK slots, or open an issue for the hook you need."
+  ],
+  "isolation": {
+    "verdict": "host",
+    "host_ready": true,
+    "reasons": [],
+    "notes": [
+      "dashboard backend API is served through the plugin host (buffered responses)"
+    ],
+    "ctx_methods": [
+      "register_skill",
+      "register_tool"
+    ]
+  }
+}

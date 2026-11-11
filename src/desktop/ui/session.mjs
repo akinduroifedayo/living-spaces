@@ -105,9 +105,12 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
         }
         onEvent(event)
       } })
+      await mounted.ready
+      if (closed) return close()
       actions?.restore()
     } catch (error) {
       closed = true
+      mounted?.destroy()
       await close().catch(() => {})
       throw error
     }
