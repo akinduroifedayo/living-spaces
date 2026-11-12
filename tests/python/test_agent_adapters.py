@@ -110,7 +110,7 @@ class AdapterCase(unittest.TestCase):
         self.addCleanup(self.modules.stop)
         self.plugin = load("agent_test_plugin", PACKAGE / "__init__.py", package=True)
         self.api = load("agent_test_api", PACKAGE / "dashboard" / "plugin_api.py")
-        self.ctx = types.SimpleNamespace(register_tool=Mock(), register_skill=Mock())
+        self.ctx = types.SimpleNamespace(register_tool=Mock(), register_skill=Mock(), register_rpc=Mock())
         self.plugin.register(self.ctx)
         self.tools = {call.kwargs["name"]: call.kwargs for call in self.ctx.register_tool.call_args_list}
         app = FastAPI()
@@ -146,6 +146,9 @@ class ToolTests(AdapterCase):
         call = self.ctx.register_skill.call_args
         self.assertEqual(call.args[0], "build-space")
         self.assertTrue(Path(call.args[1]).is_file())
+        self.ctx.register_rpc.assert_called_once()
+        self.assertEqual(self.ctx.register_rpc.call_args.args[0], "close_session")
+        self.assertTrue(callable(self.ctx.register_rpc.call_args.args[1]))
         self.core.list_spaces.assert_not_called()
 
     def test_all_tools_preserve_every_core_error(self):

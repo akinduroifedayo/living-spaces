@@ -50,7 +50,7 @@ class ToolCase(unittest.TestCase):
         loader = patch.object(plugin._core, "load_core", return_value=core)
         loader.start()
         self.addCleanup(loader.stop)
-        ctx = types.SimpleNamespace(register_tool=Mock(), register_skill=Mock())
+        ctx = types.SimpleNamespace(register_tool=Mock(), register_skill=Mock(), register_rpc=Mock())
         plugin.register(ctx)
         self.tools = {call.kwargs["name"]: call.kwargs for call in ctx.register_tool.call_args_list}
 

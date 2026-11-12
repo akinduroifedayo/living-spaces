@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 
 from . import _core
+from .desktop_rpc import register_desktop_rpc
 
 TOOLSET = "living_spaces"
 EMOJI = "🪴"
@@ -668,6 +669,7 @@ def _handler(fn):
 
 
 def register(ctx) -> None:
+    register_desktop_rpc(ctx, _core.load_core)
     for fn, schema in TOOLS:
         ctx.register_tool(name=schema["name"], toolset=TOOLSET, schema=schema, handler=_handler(fn),
                           description=schema["description"], emoji=EMOJI)

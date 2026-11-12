@@ -237,6 +237,7 @@ class AgentLimitTests(LimitCase):
             spec.loader.exec_module(plugin)
             tools = {}
             plugin.register(SimpleNamespace(register_tool=lambda **tool: tools.update({tool["name"]: tool}),
+                                            register_rpc=lambda *args, **kwargs: None,
                                             register_skill=lambda *args, **kwargs: None))
             for kind in ("batch", "data", "file", "files"):
                 with self.subTest(kind=kind):
