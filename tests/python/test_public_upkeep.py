@@ -19,6 +19,7 @@ class PublicUpkeepTests(unittest.TestCase):
         ctx = SyntheticContext()
         ctx.register_tool = Mock()
         ctx.register_skill = Mock()
+        ctx.register_rpc = Mock()
         with patch.object(plugin._core, "load_core", return_value=fx.core):
             plugin.register(ctx)
             tools = {call.kwargs["name"]: call.kwargs["handler"] for call in ctx.register_tool.call_args_list}
@@ -37,6 +38,15 @@ class PublicUpkeepTests(unittest.TestCase):
         self.assertEqual(ctx.cron.jobs, {})
         self.assertEqual({name for name, _args in ctx.calls}, {"cronjob_manage"})
         self.assertTrue({"create", "list", "pause", "resume", "remove"}.issubset({args["action"] for _name, args in ctx.calls}))
+
+    def test_native_model_mode_wins_over_stale_link_kind(self):
+        fx = self.fx
+        sid = fx.make(handler="feed")
+        jid = fx.schedule(sid, kind="feed")["link"]["cron_job_id"]
+        fx.cron.jobs[jid]["no_agent"] = False
+        self.assertTrue(fx.upkeep.get_upkeep(sid)["job"]["uses_model"])
+        fx.cron.jobs[jid]["no_agent"] = True
+        self.assertFalse(fx.upkeep.get_upkeep(sid)["job"]["uses_model"])
 
     def test_failed_replacement_keeps_existing_link_job_and_feed_shim(self):
         fx = self.fx

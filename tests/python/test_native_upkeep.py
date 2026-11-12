@@ -347,16 +347,16 @@ class NativeUpkeepTests(unittest.TestCase):
                           for shot in shown["one_shots"]], [(once, True, [])])
         self.assertIn("executions", shown["unavailable"])
 
-    def test_shown_kind_uses_the_known_link_not_an_omitted_public_mode(self):
+    def test_shown_kind_follows_the_native_job_not_the_link(self):
         fx = self.fx
         sid = fx.make(handler="feed")
         jid = fx.schedule(sid, kind="feed")["link"]["cron_job_id"]
         fx.cron.jobs[jid].update(no_agent=False, prompt="Edited in cron")
         shown = fx.upkeep.get_upkeep(sid)
-        self.assertEqual((shown["job"]["uses_model"], shown["job"]["prompt"]), (False, None))
+        self.assertEqual((shown["job"]["uses_model"], shown["job"]["prompt"]), (True, None))
         self.assertIsNone(shown["job"]["timezone"])
         self.assertEqual(shown["job"]["prompt_preview"], "Edited in cron")
-        self.assertEqual(fx.projects.get_space(sid)["upkeep"]["kind"], "feed")
+        self.assertEqual(fx.projects.get_space(sid)["upkeep"]["kind"], "agent")
 
     def test_agent_task_at_the_prompt_cap_is_accepted(self):
         fx = self.fx

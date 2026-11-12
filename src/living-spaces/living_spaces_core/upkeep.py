@@ -219,9 +219,9 @@ def _once_name(sid):
     return f"living-spaces:{sid}:once"
 
 
-def _job(job, kind):
+def _job(job):
     return {
-        "id": job["job_id"], "name": job.get("name"), "uses_model": kind == "agent",
+        "id": job["job_id"], "name": job.get("name"), "uses_model": job.get("no_agent") is not True,
         "prompt": None, "prompt_preview": job.get("prompt_preview"),
         "schedule_display": job.get("schedule"), "cadence": job.get("schedule"),
         "timezone": None, "enabled": job.get("enabled"), "state": job.get("state"),
@@ -245,12 +245,12 @@ def _read(sid):
     jobs = listed["jobs"]
     result["gateway_running"] = listed.get("gateway_running")
     result["warning"] = listed.get("warning")
-    result["one_shots"] = [dict(_job(job, "agent"), executions=[]) for job in jobs
+    result["one_shots"] = [dict(_job(job), executions=[]) for job in jobs
                            if job.get("name") == _once_name(sid)][:ONE_SHOT_LIMIT]
     if link:
         job = next((job for job in jobs if job["job_id"] == link["cron_job_id"]), None)
         result["missing"] = job is None
-        result["job"] = _job(job, link["kind"]) if job else None
+        result["job"] = _job(job) if job else None
     return result
 
 
@@ -263,7 +263,7 @@ def summary(sid):
     if state["link"] is None:
         return None
     job = state["job"] or {}
-    kind = state["link"]["kind"]
+    kind = ("agent" if job["uses_model"] else "feed") if state["job"] else state["link"]["kind"]
     return {"cron_job_id": state["link"]["cron_job_id"], "kind": kind,
             "enabled": job.get("enabled"), "state": job.get("state"),
             "next_run_at": job.get("next_run_at"), "missing": state["missing"]}

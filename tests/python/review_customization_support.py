@@ -114,7 +114,7 @@ class SyntheticContext:
         prompt = job.get("prompt") or ""
         keys = ("name", "script", "enabled", "state", "next_run_at", "last_run_at",
                 "last_status", "last_error")
-        return {**{key: job.get(key) for key in keys}, "job_id": job["id"],
+        return {**{key: job.get(key) for key in keys}, **({"no_agent": True} if job.get("no_agent") else {}), "job_id": job["id"],
                 "schedule": job.get("schedule_display"), "prompt_preview": prompt[:100] + ("..." if len(prompt) > 100 else "")}
 
     def dispatch_tool(self, name, args):

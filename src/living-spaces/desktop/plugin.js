@@ -689,18 +689,21 @@ function PermissionsSheet({ ctx, scopeKey = null, space, onClose, onChanged, ret
 import { ErrorState as ErrorState4, Skeleton as Skeleton4, useQuery as useQuery4 } from "@hermes/plugin-sdk";
 import { useEffect, useRef as useRef3, useState as useState5 } from "react";
 import { Fragment as Fragment5, jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
-function UpkeepCost({ job, expanded = false }) {
+function UpkeepCost({ job, expanded = false, unavailable }) {
   if (job?.uses_model === false) return /* @__PURE__ */ jsx5("p", { children: "Refreshes from public sources. No model calls." });
   if (job?.uses_model !== true) return null;
+  const prompt = unavailable ? job.prompt_preview : job.prompt;
   return /* @__PURE__ */ jsxs5("div", { className: "ls-upkeep-prompt", children: [
-    job.prompt && /* @__PURE__ */ jsxs5(Fragment5, { children: [
-      /* @__PURE__ */ jsx5("h3", { children: "What Hermes does each run" }),
-      /* @__PURE__ */ jsx5("p", { id: "ls-upkeep-prompt", className: expanded ? "" : "ls-clamp-six", children: job.prompt })
+    prompt && /* @__PURE__ */ jsxs5(Fragment5, { children: [
+      /* @__PURE__ */ jsx5("h3", { children: unavailable ? "Prompt preview" : "What Hermes does each run" }),
+      /* @__PURE__ */ jsx5("p", { id: "ls-upkeep-prompt", className: expanded ? "" : "ls-clamp-six", children: prompt })
     ] }),
+    unavailable && /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: unavailable }),
     /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "Uses model calls." })
   ] });
 }
-function Executions({ executions }) {
+function Executions({ executions, unavailable }) {
+  if (unavailable) return /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: unavailable });
   if (!executions?.length) return /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "No runs recorded yet." });
   return /* @__PURE__ */ jsx5("ul", { className: "ls-audit", "aria-label": "Upkeep executions", children: executions.map((run) => {
     const at = toSeconds(run.finished_at ?? run.started_at ?? run.claimed_at ?? run.scheduled_instant);
@@ -777,12 +780,13 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
     setFeedback(action === "run" ? "Starting\u2026" : "Working\u2026");
     setRecentAction(Date.now());
     try {
-      await ctx.rest(`${base}/upkeep`, { method: "POST", body: { action } });
+      const response = await ctx.rest(`${base}/upkeep`, { method: "POST", body: { action } });
+      if (action === "run" && response?.dispatch?.job?.execution_success === false) throw new Error(response.dispatch.job.execution_error || "Hermes reports that this execution failed.");
       const [current] = await Promise.all([query.refetch(), onChanged?.()]);
       if (current?.error || current?.data?.error) throw new Error(`The action was submitted, but the current native state couldn't be loaded. ${errorText(current.error || current.data.error)}`);
       if (current?.data && (action === "pause" && current.data.job?.enabled !== false || action === "resume" && current.data.job?.enabled !== true || action === "remove" && current.data.link)) throw new Error("Hermes has not confirmed the requested state.");
       const next = toSeconds(current?.data?.job?.next_run_at);
-      setFeedback(action === "run" ? "Run requested. Check native execution history for progress." : action === "pause" ? "Paused. Future runs stop until you resume. Already-running work may finish." : action === "resume" ? `Resumed.${next != null ? ` Next run ${absolute(next)}.` : ""}` : `Upkeep removed. ${space.name} is unchanged.`);
+      setFeedback(action === "run" ? "Run requested. Execution and delivery are not confirmed by this request; review the last-result metadata below." : action === "pause" ? "Paused. Future runs stop until you resume. Already-running work may finish." : action === "resume" ? `Resumed.${next != null ? ` Next run ${absolute(next)}.` : ""}` : `Upkeep removed. ${space.name} is unchanged.`);
     } catch (e) {
       setFeedback("");
       setError(`${action === "run" ? "Couldn't start the run." : action === "pause" ? "Couldn't pause upkeep." : action === "resume" ? "Couldn't resume upkeep." : "Couldn't remove upkeep."} ${errorText(e)} Review the current native state before trying again.`);
@@ -808,6 +812,7 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
   else body = /* @__PURE__ */ jsxs5(Fragment5, { children: [
     query.error && /* @__PURE__ */ jsx5(Banner, { title: `Showing the last loaded state${query.dataUpdatedAt ? ` from ${relative(query.dataUpdatedAt / 1e3)}` : ""}.`, actions: /* @__PURE__ */ jsx5(Action, { onClick: () => query.refetch(), children: "Try again" }), children: errorText(query.error) }),
     data.error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: "Hermes cron is unavailable", children: errorText(data.error) }),
+    data.warning && /* @__PURE__ */ jsx5(Banner, { kind: "blocked", title: "Hermes cron notice", children: data.warning }),
     archived && /* @__PURE__ */ jsx5("p", { children: "Archived Spaces don't run upkeep. Restore the Space to use it. Already-running work may finish." }),
     !link ? /* @__PURE__ */ jsxs5(Fragment5, { children: [
       /* @__PURE__ */ jsx5("h3", { children: "No upkeep yet" }),
@@ -826,8 +831,8 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
       ] }),
       ask
     ] }) : job ? /* @__PURE__ */ jsxs5(Fragment5, { children: [
-      /* @__PURE__ */ jsx5(StatusPill, { status: running ? "running" : job.enabled ? "ready" : "paused", label: running ? "Running now" : job.enabled ? "Active" : "Paused" }),
-      /* @__PURE__ */ jsx5(UpkeepCost, { job, expanded: fullPrompt }),
+      /* @__PURE__ */ jsx5(StatusPill, { status: running ? "running" : !job.enabled ? "paused" : data.gateway_running === false ? "blocked" : "ready", label: running ? "Running now" : !job.enabled ? "Paused" : data.gateway_running === false ? "Scheduler offline" : "Active" }),
+      /* @__PURE__ */ jsx5(UpkeepCost, { job, expanded: fullPrompt, unavailable: data.unavailable?.prompt }),
       /* @__PURE__ */ jsxs5("dl", { className: "ls-facts", children: [
         (job.schedule_display || job.cadence || job.timezone) && /* @__PURE__ */ jsxs5("div", { children: [
           /* @__PURE__ */ jsx5("dt", { children: "Runs" }),
@@ -835,6 +840,10 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
             job.schedule_display || job.cadence,
             job.timezone && /* @__PURE__ */ jsx5("div", { className: "ls-secondary", children: job.timezone })
           ] })
+        ] }),
+        data.unavailable?.timezone && /* @__PURE__ */ jsxs5("div", { children: [
+          /* @__PURE__ */ jsx5("dt", { children: "Timezone" }),
+          /* @__PURE__ */ jsx5("dd", { children: data.unavailable.timezone })
         ] }),
         /* @__PURE__ */ jsxs5("div", { children: [
           /* @__PURE__ */ jsx5("dt", { children: "Next run" }),
@@ -847,7 +856,7 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
         (lastResult || lastAt == null) && /* @__PURE__ */ jsxs5("div", { children: [
           /* @__PURE__ */ jsx5("dt", { children: "Last result" }),
           /* @__PURE__ */ jsxs5("dd", { children: [
-            lastResult || "Hasn't run yet",
+            lastResult || (data.unavailable?.executions ? "No last-result metadata available" : "Hasn't run yet"),
             !running && lastAt != null && /* @__PURE__ */ jsxs5(Fragment5, { children: [
               " \xB7 ",
               /* @__PURE__ */ jsx5(Time, { at: lastAt })
@@ -868,22 +877,23 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
       body,
       /* @__PURE__ */ jsx5("div", { ref: feedbackNode, tabIndex: -1, role: "status", "aria-live": "polite", className: "ls-upkeep-feedback", children: feedback }),
       error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: error }),
-      job?.uses_model === true && job.prompt && /* @__PURE__ */ jsx5("div", { className: "ls-section", children: /* @__PURE__ */ jsx5(Action, { "aria-expanded": fullPrompt, "aria-controls": "ls-upkeep-prompt", onClick: () => setFullPrompt(!fullPrompt), children: fullPrompt ? "Show less" : "Show full prompt" }) }),
+      job?.uses_model === true && job.prompt && !data?.unavailable?.prompt && /* @__PURE__ */ jsx5("div", { className: "ls-section", children: /* @__PURE__ */ jsx5(Action, { "aria-expanded": fullPrompt, "aria-controls": "ls-upkeep-prompt", onClick: () => setFullPrompt(!fullPrompt), children: fullPrompt ? "Show less" : "Show full prompt" }) }),
       job?.last_error && ["failed", "error"].includes(job.last_status) && /* @__PURE__ */ jsxs5(Banner, { kind: "failed", title: `Last run failed${lastAt != null ? ` ${absolute(lastAt)}` : ""}`, actions: /* @__PURE__ */ jsxs5(Fragment5, { children: [
         /* @__PURE__ */ jsx5(Action, { "aria-disabled": blocked || running, onClick: () => act("run"), children: "Run now" }),
-        /* @__PURE__ */ jsx5(Action, { onClick: () => document.getElementById("ls-upkeep-executions")?.focus(), children: "View history" })
+        !data?.unavailable?.executions && /* @__PURE__ */ jsx5(Action, { onClick: () => document.getElementById("ls-upkeep-executions")?.focus(), children: "View history" })
       ] }), children: [
         /* @__PURE__ */ jsx5("p", { id: "ls-upkeep-error", className: fullError ? "" : "ls-clamp-three", children: job.last_error }),
         /* @__PURE__ */ jsx5(Action, { "aria-expanded": fullError, "aria-controls": "ls-upkeep-error", onClick: () => setFullError(!fullError), children: fullError ? "Show less" : "Show more" })
       ] }),
       link && /* @__PURE__ */ jsxs5("section", { className: "ls-section", id: "ls-upkeep-executions", tabIndex: -1, children: [
         /* @__PURE__ */ jsx5("h3", { className: "ls-section-title", children: "Executions" }),
-        /* @__PURE__ */ jsx5(Executions, { executions: data.executions })
+        /* @__PURE__ */ jsx5(Executions, { executions: data.executions, unavailable: data.unavailable?.executions }),
+        data.unavailable?.dispatch && /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: data.unavailable.dispatch })
       ] }),
       !!data?.one_shots?.length && /* @__PURE__ */ jsxs5("section", { className: "ls-section", "data-testid": "one-shots", children: [
-        /* @__PURE__ */ jsx5("h3", { className: "ls-section-title", children: "Refresh now runs" }),
-        /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "One-time Hermes agent runs started with Refresh now. Each uses model calls." }),
-        /* @__PURE__ */ jsx5(Executions, { executions: data.one_shots.flatMap((shot) => shot.executions || []) })
+        /* @__PURE__ */ jsx5("h3", { className: "ls-section-title", children: data.unavailable?.executions ? "Refresh now jobs" : "Refresh now runs" }),
+        /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: "One-time Hermes jobs requested with Refresh now. Each uses model calls. A saved job is not proof that it ran." }),
+        /* @__PURE__ */ jsx5(Executions, { executions: data.one_shots.flatMap((shot) => shot.executions || []), unavailable: data.unavailable?.executions })
       ] })
     ] }),
     confirm && /* @__PURE__ */ jsx5(DecisionDialog, { danger: true, successFocus: feedbackNode, title: `Remove upkeep for ${space.name}?`, description: "This deletes the Hermes cron job. Future runs stop, but already-running work may finish. The Space and its data are kept.", cancelLabel: "Keep upkeep", confirmLabel: "Remove", onClose: () => setConfirm(false), onConfirm: () => act("remove") })

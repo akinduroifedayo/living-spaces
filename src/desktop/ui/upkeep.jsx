@@ -3,13 +3,15 @@ import { useEffect, useRef, useState } from 'react'
 import { Action, Banner, CopyPrompt, DecisionDialog, Drawer, StatusPill, Time, absolute, relative } from './components.jsx'
 import { CATCH_UP, errorText, executionLabel, spacePath, toSeconds } from './model.mjs'
 
-export function UpkeepCost({ job, expanded = false }) {
+export function UpkeepCost({ job, expanded = false, unavailable }) {
   if (job?.uses_model === false) return <p>Refreshes from public sources. No model calls.</p>
   if (job?.uses_model !== true) return null
-  return <div className="ls-upkeep-prompt">{job.prompt && <><h3>What Hermes does each run</h3><p id="ls-upkeep-prompt" className={expanded ? '' : 'ls-clamp-six'}>{job.prompt}</p></>}<p className="ls-secondary">Uses model calls.</p></div>
+  const prompt = unavailable ? job.prompt_preview : job.prompt
+  return <div className="ls-upkeep-prompt">{prompt && <><h3>{unavailable ? 'Prompt preview' : 'What Hermes does each run'}</h3><p id="ls-upkeep-prompt" className={expanded ? '' : 'ls-clamp-six'}>{prompt}</p></>}{unavailable && <p className="ls-secondary">{unavailable}</p>}<p className="ls-secondary">Uses model calls.</p></div>
 }
 
-function Executions({ executions }) {
+function Executions({ executions, unavailable }) {
+  if (unavailable) return <p className="ls-secondary">{unavailable}</p>
   if (!executions?.length) return <p className="ls-secondary">No runs recorded yet.</p>
   return <ul className="ls-audit" aria-label="Upkeep executions">{executions.map(run => {
     const at = toSeconds(run.finished_at ?? run.started_at ?? run.claimed_at ?? run.scheduled_instant)
@@ -70,12 +72,13 @@ export function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, r
     lock.current = true
     setBusy(action); setError(''); setFeedback(action === 'run' ? 'Starting…' : 'Working…'); setRecentAction(Date.now())
     try {
-      await ctx.rest(`${base}/upkeep`, { method: 'POST', body: { action } })
+      const response = await ctx.rest(`${base}/upkeep`, { method: 'POST', body: { action } })
+      if (action === 'run' && response?.dispatch?.job?.execution_success === false) throw new Error(response.dispatch.job.execution_error || 'Hermes reports that this execution failed.')
       const [current] = await Promise.all([query.refetch(), onChanged?.()])
       if (current?.error || current?.data?.error) throw new Error(`The action was submitted, but the current native state couldn't be loaded. ${errorText(current.error || current.data.error)}`)
       if (current?.data && ((action === 'pause' && current.data.job?.enabled !== false) || (action === 'resume' && current.data.job?.enabled !== true) || (action === 'remove' && current.data.link))) throw new Error('Hermes has not confirmed the requested state.')
       const next = toSeconds(current?.data?.job?.next_run_at)
-      setFeedback(action === 'run' ? 'Run requested. Check native execution history for progress.' : action === 'pause' ? 'Paused. Future runs stop until you resume. Already-running work may finish.' : action === 'resume' ? `Resumed.${next != null ? ` Next run ${absolute(next)}.` : ''}` : `Upkeep removed. ${space.name} is unchanged.`)
+      setFeedback(action === 'run' ? 'Run requested. Execution and delivery are not confirmed by this request; review the last-result metadata below.' : action === 'pause' ? 'Paused. Future runs stop until you resume. Already-running work may finish.' : action === 'resume' ? `Resumed.${next != null ? ` Next run ${absolute(next)}.` : ''}` : `Upkeep removed. ${space.name} is unchanged.`)
     } catch (e) {
       setFeedback('')
       setError(`${action === 'run' ? "Couldn't start the run." : action === 'pause' ? "Couldn't pause upkeep." : action === 'resume' ? "Couldn't resume upkeep." : "Couldn't remove upkeep."} ${errorText(e)} Review the current native state before trying again.`)
@@ -93,16 +96,18 @@ export function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, r
   else body = <>
     {query.error && <Banner title={`Showing the last loaded state${query.dataUpdatedAt ? ` from ${relative(query.dataUpdatedAt / 1000)}` : ''}.`} actions={<Action onClick={() => query.refetch()}>Try again</Action>}>{errorText(query.error)}</Banner>}
     {data.error && <Banner kind="failed" title="Hermes cron is unavailable">{errorText(data.error)}</Banner>}
+    {data.warning && <Banner kind="blocked" title="Hermes cron notice">{data.warning}</Banner>}
     {archived && <p>Archived Spaces don't run upkeep. Restore the Space to use it. Already-running work may finish.</p>}
     {!link ? <><h3>No upkeep yet</h3><p>This Space isn't updated automatically. Ask {space.owner} in chat to set up upkeep as a Hermes cron job.</p>{ask}</> : data.missing ? <>
       <StatusPill status="blocked" label="Job missing" /><Banner kind="blocked" title="Hermes no longer has this job" actions={removeButton}>Nothing will run. Ask {space.owner} in chat to schedule upkeep again.</Banner>{ask}
     </> : job ? <>
-      <StatusPill status={running ? 'running' : job.enabled ? 'ready' : 'paused'} label={running ? 'Running now' : job.enabled ? 'Active' : 'Paused'} />
-      <UpkeepCost job={job} expanded={fullPrompt} />
+      <StatusPill status={running ? 'running' : !job.enabled ? 'paused' : data.gateway_running === false ? 'blocked' : 'ready'} label={running ? 'Running now' : !job.enabled ? 'Paused' : data.gateway_running === false ? 'Scheduler offline' : 'Active'} />
+      <UpkeepCost job={job} expanded={fullPrompt} unavailable={data.unavailable?.prompt} />
       <dl className="ls-facts">
         {(job.schedule_display || job.cadence || job.timezone) && <div><dt>Runs</dt><dd>{job.schedule_display || job.cadence}{job.timezone && <div className="ls-secondary">{job.timezone}</div>}</dd></div>}
+        {data.unavailable?.timezone && <div><dt>Timezone</dt><dd>{data.unavailable.timezone}</dd></div>}
         <div><dt>Next run</dt><dd>{!job.enabled ? "Paused. Future runs stop until resumed. Already-running work may finish." : toSeconds(job.next_run_at) != null ? <><Time at={toSeconds(job.next_run_at)} /> · <Time at={toSeconds(job.next_run_at)} relative /></> : 'Waiting for Hermes to schedule it'}</dd></div>
-        {(lastResult || lastAt == null) && <div><dt>Last result</dt><dd>{lastResult || "Hasn't run yet"}{!running && lastAt != null && <> · <Time at={lastAt} /></>}</dd></div>}
+        {(lastResult || lastAt == null) && <div><dt>Last result</dt><dd>{lastResult || (data.unavailable?.executions ? 'No last-result metadata available' : "Hasn't run yet")}{!running && lastAt != null && <> · <Time at={lastAt} /></>}</dd></div>}
       </dl>
       <p className="ls-upkeep-note ls-secondary">{CATCH_UP}</p>
       <div className="ls-actions ls-upkeep-actions">
@@ -116,9 +121,9 @@ export function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, r
     {body}
     <div ref={feedbackNode} tabIndex={-1} role="status" aria-live="polite" className="ls-upkeep-feedback">{feedback}</div>
     {error && <Banner kind="failed" title={error} />}
-    {job?.uses_model === true && job.prompt && <div className="ls-section"><Action aria-expanded={fullPrompt} aria-controls="ls-upkeep-prompt" onClick={() => setFullPrompt(!fullPrompt)}>{fullPrompt ? 'Show less' : 'Show full prompt'}</Action></div>}
-    {job?.last_error && ['failed', 'error'].includes(job.last_status) && <Banner kind="failed" title={`Last run failed${lastAt != null ? ` ${absolute(lastAt)}` : ''}`} actions={<><Action aria-disabled={blocked || running} onClick={() => act('run')}>Run now</Action><Action onClick={() => document.getElementById('ls-upkeep-executions')?.focus()}>View history</Action></>}><p id="ls-upkeep-error" className={fullError ? '' : 'ls-clamp-three'}>{job.last_error}</p><Action aria-expanded={fullError} aria-controls="ls-upkeep-error" onClick={() => setFullError(!fullError)}>{fullError ? 'Show less' : 'Show more'}</Action></Banner>}
-    {link && <section className="ls-section" id="ls-upkeep-executions" tabIndex={-1}><h3 className="ls-section-title">Executions</h3><Executions executions={data.executions} /></section>}
-    {!!data?.one_shots?.length && <section className="ls-section" data-testid="one-shots"><h3 className="ls-section-title">Refresh now runs</h3><p className="ls-secondary">One-time Hermes agent runs started with Refresh now. Each uses model calls.</p><Executions executions={data.one_shots.flatMap(shot => shot.executions || [])} /></section>}
+    {job?.uses_model === true && job.prompt && !data?.unavailable?.prompt && <div className="ls-section"><Action aria-expanded={fullPrompt} aria-controls="ls-upkeep-prompt" onClick={() => setFullPrompt(!fullPrompt)}>{fullPrompt ? 'Show less' : 'Show full prompt'}</Action></div>}
+    {job?.last_error && ['failed', 'error'].includes(job.last_status) && <Banner kind="failed" title={`Last run failed${lastAt != null ? ` ${absolute(lastAt)}` : ''}`} actions={<><Action aria-disabled={blocked || running} onClick={() => act('run')}>Run now</Action>{!data?.unavailable?.executions && <Action onClick={() => document.getElementById('ls-upkeep-executions')?.focus()}>View history</Action>}</>}><p id="ls-upkeep-error" className={fullError ? '' : 'ls-clamp-three'}>{job.last_error}</p><Action aria-expanded={fullError} aria-controls="ls-upkeep-error" onClick={() => setFullError(!fullError)}>{fullError ? 'Show less' : 'Show more'}</Action></Banner>}
+    {link && <section className="ls-section" id="ls-upkeep-executions" tabIndex={-1}><h3 className="ls-section-title">Executions</h3><Executions executions={data.executions} unavailable={data.unavailable?.executions} />{data.unavailable?.dispatch && <p className="ls-secondary">{data.unavailable.dispatch}</p>}</section>}
+    {!!data?.one_shots?.length && <section className="ls-section" data-testid="one-shots"><h3 className="ls-section-title">{data.unavailable?.executions ? 'Refresh now jobs' : 'Refresh now runs'}</h3><p className="ls-secondary">One-time Hermes jobs requested with Refresh now. Each uses model calls. A saved job is not proof that it ran.</p><Executions executions={data.one_shots.flatMap(shot => shot.executions || [])} unavailable={data.unavailable?.executions} /></section>}
   </Drawer>{confirm && <DecisionDialog danger successFocus={feedbackNode} title={`Remove upkeep for ${space.name}?`} description="This deletes the Hermes cron job. Future runs stop, but already-running work may finish. The Space and its data are kept." cancelLabel="Keep upkeep" confirmLabel="Remove" onClose={() => setConfirm(false)} onConfirm={() => act('remove')} />}</>
 }

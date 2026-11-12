@@ -68,6 +68,41 @@ async function click(label) {
 }
 async function cleanup() { await act(async () => view.unmount()) }
 
+test('public cron omissions are unavailable rather than evidence of no runs', async () => {
+  setup(); data.upkeep = payload({
+    job: job({ prompt: null, prompt_preview: 'Synthetic task preview...', timezone: null }),
+    unavailable: { prompt: 'Full task unavailable.', timezone: 'Stored timezone unavailable.', executions: 'Execution history unavailable.', dispatch: 'Dispatch history unavailable.' }
+  })
+  try {
+    await render(UpkeepSheet, props())
+    const text = document.body.textContent
+    for (const expected of ['Prompt preview', 'Synthetic task preview...', 'Full task unavailable.', 'Stored timezone unavailable.', 'Execution history unavailable.', 'Dispatch history unavailable.']) assert.ok(text.includes(expected), expected)
+    assert.doesNotMatch(text, /No runs recorded yet|Hasn't run yet|Show full prompt|View history/)
+    await click('Run now')
+    assert.doesNotMatch(document.querySelector('.ls-upkeep-feedback').textContent, /Check native execution history/)
+  } finally { await cleanup() }
+})
+
+test('an inline public execution failure is not announced as a requested successful run', async () => {
+  setup(); data.upkeep = payload()
+  try {
+    await render(UpkeepSheet, props(async () => ({ dispatch: { success: true, job: { executed: true, execution_success: false, execution_error: 'Synthetic blocked source' } } })))
+    await click('Run now')
+    assert.match(document.body.textContent, /Synthetic blocked source/)
+    assert.equal(document.querySelector('.ls-upkeep-feedback').textContent, '')
+  } finally { await cleanup() }
+})
+
+test('saved job with an offline gateway is not labelled active', async () => {
+  setup(); data.upkeep = payload({ gateway_running: false, warning: 'Synthetic gateway offline warning' })
+  try {
+    await render(UpkeepSheet, props())
+    assert.match(document.body.textContent, /Synthetic gateway offline warning/)
+    assert.match(document.body.textContent, /Scheduler offline/)
+    assert.doesNotMatch(document.body.textContent, /Active/)
+  } finally { await cleanup() }
+})
+
 test('accepted Run now does not claim a worker started before native execution', async () => {
   setup(); data.upkeep = payload()
   const calls = []
