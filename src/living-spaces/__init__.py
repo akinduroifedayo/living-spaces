@@ -615,8 +615,8 @@ def _maintainer(context):
         return None
     try:
         from hermes_constants import get_hermes_home
-        from hermes_cli.plugin_session import session_key
-        key = session_key()
+        from gateway.session_context import get_session_env
+        key = get_session_env("HERMES_SESSION_KEY", "")
         if not key:
             return None
         return {"profile_id": str(Path(get_hermes_home()).resolve()), "conversation_id": conversation,

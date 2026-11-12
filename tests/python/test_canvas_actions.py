@@ -7,7 +7,7 @@ import tempfile
 import threading
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src/living-spaces"))
@@ -139,13 +139,16 @@ class CanvasActions(unittest.TestCase):
         spec.loader.exec_module(plugin)
         constants = types.ModuleType("hermes_constants")
         constants.get_hermes_home = lambda: Path(self.temp.name)
-        session_module = types.ModuleType("hermes_cli.plugin_session")
-        session_module.session_key = lambda: "trusted-key"
-        with patch.dict(sys.modules, {"hermes_constants": constants, "hermes_cli.plugin_session": session_module}):
+        session_module = types.ModuleType("gateway.session_context")
+        session_module.get_session_env = Mock(return_value="trusted-key")
+        private_module = types.ModuleType("hermes_cli.plugin_session")
+        with patch.dict(sys.modules, {"hermes_constants": constants, "gateway.session_context": session_module,
+                                      "hermes_cli.plugin_session": private_module}):
             captured = plugin._maintainer({"session_id": "physical", "conversation_id": "logical", "profile_name": "ambient"})
             self.assertEqual(captured, {"profile_id": str(Path(self.temp.name).resolve()), "stored_session_id": "physical", "conversation_id": "logical", "session_key": "trusted-key"})
+            session_module.get_session_env.assert_called_once_with("HERMES_SESSION_KEY", "")
             self.assertIsNone(plugin._maintainer({"profile_name": "ambient"}))
-            session_module.session_key = lambda: ""
+            session_module.get_session_env.return_value = ""
             self.assertIsNone(plugin._maintainer({"session_id": "physical", "conversation_id": "logical"}))
 
     def test_parent_row_delete_cascades_action_metadata(self):
