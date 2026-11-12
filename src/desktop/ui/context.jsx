@@ -11,7 +11,6 @@ export function useScopedContext(ctx) {
     ctx: { ...ctx, rest: scopedRest((path, options) => ctx.rest(path, options), currentScope, scopeKey) },
     scopeKey,
     scope: { connectionId, profile },
-    // Late-open tokens must survive a scope switch so cleanup can target their owner.
-    sessionRest: (path, options) => ctx.rest(path, options)
+    openingSessionRest: (path, options) => ctx.rest(path, options)
   }), [ctx, scopeKey])
 }

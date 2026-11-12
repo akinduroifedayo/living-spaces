@@ -1,4 +1,3 @@
-"""Public cron contracts at the plugin boundary, with synthetic dispatch only."""
 from contextlib import ExitStack
 import json
 import unittest
@@ -205,7 +204,6 @@ if __name__ == "__main__":
 
 
 class SyntheticPublicUpkeepRepairTests(unittest.TestCase):
-    """Failure injection at public dispatch, not native scheduler qualification."""
 
     def setUp(self):
         self.stack = ExitStack()

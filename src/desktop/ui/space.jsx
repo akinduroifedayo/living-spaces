@@ -39,7 +39,7 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
     {write.reply?.error ? errorText(write.reply.error) : 'Your change is kept in this view until you choose how to continue.'}
   </Banner>
 }
-export function SpaceView({ ctx, scopeKey = null, scope, sessionRest, sid }) {
+export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const { connectionId, profile } = scope || { connectionId: host.state.connectionId.get(), profile: host.state.profile.get() }
   const base = spacePath(sid)
   const detail = useQuery({ queryKey: ['living-spaces', scopeKey, sid, 'detail'], queryFn: () => ctx.rest(base), refetchInterval: 2000, notifyOnChangeProps: ['data', 'error', 'dataUpdatedAt'] })
@@ -87,7 +87,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, sessionRest, sid }) {
     setReady(false)
     setBotAction(null)
     const backend = { connectionId, profile }
-    const session = createSpaceSession({ backend, host, onAction: event => !disposed && setBotAction(event), rest: sessionRest || ((path, options) => ctx.rest(path, options)), sid, container: content.current, mount: mountSpace,
+    const session = createSpaceSession({ backend, host, onAction: event => !disposed && setBotAction(event), rest: openingSessionRest || ((path, options) => ctx.rest(path, options)), sid, container: content.current, mount: mountSpace,
       onWrite: event => !disposed && setWrite(event),
       onEvent: event => {
         if (disposed) return
@@ -107,7 +107,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, sessionRest, sid }) {
       session.destroy().catch(e => host.notifyError(e, 'A Space session could not be closed after retries.'))
       if (controller.current === session) controller.current = null
     }
-  }, [ctx, sessionRest, connectionId, profile, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload])
+  }, [ctx, openingSessionRest, connectionId, profile, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload])
 
   const changes = useQuery({ queryKey: ['living-spaces', scopeKey, sid, 'changes', space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 })
   useEffect(() => {

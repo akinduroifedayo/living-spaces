@@ -56,7 +56,6 @@ def _roots():
     roots = []
     for subdir in (*CACHE_SUBDIRS, *LEGACY_CACHE_SUBDIRS):
         root, resolved = home / subdir, real_home / subdir
-        # A cache symlink must not redefine the allowlist's boundary.
         if _real(root) != resolved:
             continue
         if subdir in LEGACY_CACHE_SUBDIRS:
@@ -90,7 +89,6 @@ def _within(path: Path, root: Path) -> bool:
 
 
 def _denied(path: Path, cache_roots) -> bool:
-    # TMPDIR never grants access to the rest of any Hermes home or its profiles.
     if (any(_within(path, home) for home in _hermes_homes())
             and not any(_within(path, root) for root in cache_roots)):
         return True

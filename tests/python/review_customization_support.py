@@ -98,7 +98,6 @@ class SyntheticCron:
 
 
 class SyntheticContext:
-    """Public cron response shapes, without a model, scheduler, config or host imports."""
 
     def __init__(self, cron=None):
         self.cron = cron if cron is not None else SyntheticCron()

@@ -1520,7 +1520,7 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
     }
   );
 }
-function SpaceView({ ctx, scopeKey = null, scope, sessionRest, sid }) {
+function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const { connectionId, profile } = scope || { connectionId: host2.state.connectionId.get(), profile: host2.state.profile.get() };
   const base = spacePath(sid);
   const detail = useQuery5({ queryKey: ["living-spaces", scopeKey, sid, "detail"], queryFn: () => ctx.rest(base), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "dataUpdatedAt"] });
@@ -1574,7 +1574,7 @@ function SpaceView({ ctx, scopeKey = null, scope, sessionRest, sid }) {
       backend,
       host: host2,
       onAction: (event) => !disposed && setBotAction(event),
-      rest: sessionRest || ((path, options) => ctx.rest(path, options)),
+      rest: openingSessionRest || ((path, options) => ctx.rest(path, options)),
       sid,
       container: content.current,
       mount: mountSpace,
@@ -1602,7 +1602,7 @@ Location: ${event.location || event.filename}` : ""}`));
       session.destroy().catch((e) => host2.notifyError(e, "A Space session could not be closed after retries."));
       if (controller.current === session) controller.current = null;
     };
-  }, [ctx, sessionRest, connectionId, profile, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
+  }, [ctx, openingSessionRest, connectionId, profile, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
   const changes = useQuery5({ queryKey: ["living-spaces", scopeKey, sid, "changes", space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 });
   useEffect2(() => {
     if (!hasData || !ready || !changes.data || !controller.current) return;
@@ -1830,8 +1830,7 @@ function useScopedContext(ctx) {
     ctx: { ...ctx, rest: scopedRest((path, options) => ctx.rest(path, options), currentScope, scopeKey) },
     scopeKey,
     scope: { connectionId, profile },
-    // Late-open tokens must survive a scope switch so cleanup can target their owner.
-    sessionRest: (path, options) => ctx.rest(path, options)
+    openingSessionRest: (path, options) => ctx.rest(path, options)
   }), [ctx, scopeKey]);
 }
 

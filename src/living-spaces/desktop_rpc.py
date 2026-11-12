@@ -1,4 +1,3 @@
-"""Pinned Desktop session cleanup through the public plugin RPC registrar."""
 import re
 
 _SPACE_ID = re.compile(r"[a-z0-9][a-z0-9-]{1,47}\Z")

@@ -516,7 +516,6 @@ class FeedTests(UpkeepCase):
 
 
 class NativeCronTests(UpkeepCase):
-    """Public-dispatch fixtures. Real host cron lifecycle is qualified separately in isolation."""
 
     def cron(self):
         from tests.python.review_customization_support import SyntheticContext

@@ -1,4 +1,3 @@
-"""Upkeep links to ordinary Hermes jobs, accessed only through public tool dispatch."""
 from __future__ import annotations
 
 import json
@@ -73,8 +72,7 @@ def _clock_values(field, maximum):
     return sorted(values)
 
 
-def _agent_cadence(cadence):
-    """Prove a conservative nominal spacing bound; the public tool still validates the schedule."""
+def _require_conservative_nominal_agent_spacing(cadence):
     text = cadence.strip().lower()
     duration = re.fullmatch(r"(every |in )?([0-9]{0,6})\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days)", text)
     if duration:
@@ -86,10 +84,10 @@ def _agent_cadence(cadence):
         day = r"(?:day|daily|everyday|weekdays?|weekends?|sun(?:day)?|mon(?:day)?|tue(?:s|sday)?|wed(?:s|nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?)"
         clock = r"(?:noon|midday|midnight|[0-9]{1,2}(?::[0-9]{2})?(?: ?[ap]m)?)"
         if re.fullmatch(rf"(?:every )?{day}(?:(?:,? |, ?| and ){day})* (?:at )?{clock}", text):
-            return  # This grammar has at most one fire per day; syntax remains core's responsibility.
+            return
         try:
             datetime.fromisoformat(text.replace("z", "+00:00"))
-            return  # An absolute timestamp is a one-shot, not a recurring cadence.
+            return
         except ValueError:
             pass
         fields = text.split()
@@ -307,7 +305,7 @@ def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
     except (ZoneInfoNotFoundError, ValueError, TypeError) as exc:
         raise SpacesError("invalid", "timezone must be an IANA timezone") from exc
     if kind == "agent":
-        _agent_cadence(cadence)
+        _require_conservative_nominal_agent_spacing(cadence)
         mode = {"prompt": agent_prompt(sid, prompt), "no_agent": False}
     elif prompt is not None:
         raise SpacesError("invalid", "Feed upkeep takes no prompt")
@@ -418,7 +416,6 @@ def refresh_now(sid, upkeep, *, actor):
 
 
 def pause_for_archive(conn, sid):
-    """Pause future work inside the archiving transaction; any failure aborts it."""
     link = _link(conn, sid)
     try:
         jobs = _jobs()["jobs"]

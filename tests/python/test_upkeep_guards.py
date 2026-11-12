@@ -1,4 +1,3 @@
-"""Recursion and cost bounds on all upkeep entry points, without executing model work."""
 from contextlib import ExitStack
 from dataclasses import dataclass
 import json
