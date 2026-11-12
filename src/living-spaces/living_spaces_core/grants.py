@@ -67,9 +67,9 @@ def _seed(conn, sid, manifest, actor):
     for capability in ("data", "logs", "net"):
         purpose = CAPABILITIES[capability]["default_purpose"]
         _request(conn, sid, capability, scope={}, purpose=purpose, actor=actor)
-        conn.execute("UPDATE grants SET status='granted',scope='{}',decided_at=?,decided_by='user' WHERE space=? AND capability=?",
+        conn.execute("UPDATE grants SET status='granted',scope='{}',decided_at=?,decided_by='default' WHERE space=? AND capability=?",
                      (db.now(), sid, capability))
-        _audit(conn, sid, "user", "decision", capability, "granted", {"default_on_create": True})
+        _audit(conn, sid, "default", "decision", capability, "granted", {"default_on_create": True})
 
 
 def list_grants(sid):

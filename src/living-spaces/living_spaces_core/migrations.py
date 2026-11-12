@@ -99,8 +99,8 @@ def grant_internet_access(conn):
         (SELECT 1 FROM grants WHERE grants.space=spaces.id AND capability='net')""").fetchall()
     for row in missing:
         conn.execute("""INSERT INTO grants(space,capability,status,scope,purpose,decided_at,decided_by)
-            VALUES(?,'net','granted','{}',?,?,'user')""", (row["id"], purpose, db.now()))
-        grants._audit(conn, row["id"], "user", "decision", "net", "granted", {"default_on_migration": True})
+            VALUES(?,'net','granted','{}',?,?,'default')""", (row["id"], purpose, db.now()))
+        grants._audit(conn, row["id"], "default", "decision", "net", "granted", {"default_on_migration": True})
 
 
 def add_action_refusal_reason(conn):
