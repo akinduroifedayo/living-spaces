@@ -46,7 +46,7 @@ export function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, r
   const running = isRunning(data)
   const unavailable = !!data?.error || !!query.error || (!!link && !job && !data?.missing)
   const blocked = archived || unavailable || !!busy
-  const cleanupBlocked = !data || unavailable || !!busy
+  const cleanupBlocked = !data || unavailable || !!busy || (archived && !hasRecovery)
   useEffect(() => {
     const update = () => setVisible(!document.hidden)
     document.addEventListener('visibilitychange', update)
@@ -74,10 +74,12 @@ export function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, r
       return
     }
     lock.current = true
+    let refreshRequested = false
     setBusy(action); setError(''); setFeedback(action === 'run' ? 'Starting…' : 'Working…'); setRecentAction(Date.now())
     try {
       const response = await ctx.rest(`${base}/upkeep`, { method: 'POST', body: { action } })
       if (action === 'run' && response?.dispatch?.job?.execution_success === false) throw new Error(response.dispatch.job.execution_error || 'Hermes reports that this execution failed.')
+      refreshRequested = true
       const [current] = await Promise.all([query.refetch(), onChanged?.()])
       if (current?.error || current?.data?.error) throw new Error(`The action was submitted, but the current native state couldn't be loaded. ${errorText(current.error || current.data.error)}`)
       if (!current?.data || response?.error) throw new Error('Hermes has not confirmed the requested state.')
@@ -93,7 +95,7 @@ export function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, r
     } catch (e) {
       setFeedback('')
       setError(`${action === 'run' ? "Couldn't start the run." : action === 'pause' ? "Couldn't pause upkeep." : action === 'resume' ? "Couldn't resume upkeep." : "Couldn't remove upkeep."} ${errorText(e)} Review the current native state before trying again.`)
-      await query.refetch()
+      if (!refreshRequested) await query.refetch()
       if (action === 'remove') throw e
     } finally { lock.current = false; setBusy(null) }
   }
@@ -108,7 +110,7 @@ export function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, r
     {query.error && <Banner title={`Showing the last loaded state${query.dataUpdatedAt ? ` from ${relative(query.dataUpdatedAt / 1000)}` : ''}.`} actions={<Action onClick={() => query.refetch()}>Try again</Action>}>{errorText(query.error)}</Banner>}
     {data.error && <Banner kind="failed" title="Hermes cron is unavailable">{errorText(data.error)}</Banner>}
     {data.warning && <Banner kind="blocked" title="Hermes cron notice">{data.warning}</Banner>}
-    {archived && <p>Run and Resume are unavailable while this Space is archived. Use Pause or Remove to clean up native work. Already-running work may finish.</p>}
+    {archived && <p>Run and Resume are unavailable while this Space is archived. {hasRecovery && 'Use Pause or Remove to clean up recovery jobs. '}Already-running work may finish.</p>}
     {!link ? hasRecovery ? <Banner kind="blocked" title="No primary upkeep link">Space-owned jobs below may still run. Pause or remove them before scheduling upkeep again.</Banner> : <><h3>No upkeep yet</h3><p>This Space isn't updated automatically. Ask {space.owner} in chat to set up upkeep as a Hermes cron job.</p>{ask}</> : data.missing ? <>
       <StatusPill status="blocked" label="Job missing" /><Banner kind="blocked" title="Hermes no longer has this job" actions={removeButton}>{hasRecovery ? 'Other Space-owned jobs below may still run. Pause or remove them before scheduling upkeep again.' : `Nothing will run. Ask ${space.owner} in chat to schedule upkeep again.`}</Banner>{!hasRecovery && ask}
     </> : job ? <>

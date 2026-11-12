@@ -748,7 +748,7 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
   const running = isRunning(data);
   const unavailable = !!data?.error || !!query.error || !!link && !job && !data?.missing;
   const blocked = archived || unavailable || !!busy;
-  const cleanupBlocked = !data || unavailable || !!busy;
+  const cleanupBlocked = !data || unavailable || !!busy || archived && !hasRecovery;
   useEffect(() => {
     const update = () => setVisible(!document.hidden);
     document.addEventListener("visibilitychange", update);
@@ -779,6 +779,7 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
       return;
     }
     lock.current = true;
+    let refreshRequested = false;
     setBusy(action);
     setError("");
     setFeedback(action === "run" ? "Starting\u2026" : "Working\u2026");
@@ -786,6 +787,7 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
     try {
       const response = await ctx.rest(`${base}/upkeep`, { method: "POST", body: { action } });
       if (action === "run" && response?.dispatch?.job?.execution_success === false) throw new Error(response.dispatch.job.execution_error || "Hermes reports that this execution failed.");
+      refreshRequested = true;
       const [current] = await Promise.all([query.refetch(), onChanged?.()]);
       if (current?.error || current?.data?.error) throw new Error(`The action was submitted, but the current native state couldn't be loaded. ${errorText(current.error || current.data.error)}`);
       if (!current?.data || response?.error) throw new Error("Hermes has not confirmed the requested state.");
@@ -797,7 +799,7 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
     } catch (e) {
       setFeedback("");
       setError(`${action === "run" ? "Couldn't start the run." : action === "pause" ? "Couldn't pause upkeep." : action === "resume" ? "Couldn't resume upkeep." : "Couldn't remove upkeep."} ${errorText(e)} Review the current native state before trying again.`);
-      await query.refetch();
+      if (!refreshRequested) await query.refetch();
       if (action === "remove") throw e;
     } finally {
       lock.current = false;
@@ -820,7 +822,11 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
     query.error && /* @__PURE__ */ jsx5(Banner, { title: `Showing the last loaded state${query.dataUpdatedAt ? ` from ${relative(query.dataUpdatedAt / 1e3)}` : ""}.`, actions: /* @__PURE__ */ jsx5(Action, { onClick: () => query.refetch(), children: "Try again" }), children: errorText(query.error) }),
     data.error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: "Hermes cron is unavailable", children: errorText(data.error) }),
     data.warning && /* @__PURE__ */ jsx5(Banner, { kind: "blocked", title: "Hermes cron notice", children: data.warning }),
-    archived && /* @__PURE__ */ jsx5("p", { children: "Run and Resume are unavailable while this Space is archived. Use Pause or Remove to clean up native work. Already-running work may finish." }),
+    archived && /* @__PURE__ */ jsxs5("p", { children: [
+      "Run and Resume are unavailable while this Space is archived. ",
+      hasRecovery && "Use Pause or Remove to clean up recovery jobs. ",
+      "Already-running work may finish."
+    ] }),
     !link ? hasRecovery ? /* @__PURE__ */ jsx5(Banner, { kind: "blocked", title: "No primary upkeep link", children: "Space-owned jobs below may still run. Pause or remove them before scheduling upkeep again." }) : /* @__PURE__ */ jsxs5(Fragment5, { children: [
       /* @__PURE__ */ jsx5("h3", { children: "No upkeep yet" }),
       /* @__PURE__ */ jsxs5("p", { children: [
