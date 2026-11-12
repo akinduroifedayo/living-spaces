@@ -149,24 +149,111 @@ test('F5 exhausted cleanup is observable and a later destroy retries', async () 
   assert.equal(attempts, 4)
 })
 
+const openingRoute = { connectionId: 'backend-a', profile: 'demo-profile', targetProfile: 'demo', mode: 'remote' }
+function routing() {
+  let connectionId = openingRoute.connectionId, profile = openingRoute.profile
+  const requests = []
+  const host = {
+    state: { connectionId: { get: () => connectionId }, profile: { get: () => profile } },
+    profileRoutes: async () => [openingRoute],
+    requestProfile: async (...args) => { requests.push(structuredClone(args)); return { closed: true } }
+  }
+  return { host, requests, switch() { connectionId = 'backend-b'; profile = 'other-profile' } }
+}
+
 test('F5 close uses the opening backend after a profile switch, including a late open', async () => {
   const opening = Promise.withResolvers()
-  const requests = [], closed = []
-  let active = 'backend-a'
-  const backend = { connectionId: active, profile: 'demo-profile', api: async request => {
-    requests.push(request)
-    if (request.path.endsWith('/sessions')) return opening.promise
-    if (request.method === 'DELETE') { closed.push(request.connectionId); return { closed: true } }
-    return { rev: 1 }
-  } }
-  const f = fixture(() => ({ ok: true }), { backend, rest: async () => { throw new Error('active backend changed') } })
-  active = 'backend-b'
-  backend.connectionId = active
+  const route = routing(), requests = []
+  const backend = { connectionId: openingRoute.connectionId, profile: openingRoute.profile }
+  const f = fixture(() => ({ ok: true }), { backend, host: route.host, rest: async (path, options) => {
+    requests.push({ path, ...options })
+    assert.equal(route.host.state.connectionId.get(), 'backend-a', 'No REST after the scope switch')
+    assert.ok(path.endsWith('/sessions'))
+    return opening.promise
+  } })
+  route.switch()
+  backend.connectionId = 'backend-b'; backend.profile = 'other-profile'
   await f.session.destroy()
   opening.resolve({ session: 'late-session', head_rev: 1, grants: [] })
   await f.session.ready
-  assert.deepEqual(closed, ['backend-a'])
-  assert.equal(requests[0].connectionId, 'backend-a')
-  assert.equal(requests[1].profile, 'demo-profile')
-  assert.equal(requests[1].path, '/api/plugins/living-spaces/spaces/demo-space/sessions/late-session')
+  assert.deepEqual(requests, [{ path: '/spaces/demo-space/sessions', method: 'POST' }])
+  assert.deepEqual(route.requests, [[openingRoute, 'plugin.living-spaces.close_session', { space_id: 'demo-space', session: 'late-session' }, 5000]])
 })
+
+test('active-scope cleanup uses public REST with the five-second timeout', async () => {
+  const route = routing()
+  const f = fixture(() => ({ ok: true }), { host: route.host, backend: openingRoute })
+  await f.session.ready
+  await f.session.destroy()
+  assert.deepEqual(f.calls.at(-1), { path: '/spaces/demo-space/sessions/demo-session', method: 'DELETE', timeoutMs: 5000 })
+  assert.deepEqual(route.requests, [])
+})
+
+test('an opening response after a scope switch is closed without mounting even before unmount', async () => {
+  const route = routing(), opening = Promise.withResolvers()
+  let mounts = 0
+  const f = fixture(() => ({ ok: true }), {
+    host: route.host, backend: openingRoute,
+    rest: async path => { assert.ok(path.endsWith('/sessions')); return opening.promise },
+    mount() { mounts++; return { destroy() {} } }
+  })
+  route.switch()
+  opening.resolve({ session: 'late-session', head_rev: 1, grants: [] })
+  await f.session.ready
+  assert.equal(mounts, 0)
+  assert.deepEqual(route.requests, [[openingRoute, 'plugin.living-spaces.close_session', { space_id: 'demo-space', session: 'late-session' }, 5000]])
+})
+
+test('a bundle and writes arriving after a scope switch cannot mount or report saved', async () => {
+  for (const phase of ['bundle', 'bridge']) {
+    const route = routing(), pending = Promise.withResolvers(), started = Promise.withResolvers(), writes = []
+    let mounts = 0, bridge
+    const f = fixture(() => ({ ok: true }), {
+      host: route.host, backend: openingRoute, onWrite: value => writes.push(value),
+      rest: async path => {
+        if (path.endsWith('/sessions')) return { session: 'demo-session', head_rev: 1, grants: ['data'] }
+        if (path.endsWith(`/${phase}`)) { started.resolve(); return pending.promise }
+        if (path.endsWith('/bundle')) return { rev: 1 }
+        throw new Error(`Unexpected REST ${path}`)
+      },
+      mount(_, options) { mounts++; bridge = options; return { destroy() {} } }
+    })
+    let result
+    if (phase === 'bridge') { await f.session.ready; result = bridge.call('data.put', { data: {} }) }
+    await started.promise
+    route.switch()
+    pending.resolve(phase === 'bundle' ? { rev: 1 } : { ok: true, result: {} })
+    if (phase === 'bundle') { await assert.rejects(f.session.ready, /backend changed/); assert.equal(mounts, 0) }
+    else { assert.equal((await result).error.code, 'session_invalid'); assert.deepEqual(writes.map(value => value.status), ['saving']) }
+    await f.session.destroy()
+    assert.equal(route.requests.length, 1)
+  }
+})
+
+test('local cleanup selects only the unique primary route in the captured profile', async () => {
+  const route = routing()
+  route.host.state.connectionId.get = () => null
+  const primary = { ...openingRoute, primary: true }
+  route.host.profileRoutes = async () => [{ ...primary, profile: 'other-profile' }, primary]
+  const f = fixture(() => ({ ok: true }), { host: route.host, backend: { connectionId: null, profile: openingRoute.profile } })
+  await f.session.ready
+  route.switch()
+  await f.session.destroy()
+  assert.deepEqual(route.requests, [[primary, 'plugin.living-spaces.close_session', { space_id: 'demo-space', session: 'demo-session' }, 5000]])
+})
+
+for (const failure of ['missing', 'ambiguous', 'unsupported', 'error-result']) {
+  test(`cross-scope cleanup fails closed when the public route is ${failure}`, async () => {
+    const route = routing(), errors = []
+    const f = fixture(() => ({ ok: true }), { host: route.host, backend: openingRoute, onCloseError: error => errors.push(error) })
+    await f.session.ready
+    route.switch()
+    if (failure === 'missing') route.host.profileRoutes = async () => []
+    if (failure === 'ambiguous') route.host.profileRoutes = async () => [openingRoute, { ...openingRoute, targetProfile: 'other' }]
+    if (failure === 'unsupported') route.host.requestProfile = async () => { throw Object.assign(new Error('Method not found'), { code: -32601 }) }
+    if (failure === 'error-result') route.host.requestProfile = async () => ({ error: { code: 'blocked', message: 'Cleanup blocked' } })
+    await assert.rejects(f.session.destroy())
+    assert.equal(errors.length, 3)
+    assert.equal(f.calls.filter(call => call.method === 'DELETE').length, 0)
+  })
+}

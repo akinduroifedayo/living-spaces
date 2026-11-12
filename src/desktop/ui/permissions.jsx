@@ -48,9 +48,9 @@ export function PermissionsContent({ space, grants: all, audit = [], onDecide, b
     <section className="ls-section"><h2 className="ls-section-title">Owner</h2><OwnerChip owner={space.owner} /><h2 className="ls-section-title">Audit</h2>{audit.length ? <ul className="ls-audit">{audit.slice(0, 10).map(a => <li key={a.id}><Time at={a.at} /> · {a.actor} · {a.action} {a.capability || ''} · {a.outcome}</li>)}</ul> : <p className="ls-secondary">No permission decisions recorded.</p>}</section>
   </>
 }
-export function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
+export function PermissionsSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFocus }) {
   const base = spacePath(space.id)
-  const query = useQuery({ queryKey: ['living-spaces', ctx.queryScope || null, space.id, 'grants'], queryFn: () => ctx.rest(`${base}/grants`), refetchInterval: 2000 })
+  const query = useQuery({ queryKey: ['living-spaces', scopeKey, space.id, 'grants'], queryFn: () => ctx.rest(`${base}/grants`), refetchInterval: 2000 })
   const [revoke, setRevoke] = useState(null)
   const [pending, setPending] = useState(null)
   const busy = !!pending

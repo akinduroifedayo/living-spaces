@@ -29,10 +29,10 @@ export function FirstSpace({ ctx }) {
     {!action && <p role="status">This host cannot start a new chat here. The action copies the example prompt to paste into a normal Hermes chat.</p>}{notice && <p role="status">{notice}</p>}
   </div>
 }
-export function SpacesIndex({ ctx }) {
+export function SpacesIndex({ ctx, scopeKey = null }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
-  const list = useQuery({ queryKey: ['living-spaces', ctx.queryScope || null, 'spaces'], queryFn: () => ctx.rest('/spaces'), refetchInterval: 2000, notifyOnChangeProps: ['data', 'error', 'isLoading', 'dataUpdatedAt'] })
+  const list = useQuery({ queryKey: ['living-spaces', scopeKey, 'spaces'], queryFn: () => ctx.rest('/spaces'), refetchInterval: 2000, notifyOnChangeProps: ['data', 'error', 'isLoading', 'dataUpdatedAt'] })
   const spaces = list.data?.spaces || []
   const counts = summaryCounts(spaces)
   const visible = visibleSpaces(spaces, search, filter)

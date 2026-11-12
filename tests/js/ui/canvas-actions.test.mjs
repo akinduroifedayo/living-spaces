@@ -50,7 +50,7 @@ function fixture(overrides = {}) {
     }
     throw new Error(`Unexpected operation ${op}`)
   }
-  const build = () => createBotActions({ host, backend: { api() {}, connectionId: ownerRoute.connectionId, profile: ownerRoute.profile }, post,
+  const build = () => createBotActions({ host, backend: { connectionId: ownerRoute.connectionId, profile: ownerRoute.profile }, post,
     onStatus: value => statuses.push(value), isActive: () => true, userActivation: overrides.userActivation || (() => true) })
   const adapter = build()
   return { adapter, build, calls, statuses, posts, host, setReceipt: value => { receipt = { ...receipt, ...value } }, releases: () => releases, action: () => action }
@@ -178,24 +178,33 @@ test('native denial remains visible and never reports completion', async t => {
   assert.equal(f.calls.filter(([method]) => method === 'prompt.submit').length, 1)
 })
 
-test('Space action REST and cleanup stay on the captured backend after ambient switch', async () => {
-  const calls = [], statuses = []
-  let mounted
-  const backend = { connectionId: ownerRoute.connectionId, profile: ownerRoute.profile, api: async args => {
-    calls.push(args)
-    if (args.path.endsWith('/sessions')) return { session: 'bridge-session', head_rev: 1, grants: [] }
-    if (args.path.endsWith('/bundle')) return { rev: 1 }
-    if (args.path.endsWith('/actions/context')) throw new Error('No maintaining session is bound')
-    if (args.method === 'DELETE') return { closed: true }
+test('Space actions refuse stale REST while cleanup uses the captured public route', async () => {
+  const calls = [], statuses = [], routed = []
+  let mounted, active = ownerRoute
+  const host = {
+    state: { connectionId: { get: () => active.connectionId }, profile: { get: () => active.profile } },
+    profileRoutes: async () => [ownerRoute, otherRoute],
+    requestProfile: async (...args) => { routed.push(args); return { closed: true } }
+  }
+  const rest = async (path, options) => {
+    calls.push({ path, ...options, connectionId: active.connectionId, profile: active.profile })
+    if (path.endsWith('/sessions')) return { session: 'bridge-session', head_rev: 1, grants: [] }
+    if (path.endsWith('/bundle')) return { rev: 1 }
+    if (path.endsWith('/actions/context')) throw new Error('No maintaining session is bound')
     throw new Error('Unexpected request')
-  } }
-  const session = createSpaceSession({ host: {}, backend, sid: 'canvas', rest: () => { throw new Error('Ambient REST forbidden') },
+  }
+  const session = createSpaceSession({ host, backend: ownerRoute, sid: 'canvas', rest,
     container: {}, mount: (_container, options) => { mounted = options; return { destroy() {}, postEvent() {} } }, onEvent() {}, onAction: value => statuses.push(value) })
   await session.ready
   await session.checkAction()
+  active = otherRoute
+  const count = calls.length
+  await session.checkAction()
+  assert.equal(calls.length, count)
   await session.destroy()
   assert.ok(calls.some(call => call.path.endsWith('/actions/context')))
   assert.ok(calls.every(call => call.connectionId === ownerRoute.connectionId && call.profile === ownerRoute.profile))
+  assert.deepEqual(routed, [[ownerRoute, 'plugin.living-spaces.close_session', { space_id: 'canvas', session: 'bridge-session' }, 5000]])
   assert.equal((await mounted.call('bot.request', request)).error.code, 'session_invalid')
 })
 
@@ -320,7 +329,7 @@ function actionLifecycleFixture({ submitErrors = [], beforeSubmit = async () => 
   }
   const build = () => {
     const adapter = createBotActions({ host,
-      backend: { api() {}, connectionId: ownerRoute.connectionId, profile: ownerRoute.profile }, post,
+      backend: { connectionId: ownerRoute.connectionId, profile: ownerRoute.profile }, post,
       onStatus: value => statuses.push(copy(value)), isActive: () => true, userActivation: () => activation })
     adapters.push(adapter)
     return adapter
@@ -551,7 +560,7 @@ function completedAdmissionRecoveryFixture(submitSteps) {
   }
   const build = () => {
     const adapter = createBotActions({ host,
-      backend: { api() {}, connectionId: ownerRoute.connectionId, profile: ownerRoute.profile }, post,
+      backend: { connectionId: ownerRoute.connectionId, profile: ownerRoute.profile }, post,
       onStatus: value => statuses.push(copy(value)), isActive: () => true, userActivation: () => true })
     adapters.push(adapter)
     return adapter

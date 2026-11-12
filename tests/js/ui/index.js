@@ -17,6 +17,19 @@ after(() => rmSync(temp, { recursive: true, force: true }))
 const space = patch => ({ id: 'research-desk', name: 'Research Desk', owner: 'Atlas', status: 'active', head_rev: 7, updated_at: 100, freshness: {}, ...patch })
 const deferred = () => Promise.withResolvers()
 
+test('Desktop source and bundle use public SDK APIs without an undeclared query scope', () => {
+  const { readdirSync } = require('node:fs')
+  function check(directory) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name)
+      if (entry.isDirectory()) check(path)
+      else assert.doesNotMatch(readFileSync(path, 'utf8'), /\bqueryScope\b|hermesDesktop|\bbackend\.api\b/, path)
+    }
+  }
+  check('src/desktop')
+  assert.doesNotMatch(readFileSync('src/living-spaces/desktop/plugin.js', 'utf8'), /\bqueryScope\b|hermesDesktop|\bbackend\.api\b/)
+})
+
 test('directive IDs accept only the frozen slug grammar', () => {
   for (const id of ['ab', 'a-2', 'a'.repeat(48), '0a']) assert.equal(m.isSpaceId(id), true, id)
   for (const id of [undefined, null, 34, '', 'a', 'a'.repeat(49), '../research', 'Research', 'ab?x=1', 'ab\n', 'ab/xx', 'ab%00', '<script>']) assert.equal(m.isSpaceId(id), false, String(id))
@@ -261,7 +274,7 @@ for (const [name, wire] of [['missing', undefined], ['unsupported', { ...sandbox
       mount: options => mountSpace({}, options)
     })
     await assert.rejects(f.session.ready, /Desktop and backend.*Reinstall Living Spaces/)
-    assert.deepEqual(f.requests.at(-1), { path: '/spaces/research-desk/sessions/demo-session', method: 'DELETE' })
+    assert.deepEqual(f.requests.at(-1), { path: '/spaces/research-desk/sessions/demo-session', method: 'DELETE', timeoutMs: 5000 })
     await f.session.destroy()
     assert.equal(f.requests.filter(r => r.method === 'DELETE').length, 1)
     assert.equal((await f.bridge().call('data.query', {})).error.code, 'session_invalid')

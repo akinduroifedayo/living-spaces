@@ -1,12 +1,19 @@
 import { spacePath } from './model.mjs'
-import { createBotActions } from './actions.mjs'
+import { createBotActions, profileRoute } from './actions.mjs'
 
 const errorCode = error => [error?.error?.code, error?.body?.error?.code, error?.message, String(error)].filter(Boolean).join(' ')
 
 export function createSpaceSession({ rest, backend, sid, container, mount, onEvent, host, onAction = () => {}, onWrite = () => {}, onCloseError = error => console.warn('Space session cleanup failed', error) }) {
   const base = spacePath(sid)
-  const { api, connectionId, profile } = backend || {}
-  const lifecycleRest = api ? (path, options = {}) => api({ ...options, path: `/api/plugins/living-spaces${path}`, connectionId, profile, timeoutMs: options.method === 'DELETE' ? 5000 : undefined }) : rest
+  const scope = backend ? Object.freeze({ connectionId: backend.connectionId, profile: backend.profile }) : null
+  const active = () => !scope || (host?.state?.connectionId?.get() === scope.connectionId && host?.state?.profile?.get() === scope.profile)
+  const requireActive = () => { if (!active()) throw new Error('The active backend changed. Reopen this Space.') }
+  const scopedRequest = async (path, options) => {
+    requireActive()
+    const value = await rest(path, options)
+    requireActive()
+    return value
+  }
   let closed = false
   let session = null
   let mounted = null
@@ -16,8 +23,8 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
   const failures = new Map()
   const retries = new Map()
   const publish = event => onWrite(failures.values().next().value || (pendingWrites ? { status: 'saving' } : event))
-  const actions = host ? createBotActions({ host, backend, isActive: () => !closed,
-    post: (operation, body) => lifecycleRest(`${base}/actions/${operation}`, { method: 'POST', body: { ...body, session } }),
+  const actions = host ? createBotActions({ host, backend: scope, isActive: () => !closed && active(),
+    post: (operation, body) => scopedRequest(`${base}/actions/${operation}`, { method: 'POST', body: { ...body, session } }),
     onStatus: status => {
       if (closed) return
       onAction(status)
@@ -29,7 +36,11 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     closePromise ??= (async () => {
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          return await lifecycleRest(`${base}/sessions/${encodeURIComponent(session)}`, { method: 'DELETE' })
+          if (active()) return await rest(`${base}/sessions/${encodeURIComponent(session)}`, { method: 'DELETE', timeoutMs: 5000 })
+          const route = await profileRoute(host, scope)
+          const result = await host.requestProfile(route, 'plugin.living-spaces.close_session', { space_id: sid, session }, 5000)
+          if (result?.closed !== true) throw new Error(result?.error?.message || 'Space session cleanup was not confirmed')
+          return result
         } catch (error) {
           // Archive and delete close sessions on the server first, so the session is already gone.
           if (/session_invalid/.test(errorCode(error))) return { closed: true }
@@ -42,11 +53,11 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     return closePromise
   }
   const call = async (op, args, retryToken) => {
-    if (closed) return { ok: false, error: { code: 'session_invalid', message: 'This Space session is closed' } }
+    if (closed || !active()) return { ok: false, error: { code: 'session_invalid', message: 'This Space session is closed' } }
     if (op === 'bot.request') {
       if (!actions) return { ok: false, error: { code: 'blocked', message: 'Native bot actions are unavailable' } }
       const result = await actions.request(args)
-      if (closed) return { ok: false, error: { code: 'session_invalid', message: 'This Space session is closed' } }
+      if (closed || !active()) return { ok: false, error: { code: 'session_invalid', message: 'This Space session is closed' } }
       return { ok: true, result }
     }
     const writing = ['data.put', 'data.delete', 'data.batch'].includes(op)
@@ -66,12 +77,12 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     let reply
     let unknown = false
     try {
-      reply = await rest(`${base}/bridge`, { method: 'POST', body: { session, op, args } })
+      reply = await scopedRequest(`${base}/bridge`, { method: 'POST', body: { session, op, args } })
     } catch (error) {
       unknown = true
       reply = { ok: false, error: { code: 'unavailable', message: error.message || String(error) } }
     }
-    if (closed) return { ok: false, error: { code: 'session_invalid', message: 'This Space session is closed' } }
+    if (closed || !active()) return { ok: false, error: { code: 'session_invalid', message: 'This Space session is closed' } }
     if (writing) {
       pendingWrites--
       const retry = next => {
@@ -89,15 +100,16 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     return reply
   }
   const ready = (async () => {
-    const opened = await lifecycleRest(`${base}/sessions`, { method: 'POST' })
+    requireActive()
+    const opened = await rest(`${base}/sessions`, { method: 'POST' })
     session = opened.session
-    if (closed) return close()
+    if (closed || !active()) { closed = true; return close() }
     try {
-      const bundle = await lifecycleRest(`${base}/bundle`)
+      const bundle = await scopedRequest(`${base}/bundle`)
       if (closed) return close()
       if (bundle.rev !== opened.head_rev) throw new Error('The Space changed while opening. Reload Space to open the current revision.')
       mounted = mount(container, { bundle, grants: opened.grants, call, onEvent: event => {
-        if (closed) return
+        if (closed || !active()) return
         if (event.kind === 'write-rejected' && ['data.put', 'data.delete', 'data.batch'].includes(event.op)) {
           const failure = { status: 'failed', token: ++nextWrite, op: event.op, reply: { ok: false, error: event.error } }
           failures.set(failure.token, failure)
@@ -117,7 +129,7 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     checkAction() { return actions?.check() },
     retryAction() { return actions?.retry() },
     dismissWrite(token) { failures.delete(token); publish(null) },
-    postEvent(event, payload) { if (!closed) mounted?.postEvent?.(event, payload) },
+    postEvent(event, payload) { if (!closed && active()) mounted?.postEvent?.(event, payload) },
     destroy() {
       closed = true
       actions?.destroy()

@@ -39,9 +39,10 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
     {write.reply?.error ? errorText(write.reply.error) : 'Your change is kept in this view until you choose how to continue.'}
   </Banner>
 }
-export function SpaceView({ ctx, sid }) {
+export function SpaceView({ ctx, scopeKey = null, scope, sessionRest, sid }) {
+  const { connectionId, profile } = scope || { connectionId: host.state.connectionId.get(), profile: host.state.profile.get() }
   const base = spacePath(sid)
-  const detail = useQuery({ queryKey: ['living-spaces', ctx.queryScope || null, sid, 'detail'], queryFn: () => ctx.rest(base), refetchInterval: 2000, notifyOnChangeProps: ['data', 'error', 'dataUpdatedAt'] })
+  const detail = useQuery({ queryKey: ['living-spaces', scopeKey, sid, 'detail'], queryFn: () => ctx.rest(base), refetchInterval: 2000, notifyOnChangeProps: ['data', 'error', 'dataUpdatedAt'] })
   const space = detail.data
   const [frame, headerMode] = useHeaderMode(!!space)
   const [sheet, setSheet] = useState(null)
@@ -85,9 +86,8 @@ export function SpaceView({ ctx, sid }) {
     cursor.current = 0
     setReady(false)
     setBotAction(null)
-    const [connectionId, profile] = ctx.queryScope ? JSON.parse(ctx.queryScope) : [host.state.connectionId.get(), host.state.profile.get()]
-    const backend = { api: window.hermesDesktop?.api, connectionId, profile }
-    const session = createSpaceSession({ backend, host, onAction: event => !disposed && setBotAction(event), rest: (path, options) => ctx.rest(path, options), sid, container: content.current, mount: mountSpace,
+    const backend = { connectionId, profile }
+    const session = createSpaceSession({ backend, host, onAction: event => !disposed && setBotAction(event), rest: sessionRest || ((path, options) => ctx.rest(path, options)), sid, container: content.current, mount: mountSpace,
       onWrite: event => !disposed && setWrite(event),
       onEvent: event => {
         if (disposed) return
@@ -107,9 +107,9 @@ export function SpaceView({ ctx, sid }) {
       session.destroy().catch(e => host.notifyError(e, 'A Space session could not be closed after retries.'))
       if (controller.current === session) controller.current = null
     }
-  }, [ctx, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload])
+  }, [ctx, sessionRest, connectionId, profile, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload])
 
-  const changes = useQuery({ queryKey: ['living-spaces', ctx.queryScope || null, sid, 'changes', space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 })
+  const changes = useQuery({ queryKey: ['living-spaces', scopeKey, sid, 'changes', space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 })
   useEffect(() => {
     if (!hasData || !ready || !changes.data || !controller.current) return
     const page = advanceCursor(cursor.current, changes.data)
@@ -184,9 +184,9 @@ export function SpaceView({ ctx, sid }) {
     <section className="ls-content" aria-label="Space content"><div className={`ls-sandbox${status === 'failed' ? ' ls-stale' : ''}`}>
       {building ? <div className="ls-building"><p role="status">{space.owner} is building the first version. This opens automatically when it's ready.</p><Skeleton style={{ height: 100 }} /><Skeleton style={{ height: 180 }} /></div> : status === 'crashed' ? <div className="ls-crash"><ErrorState title={`${space.name} stopped working`} description="The Space hit an error and was stopped. Your records are safe and weren't changed by the crash." /><pre className="ls-diagnostic">{`Revision ${space.head_rev}\n${crashMessage}\nLogged to this Space only. Common credential values redacted.`}</pre><div className="ls-actions"><Action primary onClick={() => { setCrash(null); setIgnoredCrashRev(space.head_rev); setReload(n => n + 1) }}>Reload Space</Action><Action onClick={() => openHistory('revisions')}>Restore revision…</Action></div><CopyPrompt text={`${space.owner}, ${space.name} crashed. Please read its error log and fix it.`} /><p className="ls-secondary">Repairs happen in chat. {space.owner} can read this error and apply a new revision.</p></div> : archived ? <div className="ls-building"><p>Restore Space to open its content. Your records and revisions are kept.</p></div> : <div ref={content} className="ls-mount" data-testid="space-host" />}
     </div></section>
-    {sheet?.kind === 'permissions' && <PermissionsSheet returnFocus={sheet.returnFocus} ctx={ctx} space={space} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
-    {sheet?.kind === 'history' && <HistorySheet returnFocus={sheet.returnFocus} ctx={ctx} space={space} initialTab={sheet.tab} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
-    {sheet?.kind === 'upkeep' && <UpkeepSheet returnFocus={sheet.returnFocus} ctx={ctx} space={space} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
+    {sheet?.kind === 'permissions' && <PermissionsSheet returnFocus={sheet.returnFocus} ctx={ctx} scopeKey={scopeKey} space={space} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
+    {sheet?.kind === 'history' && <HistorySheet returnFocus={sheet.returnFocus} ctx={ctx} scopeKey={scopeKey} space={space} initialTab={sheet.tab} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
+    {sheet?.kind === 'upkeep' && <UpkeepSheet returnFocus={sheet.returnFocus} ctx={ctx} scopeKey={scopeKey} space={space} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
     {sheet?.kind === 'compare' && write && <Drawer returnFocus={sheet.returnFocus} title="Compare record changes" description="Your submitted change and the latest stored record" onClose={() => setSheet(null)}><div className="ls-compare"><h2>Your change</h2><pre className="ls-diagnostic">{JSON.stringify(write.args, null, 2)}</pre><h2>Updated record</h2><pre className="ls-diagnostic">{JSON.stringify(write.reply?.error?.current, null, 2)}</pre></div></Drawer>}
     {confirmation && <DecisionDialog returnFocus={confirmationTrigger.current} danger title={confirmation === 'delete' ? `Delete ${space.name}?` : `Archive ${space.name}?`} description={confirmation === 'delete' ? "Delete removes this Space, all its records and revisions permanently and stops future upkeep. Already-running work may finish. Exported copies aren't recalled." : 'Archiving pauses future upkeep. Already-running work may finish. Your records and revisions are kept. Restoring this Space does not resume upkeep.'} confirmLabel={confirmation === 'delete' ? 'Delete Space' : 'Archive Space'} onClose={() => setConfirmation(null)} onConfirm={async () => { if (confirmation === 'delete') { await ctx.rest(`${base}?confirm=${encodeURIComponent(sid)}`, { method: 'DELETE' }); host.navigate('/spaces') } else { await ctx.rest(`${base}/archive`, { method: 'POST' }); await detail.refetch() } }} />}
   </div>

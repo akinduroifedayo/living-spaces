@@ -18,7 +18,7 @@ function Executions({ executions }) {
 }
 const isRunning = data => data?.job?.state === 'running' || data?.executions?.some(run => ['running', 'claimed'].includes(run.status)) === true
 
-export function UpkeepSheet({ ctx, space, onClose, onChanged, returnFocus }) {
+export function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFocus }) {
   const base = spacePath(space.id)
   const [busy, setBusy] = useState(null)
   const [feedback, setFeedback] = useState('')
@@ -31,7 +31,7 @@ export function UpkeepSheet({ ctx, space, onClose, onChanged, returnFocus }) {
   const [visible, setVisible] = useState(() => typeof document === 'undefined' || !document.hidden)
   const lock = useRef(false)
   const feedbackNode = useRef(null)
-  const query = useQuery({ queryKey: ['living-spaces', ctx.queryScope || null, space.id, 'upkeep'], queryFn: () => ctx.rest(`${base}/upkeep`),
+  const query = useQuery({ queryKey: ['living-spaces', scopeKey, space.id, 'upkeep'], queryFn: () => ctx.rest(`${base}/upkeep`),
     refetchInterval: native => !visible ? false : isRunning(native.state?.data) || recentAction ? 2000 : 5000,
     refetchIntervalInBackground: false, notifyOnChangeProps: ['data', 'error', 'dataUpdatedAt'] })
   const data = query.data

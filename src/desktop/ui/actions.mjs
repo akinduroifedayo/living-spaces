@@ -4,6 +4,22 @@ const publicStatus = (action, status, message, answer) => ({ activationId: actio
 const failure = (message, status = 'failed') => Object.assign(new Error(message), { actionStatus: status })
 const refusalReasons = new Set(['permission_denied', 'invalid_params', 'not_found', 'profile_mismatch', 'queue_full', 'runtime_draining'])
 
+export async function profileRoute(host, backend, expected) {
+  if (!backend || typeof backend.profile !== 'string' || !backend.profile ||
+      (backend.connectionId != null && (typeof backend.connectionId !== 'string' || !backend.connectionId)) ||
+      typeof host?.profileRoutes !== 'function' || typeof host?.requestProfile !== 'function') {
+    throw failure('Native profile routing is unavailable in this Desktop', 'offline')
+  }
+  const routes = await host.profileRoutes()
+  const matches = routes.filter(route => route.profile === backend.profile &&
+    (backend.connectionId == null ? route.primary === true : route.connectionId === backend.connectionId) &&
+    (!expected || sameRoute(route, expected)))
+  if (matches.length !== 1 || routeFields.some(key => typeof matches[0][key] !== 'string' || !matches[0][key])) {
+    throw failure('The exact maintaining profile route is unavailable or ambiguous', 'offline')
+  }
+  return matches[0]
+}
+
 export function createBotActions({ host, backend, post, onStatus, isActive, userActivation = () => globalThis.navigator?.userActivation?.isActive === true }) {
   let current = null
   let binding = null
@@ -25,20 +41,12 @@ export function createBotActions({ host, backend, post, onStatus, isActive, user
     chain = next.catch(() => {})
     return next
   }
-  const pinned = route => route.profile === backend?.profile &&
-    (backend.connectionId == null ? route.primary === true : route.connectionId === backend.connectionId)
   async function registered(expected) {
     alive()
-    if (!backend?.api || typeof host?.profileRoutes !== 'function' || typeof host?.retainProfile !== 'function' || typeof host?.requestProfile !== 'function') {
-      throw failure('Native profile routing is unavailable in this Desktop', 'offline')
-    }
-    const routes = await host.profileRoutes()
+    if (typeof host?.retainProfile !== 'function') throw failure('Native profile routing is unavailable in this Desktop', 'offline')
+    const route = await profileRoute(host, backend, expected)
     alive()
-    const matches = routes.filter(route => pinned(route) && (!expected || sameRoute(route, expected)))
-    if (matches.length !== 1 || routeFields.some(key => typeof matches[0][key] !== 'string' || !matches[0][key])) {
-      throw failure('The exact maintaining profile route is unavailable or ambiguous', 'offline')
-    }
-    return matches[0]
+    return route
   }
   async function rpc(route, method, params = {}) {
     const fresh = await registered(route)

@@ -17,11 +17,11 @@ export function SpacesPage({ ctx }) {
     return () => window.removeEventListener('hashchange', changed)
   }, [])
   const sid = routeSpace(hash)
-  return jsxs('div', { className: 'ls-root', children: [jsx('style', { children: styles }), sid ? jsx(SpaceView, { ctx: scoped, sid }, `${scoped.queryScope}:${sid}`) : jsx(SpacesIndex, { ctx: scoped }, scoped.queryScope)] })
+  return jsxs('div', { className: 'ls-root', children: [jsx('style', { children: styles }), sid ? jsx(SpaceView, { ...scoped, sid }, `${scoped.scopeKey}:${sid}`) : jsx(SpacesIndex, { ctx: scoped.ctx, scopeKey: scoped.scopeKey }, scoped.scopeKey)] })
 }
 function OpenSpaceCard({ ctx, sid }) {
   const scoped = useScopedContext(ctx)
-  const query = useQuery({ queryKey: ['living-spaces', scoped.queryScope, sid, 'detail'], queryFn: () => scoped.rest(spacePath(sid)), refetchInterval: 2000 })
+  const query = useQuery({ queryKey: ['living-spaces', scoped.scopeKey, sid, 'detail'], queryFn: () => scoped.ctx.rest(spacePath(sid)), refetchInterval: 2000 })
   if (!query.data) return query.error ? jsx(ErrorState, { title: 'This Space could not be loaded', description: query.error.message }) : jsx('span', { role: 'status', children: 'Loading Space…' })
   const space = query.data
   return jsxs('div', { className: 'ls-root ls-directive', children: [jsx('style', { children: styles }), jsxs('div', { className: 'ls-card-top', children: [jsx(SpaceTile, { space }), jsxs('div', { children: [jsx('strong', { children: space.name }), jsx(OwnerChip, { owner: space.owner })] })] }), jsxs('div', { className: 'ls-actions', children: [jsx(StatusPill, { status: spaceStatus(space) }), jsx('span', { children: `Revision ${space.head_rev}` }), jsx(Action, { primary: true, onClick: () => host.navigate(spaceRoute(sid)), children: 'Open Space' })] })] })

@@ -44,6 +44,11 @@ const sdk = { ...baseSdk, useQuery(options) {
 } }
 const { PermissionsSheet } = load(resolve(root, 'src/desktop/ui/permissions.jsx'))
 const { SpaceView } = load(resolve(root, 'src/desktop/ui/space.jsx'))
+const { SpacesPage, renderDirective } = load(resolve(root, 'src/desktop/plugin.src.js'))
+const { useScopedContext } = load(resolve(root, 'src/desktop/ui/context.jsx'))
+const { SpacesIndex } = load(resolve(root, 'src/desktop/ui/index.jsx'))
+const { HistorySheet } = load(resolve(root, 'src/desktop/ui/history.jsx'))
+const { UpkeepSheet } = load(resolve(root, 'src/desktop/ui/upkeep.jsx'))
 before(() => {
   mkdirSync(resolve('.run'), { recursive: true })
   temp = mkdtempSync(resolve('.run/repair-ui-'))
@@ -66,6 +71,137 @@ async function click(label) {
   assert.ok(button, label)
   await act(async () => button.click())
 }
+
+test('plugin-owned scope keeps cache keys isolated and rejects old callbacks and results', async () => {
+  setup()
+  const originalConnection = sdk.host.state.connectionId.get
+  const originalProfile = sdk.host.state.profile.get
+  let connectionId = 'backend-a', profile = 'profile-a', current
+  sdk.host.state.connectionId.get = () => connectionId
+  sdk.host.state.profile.get = () => profile
+  const pending = Promise.withResolvers(), calls = []
+  const ctx = { rest: (path, options) => { calls.push({ path, options }); return path === '/pending' ? pending.promise : Promise.resolve({ ok: true }) } }
+  function Probe() { current = useScopedContext(ctx); return null }
+  try {
+    await render(Probe)
+    const opening = current
+    assert.equal(current.scopeKey, JSON.stringify(['backend-a', 'profile-a']))
+    assert.deepEqual(current.scope, { connectionId, profile })
+    assert.equal(Object.hasOwn(current.ctx, 'scopeKey'), false)
+    assert.deepEqual(Object.keys(ctx), ['rest'])
+    await current.ctx.rest('/control')
+    const result = current.ctx.rest('/pending')
+    profile = 'profile-b'
+    await render(Probe)
+    assert.notEqual(current.scopeKey, opening.scopeKey)
+    assert.deepEqual(current.scope, { connectionId, profile })
+    await assert.rejects(opening.ctx.rest('/stale', { method: 'POST' }), /backend changed/)
+    pending.resolve({ spaces: [{ id: 'old-space' }] })
+    await assert.rejects(result, /backend changed/)
+    assert.deepEqual(calls.map(call => call.path), ['/control', '/pending'])
+    const otherProfile = current
+    connectionId = 'backend-b'
+    await render(Probe)
+    assert.notEqual(current.scopeKey, otherProfile.scopeKey)
+    const props = { ...current, sid: 'demo-space', space: { id: 'demo-space', name: 'Demo' }, onClose() {} }
+    for (const [Component, names] of [[SpacesIndex, [undefined]], [SpaceView, ['detail', 'changes']], [HistorySheet, ['runs', 'revisions']], [PermissionsSheet, ['grants']], [UpkeepSheet, ['upkeep']]]) {
+      queries.clear()
+      await render(Component, props)
+      for (const name of names) assert.equal(queries.get(name).queryKey[1], current.scopeKey, `${Component.name} ${name}`)
+    }
+  } finally {
+    await act(async () => view.unmount())
+    sdk.host.state.connectionId.get = originalConnection
+    sdk.host.state.profile.get = originalProfile
+  }
+})
+
+test('page and directive use plugin-owned cache scope and remount on profile switches', async () => {
+  setup()
+  const originalProfile = sdk.host.state.profile.get
+  let profile = 'profile-a'
+  sdk.host.state.profile.get = () => profile
+  data[undefined] = { spaces: [{ id: 'demo-space', name: 'Demo', owner: 'Demo', status: 'active', head_rev: 1 }] }
+  const ctx = { rest: async () => ({ spaces: [] }) }
+  function Directive() { return renderDirective(ctx, { id: 'demo-space' }) }
+  try {
+    await render(SpacesPage, { ctx })
+    const search = document.querySelector('input')
+    assert.ok(search)
+    profile = 'profile-b'
+    await render(SpacesPage, { ctx })
+    assert.notEqual(document.querySelector('input'), search)
+    assert.equal(queries.get(undefined).queryKey[1], JSON.stringify(['demo-backend', profile]))
+    await render(Directive)
+    assert.equal(queries.get('detail').queryKey[1], JSON.stringify(['demo-backend', profile]))
+  } finally {
+    await act(async () => view.unmount())
+    sdk.host.state.profile.get = originalProfile
+  }
+})
+
+test('the view captures host scope during render, before passive session effects', async () => {
+  setup()
+  const props = spaceProps([]), calls = []
+  const originalConnection = sdk.host.state.connectionId.get
+  let connection = 'backend-a'
+  sdk.host.state.connectionId.get = () => connection
+  const rest = props.ctx.rest
+  props.ctx.rest = (path, options) => { calls.push(path); return rest(path, options) }
+  function SwitchAfterRender() {
+    React.useLayoutEffect(() => { connection = 'backend-b' }, [])
+    return React.createElement(SpaceView, props)
+  }
+  try {
+    await render(SwitchAfterRender)
+    assert.equal(calls.some(path => path.endsWith('/sessions')), false)
+    assert.match(document.body.textContent, /backend changed/)
+  } finally {
+    await act(async () => view.unmount())
+    sdk.host.state.connectionId.get = originalConnection
+  }
+})
+
+test('page scope switches retain late-open tokens only for original-owner RPC cleanup', async () => {
+  setup()
+  spaceProps([])
+  const originalProfile = sdk.host.state.profile.get
+  const originalRoutes = sdk.host.profileRoutes
+  const originalRequest = sdk.host.requestProfile
+  const originalLocation = globalThis.location
+  globalThis.location = dom.window.location
+  dom.window.location.hash = '#/spaces?space=demo-space'
+  let profile = 'profile-a'
+  const route = { connectionId: 'demo-backend', profile, targetProfile: 'owner', mode: 'remote' }
+  const opening = Promise.withResolvers(), requests = [], routed = []
+  sdk.host.state.profile.get = () => profile
+  sdk.host.profileRoutes = async () => [route]
+  sdk.host.requestProfile = async (...args) => { routed.push(args); return { closed: true } }
+  const ctx = { rest: async (path, options = {}) => {
+    requests.push({ path, ...options, profile })
+    if (path.endsWith('/sessions')) return profile === 'profile-a' ? opening.promise : { session: 'session-b', head_rev: 1, grants: [] }
+    if (path.endsWith('/bundle')) return { rev: 1 }
+    return { closed: true }
+  } }
+  try {
+    await render(SpacesPage, { ctx })
+    profile = 'profile-b'
+    await render(SpacesPage, { ctx })
+    await act(async () => opening.resolve({ session: 'late-session-a', head_rev: 1, grants: [] }))
+    assert.deepEqual(routed, [[route, 'plugin.living-spaces.close_session', { space_id: 'demo-space', session: 'late-session-a' }, 5000]])
+    assert.equal(requests.some(request => request.method === 'DELETE'), false)
+    await act(async () => view.unmount())
+    assert.deepEqual(requests.filter(request => request.method === 'DELETE'), [{ path: '/spaces/demo-space/sessions/session-b', method: 'DELETE', timeoutMs: 5000, profile: 'profile-b' }])
+  } finally {
+    await act(async () => view.unmount())
+    sdk.host.state.profile.get = originalProfile
+    sdk.host.profileRoutes = originalRoutes
+    sdk.host.requestProfile = originalRequest
+    dom.window.location.hash = ''
+    if (originalLocation === undefined) delete globalThis.location
+    else globalThis.location = originalLocation
+  }
+})
 
 for (const nativeError of [false, true]) {
 test(`F1 approval binds scope and refreshes after ${nativeError ? 'native IPC' : 'structured'} conflict`, async () => {
@@ -150,40 +286,40 @@ test('F2 the host shows uncertainty and Retry save after a lost response', async
   } finally { await act(async () => view.unmount()) }
 })
 
-test('F5 the view pins native session cleanup and notifies after exhaustion', async () => {
+test('F5 the view pins public session cleanup and notifies after exhaustion', async () => {
   setup()
   const props = spaceProps([{ capability: 'data', status: 'granted' }])
   const requests = [], notifications = []
   const originalConnection = sdk.host.state.connectionId.get
   const originalProfile = sdk.host.state.profile.get
   const originalNotify = sdk.host.notifyError
+  const originalRoutes = sdk.host.profileRoutes
+  const originalRequest = sdk.host.requestProfile
   const originalWarn = console.warn
-  props.ctx.queryScope = JSON.stringify(['backend-a', 'profile-a'])
-  let connection = 'backend-b', profile = 'profile-b'
+  props.scope = { connectionId: 'backend-a', profile: 'profile-a' }
+  props.scopeKey = JSON.stringify(['backend-a', 'profile-a'])
+  const route = { ...props.scope, targetProfile: 'owner', mode: 'remote' }
+  let connection = 'backend-a', profile = 'profile-a'
   sdk.host.state.connectionId.get = () => connection
   sdk.host.state.profile.get = () => profile
+  sdk.host.profileRoutes = async () => [route]
+  sdk.host.requestProfile = async (...args) => { requests.push(args); throw new Error('Cleanup unavailable') }
   sdk.host.notifyError = (...args) => notifications.push(args)
   console.warn = () => {}
-  window.hermesDesktop = { api: async request => {
-    requests.push(request)
-    if (request.path.endsWith('/sessions')) return { session: 'demo-session', head_rev: 1, grants: ['data'] }
-    if (request.path.endsWith('/bundle')) return { rev: 1 }
-    throw new Error('Cleanup unavailable')
-  } }
   try {
     await render(SpaceView, props)
     connection = 'backend-b'; profile = 'profile-b'
     await act(async () => view.unmount())
     await new Promise(resolve => setTimeout(resolve, 850))
-    const closes = requests.filter(r => r.method === 'DELETE')
-    assert.equal(closes.length, 3)
-    assert.ok(requests.every(r => r.connectionId === 'backend-a' && r.profile === 'profile-a'))
+    assert.equal(requests.length, 3)
+    assert.ok(requests.every(([target, method, params, timeout]) => target === route && method === 'plugin.living-spaces.close_session' && params.space_id === props.sid && params.session === 'demo-session' && timeout === 5000))
     assert.equal(notifications.length, 1)
     assert.match(notifications[0][1], /could not be closed/)
   } finally {
-    delete window.hermesDesktop
     sdk.host.state.connectionId.get = originalConnection
     sdk.host.state.profile.get = originalProfile
+    sdk.host.profileRoutes = originalRoutes
+    sdk.host.requestProfile = originalRequest
     sdk.host.notifyError = originalNotify
     console.warn = originalWarn
   }

@@ -4,8 +4,14 @@ import { scopedRest } from './model.mjs'
 
 const currentScope = () => JSON.stringify([host.state.connectionId.get(), host.state.profile.get()])
 export function useScopedContext(ctx) {
-  const connection = useValue(host.state.connectionId)
+  const connectionId = useValue(host.state.connectionId)
   const profile = useValue(host.state.profile)
-  const queryScope = JSON.stringify([connection, profile])
-  return useMemo(() => ({ ...ctx, queryScope, rest: scopedRest((path, options) => ctx.rest(path, options), currentScope, queryScope) }), [ctx, queryScope])
+  const scopeKey = JSON.stringify([connectionId, profile])
+  return useMemo(() => ({
+    ctx: { ...ctx, rest: scopedRest((path, options) => ctx.rest(path, options), currentScope, scopeKey) },
+    scopeKey,
+    scope: { connectionId, profile },
+    // Late-open tokens must survive a scope switch so cleanup can target their owner.
+    sessionRest: (path, options) => ctx.rest(path, options)
+  }), [ctx, scopeKey])
 }

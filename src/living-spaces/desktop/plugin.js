@@ -395,10 +395,10 @@ function FirstSpace({ ctx }) {
     notice && /* @__PURE__ */ jsx2("p", { role: "status", children: notice })
   ] });
 }
-function SpacesIndex({ ctx }) {
+function SpacesIndex({ ctx, scopeKey = null }) {
   const [search, setSearch] = useState2("");
   const [filter, setFilter] = useState2("all");
-  const list = useQuery({ queryKey: ["living-spaces", ctx.queryScope || null, "spaces"], queryFn: () => ctx.rest("/spaces"), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "isLoading", "dataUpdatedAt"] });
+  const list = useQuery({ queryKey: ["living-spaces", scopeKey, "spaces"], queryFn: () => ctx.rest("/spaces"), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "isLoading", "dataUpdatedAt"] });
   const spaces = list.data?.spaces || [];
   const counts = summaryCounts(spaces);
   const visible = visibleSpaces(spaces, search, filter);
@@ -471,12 +471,12 @@ function RevisionRow({ revision, space, onRestore }) {
     ] })
   ] });
 }
-function HistorySheet({ ctx, space, onClose, onChanged, initialTab = "runs", returnFocus }) {
+function HistorySheet({ ctx, scopeKey = null, space, onClose, onChanged, initialTab = "runs", returnFocus }) {
   const [tab, setTab] = useState3(initialTab);
   const [restore, setRestore] = useState3(null);
   const base = spacePath(space.id);
-  const runs = useQuery2({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "runs"], queryFn: () => ctx.rest(`${base}/runs`), refetchInterval: 2e3 });
-  const revisions = useQuery2({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "revisions"], queryFn: () => ctx.rest(`${base}/revisions`), refetchInterval: 2e3 });
+  const runs = useQuery2({ queryKey: ["living-spaces", scopeKey, space.id, "runs"], queryFn: () => ctx.rest(`${base}/runs`), refetchInterval: 2e3 });
+  const revisions = useQuery2({ queryKey: ["living-spaces", scopeKey, space.id, "revisions"], queryFn: () => ctx.rest(`${base}/revisions`), refetchInterval: 2e3 });
   const query = tab === "runs" ? runs : revisions;
   return /* @__PURE__ */ jsxs3(Fragment3, { children: [
     /* @__PURE__ */ jsxs3(Drawer, { title: "History & revisions", description: `History and code revisions for ${space.name}`, onClose, returnFocus, children: [
@@ -624,9 +624,9 @@ function PermissionsContent({ space, grants: all, audit = [], onDecide, busy = f
     ] })
   ] });
 }
-function PermissionsSheet({ ctx, space, onClose, onChanged, returnFocus }) {
+function PermissionsSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFocus }) {
   const base = spacePath(space.id);
-  const query = useQuery3({ queryKey: ["living-spaces", ctx.queryScope || null, space.id, "grants"], queryFn: () => ctx.rest(`${base}/grants`), refetchInterval: 2e3 });
+  const query = useQuery3({ queryKey: ["living-spaces", scopeKey, space.id, "grants"], queryFn: () => ctx.rest(`${base}/grants`), refetchInterval: 2e3 });
   const [revoke, setRevoke] = useState4(null);
   const [pending, setPending] = useState4(null);
   const busy = !!pending;
@@ -715,7 +715,7 @@ function Executions({ executions }) {
   }) });
 }
 var isRunning = (data) => data?.job?.state === "running" || data?.executions?.some((run) => ["running", "claimed"].includes(run.status)) === true;
-function UpkeepSheet({ ctx, space, onClose, onChanged, returnFocus }) {
+function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFocus }) {
   const base = spacePath(space.id);
   const [busy, setBusy] = useState5(null);
   const [feedback, setFeedback] = useState5("");
@@ -729,7 +729,7 @@ function UpkeepSheet({ ctx, space, onClose, onChanged, returnFocus }) {
   const lock = useRef3(false);
   const feedbackNode = useRef3(null);
   const query = useQuery4({
-    queryKey: ["living-spaces", ctx.queryScope || null, space.id, "upkeep"],
+    queryKey: ["living-spaces", scopeKey, space.id, "upkeep"],
     queryFn: () => ctx.rest(`${base}/upkeep`),
     refetchInterval: (native) => !visible ? false : isRunning(native.state?.data) || recentAction ? 2e3 : 5e3,
     refetchIntervalInBackground: false,
@@ -896,6 +896,17 @@ var sameRoute = (a, b) => routeFields.every((key) => a?.[key] === b?.[key]);
 var publicStatus = (action, status, message, answer) => ({ activationId: action?.activation_id, status, message, ...answer ? { answer } : {} });
 var failure = (message, status = "failed") => Object.assign(new Error(message), { actionStatus: status });
 var refusalReasons = /* @__PURE__ */ new Set(["permission_denied", "invalid_params", "not_found", "profile_mismatch", "queue_full", "runtime_draining"]);
+async function profileRoute(host5, backend, expected) {
+  if (!backend || typeof backend.profile !== "string" || !backend.profile || backend.connectionId != null && (typeof backend.connectionId !== "string" || !backend.connectionId) || typeof host5?.profileRoutes !== "function" || typeof host5?.requestProfile !== "function") {
+    throw failure("Native profile routing is unavailable in this Desktop", "offline");
+  }
+  const routes = await host5.profileRoutes();
+  const matches = routes.filter((route) => route.profile === backend.profile && (backend.connectionId == null ? route.primary === true : route.connectionId === backend.connectionId) && (!expected || sameRoute(route, expected)));
+  if (matches.length !== 1 || routeFields.some((key) => typeof matches[0][key] !== "string" || !matches[0][key])) {
+    throw failure("The exact maintaining profile route is unavailable or ambiguous", "offline");
+  }
+  return matches[0];
+}
 function createBotActions({ host: host5, backend, post, onStatus, isActive, userActivation = () => globalThis.navigator?.userActivation?.isActive === true }) {
   let current = null;
   let binding = null;
@@ -918,19 +929,12 @@ function createBotActions({ host: host5, backend, post, onStatus, isActive, user
     });
     return next;
   };
-  const pinned = (route) => route.profile === backend?.profile && (backend.connectionId == null ? route.primary === true : route.connectionId === backend.connectionId);
   async function registered(expected) {
     alive();
-    if (!backend?.api || typeof host5?.profileRoutes !== "function" || typeof host5?.retainProfile !== "function" || typeof host5?.requestProfile !== "function") {
-      throw failure("Native profile routing is unavailable in this Desktop", "offline");
-    }
-    const routes = await host5.profileRoutes();
+    if (typeof host5?.retainProfile !== "function") throw failure("Native profile routing is unavailable in this Desktop", "offline");
+    const route = await profileRoute(host5, backend, expected);
     alive();
-    const matches = routes.filter((route) => pinned(route) && (!expected || sameRoute(route, expected)));
-    if (matches.length !== 1 || routeFields.some((key) => typeof matches[0][key] !== "string" || !matches[0][key])) {
-      throw failure("The exact maintaining profile route is unavailable or ambiguous", "offline");
-    }
-    return matches[0];
+    return route;
   }
   async function rpc(route, method, params = {}) {
     const fresh = await registered(route);
@@ -1140,8 +1144,17 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
 }, onWrite = () => {
 }, onCloseError = (error) => console.warn("Space session cleanup failed", error) }) {
   const base = spacePath(sid);
-  const { api, connectionId, profile } = backend || {};
-  const lifecycleRest = api ? (path, options = {}) => api({ ...options, path: `/api/plugins/living-spaces${path}`, connectionId, profile, timeoutMs: options.method === "DELETE" ? 5e3 : void 0 }) : rest;
+  const scope = backend ? Object.freeze({ connectionId: backend.connectionId, profile: backend.profile }) : null;
+  const active = () => !scope || host5?.state?.connectionId?.get() === scope.connectionId && host5?.state?.profile?.get() === scope.profile;
+  const requireActive = () => {
+    if (!active()) throw new Error("The active backend changed. Reopen this Space.");
+  };
+  const scopedRequest = async (path, options) => {
+    requireActive();
+    const value = await rest(path, options);
+    requireActive();
+    return value;
+  };
   let closed = false;
   let session = null;
   let mounted = null;
@@ -1153,9 +1166,9 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
   const publish = (event) => onWrite(failures.values().next().value || (pendingWrites ? { status: "saving" } : event));
   const actions = host5 ? createBotActions({
     host: host5,
-    backend,
-    isActive: () => !closed,
-    post: (operation, body) => lifecycleRest(`${base}/actions/${operation}`, { method: "POST", body: { ...body, session } }),
+    backend: scope,
+    isActive: () => !closed && active(),
+    post: (operation, body) => scopedRequest(`${base}/actions/${operation}`, { method: "POST", body: { ...body, session } }),
     onStatus: (status) => {
       if (closed) return;
       onAction(status);
@@ -1167,7 +1180,11 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     closePromise ??= (async () => {
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          return await lifecycleRest(`${base}/sessions/${encodeURIComponent(session)}`, { method: "DELETE" });
+          if (active()) return await rest(`${base}/sessions/${encodeURIComponent(session)}`, { method: "DELETE", timeoutMs: 5e3 });
+          const route = await profileRoute(host5, scope);
+          const result = await host5.requestProfile(route, "plugin.living-spaces.close_session", { space_id: sid, session }, 5e3);
+          if (result?.closed !== true) throw new Error(result?.error?.message || "Space session cleanup was not confirmed");
+          return result;
         } catch (error) {
           if (/session_invalid/.test(errorCode(error))) return { closed: true };
           onCloseError(error);
@@ -1182,11 +1199,11 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     return closePromise;
   };
   const call = async (op, args, retryToken) => {
-    if (closed) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
+    if (closed || !active()) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
     if (op === "bot.request") {
       if (!actions) return { ok: false, error: { code: "blocked", message: "Native bot actions are unavailable" } };
       const result = await actions.request(args);
-      if (closed) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
+      if (closed || !active()) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
       return { ok: true, result };
     }
     const writing = ["data.put", "data.delete", "data.batch"].includes(op);
@@ -1211,12 +1228,12 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     let reply;
     let unknown = false;
     try {
-      reply = await rest(`${base}/bridge`, { method: "POST", body: { session, op, args } });
+      reply = await scopedRequest(`${base}/bridge`, { method: "POST", body: { session, op, args } });
     } catch (error) {
       unknown = true;
       reply = { ok: false, error: { code: "unavailable", message: error.message || String(error) } };
     }
-    if (closed) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
+    if (closed || !active()) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
     if (writing) {
       pendingWrites--;
       const retry = (next) => {
@@ -1234,15 +1251,19 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     return reply;
   };
   const ready = (async () => {
-    const opened = await lifecycleRest(`${base}/sessions`, { method: "POST" });
+    requireActive();
+    const opened = await rest(`${base}/sessions`, { method: "POST" });
     session = opened.session;
-    if (closed) return close();
+    if (closed || !active()) {
+      closed = true;
+      return close();
+    }
     try {
-      const bundle = await lifecycleRest(`${base}/bundle`);
+      const bundle = await scopedRequest(`${base}/bundle`);
       if (closed) return close();
       if (bundle.rev !== opened.head_rev) throw new Error("The Space changed while opening. Reload Space to open the current revision.");
       mounted = mount(container, { bundle, grants: opened.grants, call, onEvent: (event) => {
-        if (closed) return;
+        if (closed || !active()) return;
         if (event.kind === "write-rejected" && ["data.put", "data.delete", "data.batch"].includes(event.op)) {
           const failure2 = { status: "failed", token: ++nextWrite, op: event.op, reply: { ok: false, error: event.error } };
           failures.set(failure2.token, failure2);
@@ -1271,7 +1292,7 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
       publish(null);
     },
     postEvent(event, payload) {
-      if (!closed) mounted?.postEvent?.(event, payload);
+      if (!closed && active()) mounted?.postEvent?.(event, payload);
     },
     destroy() {
       closed = true;
@@ -1489,9 +1510,10 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
     }
   );
 }
-function SpaceView({ ctx, sid }) {
+function SpaceView({ ctx, scopeKey = null, scope, sessionRest, sid }) {
+  const { connectionId, profile } = scope || { connectionId: host2.state.connectionId.get(), profile: host2.state.profile.get() };
   const base = spacePath(sid);
-  const detail = useQuery5({ queryKey: ["living-spaces", ctx.queryScope || null, sid, "detail"], queryFn: () => ctx.rest(base), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "dataUpdatedAt"] });
+  const detail = useQuery5({ queryKey: ["living-spaces", scopeKey, sid, "detail"], queryFn: () => ctx.rest(base), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "dataUpdatedAt"] });
   const space = detail.data;
   const [frame, headerMode] = useHeaderMode(!!space);
   const [sheet, setSheet] = useState6(null);
@@ -1537,13 +1559,12 @@ function SpaceView({ ctx, sid }) {
     cursor.current = 0;
     setReady(false);
     setBotAction(null);
-    const [connectionId, profile] = ctx.queryScope ? JSON.parse(ctx.queryScope) : [host2.state.connectionId.get(), host2.state.profile.get()];
-    const backend = { api: window.hermesDesktop?.api, connectionId, profile };
+    const backend = { connectionId, profile };
     const session = createSpaceSession({
       backend,
       host: host2,
       onAction: (event) => !disposed && setBotAction(event),
-      rest: (path, options) => ctx.rest(path, options),
+      rest: sessionRest || ((path, options) => ctx.rest(path, options)),
       sid,
       container: content.current,
       mount: mountSpace,
@@ -1571,8 +1592,8 @@ Location: ${event.location || event.filename}` : ""}`));
       session.destroy().catch((e) => host2.notifyError(e, "A Space session could not be closed after retries."));
       if (controller.current === session) controller.current = null;
     };
-  }, [ctx, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
-  const changes = useQuery5({ queryKey: ["living-spaces", ctx.queryScope || null, sid, "changes", space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 });
+  }, [ctx, sessionRest, connectionId, profile, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
+  const changes = useQuery5({ queryKey: ["living-spaces", scopeKey, sid, "changes", space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 });
   useEffect2(() => {
     if (!hasData || !ready || !changes.data || !controller.current) return;
     const page = advanceCursor(cursor.current, changes.data);
@@ -1749,9 +1770,9 @@ Logged to this Space only. Common credential values redacted.` }),
         " can read this error and apply a new revision."
       ] })
     ] }) : archived ? /* @__PURE__ */ jsx6("div", { className: "ls-building", children: /* @__PURE__ */ jsx6("p", { children: "Restore Space to open its content. Your records and revisions are kept." }) }) : /* @__PURE__ */ jsx6("div", { ref: content, className: "ls-mount", "data-testid": "space-host" }) }) }),
-    sheet?.kind === "permissions" && /* @__PURE__ */ jsx6(PermissionsSheet, { returnFocus: sheet.returnFocus, ctx, space, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
-    sheet?.kind === "history" && /* @__PURE__ */ jsx6(HistorySheet, { returnFocus: sheet.returnFocus, ctx, space, initialTab: sheet.tab, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
-    sheet?.kind === "upkeep" && /* @__PURE__ */ jsx6(UpkeepSheet, { returnFocus: sheet.returnFocus, ctx, space, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
+    sheet?.kind === "permissions" && /* @__PURE__ */ jsx6(PermissionsSheet, { returnFocus: sheet.returnFocus, ctx, scopeKey, space, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
+    sheet?.kind === "history" && /* @__PURE__ */ jsx6(HistorySheet, { returnFocus: sheet.returnFocus, ctx, scopeKey, space, initialTab: sheet.tab, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
+    sheet?.kind === "upkeep" && /* @__PURE__ */ jsx6(UpkeepSheet, { returnFocus: sheet.returnFocus, ctx, scopeKey, space, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
     sheet?.kind === "compare" && write && /* @__PURE__ */ jsx6(Drawer, { returnFocus: sheet.returnFocus, title: "Compare record changes", description: "Your submitted change and the latest stored record", onClose: () => setSheet(null), children: /* @__PURE__ */ jsxs6("div", { className: "ls-compare", children: [
       /* @__PURE__ */ jsx6("h2", { children: "Your change" }),
       /* @__PURE__ */ jsx6("pre", { className: "ls-diagnostic", children: JSON.stringify(write.args, null, 2) }),
@@ -1792,10 +1813,16 @@ import { host as host3, useValue } from "@hermes/plugin-sdk";
 import { useMemo } from "react";
 var currentScope = () => JSON.stringify([host3.state.connectionId.get(), host3.state.profile.get()]);
 function useScopedContext(ctx) {
-  const connection = useValue(host3.state.connectionId);
+  const connectionId = useValue(host3.state.connectionId);
   const profile = useValue(host3.state.profile);
-  const queryScope = JSON.stringify([connection, profile]);
-  return useMemo(() => ({ ...ctx, queryScope, rest: scopedRest((path, options) => ctx.rest(path, options), currentScope, queryScope) }), [ctx, queryScope]);
+  const scopeKey = JSON.stringify([connectionId, profile]);
+  return useMemo(() => ({
+    ctx: { ...ctx, rest: scopedRest((path, options) => ctx.rest(path, options), currentScope, scopeKey) },
+    scopeKey,
+    scope: { connectionId, profile },
+    // Late-open tokens must survive a scope switch so cleanup can target their owner.
+    sessionRest: (path, options) => ctx.rest(path, options)
+  }), [ctx, scopeKey]);
 }
 
 // src/desktop/plugin.src.js
@@ -1808,11 +1835,11 @@ function SpacesPage({ ctx }) {
     return () => window.removeEventListener("hashchange", changed);
   }, []);
   const sid = routeSpace(hash);
-  return jsxs7("div", { className: "ls-root", children: [jsx7("style", { children: styles }), sid ? jsx7(SpaceView, { ctx: scoped, sid }, `${scoped.queryScope}:${sid}`) : jsx7(SpacesIndex, { ctx: scoped }, scoped.queryScope)] });
+  return jsxs7("div", { className: "ls-root", children: [jsx7("style", { children: styles }), sid ? jsx7(SpaceView, { ...scoped, sid }, `${scoped.scopeKey}:${sid}`) : jsx7(SpacesIndex, { ctx: scoped.ctx, scopeKey: scoped.scopeKey }, scoped.scopeKey)] });
 }
 function OpenSpaceCard({ ctx, sid }) {
   const scoped = useScopedContext(ctx);
-  const query = useQuery6({ queryKey: ["living-spaces", scoped.queryScope, sid, "detail"], queryFn: () => scoped.rest(spacePath(sid)), refetchInterval: 2e3 });
+  const query = useQuery6({ queryKey: ["living-spaces", scoped.scopeKey, sid, "detail"], queryFn: () => scoped.ctx.rest(spacePath(sid)), refetchInterval: 2e3 });
   if (!query.data) return query.error ? jsx7(ErrorState6, { title: "This Space could not be loaded", description: query.error.message }) : jsx7("span", { role: "status", children: "Loading Space\u2026" });
   const space = query.data;
   return jsxs7("div", { className: "ls-root ls-directive", children: [jsx7("style", { children: styles }), jsxs7("div", { className: "ls-card-top", children: [jsx7(SpaceTile, { space }), jsxs7("div", { children: [jsx7("strong", { children: space.name }), jsx7(OwnerChip, { owner: space.owner })] })] }), jsxs7("div", { className: "ls-actions", children: [jsx7(StatusPill, { status: spaceStatus(space) }), jsx7("span", { children: `Revision ${space.head_rev}` }), jsx7(Action, { primary: true, onClick: () => host4.navigate(spaceRoute(sid)), children: "Open Space" })] })] });

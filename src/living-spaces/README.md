@@ -68,7 +68,7 @@ The plugin needs no new credentials. The mediated network path never reads Herme
 
 Feed scheduling writes `<HERMES_HOME>/scripts/living-spaces-refresh-<space-id>.py` and creates a native cron job. Agent scheduling creates the native job without a feed script. Hermes executes the script or agent job under its normal runtime policy. Removing upkeep or deleting the Space removes associated future jobs and the feed script.
 
-Upkeep uses the private `cron.jobs` and `cron.executions` modules. Desktop session cleanup uses the raw `window.hermesDesktop` bridge to retain the original backend target. These integrations carry compatibility risk and catalog-review warnings. This is not an all-public-SDK or catalog-approved package.
+Upkeep uses the private `cron.jobs` and `cron.executions` modules. Desktop session cleanup uses public `ctx.rest` in the active scope and a pinned plugin RPC through `host.requestProfile` after a scope switch. Cross-scope cleanup requires the owning gateway to support `plugin-rpc-v1`; unsupported or ambiguous routes fail closed and report cleanup failure. These integrations carry compatibility risk and catalog-review warnings. This is not an all-public-SDK or catalog-approved package.
 
 Projects allow 25 MiB, 600 files, and 8 MiB per file. A Space allows 50,000 records, with 256 KiB of user data and 64 KiB of source data per record. Batches allow 500 operations; bridge messages allow 1 MiB. Runtime logs retain the latest 2,000 entries. These limits do not promise a total cap on retained revision storage.
 
