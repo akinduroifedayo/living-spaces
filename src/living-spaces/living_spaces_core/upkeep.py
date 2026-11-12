@@ -339,13 +339,25 @@ def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
         except SpacesError as failure:
             if not had_shim:
                 shim.unlink(missing_ok=True)
+            pause_failure = None
+            try:
+                _mutate("pause", jid, reason=f"Living Spaces upkeep replacement by {actor} failed")
+            except SpacesError as unpaused:
+                pause_failure = unpaused
             try:
                 _mutate("remove", jid)
             except SpacesError as cleanup:
+                if pause_failure is None:
+                    state = f"Disabling it succeeded before removal was attempted, but Job {jid} remains unlinked."
+                    extra = {}
+                else:
+                    state = (f"Disabling it also failed: {pause_failure.message}. "
+                             f"Job {jid} may still be enabled and consume quota, and it remains unlinked.")
+                    extra = {"pause": pause_failure.to_dict()}
                 raise SpacesError("blocked", f"{failure.message}; cleanup of the newly created Hermes cron job {jid} also failed: "
-                                  f"{cleanup.message}. Job {jid} may remain paused and unlinked.",
+                                  f"{cleanup.message}. {state}",
                                   reason="cron_cleanup_failed", orphan_job_id=jid,
-                                  original=failure.to_dict(), cleanup=cleanup.to_dict()) from failure
+                                  original=failure.to_dict(), cleanup=cleanup.to_dict(), **extra) from failure
             raise
         if kind == "agent":
             shim.unlink(missing_ok=True)
