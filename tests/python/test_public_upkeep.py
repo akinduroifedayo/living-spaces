@@ -199,10 +199,6 @@ class PublicUpkeepTests(unittest.TestCase):
                 fx.projects.delete_space(sid, actor="user", confirm=sid)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class SyntheticPublicUpkeepRepairTests(unittest.TestCase):
 
     def setUp(self):
@@ -571,3 +567,7 @@ class PostResumeCompensationTests(unittest.TestCase):
         self.assertEqual(fx.upkeep.get_upkeep(unrelated), unrelated_state)
         self.assertEqual(fx.cron.get_job(unrelated_jid), unrelated_job)
         self.assertEqual(fx.upkeep._shim(unrelated).read_bytes(), unrelated_shim)
+
+
+if __name__ == "__main__":
+    unittest.main()

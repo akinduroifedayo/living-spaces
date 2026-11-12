@@ -130,19 +130,31 @@ def _jobs():
 
 
 def _mutate(action, jid, **args):
+    result = None
+    failure = None
     try:
         result = _call(action, job_id=jid, **args)
-    except SpacesError as refusal:
-        absent = False
-        if action == "remove" and refusal.extra.get("reason") == "native_refused":
-            try:
-                absent = all(job["job_id"] != jid for job in _jobs()["jobs"])
-            except SpacesError:
-                pass
-        if not absent:
+    except SpacesError as exc:
+        if action != "remove":
             raise
-        return {"success": True, "already_absent": True, "native": refusal.extra.get("native")}
-    job = next((job for job in _jobs()["jobs"] if job["job_id"] == jid), None)
+        failure = exc
+        failure.extra.update(action=action, job_id=jid)
+    try:
+        job = next((job for job in _jobs()["jobs"] if job["job_id"] == jid), None)
+    except SpacesError as verification:
+        if action != "remove":
+            raise
+        message = f"{failure.message}; " if failure else ""
+        raise SpacesError("blocked", f"{message}Hermes cron remove outcome for job {jid} is unknown: "
+                          f"{verification.message}", reason="cron_remove_outcome_unknown",
+                          action=action, job_id=jid,
+                          native=failure.extra.get("native") if failure else result,
+                          original=failure.to_dict() if failure else result,
+                          verification=verification.to_dict()) from verification
+    if failure:
+        if job is not None:
+            raise failure
+        return {"success": True, "already_absent": True, "native": failure.extra.get("native")}
     if action == "remove":
         valid = job is None
     elif action == "pause":
@@ -152,7 +164,8 @@ def _mutate(action, jid, **args):
     else:
         valid = True  # A one-shot may already have completed and disappeared.
     if not valid:
-        raise SpacesError("blocked", f"Hermes cron {action} could not be verified", reason="cron_unverified", native=result)
+        raise SpacesError("blocked", f"Hermes cron {action} could not be verified", reason="cron_unverified",
+                          action=action, job_id=jid, native=result)
     return result
 
 
@@ -256,22 +269,30 @@ def _job(job):
     }
 
 
+def _owned_jobs(sid, link, jobs):
+    linked_id = link["cron_job_id"] if link else None
+    names = (f"living-spaces:{sid}", _once_name(sid))
+    return [job for job in jobs if job["job_id"] == linked_id or job.get("name") in names]
+
+
 def _read(sid):
     with db.read() as conn:
         _space(conn, sid)
         link = _link(conn, sid)
-    result = {"link": link, "job": None, "executions": [], "one_shots": [], "missing": False,
+    result = {"link": link, "job": None, "executions": [], "one_shots": [], "orphan_jobs": [], "missing": False,
               "error": None, "unavailable": dict(UNAVAILABLE)}
     try:
         listed = _jobs()
     except SpacesError as exc:
         result["error"] = exc.message
         return result
-    jobs = listed["jobs"]
+    jobs = _owned_jobs(sid, link, listed["jobs"])
     result["gateway_running"] = listed.get("gateway_running")
     result["warning"] = listed.get("warning")
     result["one_shots"] = [dict(_job(job), executions=[]) for job in jobs
                            if job.get("name") == _once_name(sid)][:ONE_SHOT_LIMIT]
+    result["orphan_jobs"] = [_job(job) for job in jobs if job.get("name") == f"living-spaces:{sid}"
+                             and (not link or job["job_id"] != link["cron_job_id"])]
     if link:
         job = next((job for job in jobs if job["job_id"] == link["cron_job_id"]), None)
         result["missing"] = job is None
@@ -286,12 +307,17 @@ def get_upkeep(sid):
 def summary(sid):
     state = _read(sid)
     if state["link"] is None:
-        return None
+        return ({"cron_job_id": None, "kind": None, "enabled": None, "state": "recovery",
+                 "next_run_at": None, "missing": False, "orphan_jobs": state["orphan_jobs"]}
+                if state["orphan_jobs"] else None)
     job = state["job"] or {}
     kind = ("agent" if job["uses_model"] else "feed") if state["job"] else state["link"]["kind"]
-    return {"cron_job_id": state["link"]["cron_job_id"], "kind": kind,
-            "enabled": job.get("enabled"), "state": job.get("state"),
-            "next_run_at": job.get("next_run_at"), "missing": state["missing"]}
+    result = {"cron_job_id": state["link"]["cron_job_id"], "kind": kind,
+              "enabled": job.get("enabled"), "state": job.get("state"),
+              "next_run_at": job.get("next_run_at"), "missing": state["missing"]}
+    if state["orphan_jobs"]:
+        result["orphan_jobs"] = state["orphan_jobs"]
+    return result
 
 
 def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
@@ -319,6 +345,12 @@ def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
             if revision is None or (json.loads(revision["manifest"]).get("upkeep") or {}).get("handler") != "feed":
                 raise SpacesError("invalid", "Feed upkeep needs upkeep.handler feed in the Space manifest")
         old = _link(conn, sid)
+        orphans = [job["job_id"] for job in _owned_jobs(sid, old, _jobs()["jobs"])
+                   if job.get("name") == f"living-spaces:{sid}"
+                   and (not old or job["job_id"] != old["cron_job_id"])]
+        if orphans:
+            raise SpacesError("blocked", "Pause/remove this Space's unlinked recurring upkeep jobs before scheduling again: "
+                              + ", ".join(orphans), reason="upkeep_recovery_required", orphan_job_ids=orphans)
         shim = _shim(sid)
         had_shim = shim.exists()
         if kind == "feed":
@@ -328,8 +360,8 @@ def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
         try:
             jid = _create(**mode, schedule=cadence, name=f"living-spaces:{sid}", deliver="local",
                           catch_up=True, timezone=timezone, paused=True)
-        except SpacesError:
-            if not had_shim:
+        except SpacesError as failure:
+            if not had_shim and not failure.extra.get("orphan_job_id"):
                 shim.unlink(missing_ok=True)
             raise
         try:
@@ -337,8 +369,15 @@ def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
             if old and any(job["job_id"] == old["cron_job_id"] for job in _jobs()["jobs"]):
                 _mutate("remove", old["cron_job_id"])
         except SpacesError as failure:
-            if not had_shim:
-                shim.unlink(missing_ok=True)
+            if (old and failure.extra.get("reason") == "cron_remove_outcome_unknown"
+                    and failure.extra.get("job_id") == old["cron_job_id"]):
+                raise SpacesError("blocked", f"{failure.message}. Replacement was not committed. "
+                                  f"Candidate {jid} is retained unlinked, last confirmed enabled. "
+                                  f"The SQLite link remains {old['cron_job_id']}, which may be missing natively. "
+                                  "Both jobs may run. Use Pause/Remove to recover before scheduling again.",
+                                  reason="cron_remove_outcome_unknown", old_job_id=old["cron_job_id"],
+                                  orphan_job_id=jid, retained_job={"id": jid, "enabled": True},
+                                  original=failure.to_dict()) from failure
             pause_failure = None
             try:
                 _mutate("pause", jid, reason=f"Living Spaces upkeep replacement by {actor} failed")
@@ -358,6 +397,8 @@ def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
                                   f"{cleanup.message}. {state}",
                                   reason="cron_cleanup_failed", orphan_job_id=jid,
                                   original=failure.to_dict(), cleanup=cleanup.to_dict(), **extra) from failure
+            if not had_shim:
+                shim.unlink(missing_ok=True)
             raise
         if kind == "agent":
             shim.unlink(missing_ok=True)
@@ -388,17 +429,28 @@ def upkeep_action(sid, action, *, actor):
     with db.write() as conn:
         status = _space(conn, sid)["status"]
         link = _link(conn, sid)
-        if link is None:
-            raise SpacesError("not_found", "No upkeep scheduled")
-        if action in ("resume", "run") and status == "archived":
-            raise SpacesError("archived", "Unarchive the Space before running upkeep")
-        if action != "run":
+        if action in ("resume", "run"):
+            if link is None:
+                raise SpacesError("not_found", "No upkeep scheduled")
+            if status == "archived":
+                raise SpacesError("archived", "Unarchive the Space before running upkeep")
+            if action == "resume":
+                _mutate(action, link["cron_job_id"])
+        else:
+            targets = _owned_jobs(sid, link, _jobs()["jobs"])
+            if link is None and not targets:
+                raise SpacesError("not_found", "No upkeep scheduled")
             args = {"reason": f"Paused from Living Spaces by {actor}"} if action == "pause" else {}
-            _mutate(action, link["cron_job_id"], **args)
+            for jid in sorted(job["job_id"] for job in targets):
+                _mutate(action, jid, **args)
+            remaining = _owned_jobs(sid, link, _jobs()["jobs"])
+            if ((action == "remove" and remaining)
+                    or (action == "pause" and any(job.get("enabled") is not False for job in remaining))):
+                raise SpacesError("blocked", f"This Space's upkeep {action} could not be verified", reason="cron_unverified")
         if action == "remove":
             _shim(sid).unlink(missing_ok=True)
             conn.execute("DELETE FROM upkeep_links WHERE space=?", (sid,))
-    native = _run_now(sid, link["cron_job_id"]) if action == "run" else None
+    native = _run_now(sid, link["cron_job_id"]) if action == "run" and link is not None else None
     result = get_upkeep(sid)
     if action == "run":
         result["dispatch"] = native
@@ -419,9 +471,16 @@ def refresh_now(sid, upkeep, *, actor):
             jid = link["cron_job_id"]
     try:
         native = _run_now(sid, jid)
-    except SpacesError:
-        if created and any(job["job_id"] == jid for job in _jobs()["jobs"]):
-            _mutate("remove", jid)
+    except SpacesError as failure:
+        if created:
+            try:
+                if any(job["job_id"] == jid for job in _jobs()["jobs"]):
+                    _mutate("remove", jid)
+            except SpacesError as cleanup:
+                raise SpacesError("blocked", f"{failure.message}; cleanup of the newly created Hermes cron job {jid} also failed: "
+                                  f"{cleanup.message}. Job {jid} may remain unlinked.",
+                                  reason="cron_cleanup_failed", orphan_job_id=jid,
+                                  original=failure.to_dict(), cleanup=cleanup.to_dict()) from failure
         raise
     return {"kind": "cron", "cron_job_id": jid, "dispatch": native}
 
@@ -429,12 +488,11 @@ def refresh_now(sid, upkeep, *, actor):
 def pause_for_archive(conn, sid):
     link = _link(conn, sid)
     try:
-        jobs = _jobs()["jobs"]
-        targets = {job["job_id"] for job in jobs if job.get("name") == _once_name(sid)}
-        if link and any(job["job_id"] == link["cron_job_id"] for job in jobs):
-            targets.add(link["cron_job_id"])
+        targets = {job["job_id"] for job in _owned_jobs(sid, link, _jobs()["jobs"])}
         for jid in sorted(targets):
             _mutate("pause", jid, reason="Living Space archived")
+        if any(job.get("enabled") is not False for job in _owned_jobs(sid, link, _jobs()["jobs"])):
+            raise SpacesError("blocked", "This Space's upkeep pause could not be verified", reason="cron_unverified")
     except SpacesError as exc:
         raise SpacesError("blocked", "Could not pause this Space's upkeep, so it was not archived", reason=exc.message) from exc
 
@@ -443,12 +501,11 @@ def on_delete(conn, sid):
     """Remove future native work within the caller's Space deletion transaction."""
     _space(conn, sid)
     link = _link(conn, sid)
-    jobs = _jobs()["jobs"]
-    targets = {job["job_id"] for job in jobs if job.get("name") == _once_name(sid)}
-    if link and any(job["job_id"] == link["cron_job_id"] for job in jobs):
-        targets.add(link["cron_job_id"])
+    targets = {job["job_id"] for job in _owned_jobs(sid, link, _jobs()["jobs"])}
     for jid in sorted(targets):
         _mutate("remove", jid)
+    if _owned_jobs(sid, link, _jobs()["jobs"]):
+        raise SpacesError("blocked", "This Space's upkeep removal could not be verified", reason="cron_unverified")
     _shim(sid).unlink(missing_ok=True)
     conn.execute("DELETE FROM upkeep_links WHERE space=?", (sid,))
     return link is not None
