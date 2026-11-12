@@ -36,7 +36,7 @@ class ResidualTests(stock.FileRefCase):
 
     def test_public_token_named_asset(self):
         css = b':root { --accent: #e51f4c; }'
-        source = self.place(self.home, 'repo/design/tokens.css', css)
+        source = self.place(self.tmp, 'repo/design/tokens.css', css)
         reply = self.call('spaces_create', name='Design tokens', libraries=[], files={
             'index.html': '<link rel="stylesheet" href="tokens.css">', 'tokens.css': {'from_path': source}})
         self.assertTrue(reply['ok'], reply)
@@ -72,7 +72,7 @@ class ResidualTests(stock.FileRefCase):
             'secrets-of-design.md': b'Public design notes.',
             'art.png': stock.PNG,
         }
-        sid = self.create({name: {'from_path': self.place(self.home, 'repo/assets/' + name, data)}
+        sid = self.create({name: {'from_path': self.place(self.tmp, 'repo/assets/' + name, data)}
                            for name, data in assets.items()})['space']
         for name, data in assets.items():
             with self.subTest(name=name):

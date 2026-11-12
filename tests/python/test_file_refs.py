@@ -9,7 +9,7 @@ import types
 import unittest
 from unittest.mock import Mock, patch
 
-from .test_c_tools import PACKAGE, PNG, ROOT, core, plugin
+from .test_c_tools import PACKAGE, PNG, core, plugin
 
 from living_spaces_core import limits, net
 
@@ -39,8 +39,7 @@ class Response:
 
 class FileRefCase(unittest.TestCase):
     def setUp(self):
-        (ROOT / ".run").mkdir(exist_ok=True)
-        temp = tempfile.TemporaryDirectory(prefix="file-refs-", dir=ROOT / ".run")
+        temp = tempfile.TemporaryDirectory(prefix="file-refs-")
         self.addCleanup(temp.cleanup)
         base = Path(os.path.realpath(temp.name))
         self.hermes, self.home, self.tmp, self.outside = (base / n for n in ("hermes", "home", "tmp", "outside"))
@@ -116,14 +115,14 @@ class FromPathTests(FileRefCase):
         bundle = core.bundle(sid)
         self.assertEqual({f["path"]: f["mime"] for f in bundle["files"]}["images/art2.png"], "image/png")
 
-    def test_all_three_roots_are_accepted(self):
-        for root in (self.hermes, self.home, self.tmp):
+    def test_cache_scratch_and_temp_roots_are_accepted(self):
+        for root in (self.hermes / "cache/images", self.hermes / "cache/scratch", self.tmp):
             with self.subTest(root=root.name):
                 self.create({"images/art.png": {"from_path": self.place(root, "pic.png")}})
 
     def test_mixed_b64_and_from_path_in_one_call(self):
         raw = b"\x89inline"
-        sid = self.create({"images/art.png": {"from_path": self.place(self.home, "a.png")},
+        sid = self.create({"images/art.png": {"from_path": self.place(self.tmp, "a.png")},
                            "images/small.webp": {"b64": base64.b64encode(raw).decode()}})["space"]
         self.assertEqual(self.read_bytes(sid, "images/art.png"), PNG)
         self.assertEqual(self.read_bytes(sid, "images/small.webp"), raw)
@@ -139,8 +138,8 @@ class FromPathTests(FileRefCase):
             "Spaces database": (str(self.hermes / "spaces.db"), "blocked"),
             "outside roots": (self.place(self.outside, "art.png"), "blocked"),
             "relative path": ("art.png", "invalid"),
-            "directory": (str(self.home), "invalid"),
-            "missing": (str(self.home / "nope.png"), "invalid"),
+            "directory": (str(self.tmp), "invalid"),
+            "missing": (str(self.tmp / "nope.png"), "invalid"),
         }
         self.create({})
         for label, (path, code) in cases.items():
@@ -150,12 +149,12 @@ class FromPathTests(FileRefCase):
                 self.assertTrue(error["message"].startswith("images/art.png: "), error)
 
     def test_symlink_escaping_roots_and_symlink_to_credentials_are_refused(self):
-        escape = self.home / "escape.png"
+        escape = self.tmp / "escape.png"
         escape.symlink_to(self.place(self.outside, "art-outside.png"))
         error = self.refused("blocked", "spaces_create", name="Link Demo", description="x",
                              files={"index.html": HTML, "a.png": {"from_path": str(escape)}})
         self.assertEqual(error["reason"], "outside_roots")
-        disguised = self.home / "art.png"
+        disguised = self.tmp / "art.png"
         disguised.symlink_to(self.place(self.hermes, "auth.json", b"{}"))
         error = self.refused("blocked", "spaces_create", name="Link Demo", description="x",
                              files={"index.html": HTML, "a.png": {"from_path": str(disguised)}})
@@ -171,17 +170,17 @@ class FromPathTests(FileRefCase):
         self.assertEqual(error["limit"], limits.FILE_BYTES)
 
     def test_bad_entry_rolls_back_the_whole_write(self):
-        sid = self.create({"images/art.png": {"from_path": self.place(self.home, "a.png")}})["space"]
+        sid = self.create({"images/art.png": {"from_path": self.place(self.tmp, "a.png")}})["space"]
         head = core.get_space(sid)["head_rev"]
         self.refused("blocked", "spaces_write_files", space=sid, summary="Mixed",
-                     files={"index.html": "<p>changed</p>", "images/new.png": {"from_path": self.place(self.home, "b.png")},
+                     files={"index.html": "<p>changed</p>", "images/new.png": {"from_path": self.place(self.tmp, "b.png")},
                             "images/bad.png": {"from_path": self.place(self.hermes, ".env", b"x")}})
         self.assertEqual(core.get_space(sid)["head_rev"], head)
         self.assertEqual(self.read_bytes(sid, "index.html").decode(), HTML)
         self.assertNotIn("images/new.png", {f["path"] for f in core.list_files(sid)})
 
     def test_descriptor_must_have_exactly_one_source(self):
-        path = self.place(self.home, "a.png")
+        path = self.place(self.tmp, "a.png")
         for value in ({"from_path": path, "from_url": "https://example.com/a.png"},
                       {"from_path": path, "b64": ""}, {"mime": "image/png"}, {"from_path": 1}):
             with self.subTest(value=value):

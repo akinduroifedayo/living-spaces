@@ -12,16 +12,28 @@ from urllib.parse import urlsplit, urlunsplit
 from . import db, limits, net
 from .errors import SpacesError
 
-DENIED_NAMES = (".env", ".env.*", "auth.json", ".credentials.json", "credentials.json", "*.key",
+CACHE_SUBDIRS = (
+    "cache/images", "cache/documents", "cache/screenshots", "cache/vision",
+    "cache/video", "cache/videos", "cache/generated/images", "downloads/connectors",
+    "images", "cache/scratch",
+)
+LEGACY_CACHE_SUBDIRS = (
+    "image_cache", "document_cache", "browser_screenshots", "temp_vision_images",
+    "temp_video_files", "video_cache",
+)
+DENIED_NAMES = (".env", ".env.*", ".envrc", "auth.json", ".credentials.json", "credentials.json", "*.key",
                 ".netrc", "_netrc", ".npmrc", ".git-credentials", ".gitconfig", ".boto", ".pypirc") + tuple(
     stem + extension
     for stem in ("token", "tokens", ".token", ".tokens", "*[._-]token", "*[._-]tokens",
                  "secret", "secrets", ".secret", ".secrets", "*[._-]secret", "*[._-]secrets")
     for extension in ("", ".json", ".txt", ".yaml", ".yml", ".toml")
 )
-DENIED_DIRS = (".ssh", ".aws", ".docker", ".kube", ".gnupg", ".git")
+DENIED_DIRS = (".ssh", ".aws", ".docker", ".kube", ".gnupg", ".git", ".azure", ".gcloud",
+               ".claude", ".codex", ".cursor", ".gemini", ".aider", ".continue", ".codeium",
+               ".openclaw", ".pi", ".qwen", ".copilot", ".windsurf")
 DENIED_STORES = tuple(tuple(path.lower().split("/")) for path in (
     ".config/gh", ".config/gcloud", ".config/git", ".config/google-chrome", ".config/chromium",
+    ".config/opencode", ".local/share/opencode",
     ".config/BraveSoftware", ".config/microsoft-edge", ".mozilla/firefox",
     "Library/Keychains", "Library/Safari", "Library/Application Support/Google/Chrome",
     "Library/Application Support/Chromium", "Library/Application Support/BraveSoftware",
@@ -39,15 +51,42 @@ def _real(path) -> Path:
 
 
 def _roots():
-    roots = [Path(os.path.abspath(root)) for root in (db.hermes_home(), tempfile.gettempdir(), Path.home())]
-    return roots, [_real(root) for root in roots]
+    home = Path(os.path.abspath(db.hermes_home()))
+    real_home = _real(home)
+    roots = []
+    for subdir in (*CACHE_SUBDIRS, *LEGACY_CACHE_SUBDIRS):
+        root, resolved = home / subdir, real_home / subdir
+        # A cache symlink must not redefine the allowlist's boundary.
+        if _real(root) != resolved:
+            continue
+        if subdir in LEGACY_CACHE_SUBDIRS:
+            try:
+                if not root.is_dir() or next(root.iterdir(), None) is None:
+                    continue
+            except OSError:
+                continue
+        roots.extend((root, resolved))
+    return roots
+
+
+def _hermes_homes():
+    homes = {Path(os.path.abspath(db.hermes_home())), Path.home() / ".hermes"}
+    homes.update(_real(home) for home in tuple(homes))
+    for home in tuple(homes):
+        if home.parent.name == "profiles":
+            homes.add(home.parent.parent)
+    return homes
 
 
 def _within(path: Path, root: Path) -> bool:
     return path == root or root in path.parents
 
 
-def _denied(path: Path) -> bool:
+def _denied(path: Path, cache_roots) -> bool:
+    # TMPDIR never grants access to the rest of any Hermes home or its profiles.
+    if (any(_within(path, home) for home in _hermes_homes())
+            and not any(_within(path, root) for root in cache_roots)):
+        return True
     parts = tuple(part.lower() for part in path.parts)
     if any(part in DENIED_DIRS for part in parts):
         return True
@@ -71,15 +110,22 @@ def _identity(info):
 def read_path(raw: str, *, max_bytes=None) -> bytes:
     if not isinstance(raw, str) or not raw or "\x00" in raw or not os.path.isabs(raw):
         raise SpacesError("invalid", "from_path must be an absolute local path")
-    original = Path(os.path.normpath(raw))
+    if ".." in Path(raw).parts:
+        raise SpacesError("blocked", "from_path cannot contain parent traversal", reason="outside_roots")
+    original = Path(raw)
     resolved = _real(raw)
-    if _denied(original) or _denied(resolved):
+    cache_roots = _roots()
+    if _denied(original, cache_roots) or _denied(resolved, cache_roots):
         raise SpacesError("blocked", "from_path points at a credential or Spaces store file", reason="denied_path")
-    roots, resolved_roots = _roots()
-    if (not any(_within(original, root) for root in (*roots, *resolved_roots))
-            or not any(_within(resolved, root) for root in resolved_roots)):
-        raise SpacesError("blocked", "from_path must be inside the Hermes home, the temp folder or your home folder",
-                          reason="outside_roots")
+    roots = list(cache_roots)
+    temp = Path(os.path.abspath(tempfile.gettempdir()))
+    real_temp = _real(temp)
+    if not any(_within(_real(home), real_temp) for home in (*_hermes_homes(), Path.home())):
+        roots.extend((temp, real_temp))
+    if (not any(_within(original, root) for root in roots)
+            or not any(_within(resolved, root) for root in roots)):
+        raise SpacesError("blocked", "from_path must be inside a supported Hermes media/download cache or temp folder; "
+                          "stage authorized files with native tools first", reason="outside_roots")
     if not _HAS_SECURE_OPEN:
         raise SpacesError("blocked", "Local imports require descriptor-relative no-follow and nonblocking opens",
                           reason="unsupported_platform")

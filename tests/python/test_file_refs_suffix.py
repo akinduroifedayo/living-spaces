@@ -13,7 +13,7 @@ class CredentialSuffixTests(FileRefCase):
 
     def test_public_design_tokens_still_import(self):
         data = b':root { --ink: blue; }'
-        path = self.place(self.home, 'repo/design/tokens.css', data)
+        path = self.place(self.tmp, 'repo/design/tokens.css', data)
         reply = self.call('spaces_create', name='Public asset control', libraries=[], files={
             'tokens.css': {'from_path': path}})
         self.assertTrue(reply['ok'], reply)
@@ -32,7 +32,7 @@ class ConventionalCredentialStoreTests(FileRefCase):
         from .test_file_refs import core
 
         css = b':root { --ink: blue; }'
-        public = self.place(self.home, 'repo/design/tokens.css', css)
+        public = self.place(self.tmp, 'repo/design/tokens.css', css)
         sid = self.create({'tokens.css': {'from_path': public}, 'keep.txt': 'Keep me'})['space']
         before = (core.list_spaces(), core.get_space(sid), core.list_revisions(sid), core.bundle(sid))
         source = self.place(self.home, '.claude/.credentials.json', b'{"synthetic": "CREDENTIAL-FIXTURE"}')
@@ -77,12 +77,12 @@ class ConventionalCredentialStoreTests(FileRefCase):
         from .test_file_refs import core
 
         original = b':root { --ink: blue; }'
-        source = self.place(self.home, 'repo/design/tokens.css', original)
+        source = self.place(self.tmp, 'repo/design/tokens.css', original)
         sid = self.create({'tokens.css': {'from_path': source}})['space']
         head = core.get_space(sid)['head_rev']
         self.assertEqual(self.read_bytes(sid, 'tokens.css'), original)
         updated = b':root { --ink: green; }'
-        source = self.place(self.home, 'repo/design/tokens.css', updated)
+        source = self.place(self.tmp, 'repo/design/tokens.css', updated)
         self.ok('spaces_write_files', space=sid, summary='Update public design tokens', base_rev=head,
                 files={'tokens.css': {'from_path': source}})
         self.assertEqual(core.get_space(sid)['head_rev'], head + 1)

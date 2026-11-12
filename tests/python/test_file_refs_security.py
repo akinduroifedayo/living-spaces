@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import unittest
@@ -42,22 +43,26 @@ class CredentialTests(stock.FileRefCase):
         self.assertEqual(stock.core.list_spaces(), [])
 
     def test_original_credential_alias_cannot_point_to_public_bytes(self):
-        safe = self.place(self.home, 'public.png')
+        safe = self.place(self.tmp, 'public.png')
         source = self.home / '.aws/credentials'
         source.parent.mkdir()
         source.symlink_to(safe)
         self.refused('blocked', 'spaces_create', name='Original path', libraries=[],
                      files={'a.png': {'from_path': str(source)}})
 
-    def test_legitimate_bot_files_are_not_generated_only(self):
+    def test_arbitrary_authorized_files_can_be_staged_with_native_tools(self):
         for name in ('Downloads/manual.pdf', 'repo/src/library.mjs', '.config/my-app/theme.css'):
             source = self.place(self.home, name, b'public content')
-            result = self.create({'a.bin': {'from_path': source}})
+            self.refused('blocked', 'spaces_create', name='Unstaged source', libraries=[],
+                         files={'a.bin': {'from_path': source}})
+            staged = self.tmp / Path(name).name
+            shutil.copyfile(source, staged)
+            result = self.create({'a.bin': {'from_path': str(staged)}})
             self.assertEqual(self.read_bytes(result['space'], 'a.bin'), b'public content')
 
     def test_original_outside_alias_to_allowed_file_is_blocked(self):
         source = self.outside / 'alias.png'
-        source.symlink_to(self.place(self.home, 'art.png'))
+        source.symlink_to(self.place(self.tmp, 'art.png'))
         self.refused('blocked', 'spaces_create', name='Outside alias', libraries=[],
                      files={'a.png': {'from_path': str(source)}})
 
@@ -77,7 +82,7 @@ class DescriptorReadTests(stock.FileRefCase):
         return patch.object(file_refs.os, 'stat', side_effect=race), swaps
 
     def test_leaf_symlink_swap_is_refused(self):
-        source = Path(self.place(self.home, 'art.png'))
+        source = Path(self.place(self.tmp, 'art.png'))
         target = self.place(self.outside, '.env', b'SYNTHETIC-OUTSIDE')
 
         def change():
@@ -92,11 +97,11 @@ class DescriptorReadTests(stock.FileRefCase):
         self.assertEqual(stock.core.list_spaces(), [])
 
     def test_ancestor_symlink_swap_is_refused(self):
-        source = Path(self.place(self.home, 'assets/art.png'))
+        source = Path(self.place(self.tmp, 'assets/art.png'))
         self.place(self.outside, 'art.png', b'SYNTHETIC-OUTSIDE')
 
         def change():
-            source.parent.rename(self.home / 'original-assets')
+            source.parent.rename(self.tmp / 'original-assets')
             source.parent.symlink_to(self.outside, target_is_directory=True)
 
         seam, swaps = self.swap_after_stat(source, change)
@@ -107,8 +112,8 @@ class DescriptorReadTests(stock.FileRefCase):
         self.assertEqual(stock.core.list_spaces(), [])
 
     def test_regular_leaf_replacement_is_refused(self):
-        source = Path(self.place(self.home, 'art.png'))
-        replacement = Path(self.place(self.home, 'replacement.png', b'other regular bytes'))
+        source = Path(self.place(self.tmp, 'art.png'))
+        replacement = Path(self.place(self.tmp, 'replacement.png', b'other regular bytes'))
         seam, swaps = self.swap_after_stat(source, lambda: replacement.replace(source))
         with seam:
             self.refused('invalid', 'spaces_create', name='Regular swap', libraries=[],
@@ -116,7 +121,7 @@ class DescriptorReadTests(stock.FileRefCase):
         self.assertEqual(len(swaps), 1)
 
     def test_size_growth_after_stat_is_refused(self):
-        source = Path(self.place(self.home, 'art.png', b'initial'))
+        source = Path(self.place(self.tmp, 'art.png', b'initial'))
         seam, swaps = self.swap_after_stat(source, lambda: source.write_bytes(b'grown after validation'))
         with seam:
             self.refused('invalid', 'spaces_create', name='Growth', libraries=[],
@@ -134,13 +139,13 @@ class DescriptorReadTests(stock.FileRefCase):
         self.assertIn('REFUSED', result.stdout)
 
     def test_secure_open_capability_absence_fails_closed(self):
-        source = self.place(self.home, 'art.png')
+        source = self.place(self.tmp, 'art.png')
         with patch.object(file_refs, '_HAS_SECURE_OPEN', False, create=True):
             self.refused('blocked', 'spaces_create', name='Unsupported platform', libraries=[],
                          files={'a.png': {'from_path': source}})
 
     def test_opened_descriptors_close_on_success_and_refusal(self):
-        source = self.place(self.home, 'art.png')
+        source = self.place(self.tmp, 'art.png')
         original = os.open
         descriptors = []
 
@@ -165,9 +170,9 @@ class DescriptorReadTests(stock.FileRefCase):
                     os.fstat(fd)
 
     def test_static_fifo_and_directory_are_refused(self):
-        fifo = self.home / 'pipe.bin'
+        fifo = self.tmp / 'pipe.bin'
         os.mkfifo(fifo)
-        for source in (fifo, self.home):
+        for source in (fifo, self.tmp):
             with self.subTest(source=source.name):
                 self.refused('invalid', 'spaces_create', name='Nonregular', libraries=[],
                              files={'a.bin': {'from_path': str(source)}})
@@ -204,7 +209,7 @@ class ProvenanceTests(stock.FileRefCase):
 
 class ExpansionBudgetTests(stock.FileRefCase):
     def test_invalid_destination_is_rejected_before_any_source_read(self):
-        source = self.place(self.home, 'art.png')
+        source = self.place(self.tmp, 'art.png')
         with patch.object(file_refs, 'read_path', wraps=file_refs.read_path) as reads:
             self.refused('invalid', 'spaces_create', name='Bad destination', libraries=[],
                          files={'a.png': {'from_path': source}, '../escape.png': {'from_path': source}})
@@ -212,14 +217,14 @@ class ExpansionBudgetTests(stock.FileRefCase):
         self.assertEqual(stock.core.list_spaces(), [])
 
     def test_count_is_rejected_before_any_source_read(self):
-        source = self.place(self.home, 'art.png')
+        source = self.place(self.tmp, 'art.png')
         with patch.object(file_refs, 'read_path', wraps=file_refs.read_path) as reads:
             self.refused('limit', 'spaces_create', name='Too many files', libraries=[],
                          files={f'{i}.png': {'from_path': source} for i in range(limits.PROJECT_FILES + 1)})
         self.assertEqual(reads.call_count, 0)
 
     def test_accumulated_decoded_bytes_stop_later_reads(self):
-        source = self.place(self.home, 'art.png', b'x' * 100)
+        source = self.place(self.tmp, 'art.png', b'x' * 100)
         with patch.object(limits, 'PROJECT_BYTES', 250):
             with patch.object(file_refs, 'read_path', wraps=file_refs.read_path) as reads:
                 self.refused('limit', 'spaces_create', name='Budget', libraries=[],
@@ -229,7 +234,7 @@ class ExpansionBudgetTests(stock.FileRefCase):
 
     def test_retained_existing_bytes_reduce_expansion_budget(self):
         sid = self.create({'old.bin': {'b64': base64.b64encode(b'o' * 100).decode()}})['space']
-        source = self.place(self.home, 'art.png', b'x' * 100)
+        source = self.place(self.tmp, 'art.png', b'x' * 100)
         with patch.object(limits, 'PROJECT_BYTES', len(stock.HTML.encode()) + 250):
             with patch.object(file_refs, 'read_path', wraps=file_refs.read_path) as reads:
                 self.refused('limit', 'spaces_write_files', space=sid, summary='No change',
@@ -240,7 +245,7 @@ class ExpansionBudgetTests(stock.FileRefCase):
     def test_replacements_and_deletions_use_final_state_budget(self):
         sid = self.create({'old.bin': {'b64': base64.b64encode(b'o' * 100).decode()},
                            'delete.bin': {'b64': base64.b64encode(b'd' * 100).decode()}})['space']
-        source = self.place(self.home, 'art.bin', b'x' * 150)
+        source = self.place(self.tmp, 'art.bin', b'x' * 150)
         with patch.object(limits, 'PROJECT_BYTES', len(stock.HTML.encode()) + 160):
             self.ok('spaces_write_files', space=sid, summary='Replace and delete', files={
                 'old.bin': {'from_path': source}, 'delete.bin': None})
@@ -249,7 +254,7 @@ class ExpansionBudgetTests(stock.FileRefCase):
 
     def test_final_count_includes_existing_files_before_expansion(self):
         sid = self.create({'old.bin': 'old'})['space']
-        source = self.place(self.home, 'art.png')
+        source = self.place(self.tmp, 'art.png')
         with patch.object(limits, 'PROJECT_FILES', 2):
             with patch.object(file_refs, 'read_path', wraps=file_refs.read_path) as reads:
                 self.refused('limit', 'spaces_write_files', space=sid, summary='Count',
@@ -260,7 +265,7 @@ class ExpansionBudgetTests(stock.FileRefCase):
         sid = self.create({'old.bin': 'old'})['space']
         with patch.object(limits, 'PROJECT_FILES', 2):
             self.ok('spaces_write_files', space=sid, summary='Replace count',
-                    files={'old.bin': None, 'new.png': {'from_path': self.place(self.home, 'art.png')}})
+                    files={'old.bin': None, 'new.png': {'from_path': self.place(self.tmp, 'art.png')}})
 
     def test_url_reader_receives_remaining_budget(self):
         self.responses = [stock.Response(b'a' * 100), stock.Response(b'b' * 100), stock.Response(b'c' * 100)]
@@ -280,7 +285,7 @@ class ExpansionBudgetTests(stock.FileRefCase):
         self.assertEqual(decodes.call_count, 0)
 
     def test_library_count_is_reserved_before_reference_reads(self):
-        source = self.place(self.home, 'art.png')
+        source = self.place(self.tmp, 'art.png')
         with patch.object(limits, 'PROJECT_FILES', 1):
             with patch.object(file_refs, 'read_path', wraps=file_refs.read_path) as reads:
                 self.refused('limit', 'spaces_create', name='Library count', libraries=['preact'],
@@ -291,7 +296,7 @@ class ExpansionBudgetTests(stock.FileRefCase):
 def fifo_child():
     case = DescriptorReadTests()
     case.setUp()
-    source = Path(case.place(case.home, 'safe.png'))
+    source = Path(case.place(case.tmp, 'safe.png'))
 
     def change():
         source.unlink()

@@ -57,11 +57,22 @@ data in project files.
 
 Project files can be text or binary. Place binary files (PNG, WebP, audio, WOFF2,
 vendored libraries) by reference, with one line per file in `files`:
-- `{"from_path": "/absolute/path/art.png"}` copies a local file. Use it for
-  images from Hermes's image generation tool (hero art, illustrations, sprites)
-  and for files you downloaded. The path must be inside the Hermes home, the
-  temp folder or your home folder. Credential files (`.env`, `auth.json`, keys,
-  tokens, secrets, `.ssh`) are refused.
+- `{"from_path": "/absolute/path/art.png"}` copies a local file from a supported
+  location under the active Hermes home: `cache/images`, `cache/documents`,
+  `cache/screenshots`, `cache/vision`, `cache/video`, `cache/videos`,
+  `cache/generated/images`, `downloads/connectors`, `images`, or `cache/scratch`.
+  Populated legacy `image_cache`, `document_cache`, `browser_screenshots`,
+  `temp_vision_images`, `temp_video_files`, and `video_cache` also work.
+  The current Python temp directory (`tempfile.gettempdir()`) is allowed too.
+  The whole Hermes home, general `cache` and your home folder are not import
+  roots. Credential stores stay blocked even when a temp directory overlaps
+  them. Cache-root symlinks and parent traversal cannot widen these roots.
+  For any other authorized file, use native file or terminal tools under their
+  normal policy to copy or build it into a fresh temp staging directory first,
+  then pass that staged absolute path. Do not stage credentials to bypass a
+  refusal. Any authorized text or binary content, build output, framework or
+  project layout is valid; this path boundary is not a generated-images-only
+  or application-design restriction.
 - `{"from_url": "https://..."}` downloads public HTTPS bytes at write time. Use
   it for fonts, libraries and images. You are fetching, not the Space, so it
   works with the Space's Internet access off. It does not let the frame load
