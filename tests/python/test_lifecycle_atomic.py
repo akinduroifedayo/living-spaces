@@ -10,7 +10,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-from tests.python.review_customization_support import CustomizationFixture, SyntheticCron
+from tests.python.review_customization_support import CustomizationFixture, SyntheticContext, SyntheticCron
 
 
 class SharedCron:
@@ -68,8 +68,7 @@ def worker(mode, home, sid, coordination):
                                        LIVING_SPACES_DB=str(home / 'spaces.db')))
         stack.enter_context(patch.object(fx.db, 'hermes_home', return_value=home))
         cron = SharedCron(home / 'synthetic-cron.db')
-        stack.enter_context(patch.object(fx.upkeep, '_cron', return_value=cron))
-        stack.enter_context(patch.object(fx.upkeep, '_ledger', return_value=cron))
+        fx.upkeep.configure_context(SyntheticContext(cron))
         with fx.db.read() as conn:
             conn.execute('SELECT count(*) FROM spaces').fetchone()
         (coordination / (mode + '-ready')).touch()
@@ -123,7 +122,7 @@ class LifecycleAtomicTests(unittest.TestCase):
     def processes(self, sid, modes):
         fx = self.fx
         cron = SharedCron(fx.home / 'synthetic-cron.db')
-        self.stack.enter_context(patch.object(fx.upkeep, '_cron', return_value=cron))
+        fx.upkeep.configure_context(SyntheticContext(cron))
         coordination = fx.home / 'coordination'
         coordination.mkdir()
         processes = []
@@ -191,7 +190,7 @@ class LifecycleAtomicTests(unittest.TestCase):
         wait_for(coordination / 'delete-second-write')
         (coordination / 'refresh-release').touch()
         refresh, deleted = self.outcomes(coordination, modes, processes)
-        self.assertTrue(refresh['result']['triggered'])
+        self.assertTrue(refresh['result']['dispatch']['success'])
         self.assertTrue(deleted['result']['deleted'])
         self.assert_deleted_without_jobs(sid, cron)
 
@@ -201,7 +200,7 @@ class LifecycleAtomicTests(unittest.TestCase):
         jid = fx.schedule(sid)['link']['cron_job_id']
         before = fx.projects.bundle(sid)
         with patch.object(fx.cron, 'remove_job', side_effect=OSError('synthetic remove failure')):
-            with self.assertRaises(OSError):
+            with self.assertRaises(fx.core.SpacesError):
                 fx.projects.delete_space(sid, actor='user', confirm=sid)
         self.assertEqual(fx.projects.bundle(sid), before)
         self.assertEqual(fx.upkeep.get_upkeep(sid)['link']['cron_job_id'], jid)
@@ -214,7 +213,7 @@ class LifecycleAtomicTests(unittest.TestCase):
         sid = fx.make()
         jid = fx.runs.start_refresh(sid, trigger='manual', actor='user')['cron_job_id']
         with patch.object(fx.cron, 'remove_job', side_effect=OSError('synthetic remove failure')):
-            with self.assertRaises(OSError):
+            with self.assertRaises(fx.core.SpacesError):
                 fx.projects.delete_space(sid, actor='user', confirm=sid)
         self.assertEqual(fx.projects.get_space(sid)['status'], 'active')
         self.assertIsNone(fx.upkeep.get_upkeep(sid)['link'])
@@ -227,7 +226,7 @@ class LifecycleAtomicTests(unittest.TestCase):
         sid = fx.make()
         jid = fx.runs.start_refresh(sid, trigger='manual', actor='user')['cron_job_id']
         session = fx.sessions.open_session(sid)['session']
-        with patch.object(fx.upkeep, '_cron', side_effect=ImportError('synthetic unavailable')):
+        with patch.object(fx.ctx, 'dispatch_tool', side_effect=ImportError('synthetic unavailable')):
             with self.assertRaises(fx.core.SpacesError) as caught:
                 fx.projects.set_status(sid, 'archived', actor='user')
         self.assertEqual(caught.exception.code, 'blocked')
@@ -242,7 +241,7 @@ class LifecycleAtomicTests(unittest.TestCase):
     def test_archive_importerror_without_jobs_also_refuses(self):
         fx = self.fx
         sid = fx.make()
-        with patch.object(fx.upkeep, '_cron', side_effect=ImportError('synthetic unavailable')):
+        with patch.object(fx.ctx, 'dispatch_tool', side_effect=ImportError('synthetic unavailable')):
             with self.assertRaises(fx.core.SpacesError) as caught:
                 fx.projects.set_status(sid, 'archived', actor='user')
         self.assertEqual(caught.exception.code, 'blocked')

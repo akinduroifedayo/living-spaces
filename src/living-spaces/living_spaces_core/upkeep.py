@@ -1,7 +1,6 @@
-"""Upkeep links. The native Hermes cron job is the only truth for a schedule; the plugin keeps a link."""
+"""Upkeep links to ordinary Hermes jobs, accessed only through public tool dispatch."""
 from __future__ import annotations
 
-import importlib
 import json
 import re
 from datetime import datetime
@@ -14,23 +13,73 @@ from .errors import SpacesError
 PACKAGE = Path(__file__).resolve().parents[1]
 KINDS = ("agent", "feed")
 ACTIONS = ("pause", "resume", "run", "remove")
-EXECUTION_LIMIT = 20
 ONE_SHOT_LIMIT = 5
+_CONTEXTS = {}
+UNAVAILABLE = {
+    "prompt": "The public cron tool exposes only a prompt preview, not the full task.",
+    "executions": "Execution history is unavailable through the public cron tool.",
+    "dispatch": "Manual-run and catch-up dispatch status is unavailable through the public cron tool.",
+}
 
 
-def _cron():
-    return importlib.import_module("cron.jobs")
+def configure_context(ctx):
+    """Bind register()'s public context to this profile, including calls from REST and lifecycle helpers."""
+    _CONTEXTS[db.hermes_home().resolve()] = ctx
 
 
-def _ledger():
-    return importlib.import_module("cron.executions")
+def _context():
+    ctx = _CONTEXTS.get(db.hermes_home().resolve())
+    if ctx is None:
+        raise SpacesError("blocked", "Public Hermes cron context is unavailable", reason="cron_context_unavailable")
+    return ctx
+
+
+def _call(action, **args):
+    try:
+        reply = _context().dispatch_tool("cronjob_manage", {"action": action, **args})
+        result = json.loads(reply) if isinstance(reply, str) else reply
+    except SpacesError:
+        raise
+    except Exception as exc:
+        raise SpacesError("blocked", f"Hermes cron {action} is unavailable: {exc}", reason="cron_unavailable") from exc
+    if not isinstance(result, dict) or result.get("success") is not True:
+        message = result.get("error") if isinstance(result, dict) else "Invalid public cron response"
+        raise SpacesError("blocked", f"Hermes cron {action} refused: {message}", reason="native_refused", native=result)
+    return result
 
 
 def _jobs():
-    try:
-        return _cron()
-    except Exception as exc:
-        raise SpacesError("blocked", "Native Hermes cron is unavailable", reason=f"{type(exc).__name__}: {exc}") from exc
+    result = _call("list", include_disabled=True)
+    jobs = result.get("jobs")
+    if (not isinstance(jobs, list) or result.get("count") != len(jobs)
+            or any(not isinstance(job, dict) or not isinstance(job.get("job_id"), str) for job in jobs)
+            or len({job["job_id"] for job in jobs}) != len(jobs)):
+        raise SpacesError("blocked", "Invalid public cron job list", reason="cron_response_invalid")
+    return result
+
+
+def _mutate(action, jid, **args):
+    result = _call(action, job_id=jid, **args)
+    job = next((job for job in _jobs()["jobs"] if job["job_id"] == jid), None)
+    if action == "remove":
+        valid = job is None
+    elif action == "pause":
+        valid = job is not None and job.get("enabled") is False
+    elif action == "resume":
+        valid = job is not None and job.get("enabled") is True
+    else:
+        valid = True  # A one-shot may already have completed and disappeared.
+    if not valid:
+        raise SpacesError("blocked", f"Hermes cron {action} could not be verified", reason="cron_unverified", native=result)
+    return result
+
+
+def _create(**args):
+    result = _call("create", **args)
+    jid = result.get("job_id")
+    if not isinstance(jid, str) or not any(job["job_id"] == jid for job in _jobs()["jobs"]):
+        raise SpacesError("blocked", "Hermes cron creation could not be verified", reason="cron_unverified", native=result)
+    return jid
 
 
 def validate_upkeep(upkeep):
@@ -89,64 +138,42 @@ def _seconds(value):
         return None
 
 
-def _cadence(job):
-    schedule = job.get("schedule")
-    if isinstance(schedule, dict):
-        return schedule.get("expr") or schedule.get("display") or job.get("schedule_display")
-    return schedule
-
-
 def _once_name(sid):
     return f"living-spaces:{sid}:once"
 
 
 def _job(job):
     return {
-        "id": job.get("id"), "name": job.get("name"), "uses_model": not job.get("no_agent"),
-        "prompt": None if job.get("no_agent") else job.get("prompt"),
-        "schedule_display": job.get("schedule_display"), "cadence": _cadence(job),
+        "id": job["job_id"], "name": job.get("name"), "uses_model": not job.get("no_agent", False),
+        "prompt": None, "prompt_preview": job.get("prompt_preview"),
+        "schedule_display": job.get("schedule"), "cadence": job.get("schedule"),
         "timezone": job.get("timezone"), "enabled": job.get("enabled"), "state": job.get("state"),
         "next_run_at": _seconds(job.get("next_run_at")), "last_run_at": _seconds(job.get("last_run_at")),
         "last_status": job.get("last_status"), "last_error": job.get("last_error"),
+        "last_delivery_error": job.get("last_delivery_error"), "last_fire_error": job.get("last_fire_error"),
     }
 
 
-def _execution(entry):
-    return {
-        "id": entry.get("id"), "status": entry.get("status"),
-        "claimed_at": _seconds(entry.get("claimed_at")), "started_at": _seconds(entry.get("started_at")),
-        "finished_at": _seconds(entry.get("finished_at")), "error": entry.get("error"),
-        "scheduled_instant": entry.get("scheduled_instant"),
-    }
-
-
-def _one_shots(sid, jobs, ledger):
-    found = [job for job in jobs.list_jobs(include_disabled=True) if job.get("name") == _once_name(sid)]
-    found.sort(key=lambda job: str(job.get("created_at") or ""), reverse=True)
-    return [dict(_job(job), executions=[_execution(entry) for entry in ledger.list_executions(job_id=job["id"], limit=5)])
-            for job in found[:ONE_SHOT_LIMIT]]
-
-
-def _read(sid, *, executions=True):
+def _read(sid):
     with db.read() as conn:
         _space(conn, sid)
         link = _link(conn, sid)
-    result = {"link": link, "job": None, "executions": [], "one_shots": [], "missing": False, "error": None}
+    result = {"link": link, "job": None, "executions": [], "one_shots": [], "missing": False,
+              "error": None, "unavailable": dict(UNAVAILABLE)}
     try:
-        jobs = _cron()
-        ledger = _ledger() if executions else None
-        if executions:
-            result["one_shots"] = _one_shots(sid, jobs, ledger)
-        if link is None:
-            return result
-        job = jobs.get_job(link["cron_job_id"])
-        entries = ledger.list_executions(job_id=link["cron_job_id"], limit=EXECUTION_LIMIT) if executions else []
-    except Exception as exc:
-        result["error"] = f"Native Hermes cron is unavailable ({type(exc).__name__}): {exc}"
+        listed = _jobs()
+    except SpacesError as exc:
+        result["error"] = exc.message
         return result
-    result["missing"] = job is None
-    result["job"] = _job(job) if job else None
-    result["executions"] = [_execution(entry) for entry in entries[:EXECUTION_LIMIT]]
+    jobs = listed["jobs"]
+    result["gateway_running"] = listed.get("gateway_running")
+    result["warning"] = listed.get("warning")
+    result["one_shots"] = [dict(_job(job), executions=[]) for job in jobs
+                           if job.get("name") == _once_name(sid)][:ONE_SHOT_LIMIT]
+    if link:
+        job = next((job for job in jobs if job["job_id"] == link["cron_job_id"]), None)
+        result["missing"] = job is None
+        result["job"] = _job(job) if job else None
     return result
 
 
@@ -155,7 +182,7 @@ def get_upkeep(sid):
 
 
 def summary(sid):
-    state = _read(sid, executions=False)
+    state = _read(sid)
     if state["link"] is None:
         return None
     job = state["job"] or {}
@@ -180,7 +207,6 @@ def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
         raise SpacesError("invalid", "Feed upkeep takes no prompt")
     else:
         mode = {"prompt": None, "script": _shim(sid).name, "no_agent": True}
-    jobs = _jobs()
     with db.write() as conn:
         if _space(conn, sid)["status"] == "archived":
             raise SpacesError("archived", "Unarchive the Space before scheduling upkeep")
@@ -189,31 +215,37 @@ def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
             if revision is None or (json.loads(revision["manifest"]).get("upkeep") or {}).get("handler") != "feed":
                 raise SpacesError("invalid", "Feed upkeep needs upkeep.handler feed in the Space manifest")
         old = _link(conn, sid)
-        if old:
-            jobs.remove_job(old["cron_job_id"])
-            conn.execute("DELETE FROM upkeep_links WHERE space=?", (sid,))
         shim = _shim(sid)
+        had_shim = shim.exists()
         if kind == "feed":
             template = (PACKAGE / "scripts" / "refresh_space.py").read_text()
             shim.parent.mkdir(parents=True, exist_ok=True)
             shim.write_text(template.replace("__LIVING_SPACES_PACKAGE__", repr(str(PACKAGE))).replace("__LIVING_SPACES_SID__", repr(sid)))
-        else:
-            shim.unlink(missing_ok=True)
         try:
-            job = jobs.create_job(**mode, schedule=cadence, name=f"living-spaces:{sid}", deliver="local",
-                                  catch_up=True, timezone=timezone)
-        except ValueError as exc:
+            jid = _create(**mode, schedule=cadence, name=f"living-spaces:{sid}", deliver="local",
+                          catch_up=True, timezone=timezone, paused=True)
+        except SpacesError:
+            if not had_shim:
+                shim.unlink(missing_ok=True)
+            raise
+        try:
+            if old and any(job["job_id"] == old["cron_job_id"] for job in _jobs()["jobs"]):
+                _mutate("remove", old["cron_job_id"])
+            _mutate("resume", jid)
+        except SpacesError:
+            _mutate("remove", jid)
+            raise
+        if kind == "agent":
             shim.unlink(missing_ok=True)
-            raise SpacesError("invalid", f"Hermes cron rejected the schedule: {exc}") from exc
+        conn.execute("DELETE FROM upkeep_links WHERE space=?", (sid,))
         conn.execute("INSERT INTO upkeep_links(space,cron_job_id,kind,created_at,created_by) VALUES(?,?,?,?,?)",
-                     (sid, job["id"], kind, db.now(), actor))
+                     (sid, jid, kind, db.now(), actor))
     return get_upkeep(sid)
 
 
 def upkeep_action(sid, action, *, actor):
     if action not in ACTIONS:
         raise SpacesError("invalid", "action must be pause, resume, run or remove")
-    jobs = _jobs()
     with db.write() as conn:
         status = _space(conn, sid)["status"]
         link = _link(conn, sid)
@@ -221,95 +253,61 @@ def upkeep_action(sid, action, *, actor):
             raise SpacesError("not_found", "No upkeep scheduled")
         if action in ("resume", "run") and status == "archived":
             raise SpacesError("archived", "Unarchive the Space before running upkeep")
-        jid = link["cron_job_id"]
-        try:
-            if action == "pause":
-                jobs.pause_job(jid, reason=f"Paused from Living Spaces by {actor}")
-            elif action == "resume":
-                jobs.resume_job(jid)
-            elif action == "run":
-                jobs.trigger_job(jid)
-            else:
-                jobs.remove_job(jid)
-                _shim(sid).unlink(missing_ok=True)
-                conn.execute("DELETE FROM upkeep_links WHERE space=?", (sid,))
-        except ValueError as exc:
-            raise SpacesError("blocked", str(exc), reason="native_refused") from exc
-    return get_upkeep(sid)
+        args = {"reason": f"Paused from Living Spaces by {actor}"} if action == "pause" else {}
+        native = _mutate(action, link["cron_job_id"], **args)
+        if action == "remove":
+            _shim(sid).unlink(missing_ok=True)
+            conn.execute("DELETE FROM upkeep_links WHERE space=?", (sid,))
+    result = get_upkeep(sid)
+    if action == "run":
+        result["dispatch"] = native
+    return result
 
 
 def refresh_now(sid, upkeep, *, actor):
-    jobs = _jobs()
-    # Held under the write lock so archive and delete, which take the same lock, cannot interleave
-    # between the status check and the native job this creates.
+    # Share archive/delete's write lock until the native job is created and dispatched.
     with db.write() as conn:
         if _space(conn, sid)["status"] == "archived":
             raise SpacesError("archived", "Unarchive the Space before refreshing")
         link = _link(conn, sid)
         if link and link["kind"] == "agent":
-            if jobs.trigger_job(link["cron_job_id"]) is None:
-                raise SpacesError("blocked", "The linked Hermes job no longer exists", reason="missing")
-            return {"kind": "cron", "cron_job_id": link["cron_job_id"], "triggered": True}
-        # Created paused, then triggered: a paused job has no pending slot, so run-now fires exactly once.
-        job = jobs.create_job(prompt=agent_prompt(sid, upkeep.get("prompt")), schedule="in 1m", repeat=1,
-                              name=_once_name(sid), no_agent=False, deliver="local",
-                              catch_up=True, paused=True)
-        try:
-            if jobs.trigger_job(job["id"]) is None:
-                raise SpacesError("blocked", "Hermes cron could not start the refresh", reason="native_refused")
-        except Exception:
-            jobs.remove_job(job["id"])
-            raise
-    return {"kind": "cron", "cron_job_id": job["id"], "triggered": True}
-
-
-def dispatch_detail(sid):
-    with db.read() as conn:
-        link = _link(conn, sid)
-    if not link:
-        return None
-    try:
-        job = _cron().get_job(link["cron_job_id"])
-    except Exception:
-        return None
-    if not job or job.get("manual_run_at"):
-        return None
-    dispatch = job.get("last_dispatch")
-    if dispatch and (not job.get("last_run_at") or
-                     datetime.fromisoformat(dispatch["dispatched_at"]) > datetime.fromisoformat(job["last_run_at"])):
-        return dispatch
-    return None
+            jid = link["cron_job_id"]
+            native = _mutate("run", jid)
+        else:
+            jid = _create(prompt=agent_prompt(sid, upkeep.get("prompt")), schedule="in 1m", repeat=1,
+                          name=_once_name(sid), no_agent=False, deliver="local", catch_up=True, paused=True)
+            try:
+                native = _mutate("run", jid)
+            except SpacesError:
+                _mutate("remove", jid)
+                raise
+    return {"kind": "cron", "cron_job_id": jid, "dispatch": native}
 
 
 def pause_for_archive(conn, sid):
-    """Pause the linked job and pending one-shots inside the archiving transaction; any failure aborts it."""
+    """Pause future work inside the archiving transaction; any failure aborts it."""
     link = _link(conn, sid)
     try:
-        jobs = _cron()
-        pending = [job["id"] for job in jobs.list_jobs(include_disabled=True)
-                   if job.get("name") == _once_name(sid) and job.get("enabled")]
-        targets = ([link["cron_job_id"]] if link else []) + pending
-        for jid in targets:
-            paused = jobs.pause_job(jid, reason="Living Space archived")
-            if link and jid == link["cron_job_id"] and paused is None:
-                continue  # Missing linked job: nothing can run, and the panel shows it as missing.
-            if paused is not None and paused.get("enabled"):
-                raise RuntimeError(f"job {jid} is still enabled")
-    except Exception as exc:
-        raise SpacesError("blocked", "Could not pause this Space's upkeep, so it was not archived",
-                          reason=f"{type(exc).__name__}: {exc}") from exc
+        jobs = _jobs()["jobs"]
+        targets = {job["job_id"] for job in jobs if job.get("name") == _once_name(sid)}
+        if link and any(job["job_id"] == link["cron_job_id"] for job in jobs):
+            targets.add(link["cron_job_id"])
+        for jid in sorted(targets):
+            _mutate("pause", jid, reason="Living Space archived")
+    except SpacesError as exc:
+        raise SpacesError("blocked", "Could not pause this Space's upkeep, so it was not archived", reason=exc.message) from exc
 
 
 def on_delete(conn, sid):
     """Remove future native work within the caller's Space deletion transaction."""
-    jobs = _jobs()
     _space(conn, sid)
     link = _link(conn, sid)
-    if link:
-        jobs.remove_job(link["cron_job_id"])
-    for job in jobs.list_jobs(include_disabled=True):
-        if job.get("name") == _once_name(sid):
-            jobs.remove_job(job["id"])
+    jobs = _jobs()["jobs"]
+    targets = {job["job_id"] for job in jobs if job.get("name") == _once_name(sid)}
+    if link and any(job["job_id"] == link["cron_job_id"] for job in jobs):
+        targets.add(link["cron_job_id"])
+    for jid in sorted(targets):
+        _mutate("remove", jid)
     _shim(sid).unlink(missing_ok=True)
     conn.execute("DELETE FROM upkeep_links WHERE space=?", (sid,))
     return link is not None

@@ -27,7 +27,8 @@ class NativeUpkeepTests(unittest.TestCase):
         self.assertEqual((native["deliver"], native["catch_up"], native["no_agent"], native["timezone"]),
                          ("local", True, False, "UTC"))
         self.assertTrue(native["prompt"].endswith("Upkeep task:\n" + AGENT_PROMPT))
-        self.assertEqual(shown["job"]["prompt"], native["prompt"])
+        self.assertIsNone(shown["job"]["prompt"])
+        self.assertEqual(shown["job"]["prompt_preview"], native["prompt"][:100] + "...")
         self.assertEqual(shown["job"]["cadence"], native["schedule"]["expr"])
         self.assertEqual(shown["job"]["cadence"], "0 7 * * *")
         self.assertEqual(shown["link"]["kind"], "agent")
@@ -52,7 +53,7 @@ class NativeUpkeepTests(unittest.TestCase):
         second = fx.schedule(sid, prompt="A new task", cadence="every 6h")
         self.assertNotIn(first, fx.cron.jobs)
         self.assertEqual(list(fx.cron.jobs), [second["link"]["cron_job_id"]])
-        self.assertTrue(second["job"]["prompt"].endswith("A new task"))
+        self.assertTrue(fx.cron.jobs[second["link"]["cron_job_id"]]["prompt"].endswith("A new task"))
         with fx.db.read() as conn:
             self.assertEqual(conn.execute("SELECT count(*) FROM upkeep_links WHERE space=?", (sid,)).fetchone()[0], 1)
 
@@ -65,7 +66,7 @@ class NativeUpkeepTests(unittest.TestCase):
         resumed = fx.upkeep.upkeep_action(sid, "resume", actor="user")
         self.assertEqual((resumed["job"]["enabled"], resumed["job"]["state"]), (True, "scheduled"))
         fx.upkeep.upkeep_action(sid, "run", actor="user")
-        self.assertEqual([call[0] for call in fx.cron.calls[1:]], ["pause", "resume", "trigger"])
+        self.assertEqual([call[0] for call in fx.cron.calls[2:]], ["pause", "resume", "trigger"])
         fx.cron.jobs[jid].update(enabled=False, state="paused", last_status="error", last_error="Model unavailable")
         shown = fx.upkeep.get_upkeep(sid)
         self.assertEqual((shown["job"]["enabled"], shown["job"]["last_status"], shown["job"]["last_error"]),
@@ -91,7 +92,7 @@ class NativeUpkeepTests(unittest.TestCase):
         fx = self.fx
         sid = fx.make()
         fx.schedule(sid)
-        with patch.object(fx.upkeep, "_cron", side_effect=ImportError("cron missing")):
+        with patch.object(fx.ctx, "dispatch_tool", side_effect=ImportError("cron missing")):
             shown = fx.upkeep.get_upkeep(sid)
             space = fx.projects.get_space(sid)
         self.assertIn("cron missing", shown["error"])
@@ -134,7 +135,7 @@ class NativeUpkeepTests(unittest.TestCase):
         self.assertEqual(error.exception.code, "archived")
         fx.projects.set_status(sid, "active", actor="user")
         self.assertFalse(fx.cron.jobs[jid]["enabled"])
-        self.assertNotIn(("resume", jid), fx.cron.calls)
+        self.assertEqual(fx.cron.calls.count(("resume", jid)), 1)
 
     def test_delete_removes_jobs_shims_links_and_one_shots(self):
         fx = self.fx
@@ -158,7 +159,8 @@ class NativeUpkeepTests(unittest.TestCase):
         sid = fx.make()
         jid = fx.schedule(sid)["link"]["cron_job_id"]
         result = fx.runs.start_refresh(sid, trigger="manual", actor="user")
-        self.assertEqual(result, {"kind": "cron", "cron_job_id": jid, "triggered": True})
+        self.assertEqual((result["kind"], result["cron_job_id"]), ("cron", jid))
+        self.assertTrue(result["dispatch"]["success"])
         self.assertEqual(fx.cron.calls[-1], ("trigger", jid))
         self.assertEqual(len(fx.cron.jobs), 1)
         self.assertEqual(fx.runs.list_runs(sid), [])
@@ -168,7 +170,8 @@ class NativeUpkeepTests(unittest.TestCase):
         sid = fx.make()
         result = fx.runs.start_refresh(sid, trigger="chat", actor="agent:review")
         native = fx.cron.jobs[result["cron_job_id"]]
-        self.assertEqual(result, {"kind": "cron", "cron_job_id": native["id"], "triggered": True})
+        self.assertEqual((result["kind"], result["cron_job_id"]), ("cron", native["id"]))
+        self.assertTrue(result["dispatch"]["success"])
         self.assertEqual((native["name"], native["repeat"], native["no_agent"]), (f"living-spaces:{sid}:once", 1, False))
         self.assertEqual(native["prompt"], fx.upkeep.agent_prompt(sid, AGENT_PROMPT))
         self.assertEqual(fx.cron.calls[-1], ("trigger", native["id"]))
@@ -205,9 +208,10 @@ class NativeUpkeepTests(unittest.TestCase):
         fx.change_upkeep(sid, {"handler": "agent", "prompt": "A different task in the manifest"})
         self.assertEqual(json.dumps(fx.cron.jobs[jid], sort_keys=True), before)
         self.assertEqual(fx.cron.calls, calls)
-        self.assertTrue(fx.upkeep.get_upkeep(sid)["job"]["prompt"].endswith(AGENT_PROMPT))
+        self.assertTrue(fx.cron.jobs[jid]["prompt"].endswith(AGENT_PROMPT))
+        self.assertIsNone(fx.upkeep.get_upkeep(sid)["job"]["prompt"])
 
-    def test_executions_are_shown_verbatim_including_unknown(self):
+    def test_execution_history_is_unavailable_not_fabricated(self):
         fx = self.fx
         sid = fx.make()
         jid = fx.schedule(sid)["link"]["cron_job_id"]
@@ -215,11 +219,11 @@ class NativeUpkeepTests(unittest.TestCase):
             fx.cron.execution(jid, status)
         fx.cron.execution("someone-else", "completed")
         shown = fx.upkeep.get_upkeep(sid)["executions"]
-        self.assertEqual([entry["status"] for entry in shown], ["running", "unknown", "failed", "completed"])
-        self.assertEqual(set(shown[0]), {"id", "status", "claimed_at", "started_at", "finished_at", "error", "scheduled_instant"})
+        self.assertEqual(shown, [])
+        self.assertIn("executions", fx.upkeep.get_upkeep(sid)["unavailable"])
         for _ in range(25):
             fx.cron.execution(jid, "completed")
-        self.assertEqual(len(fx.upkeep.get_upkeep(sid)["executions"]), 20)
+        self.assertEqual(fx.upkeep.get_upkeep(sid)["executions"], [])
 
     def test_space_summary_exposes_upkeep_from_the_native_job(self):
         fx = self.fx
@@ -247,7 +251,7 @@ class NativeUpkeepTests(unittest.TestCase):
         self.assertEqual(client.get(f"/spaces/{sid}/schedule").status_code, 404)
         self.assertEqual(client.post(f"/spaces/{sid}/schedule", json={"paused": True}).status_code, 404)
         refresh = client.post(f"/spaces/{sid}/refresh").json()
-        self.assertEqual((refresh["kind"], refresh["triggered"]), ("cron", True))
+        self.assertEqual((refresh["kind"], refresh["dispatch"]["success"]), ("cron", True))
         grant = client.post(f"/spaces/{sid}/grants/refresh", json={"decision": "revoke"})
         self.assertEqual((grant.status_code, grant.json()["error"]["code"]), (404, "not_found"))
         self.assertIn("upkeep", client.post(f"/spaces/{sid}/pin", json={"pinned": True}).json())
@@ -332,7 +336,7 @@ class NativeUpkeepTests(unittest.TestCase):
             fx.runs.start_refresh(sid, trigger="manual", actor="user")
         self.assertEqual(observed, ["database is locked"])
 
-    def test_one_shot_outcomes_are_visible_in_upkeep_status(self):
+    def test_pending_one_shots_are_visible_but_history_is_unavailable(self):
         fx = self.fx
         sid = fx.make()
         once = fx.runs.start_refresh(sid, trigger="manual", actor="user")["cron_job_id"]
@@ -340,7 +344,8 @@ class NativeUpkeepTests(unittest.TestCase):
         shown = fx.upkeep.get_upkeep(sid)
         self.assertIsNone(shown["link"])
         self.assertEqual([(shot["id"], shot["uses_model"], [e["status"] for e in shot["executions"]])
-                          for shot in shown["one_shots"]], [(once, True, ["unknown"])])
+                          for shot in shown["one_shots"]], [(once, True, [])])
+        self.assertIn("executions", shown["unavailable"])
 
     def test_shown_kind_follows_the_native_job_not_the_link(self):
         fx = self.fx
@@ -348,7 +353,8 @@ class NativeUpkeepTests(unittest.TestCase):
         jid = fx.schedule(sid, kind="feed")["link"]["cron_job_id"]
         fx.cron.jobs[jid].update(no_agent=False, prompt="Edited in cron")
         shown = fx.upkeep.get_upkeep(sid)
-        self.assertEqual((shown["job"]["uses_model"], shown["job"]["prompt"]), (True, "Edited in cron"))
+        self.assertEqual((shown["job"]["uses_model"], shown["job"]["prompt"]), (True, None))
+        self.assertEqual(shown["job"]["prompt_preview"], "Edited in cron")
         self.assertEqual(fx.projects.get_space(sid)["upkeep"]["kind"], "agent")
 
     def test_long_upkeep_prompts_are_accepted(self):
@@ -356,7 +362,7 @@ class NativeUpkeepTests(unittest.TestCase):
         sid = fx.make()
         long_prompt = "Check each public source and summarize. " * 400
         shown = fx.schedule(sid, prompt=long_prompt)
-        self.assertTrue(shown["job"]["prompt"].endswith(long_prompt))
+        self.assertTrue(fx.cron.jobs[shown["link"]["cron_job_id"]]["prompt"].endswith(long_prompt))
 
     def test_link_table_enforces_kind_and_unique_job(self):
         fx = self.fx

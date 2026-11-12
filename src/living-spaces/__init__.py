@@ -570,8 +570,8 @@ TOOLS = [
         "Refresh now. A feed Space runs its declared feed sources in-process (needs Internet access) and returns "
         "the run; check spaces_get recent_runs for the outcome before reporting it. An agent Space triggers its "
         "linked Hermes cron job, or starts a one-time Hermes cron agent run when none is linked, and returns "
-        "{kind:'cron', cron_job_id, triggered}; that run uses model calls, and spaces_upkeep status lists its "
-        "outcome under one_shots." + REF_NOTE,
+        "{kind:'cron', cron_job_id, dispatch}. dispatch is the public cron response, not proof of successful "
+        "execution or delivery. That run uses model calls. Execution history is unavailable." + REF_NOTE,
         {"space": SPACE_ARG}, ["space"])),
     (spaces_schedule_upkeep, _schema(
         "spaces_schedule_upkeep",
@@ -579,7 +579,8 @@ TOOLS = [
         "consent, as for any Hermes cron job; only call this when the user asked for scheduled upkeep. It replaces "
         "any existing upkeep job for the Space. kind agent runs the prompt as a Hermes agent turn on each fire, "
         "which uses model calls: tell the user so. kind feed runs the manifest's feed sources with no model calls. "
-        "Returns the native job as Hermes stores it; report its prompt, schedule and next run." + REF_NOTE,
+        "Returns public cron list metadata and a prompt preview, not the full task or execution history; "
+        "report its schedule, next run and any warning." + REF_NOTE,
         {"space": SPACE_ARG,
          "kind": {"type": "string", "enum": ["agent", "feed"]},
          "cadence": {"type": "string", "description": "Hermes cron schedule, e.g. \"0 7 * * *\" or \"every 6h\"."},
@@ -588,8 +589,9 @@ TOOLS = [
         ["space", "kind", "cadence", "timezone"])),
     (spaces_upkeep, _schema(
         "spaces_upkeep",
-        "Read or control this Space's linked Hermes cron job. status returns the link, the live native job and its "
-        "recent executions. pause, resume and run pass straight to Hermes cron; remove deletes the job and the "
+        "Read or control this Space's linked Hermes cron job. status returns the link and public cron list metadata; "
+        "full prompts, execution history and manual dispatch status are unavailable. pause, resume and run use "
+        "the public cron tool; run returns its dispatch response without claiming an outcome. remove deletes the job and the "
         "link." + REF_NOTE,
         {"space": SPACE_ARG,
          "action": {"type": "string", "enum": ["status", "pause", "resume", "run", "remove"]}},
@@ -669,6 +671,7 @@ def _handler(fn):
 
 
 def register(ctx) -> None:
+    _core.load_core().configure_context(ctx)
     register_desktop_rpc(ctx, _core.load_core)
     for fn, schema in TOOLS:
         ctx.register_tool(name=schema["name"], toolset=TOOLSET, schema=schema, handler=_handler(fn),

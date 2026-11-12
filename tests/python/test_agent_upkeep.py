@@ -16,14 +16,13 @@ import threading
 import unittest
 from unittest.mock import Mock, patch
 
-from tests.python.review_customization_support import available_empty_cron_modules
+from tests.python.review_customization_support import SyntheticContext
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 class AgentIntegrationSeamTests(unittest.TestCase):
     def setUp(self):
-        self.enterContext(patch.dict(sys.modules, available_empty_cron_modules()))
         self.temp = tempfile.TemporaryDirectory(prefix="agent-integration-", dir=ROOT / ".run" if (ROOT / ".run").exists() else None)
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
@@ -49,19 +48,19 @@ class AgentIntegrationSeamTests(unittest.TestCase):
         self.assertEqual(error.exception.code, "invalid")
         sid = core.create_space("Agent Demo", owner="Demo", author="agent:demo", manifest=manifest, files={"index.html": "<h1>Demo</h1>"})["id"]
         self.assertNotIn("refresh", [grant["capability"] for grant in core.list_grants(sid)])
-        cron = Mock()
-        cron.create_job.side_effect = lambda **kw: {**kw, "id": "demo-cron"}
-        cron.list_jobs.return_value = []
-        cron.get_job.side_effect = lambda jid: {"id": jid, "no_agent": False, "prompt": "native", "enabled": True, "state": "scheduled"}
-        with patch.object(core.upkeep, "_cron", return_value=cron), patch.object(core.upkeep, "_ledger", return_value=Mock(list_executions=Mock(return_value=[]))):
-            self.assertEqual(core.schedule_upkeep(sid, kind="agent", cadence="0 * * * *", timezone="UTC", prompt="Chat task", actor="agent:demo")["job"]["prompt"], "native")
+        ctx = SyntheticContext()
+        core.configure_context(ctx)
+        cron = ctx.cron
+        with patch.object(cron, "pause_job", wraps=cron.pause_job) as pause, patch.object(cron, "remove_job", wraps=cron.remove_job) as remove:
+            shown = core.schedule_upkeep(sid, kind="agent", cadence="0 * * * *", timezone="UTC", prompt="Chat task", actor="agent:demo")
+            self.assertIsNone(shown["job"]["prompt"])
             revised = copy.deepcopy(manifest)
             revised["upkeep"]["prompt"] = "Update the changed public demo."
             core.write_files(sid, files={}, manifest=revised, author="agent:demo", summary="New prompt")
             core.restore_revision(sid, 1, author="agent:demo")
-            cron.pause_job.assert_not_called()
-            cron.remove_job.assert_not_called()
-            self.assertEqual(core.get_space(sid)["upkeep"]["cron_job_id"], "demo-cron")
+            pause.assert_not_called()
+            remove.assert_not_called()
+            self.assertEqual(core.get_space(sid)["upkeep"]["cron_job_id"], shown["link"]["cron_job_id"])
 
     def test_source_owned_adapter_in_integrated_tree(self):
         package = self.root / "src/living-spaces"
@@ -83,6 +82,7 @@ class AgentIntegrationSeamTests(unittest.TestCase):
         with self.assertRaises(core.SpacesError):
             plugin.spaces_write_records(core, bad, "Demo")
         self.assertEqual(core.records.get(sid, "papers", "demo"), updated)
+        core.configure_context(SyntheticContext())
         core.set_status(sid, "archived", actor="user")
         with self.assertRaises(core.SpacesError) as denied:
             plugin.spaces_write_records(core, args, "Demo")

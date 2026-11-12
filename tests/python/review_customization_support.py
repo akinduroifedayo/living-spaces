@@ -97,18 +97,52 @@ class SyntheticCron:
         return entry
 
 
-def available_empty_cron_modules():
-    cron = SyntheticCron()
-    parent = types.ModuleType("cron")
-    parent.__path__ = []
-    jobs = types.ModuleType("cron.jobs")
-    for name in ("get_job", "list_jobs", "pause_job"):
-        setattr(jobs, name, getattr(cron, name))
-    ledger = types.ModuleType("cron.executions")
-    setattr(ledger, "list_executions", cron.list_executions)
-    setattr(parent, "jobs", jobs)
-    setattr(parent, "executions", ledger)
-    return {"cron": parent, "cron.jobs": jobs, "cron.executions": ledger}
+class SyntheticContext:
+    """Public cron response shapes, without a model, scheduler, config or host imports."""
+
+    def __init__(self, cron=None):
+        self.cron = cron if cron is not None else SyntheticCron()
+        self.calls = []
+        self.execution = None
+        self.run_reply = None
+
+    def current_cron_execution(self):
+        return self.execution
+
+    @staticmethod
+    def format_job(job):
+        prompt = job.get("prompt") or ""
+        keys = ("name", "no_agent", "script", "enabled", "state", "next_run_at", "last_run_at",
+                "last_status", "last_error", "timezone")
+        return {**{key: job.get(key) for key in keys}, "job_id": job["id"],
+                "schedule": job.get("schedule_display"), "prompt_preview": prompt[:100] + ("..." if len(prompt) > 100 else "")}
+
+    def dispatch_tool(self, name, args):
+        import json
+
+        assert name == "cronjob_manage", name
+        self.calls.append((name, copy.deepcopy(args)))
+        args = dict(args)
+        action = args.pop("action")
+        if action == "list":
+            jobs = [self.format_job(job) for job in self.cron.list_jobs(**args)]
+            return json.dumps(dict(success=True, count=len(jobs), jobs=jobs))
+        if action == "create":
+            job = self.cron.create_job(**args)
+            return json.dumps(dict(success=True, job_id=job["id"], job=self.format_job(job)))
+        jid = args.pop("job_id")
+        if self.cron.get_job(jid) is None:
+            return json.dumps(dict(success=False, error="Job not found"))
+        if action == "remove":
+            removed = self.cron.remove_job(jid)
+            return json.dumps(dict(success=removed))
+        if action == "run":
+            if self.run_reply is not None:
+                return json.dumps(self.run_reply)
+            self.cron.trigger_job(jid)
+            return json.dumps(dict(success=True, job=self.format_job(self.cron.get_job(jid)), note="Queued by synthetic gateway"))
+        job = getattr(self.cron, action + "_job")(jid, **args)
+        return json.dumps(dict(success=True, job=self.format_job(job)))
 
 
 class Response:
@@ -178,37 +212,13 @@ class CustomizationFixture:
             stack.enter_context(patch.object(socket, name, deny_network))
         stack.enter_context(patch.object(socket, "create_connection", deny_network))
         self.cron = SyntheticCron()
-        parent = types.ModuleType("cron")
-        parent.__path__ = []
-        jobs = types.ModuleType("cron.jobs")
-        for name in ("create_job", "get_job", "list_jobs", "remove_job", "pause_job", "resume_job",
-                     "trigger_job", "cancel_job_run"):
-            setattr(jobs, name, getattr(self.cron, name))
-        ledger = types.ModuleType("cron.executions")
-        ledger.list_executions = self.cron.list_executions
-        parent.jobs, parent.executions = jobs, ledger
-        for name, module in (("cron", parent), ("cron.jobs", jobs), ("cron.executions", ledger)):
-            self._install_module(name, module)
+        self.ctx = SyntheticContext(self.cron)
         self.core = self.load("_review_customization_core", PACKAGE / "living_spaces_core/__init__.py")
         self.db = self.core.db
         stack.enter_context(patch.object(self.db, "hermes_home", return_value=self.home))
         for name in ("bridge", "feeds", "grants", "net", "projects", "records", "runs", "sessions", "upkeep"):
             setattr(self, name, importlib.import_module(self.core.__name__ + "." + name))
-        stack.enter_context(patch.object(self.upkeep, "_cron", return_value=self.cron))
-        stack.enter_context(patch.object(self.upkeep, "_ledger", return_value=self.cron))
-
-    def _install_module(self, name, module):
-        missing = object()
-        original = sys.modules.get(name, missing)
-
-        def restore():
-            if original is missing:
-                sys.modules.pop(name, None)
-            else:
-                sys.modules[name] = original
-
-        self.stack.callback(restore)
-        sys.modules[name] = module
+        self.upkeep.configure_context(self.ctx)
 
     def load(self, name, path):
         original = {key: value for key, value in sys.modules.items()

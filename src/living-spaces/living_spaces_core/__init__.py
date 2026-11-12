@@ -11,5 +11,5 @@ from .sessions import open_session, close_session, require
 from .logs import read_logs
 from .bridge import dispatch
 from .runs import list_runs, start_refresh
-from .upkeep import get_upkeep, schedule_upkeep, upkeep_action
+from .upkeep import configure_context, get_upkeep, schedule_upkeep, upkeep_action
 from .actions import bind_maintainer, action_context, claim_action, observe_action, reject_action

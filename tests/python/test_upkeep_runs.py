@@ -516,17 +516,14 @@ class FeedTests(UpkeepCase):
 
 
 class NativeCronTests(UpkeepCase):
-    """Runs against the installed Hermes cron module in a temporary cron store."""
+    """Public-dispatch fixtures. Real host cron lifecycle is qualified separately in isolation."""
 
     def cron(self):
-        hermes = Path.home() / ".hermes" / "hermes-agent"
-        self.assertTrue(Path(os.environ["HERMES_HOME"]).is_relative_to(ROOT / ".run"))
-        sys.path.insert(0, str(hermes))
-        self.addCleanup(sys.path.remove, str(hermes))
-        jobs = upkeep._cron()
-        store = jobs.use_cron_store(self.home)
-        store.__enter__()
-        self.addCleanup(store.__exit__, None, None, None)
+        from tests.python.review_customization_support import SyntheticContext
+
+        self.ctx = SyntheticContext()
+        jobs = self.ctx.cron
+        upkeep.configure_context(self.ctx)
         with db.write() as conn:
             conn.execute("INSERT INTO revisions(space,rev,kind,manifest,files,author,summary,created_at) VALUES('research-desk',1,'create',?,'{}','user','',?)",
                          (json.dumps(self.manifest), db.now()))
@@ -537,7 +534,7 @@ class NativeCronTests(UpkeepCase):
         return upkeep.schedule_upkeep("research-desk", kind=kind, cadence="0 * * * *", timezone="America/Chicago",
                                       prompt=prompt, actor="agent:demo")
 
-    def test_installed_cron_feed_job_matches_get_upkeep(self):
+    def test_public_cron_feed_job_matches_get_upkeep(self):
         jobs = self.cron()
         shown = self.schedule()
         native = jobs.get_job(shown["link"]["cron_job_id"])
@@ -551,70 +548,55 @@ class NativeCronTests(UpkeepCase):
         upkeep.upkeep_action("research-desk", "remove", actor="user")
         self.assertIsNone(jobs.get_job(native["id"]))
 
-    def test_installed_cron_agent_job_uses_ordinary_chat_cron_settings(self):
+    def test_public_cron_agent_job_uses_ordinary_chat_cron_settings(self):
         jobs = self.cron()
         self.manifest = {"upkeep": {"handler": "agent", "prompt": "Update the public demo."}}
         shown = self.schedule(kind="agent", prompt="Update the public demo.")
         native = jobs.get_job(shown["link"]["cron_job_id"])
         self.assertFalse(native["no_agent"])
-        self.assertEqual(native["prompt"], shown["job"]["prompt"])
+        self.assertIsNone(shown["job"]["prompt"])
+        self.assertEqual(shown["job"]["prompt_preview"], native["prompt"][:100] + "...")
         for key in ("enabled_toolsets", "skills", "model", "provider", "script"):
             self.assertFalse(native.get(key), key)
         upkeep.upkeep_action("research-desk", "pause", actor="user")
         self.assertEqual(jobs.get_job(native["id"])["state"], "paused")
         upkeep.upkeep_action("research-desk", "remove", actor="user")
 
-    def test_installed_cron_one_shot_refresh_now(self):
+    def test_public_cron_one_shot_refresh_now(self):
         jobs = self.cron()
         self.manifest = {"upkeep": {"handler": "agent", "prompt": "Update the public demo."}}
         result = self.refresh()
         job = jobs.get_job(result["cron_job_id"])
         try:
-            self.assertEqual(job["schedule"]["kind"], "once")
+            self.assertEqual(job["schedule"]["expr"], "in 1m")
             self.assertEqual(job["name"], "living-spaces:research-desk:once")
             self.assertFalse(job["no_agent"])
             self.assertEqual(job["deliver"], "local")
-            self.assertEqual(job["manual_run_at"], job["next_run_at"])
-            self.assertIsNone(job["enabled_toolsets"])
+            self.assertIsNotNone(job["manual_run_at"])
+            self.assertIsNone(job.get("enabled_toolsets"))
             self.assertIsNone(upkeep.get_upkeep("research-desk")["link"])
         finally:
             jobs.remove_job(job["id"])
 
-    def test_catchup_dispatch_survives_in_run_history(self):
-        from datetime import timedelta, timezone
-
+    def test_catchup_dispatch_is_honestly_unavailable(self):
         jobs = self.cron()
         jid = self.schedule()["link"]["cron_job_id"]
-        past = (datetime.now(timezone.utc) - timedelta(days=3)).replace(minute=0, second=0, microsecond=0).isoformat()
-        jobs.update_job(jid, {"next_run_at": past})
-        due = jobs.get_due_jobs()
-        self.assertEqual(len(due), 1)
-        dispatch = due[0]["last_dispatch"]
-        self.assertEqual(dispatch["kind"], "catch_up")
+        jobs.jobs[jid]["last_dispatch"] = {"kind": "catch_up"}
         run = runs.start_refresh("research-desk", trigger="schedule", actor="upkeep:schedule", wait=True)
         self.assertEqual(run["status"], "succeeded")
-        self.assertEqual(run["detail"].get("dispatch"), dispatch)
-        jobs.mark_job_run(jid, success=True)
-        self.assertEqual(jobs.get_due_jobs(), [])
-        self.assertEqual(runs.list_runs("research-desk")[0]["detail"]["dispatch"], dispatch)
-        manual = self.refresh()
-        self.assertNotIn("dispatch", manual["detail"])
-        stale = runs.start_refresh("research-desk", trigger="schedule", actor="upkeep:schedule", wait=True)
-        self.assertNotIn("dispatch", stale["detail"])
+        self.assertNotIn("dispatch", run["detail"])
+        self.assertIn("dispatch", upkeep.get_upkeep("research-desk")["unavailable"])
         upkeep.upkeep_action("research-desk", "remove", actor="user")
 
-    def test_failed_catchup_keeps_dispatch_and_last_good_data(self):
-        jobs = self.cron()
+    def test_failed_feed_keeps_last_good_data_without_private_dispatch_metadata(self):
+        self.cron()
         self.refresh()
         before = self.stored()
-        jid = self.schedule()["link"]["cron_job_id"]
-        dispatch = {"kind": "catch_up", "scheduled_at": "2026-01-01T00:00:00+00:00",
-                    "dispatched_at": "2026-01-04T00:00:00+00:00", "lateness_seconds": 259200}
-        jobs.update_job(jid, {"last_dispatch": dispatch})
+        self.schedule()
         self.fetch.side_effect = TimeoutError("Feed unavailable")
         run = runs.start_refresh("research-desk", trigger="schedule", actor="upkeep:schedule", wait=True)
         self.assertEqual(run["status"], "failed")
-        self.assertEqual(run["detail"].get("dispatch"), dispatch)
+        self.assertNotIn("dispatch", run["detail"])
         self.assertEqual(self.stored(), before)
         upkeep.upkeep_action("research-desk", "remove", actor="user")
 
@@ -622,11 +604,11 @@ class NativeCronTests(UpkeepCase):
         for kwargs in ({"timezone": "Mars/Base"}, {"cadence": " "}, {"kind": "shell"}, {"kind": "agent", "prompt": " "},
                        {"kind": "feed", "prompt": "Feeds take no prompt"}):
             args = {"kind": "feed", "cadence": "0 * * * *", "timezone": "UTC", "prompt": None, "actor": "agent:demo", **kwargs}
-            with self.subTest(kwargs=kwargs), patch.object(upkeep, "_cron") as cron:
+            with self.subTest(kwargs=kwargs), patch.object(upkeep, "_call") as cron:
                 with self.assertRaises(SpacesError) as error:
                     upkeep.schedule_upkeep("research-desk", **args)
                 self.assertEqual(error.exception.code, "invalid")
-                cron.return_value.create_job.assert_not_called()
+                cron.assert_not_called()
 
     def test_shim_loads_by_path_waits_inline_and_is_silent_only_on_success(self):
         import contextlib

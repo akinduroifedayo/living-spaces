@@ -8,15 +8,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from tests.python.review_customization_support import available_empty_cron_modules
+from tests.python.review_customization_support import SyntheticContext
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 class PackagedApiTests(unittest.TestCase):
-    def setUp(self):
-        self.enterContext(patch.dict(sys.modules, available_empty_cron_modules()))
-
     def test_chat_handlers_use_real_core_and_injected_libraries(self):
         (ROOT / '.run').mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=ROOT / '.run') as home:
@@ -56,6 +53,7 @@ class PackagedApiTests(unittest.TestCase):
                 result = asyncio.run(api.spaces_list())
                 self.assertEqual(result, {'spaces': [], 'seq_global': 0})
                 core = api.load_core()
+                core.configure_context(SyntheticContext())
                 created = core.create_space('Public Demo', owner='Demo', author='user', files={'index.html': '<h1>Public demo</h1>'}, manifest={'entry': 'index.html'})
                 sid = created['id']
                 self.assertEqual(asyncio.run(api.space_detail(sid))['id'], sid)

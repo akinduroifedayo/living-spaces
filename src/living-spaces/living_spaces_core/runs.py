@@ -81,7 +81,6 @@ def start_refresh(sid, *, trigger, actor, wait=False, session=None):
     reason = "archived" if space["status"] == "archived" else None
     if not reason and handler != "feed":
         reason = "no_handler"
-    dispatch = upkeep.dispatch_detail(sid) if trigger == "schedule" else None
     now = db.now()
     run_id = "run_" + uuid.uuid4().hex[:16]
     with db.write() as conn:
@@ -99,8 +98,6 @@ def start_refresh(sid, *, trigger, actor, wait=False, session=None):
         if row:
             return _run(row)
         detail = {"reason": reason} if reason else {}
-        if dispatch:
-            detail["dispatch"] = dispatch
         conn.execute("INSERT INTO runs(id,space,trigger,handler,actor,status,queued_at,ended_at,changed,detail,heartbeat_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", (
             run_id, sid, trigger, handler, actor, "blocked" if reason else "queued", now, now if reason else None,
             json.dumps({"added": 0, "updated": 0, "unchanged": 0, "removed": 0}), json.dumps(detail), now,

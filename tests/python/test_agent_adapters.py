@@ -88,7 +88,7 @@ class AdapterCase(unittest.TestCase):
             "list_grants": [{"capability": "net", "status": "requested", "scope": {},
                              "purpose": "Public feed"}], "audit_log": [],
             "start_refresh": {"id": "run_demo", "status": "queued"},
-            "schedule_upkeep": {"link": {"cron_job_id": "demo"}}, "get_upkeep": {"link": None},
+            "configure_context": None, "schedule_upkeep": {"link": {"cron_job_id": "demo"}}, "get_upkeep": {"link": None},
             "upkeep_action": {"link": {"cron_job_id": "demo"}},
             "decide": {"capability": "net", "status": "granted"},
             "bundle": {"manifest": MANIFEST, "files": [
