@@ -299,7 +299,6 @@ class SyntheticPublicUpkeepRepairTests(unittest.TestCase):
                 self.assertEqual(fx.upkeep._shim(unrelated).read_bytes(), unrelated_shim)
 
     def test_defensive_partial_create_response_compensates_returned_new_id(self):
-        """Public response conformance, not an observed paused native-create defect."""
         fx = self.fx
         unrelated = fx.make(handler="feed")
         unrelated_state = fx.schedule(unrelated, kind="feed")

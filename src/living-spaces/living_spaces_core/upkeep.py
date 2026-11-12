@@ -25,7 +25,6 @@ UNAVAILABLE = {
 
 
 def configure_context(ctx):
-    """Bind register()'s public context to this profile, including calls from REST and lifecycle helpers."""
     _CONTEXTS[db.hermes_home().resolve()] = ctx
 
 
