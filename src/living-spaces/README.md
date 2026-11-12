@@ -52,6 +52,8 @@ Agent cadence accepts ordinary intervals, single daily/weekly time phrases, one-
 
 Upkeep requires the Hermes cron runtime to be running. Native catch-up policy governs missed work; the plugin supplies no always-on cloud service. Archiving pauses linked upkeep and pending one-shot jobs. Unarchiving does not resume them. Pause and Remove stop future work; already-running native work may finish. A native failure must not be interpreted as a successful pause or removal.
 
+Replacing native upkeep and updating its SQLite link is not atomic. The candidate job is resumed before the old job is removed, so both can briefly be enabled. A partially successful native removal can leave a stale link. A failed compensation can leave an unlinked native job, which can still consume model quota if enabled. Inspect the exact returned job id through native cron before retrying. An error alone does not establish whether that job is paused or removed.
+
 ## Internet and native authority
 
 The per-Space **Internet access** setting is on by default for the implemented mediated path. `space.net.fetch` checks public HTTPS destinations and redirects. It forwards the Space's own `Cookie` and `Authorization` headers and removes them when a redirect changes origin. Hermes-specific and reserved transport headers remain blocked. Responses are limited to 5 MiB. With Internet access off, supported canvas fetches and feed retrieval are blocked. The switch does not disable the bot's normal native tools.
