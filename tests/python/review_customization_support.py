@@ -112,8 +112,8 @@ class SyntheticContext:
     @staticmethod
     def format_job(job):
         prompt = job.get("prompt") or ""
-        keys = ("name", "no_agent", "script", "enabled", "state", "next_run_at", "last_run_at",
-                "last_status", "last_error", "timezone")
+        keys = ("name", "script", "enabled", "state", "next_run_at", "last_run_at",
+                "last_status", "last_error")
         return {**{key: job.get(key) for key in keys}, "job_id": job["id"],
                 "schedule": job.get("schedule_display"), "prompt_preview": prompt[:100] + ("..." if len(prompt) > 100 else "")}
 
@@ -140,7 +140,7 @@ class SyntheticContext:
             if self.run_reply is not None:
                 return json.dumps(self.run_reply)
             self.cron.trigger_job(jid)
-            return json.dumps(dict(success=True, job=self.format_job(self.cron.get_job(jid)), note="Queued by synthetic gateway"))
+            return json.dumps(dict(success=True, job=self.format_job(self.cron.get_job(jid) or {"id": jid}), note="Queued by synthetic gateway"))
         job = getattr(self.cron, action + "_job")(jid, **args)
         return json.dumps(dict(success=True, job=self.format_job(job)))
 

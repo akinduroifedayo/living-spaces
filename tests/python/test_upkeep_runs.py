@@ -631,7 +631,10 @@ class NativeCronTests(UpkeepCase):
             with self.subTest(upkeep=value), self.assertRaises(SpacesError) as error:
                 upkeep.validate_upkeep(value)
             self.assertEqual(error.exception.code, "invalid")
-        upkeep.validate_upkeep({"handler": "agent", "prompt": "a" * 40000})
+        upkeep.validate_upkeep({"handler": "agent", "prompt": "a" * 8000})
+        with self.assertRaises(SpacesError) as caught:
+            upkeep.validate_upkeep({"handler": "agent", "prompt": "a" * 8001})
+        self.assertEqual(caught.exception.code, "limit")
         upkeep.validate_upkeep({"handler": "feed", "sources": []})
 
 

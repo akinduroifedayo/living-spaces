@@ -580,12 +580,13 @@ TOOLS = [
         "any existing upkeep job for the Space. kind agent runs the prompt as a Hermes agent turn on each fire, "
         "which uses model calls: tell the user so. kind feed runs the manifest's feed sources with no model calls. "
         "Returns public cron list metadata and a prompt preview, not the full task or execution history; "
-        "report its schedule, next run and any warning." + REF_NOTE,
+        "report its schedule, next run and any warning. Agent cadence has a 15-minute nominal minimum and "
+        "tasks have an 8000-character cap. Scheduling from cron executions is always refused." + REF_NOTE,
         {"space": SPACE_ARG,
          "kind": {"type": "string", "enum": ["agent", "feed"]},
          "cadence": {"type": "string", "description": "Hermes cron schedule, e.g. \"0 7 * * *\" or \"every 6h\"."},
          "timezone": {"type": "string", "description": "IANA timezone, e.g. \"America/Chicago\"."},
-         "prompt": {"type": "string", "description": "Required for agent: the upkeep task."}},
+         "prompt": {"type": "string", "description": "Required for agent: the upkeep task, at most 8000 Unicode characters."}},
         ["space", "kind", "cadence", "timezone"])),
     (spaces_upkeep, _schema(
         "spaces_upkeep",

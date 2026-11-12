@@ -120,6 +120,64 @@ class PublicUpkeepTests(unittest.TestCase):
         self.assertEqual(fx.upkeep.get_upkeep(sid)["link"]["cron_job_id"], jid)
         self.assertTrue(fx.cron.jobs[jid]["enabled"])
 
+    def test_inline_public_run_can_write_without_a_held_plugin_transaction(self):
+        fx = self.fx
+        sid = fx.make()
+        fx.schedule(sid)
+        original = fx.ctx.dispatch_tool
+
+        def dispatch(name, args):
+            if args["action"] == "run":
+                import sqlite3
+
+                with sqlite3.connect(fx.db.db_path(), timeout=0.05) as conn:
+                    conn.execute("UPDATE spaces SET description='Inline public run' WHERE id=?", (sid,))
+            return original(name, args)
+
+        with patch.object(fx.ctx, "dispatch_tool", side_effect=dispatch):
+            self.assertTrue(fx.runs.start_refresh(sid, trigger="manual", actor="user")["dispatch"]["success"])
+            self.assertTrue(fx.upkeep.upkeep_action(sid, "run", actor="user")["dispatch"]["success"])
+        self.assertEqual(fx.projects.get_space(sid)["description"], "Inline public run")
+
+    def test_archive_during_public_run_is_rechecked_and_future_work_is_paused(self):
+        fx = self.fx
+        sid = fx.make()
+        jid = fx.schedule(sid)["link"]["cron_job_id"]
+        original = fx.ctx.dispatch_tool
+
+        def dispatch(name, args):
+            if args["action"] == "run":
+                fx.projects.set_status(sid, "archived", actor="user")
+            return original(name, args)
+
+        with patch.object(fx.ctx, "dispatch_tool", side_effect=dispatch):
+            with self.assertRaises(fx.core.SpacesError) as caught:
+                fx.runs.start_refresh(sid, trigger="manual", actor="user")
+        self.assertEqual(caught.exception.code, "archived")
+        self.assertFalse(fx.cron.jobs[jid]["enabled"])
+        self.assertEqual(fx.projects.get_space(sid)["status"], "archived")
+
+    def test_gateway_warning_and_unavailable_views_survive_status_reads(self):
+        fx = self.fx
+        sid = fx.make()
+        original = fx.ctx.dispatch_tool
+
+        def dispatch(name, args):
+            result = json.loads(original(name, args))
+            if args["action"] == "list":
+                result.update(gateway_running=False, warning="Gateway is not running; stored jobs do not fire")
+            return json.dumps(result)
+
+        with patch.object(fx.ctx, "dispatch_tool", side_effect=dispatch):
+            shown = fx.schedule(sid)
+            self.assertFalse(shown["gateway_running"])
+            self.assertIn("do not fire", shown["warning"])
+            self.assertTrue(shown["job"]["enabled"])
+            self.assertIsNone(shown["job"]["prompt"])
+            self.assertIsNone(shown["job"]["timezone"])
+            self.assertTrue({"prompt", "timezone", "executions", "dispatch"}.issubset(shown["unavailable"]))
+            self.assertEqual(fx.upkeep.get_upkeep(sid), shown)
+
     def test_incomplete_list_is_not_reported_as_missing_or_used_for_teardown(self):
         fx = self.fx
         sid = fx.make()

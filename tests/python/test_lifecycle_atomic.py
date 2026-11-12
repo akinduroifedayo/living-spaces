@@ -180,7 +180,7 @@ class LifecycleAtomicTests(unittest.TestCase):
         self.assert_deleted_without_jobs(sid, cron)
         self.assertEqual(refresh.get('error', {}).get('code'), 'not_found', refresh)
 
-    def test_refresh_committing_before_delete_is_removed(self):
+    def test_delete_during_public_dispatch_prevents_future_work(self):
         sid = self.fx.make()
         modes = ('refresh-first', 'delete-second')
         cron, coordination, processes = self.processes(sid, modes)
@@ -188,9 +188,10 @@ class LifecycleAtomicTests(unittest.TestCase):
         wait_for(coordination / 'job-triggered')
         (coordination / 'delete-second-go').touch()
         wait_for(coordination / 'delete-second-write')
+        wait_for(coordination / 'delete-second-result.json')
         (coordination / 'refresh-release').touch()
         refresh, deleted = self.outcomes(coordination, modes, processes)
-        self.assertTrue(refresh['result']['dispatch']['success'])
+        self.assertEqual(refresh['error']['code'], 'not_found')
         self.assertTrue(deleted['result']['deleted'])
         self.assert_deleted_without_jobs(sid, cron)
 
