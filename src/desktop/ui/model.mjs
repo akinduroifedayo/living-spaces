@@ -109,7 +109,7 @@ export function dispatchText(dispatch, format) {
   const actual = at(dispatch.dispatched_at)
   return `${catchUp ? 'Catch-up refresh. ' : ''}${scheduled ? `${catchUp ? 'Missed scheduled time' : 'Scheduled time'} ${scheduled}. ` : ''}${actual ? `Actual dispatch ${actual}.` : ''}${delay}${catchUp ? ' Missed intervals were not replayed.' : ''}`.trim()
 }
-export const CATCH_UP = "If Hermes is asleep at run time, it runs once when it wakes. Missed runs aren't replayed."
+export const CATCH_UP = 'Missed runs follow native Hermes cron policy. Current catch-up settings are unavailable here.'
 export const EXECUTION_LABELS = { succeeded: 'Succeeded', failed: 'Failed', running: 'Running', claimed: 'Claimed', queued: 'Queued', unknown: 'Outcome unknown, side effects may have run' }
 export const executionLabel = status => EXECUTION_LABELS[status] || String(status ?? '')
 export const toSeconds = value => value == null ? null : typeof value === 'number' ? value : Number.isFinite(Date.parse(value)) ? Date.parse(value) / 1000 : null

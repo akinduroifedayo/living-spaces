@@ -119,7 +119,7 @@ function dispatchText(dispatch, format) {
   const actual = at(dispatch.dispatched_at);
   return `${catchUp ? "Catch-up refresh. " : ""}${scheduled ? `${catchUp ? "Missed scheduled time" : "Scheduled time"} ${scheduled}. ` : ""}${actual ? `Actual dispatch ${actual}.` : ""}${delay}${catchUp ? " Missed intervals were not replayed." : ""}`.trim();
 }
-var CATCH_UP = "If Hermes is asleep at run time, it runs once when it wakes. Missed runs aren't replayed.";
+var CATCH_UP = "Missed runs follow native Hermes cron policy. Current catch-up settings are unavailable here.";
 var EXECUTION_LABELS = { succeeded: "Succeeded", failed: "Failed", running: "Running", claimed: "Claimed", queued: "Queued", unknown: "Outcome unknown, side effects may have run" };
 var executionLabel = (status) => EXECUTION_LABELS[status] || String(status ?? "");
 var toSeconds = (value) => value == null ? null : typeof value === "number" ? value : Number.isFinite(Date.parse(value)) ? Date.parse(value) / 1e3 : null;
