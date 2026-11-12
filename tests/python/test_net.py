@@ -196,7 +196,7 @@ class NetTests(CoreCase):
                    'Content-Length': '999', 'Transfer-Encoding': 'chunked', 'Connection': 'upgrade'})
         headers = self.requests[0][1]['headers']
         self.assertEqual(headers, {'Cookie': 'secret', 'AUTHORIZATION': 'secret', 'X-Public': 'demo',
-                                   'Host': 'example.com', 'Accept-Encoding': 'identity'})
+                                   'Host': 'example.com', 'Accept-Encoding': 'identity', 'User-Agent': self.net.USER_AGENT})
 
     def test_request_body_cap_has_numbers(self):
         error = self.error('limit', self.fetch, method='POST', body='x' * (limits.BRIDGE_BYTES + 1))
@@ -355,7 +355,7 @@ class NetTests(CoreCase):
                 self.assertEqual(reply['result']['text'], 'hello')
                 self.assertEqual(self.requests[-1][1]['headers'], {
                     **credentials, 'X-Public': 'demo',
-                    'Host': 'example.com', 'Accept-Encoding': 'identity',
+                    'Host': 'example.com', 'Accept-Encoding': 'identity', 'User-Agent': self.net.USER_AGENT,
                 })
 
     def test_reserved_header_stripping_is_case_insensitive_with_own_credentials(self):
@@ -364,7 +364,7 @@ class NetTests(CoreCase):
                 self.responses = [Response()]
                 supplied = {spelling(name): 'public-reserved-demo' for name in (
                     'Host', 'Content-Length', 'Transfer-Encoding', 'Connection',
-                    'Keep-Alive', 'Upgrade', 'Te', 'Trailer', 'Accept-Encoding',
+                    'Keep-Alive', 'Upgrade', 'Te', 'Trailer', 'Accept-Encoding', 'User-Agent',
                     'Proxy-Authorization', 'Proxy-Thing', 'X-Hermes-Token', 'X-HermesAnything',
                 )}
                 supplied.update({spelling('Authorization'): 'Bearer public-space-demo',
@@ -373,6 +373,7 @@ class NetTests(CoreCase):
                 self.assertEqual({k.lower(): v for k, v in self.requests[-1][1]['headers'].items()}, {
                     'authorization': 'Bearer public-space-demo', 'cookie': 'space=public-demo',
                     'x-public': 'demo', 'host': 'example.com', 'accept-encoding': 'identity',
+                    'user-agent': self.net.USER_AGENT,
                 })
 
     def test_same_origin_redirects_preserve_space_credentials(self):
@@ -387,7 +388,7 @@ class NetTests(CoreCase):
                     self.assertEqual([c[:3] for c in self.connections[-2:]],
                                      [('example.com', 443, PUBLIC)] * 2)
                     self.assertEqual([request[1]['headers'] for request in self.requests[-2:]],
-                                     [{**supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity'}] * 2)
+                                     [{**supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity', 'User-Agent': self.net.USER_AGENT}] * 2)
 
     def test_cross_host_redirects_strip_space_credentials_case_insensitively(self):
         for authorization, cookie in (('Authorization', 'Cookie'), ('authorization', 'cookie'),
@@ -403,8 +404,8 @@ class NetTests(CoreCase):
                     self.assertEqual([c[:3] for c in self.connections[-2:]],
                                      [('example.com', 443, PUBLIC), ('other.example', 443, PUBLIC)])
                     self.assertEqual([request[1]['headers'] for request in self.requests[-2:]], [
-                        {**supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity'},
-                        {'X-Public': 'demo', 'Host': 'other.example', 'Accept-Encoding': 'identity'},
+                        {**supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity', 'User-Agent': self.net.USER_AGENT},
+                        {'X-Public': 'demo', 'Host': 'other.example', 'Accept-Encoding': 'identity', 'User-Agent': self.net.USER_AGENT},
                     ])
 
     def test_changed_port_redirects_strip_space_credentials(self):
@@ -418,8 +419,8 @@ class NetTests(CoreCase):
                 result = self.fetch(f'https://{origin}/start', headers=supplied)
                 self.assertEqual((result['url'], result['text']), (f'https://{destination}/next', 'hello'))
                 self.assertEqual([request[1]['headers'] for request in self.requests[-2:]], [
-                    {**supplied, 'Host': origin, 'Accept-Encoding': 'identity'},
-                    {'X-Public': 'demo', 'Host': destination, 'Accept-Encoding': 'identity'},
+                    {**supplied, 'Host': origin, 'Accept-Encoding': 'identity', 'User-Agent': self.net.USER_AGENT},
+                    {'X-Public': 'demo', 'Host': destination, 'Accept-Encoding': 'identity', 'User-Agent': self.net.USER_AGENT},
                 ])
 
     def test_redirect_return_to_origin_never_resurrects_space_credentials(self):
@@ -437,11 +438,11 @@ class NetTests(CoreCase):
                 result = self.fetch(headers=supplied)
                 self.assertEqual((result['url'], result['text']), ('https://example.com/final', 'hello'))
                 self.assertEqual([request[1]['headers'] for request in self.requests[-5:]], [
-                    {**supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity'},
-                    {**supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity'},
-                    {'X-Public': 'demo', 'Host': away, 'Accept-Encoding': 'identity'},
-                    {'X-Public': 'demo', 'Host': 'example.com', 'Accept-Encoding': 'identity'},
-                    {'X-Public': 'demo', 'Host': 'example.com', 'Accept-Encoding': 'identity'},
+                    {**supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity', 'User-Agent': self.net.USER_AGENT},
+                    {**supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity', 'User-Agent': self.net.USER_AGENT},
+                    {'X-Public': 'demo', 'Host': away, 'Accept-Encoding': 'identity', 'User-Agent': self.net.USER_AGENT},
+                    {'X-Public': 'demo', 'Host': 'example.com', 'Accept-Encoding': 'identity', 'User-Agent': self.net.USER_AGENT},
+                    {'X-Public': 'demo', 'Host': 'example.com', 'Accept-Encoding': 'identity', 'User-Agent': self.net.USER_AGENT},
                 ])
 
     def test_credentialed_fetch_still_refuses_private_addresses_before_connect(self):
@@ -477,7 +478,7 @@ class NetTests(CoreCase):
                 self.assertEqual(len(self.connections) - before_connections, 2 if allowed else 1)
                 self.assertEqual(len(self.requests) - before_requests, 2 if allowed else 1)
                 self.assertEqual(self.requests[before_requests][1]['headers'], {
-                    **supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity',
+                    **supplied, 'Host': 'example.com', 'Accept-Encoding': 'identity', 'User-Agent': self.net.USER_AGENT,
                 })
 
     def test_credentialed_redirect_rechecks_grant_before_next_request(self):

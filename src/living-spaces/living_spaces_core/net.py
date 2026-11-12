@@ -16,10 +16,11 @@ from .errors import SpacesError
 
 TIMEOUT = 20
 RESPONSE_BYTES = 5 * 1024 * 1024
+USER_AGENT = 'LivingSpaces/0.1.0 (+https://github.com/akinduroifedayo/living-spaces)'
 _METHODS = {'GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'}
 _REDIRECTS = {301, 302, 303, 307, 308}
 _STRIPPED = {'host', 'content-length', 'transfer-encoding',
-             'connection', 'keep-alive', 'upgrade', 'te', 'trailer', 'accept-encoding'}
+             'connection', 'keep-alive', 'upgrade', 'te', 'trailer', 'accept-encoding', 'user-agent'}
 
 
 def _resolve_host(host, port, timeout):
@@ -209,7 +210,9 @@ def _fetch_public(url, *, authorize, max_bytes, method='GET', headers=None, body
             try:
                 timer.start()
                 authorize(request_url)
-                conn.request(method, target, body=body, headers={**headers, 'Host': authority, 'Accept-Encoding': 'identity'})
+                conn.request(method, target, body=body, headers={
+                    **headers, 'Host': authority, 'Accept-Encoding': 'identity', 'User-Agent': USER_AGENT,
+                })
                 response = conn.getresponse()
                 _remaining(deadline)
                 detail['status'] = response.status
