@@ -176,3 +176,79 @@ class AllowlistTests(FileRefCase):
         self.refused('blocked', 'spaces_write_files', space=sid, summary='Must not commit',
                      files={'app.js': {'from_path': source}, 'opaque.bin': {'from_path': bad}})
         self.assertEqual((core.get_space(sid), core.list_revisions(sid), core.bundle(sid)), before)
+
+
+class NamedProfileNativeTempTests(FileRefCase):
+    def setUp(self):
+        super().setUp()
+        self.global_home = self.home / '.hermes'
+        self.hermes = self.global_home / 'profiles/active'
+        self.tmp = self.global_home / 'cache/scratch'
+        self.hermes.mkdir(parents=True)
+        self.tmp.mkdir(parents=True)
+        for seam in (
+            patch.dict(os.environ, {'HERMES_HOME': str(self.hermes), 'HOME': str(self.home),
+                                    'TMPDIR': str(self.tmp),
+                                    'LIVING_SPACES_DB': str(self.hermes / 'spaces.db')}),
+            patch.object(file_refs.db, 'hermes_home', return_value=self.hermes),
+            patch.object(tempfile, 'tempdir', str(self.tmp)),
+        ):
+            seam.start()
+            self.addCleanup(seam.stop)
+
+    def test_native_global_scratch_imports_without_opening_other_profile_or_secret_paths(self):
+        safe = self.place(self.tmp, 'native-tool-output/art.png')
+        sid = self.create({'images/art.png': {'from_path': safe}})['space']
+        self.assertEqual(self.read_bytes(sid, 'images/art.png'), PNG)
+        before = core.get_space(sid), core.list_revisions(sid), core.bundle(sid)
+        blocked = [
+            self.place(self.global_home, name, b'SYNTHETIC-PRIVATE')
+            for name in (
+                'notes.md', 'auth/opaque.bin', 'vault/opaque.bin',
+                'cache/images/global.png', 'cache/documents/global.txt',
+                'cache/unknown/result.bin', 'cache/scratch-extra/asset.bin',
+                'profiles/sibling/notes.md', 'profiles/sibling/cache/scratch/asset.bin',
+                'profiles/sibling/cache/images/asset.bin',
+            )
+        ]
+        blocked.extend(self.place(self.tmp, name, b'SYNTHETIC-SECRET') for name in (
+            '.env', 'auth.json', 'client-secret.json', 'service_token.txt', 'vault.key',
+        ))
+        alias = self.tmp / 'native-tool-output/disguised.png'
+        alias.symlink_to(self.global_home / 'auth/opaque.bin')
+        blocked.append(str(alias))
+
+        for source in blocked:
+            with self.subTest(source=source):
+                self.refused('blocked', 'spaces_write_files', space=sid, summary='Must not import',
+                             files={'images/extra.png': {'from_path': safe},
+                                    'private.bin': {'from_path': source}})
+                self.assertEqual((core.get_space(sid), core.list_revisions(sid), core.bundle(sid)), before)
+
+    def test_broad_tmpdir_does_not_admit_global_or_sibling_stores(self):
+        safe = self.place(self.hermes, 'cache/images/active.png')
+        blocked = [
+            self.place(root, name, b'SYNTHETIC-PRIVATE')
+            for root, name in (
+                (self.home, 'ordinary.txt'),
+                (self.global_home, 'notes.md'),
+                (self.global_home, 'auth/opaque.bin'),
+                (self.global_home, 'vault/opaque.bin'),
+                (self.global_home, 'cache/unknown/result.bin'),
+                (self.global_home, 'cache/images/global.png'),
+                (self.global_home, 'profiles/sibling/notes.md'),
+                (self.global_home, 'profiles/sibling/cache/images/asset.bin'),
+            )
+        ]
+        for broad in (self.home, self.global_home, self.global_home / 'cache',
+                      self.global_home / 'profiles'):
+            with self.subTest(temp=broad), patch.dict(os.environ, {'TMPDIR': str(broad)}), \
+                    patch.object(tempfile, 'tempdir', str(broad)):
+                sid = self.create({'images/active.png': {'from_path': safe}})['space']
+                self.assertEqual(self.read_bytes(sid, 'images/active.png'), PNG)
+                before = core.get_space(sid), core.list_revisions(sid), core.bundle(sid)
+                for source in blocked:
+                    with self.subTest(source=source):
+                        self.refused('blocked', 'spaces_write_files', space=sid, summary='Must not import',
+                                     files={'private.bin': {'from_path': source}})
+                        self.assertEqual((core.get_space(sid), core.list_revisions(sid), core.bundle(sid)), before)

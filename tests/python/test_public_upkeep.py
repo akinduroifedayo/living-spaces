@@ -202,3 +202,221 @@ class PublicUpkeepTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SyntheticPublicUpkeepRepairTests(unittest.TestCase):
+    """Failure injection at public dispatch, not native scheduler qualification."""
+
+    def setUp(self):
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        self.fx = CustomizationFixture(self.stack)
+
+    def test_remove_missing_link_clears_link_and_feed_shim(self):
+        fx = self.fx
+        sid = fx.make(handler="feed")
+        jid = fx.schedule(sid, kind="feed")["link"]["cron_job_id"]
+        shim = fx.upkeep._shim(sid)
+        self.assertTrue(shim.is_file())
+        fx.cron.jobs.pop(jid)
+        self.assertTrue(fx.upkeep.get_upkeep(sid)["missing"])
+
+        result = fx.upkeep.upkeep_action(sid, "remove", actor="user")
+
+        self.assertIsNone(result["link"])
+        self.assertIsNone(fx.upkeep.get_upkeep(sid)["link"])
+        self.assertFalse(shim.exists())
+        self.assertEqual(fx.cron.jobs, {})
+
+    def test_remove_refusal_for_existing_job_retains_link_job_and_shim(self):
+        fx = self.fx
+        sid = fx.make(handler="feed")
+        first = fx.schedule(sid, kind="feed")
+        jid = first["link"]["cron_job_id"]
+        before = fx.cron.get_job(jid)
+        shim = fx.upkeep._shim(sid)
+        shim_bytes = shim.read_bytes()
+        original = fx.ctx.dispatch_tool
+        refused = []
+
+        def dispatch(name, args):
+            if args["action"] == "remove" and args["job_id"] == jid:
+                refused.append(jid)
+                return {"success": False, "error": "Synthetic existing-job remove refusal"}
+            return original(name, args)
+
+        with patch.object(fx.ctx, "dispatch_tool", side_effect=dispatch):
+            with self.assertRaises(fx.core.SpacesError) as caught:
+                fx.upkeep.upkeep_action(sid, "remove", actor="user")
+
+        self.assertEqual(refused, [jid])
+        self.assertIn("Synthetic existing-job remove refusal", caught.exception.message)
+        self.assertEqual(fx.upkeep.get_upkeep(sid)["link"], first["link"])
+        self.assertEqual(fx.cron.get_job(jid), before)
+        self.assertEqual(shim.read_bytes(), shim_bytes)
+
+    def test_transient_create_verification_failure_removes_only_new_job(self):
+        fx = self.fx
+        unrelated = fx.make(handler="feed")
+        unrelated_state = fx.schedule(unrelated, kind="feed")
+        unrelated_shim = fx.upkeep._shim(unrelated).read_bytes()
+        original = fx.ctx.dispatch_tool
+
+        for replacing in (False, True):
+            with self.subTest(replacing=replacing):
+                sid = fx.make(handler="feed")
+                first = fx.schedule(sid, kind="feed") if replacing else fx.upkeep.get_upkeep(sid)
+                shim = fx.upkeep._shim(sid)
+                before_shim = shim.read_bytes() if shim.exists() else None
+                before_jobs = fx.cron.list_jobs(include_disabled=True)
+                created = []
+                failures = []
+                pending_list_failure = False
+
+                def dispatch(name, args):
+                    nonlocal pending_list_failure
+                    if args["action"] == "create":
+                        reply = original(name, args)
+                        created.append(json.loads(reply)["job_id"])
+                        pending_list_failure = True
+                        return reply
+                    if args["action"] == "list" and pending_list_failure:
+                        pending_list_failure = False
+                        failures.append("list")
+                        raise OSError("Synthetic one-time verification-list failure")
+                    return original(name, args)
+
+                with patch.object(fx.ctx, "dispatch_tool", side_effect=dispatch):
+                    with self.assertRaises(fx.core.SpacesError) as caught:
+                        fx.schedule(sid, kind="feed")
+
+                self.assertEqual(len(created), 1)
+                self.assertEqual(failures, ["list"])
+                self.assertIn("Synthetic one-time verification-list failure", caught.exception.message)
+                self.assertNotIn(created[0], fx.cron.jobs)
+                self.assertEqual(fx.cron.list_jobs(include_disabled=True), before_jobs)
+                self.assertEqual(fx.upkeep.get_upkeep(sid)["link"], first["link"])
+                self.assertEqual(shim.read_bytes() if shim.exists() else None, before_shim)
+                self.assertEqual(fx.upkeep.get_upkeep(unrelated), unrelated_state)
+                self.assertEqual(fx.upkeep._shim(unrelated).read_bytes(), unrelated_shim)
+
+    def test_defensive_partial_create_response_compensates_returned_new_id(self):
+        """Public response conformance, not an observed paused native-create defect."""
+        fx = self.fx
+        unrelated = fx.make(handler="feed")
+        unrelated_state = fx.schedule(unrelated, kind="feed")
+        unrelated_shim = fx.upkeep._shim(unrelated).read_bytes()
+        original = fx.ctx.dispatch_tool
+
+        for replacing in (False, True):
+            with self.subTest(replacing=replacing):
+                sid = fx.make(handler="feed")
+                first = fx.schedule(sid, kind="feed") if replacing else fx.upkeep.get_upkeep(sid)
+                shim = fx.upkeep._shim(sid)
+                before_shim = shim.read_bytes() if shim.exists() else None
+                before_jobs = fx.cron.list_jobs(include_disabled=True)
+                created = []
+
+                def dispatch(name, args):
+                    reply = original(name, args)
+                    if args["action"] == "create":
+                        jid = json.loads(reply)["job_id"]
+                        created.append(jid)
+                        return {"success": False, "job_saved": True, "job_id": jid,
+                                "scheduler_registered": False, "retry_create": False,
+                                "error": "Synthetic persisted-create failure"}
+                    return reply
+
+                with patch.object(fx.ctx, "dispatch_tool", side_effect=dispatch):
+                    with self.assertRaises(fx.core.SpacesError) as caught:
+                        fx.schedule(sid, kind="feed")
+
+                self.assertEqual(len(created), 1)
+                self.assertIn("Synthetic persisted-create failure", caught.exception.message)
+                self.assertNotIn(created[0], fx.cron.jobs)
+                self.assertEqual(fx.cron.list_jobs(include_disabled=True), before_jobs)
+                self.assertEqual(fx.upkeep.get_upkeep(sid)["link"], first["link"])
+                self.assertEqual(shim.read_bytes() if shim.exists() else None, before_shim)
+                self.assertEqual(fx.upkeep.get_upkeep(unrelated), unrelated_state)
+                self.assertEqual(fx.upkeep._shim(unrelated).read_bytes(), unrelated_shim)
+
+    def test_failed_compensation_exposes_orphan_id_and_original_error(self):
+        fx = self.fx
+        sid = fx.make(handler="feed")
+        first = fx.schedule(sid, kind="feed")
+        old_jid = first["link"]["cron_job_id"]
+        old_job = fx.cron.get_job(old_jid)
+        shim = fx.upkeep._shim(sid)
+        before_shim = shim.read_bytes()
+        original = fx.ctx.dispatch_tool
+        created = []
+        cleanup_attempts = []
+        pending_list_failure = False
+        failures = []
+
+        def dispatch(name, args):
+            nonlocal pending_list_failure
+            if args["action"] == "create":
+                reply = original(name, args)
+                created.append(json.loads(reply)["job_id"])
+                pending_list_failure = True
+                return reply
+            if args["action"] == "list" and pending_list_failure:
+                pending_list_failure = False
+                failures.append("list")
+                raise OSError("Synthetic original verification-list failure")
+            if args["action"] == "remove" and args["job_id"] in created:
+                cleanup_attempts.append(args["job_id"])
+                return {"success": False, "error": "Synthetic compensation refusal"}
+            return original(name, args)
+
+        with patch.object(fx.ctx, "dispatch_tool", side_effect=dispatch):
+            with self.assertRaises(fx.core.SpacesError) as caught:
+                fx.schedule(sid, kind="feed")
+
+        self.assertEqual(len(created), 1)
+        self.assertEqual(failures, ["list"])
+        self.assertEqual(cleanup_attempts, created)
+        error = json.dumps(caught.exception.to_dict())
+        self.assertRegex(error, r'(?<![\w-])' + created[0] + r'(?![\w-])')
+        self.assertIn("Synthetic original verification-list failure", error)
+        self.assertIn("Synthetic compensation refusal", error)
+        self.assertEqual(set(fx.cron.jobs), {old_jid, created[0]})
+        self.assertFalse(fx.cron.jobs[created[0]]["enabled"])
+        self.assertEqual(fx.cron.get_job(old_jid), old_job)
+        self.assertEqual(fx.upkeep.get_upkeep(sid)["link"], first["link"])
+        self.assertEqual(shim.read_bytes(), before_shim)
+
+    def test_candidate_resume_refusal_preserves_previous_job_link_and_shim(self):
+        fx = self.fx
+        sid = fx.make(handler="feed")
+        first = fx.schedule(sid, kind="feed")
+        shim = fx.upkeep._shim(sid)
+        before_shim = shim.read_bytes()
+        before_jobs = fx.cron.list_jobs(include_disabled=True)
+        original = fx.ctx.dispatch_tool
+        created = []
+        refused = []
+
+        def dispatch(name, args):
+            if args["action"] == "create":
+                reply = original(name, args)
+                created.append(json.loads(reply)["job_id"])
+                return reply
+            if args["action"] == "resume" and args["job_id"] in created:
+                refused.append(args["job_id"])
+                return {"success": False, "error": "Synthetic candidate resume refusal"}
+            return original(name, args)
+
+        with patch.object(fx.ctx, "dispatch_tool", side_effect=dispatch):
+            with self.assertRaises(fx.core.SpacesError) as caught:
+                fx.schedule(sid, kind="agent")
+
+        self.assertEqual(len(created), 1)
+        self.assertEqual(refused, created)
+        self.assertIn("Synthetic candidate resume refusal", caught.exception.message)
+        self.assertNotIn(created[0], fx.cron.jobs)
+        self.assertEqual(fx.cron.list_jobs(include_disabled=True), before_jobs)
+        self.assertEqual(fx.upkeep.get_upkeep(sid)["link"], first["link"])
+        self.assertFalse(fx.upkeep.get_upkeep(sid)["missing"])
+        self.assertEqual(shim.read_bytes(), before_shim)
