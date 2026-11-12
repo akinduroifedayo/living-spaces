@@ -456,8 +456,9 @@ BINARY_NOTE = (" Place binary files by reference in one line: {\"from_path\":\"/
                "file such as Hermes image generation output or a downloaded file, and {\"from_url\":\"https://...\"} "
                "downloads fonts, libraries and images over public HTTPS (no Internet grant needed; this is you "
                "acting, not the Space). Keep {\"b64\":\"<base64>\"} for small inline bytes. from_path must be "
-               "inside the Hermes home, the temp folder or your home folder, and credential files (.env, "
-               "auth.json, keys, tokens, secrets, .ssh) are refused. Use the correct path extension for MIME. "
+               "inside a supported Hermes media/download cache or the temp folder; stage other authorized "
+               "files in temp with native tools first. Credential files (.env, auth.json, keys, tokens, secrets, "
+               ".ssh) are refused and must not be staged to bypass the guard. Use the correct path extension for MIME. "
                "Limits: 8 MB per file, 25 MB and 600 files per Space.")
 
 TOOLS = [
