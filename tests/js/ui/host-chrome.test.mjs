@@ -590,3 +590,12 @@ for (const [label, title, startWidth, endWidth, hidden] of [
     }
   })
 }
+
+test('public cron metadata does not establish a catch-up execution guarantee', async () => {
+  setup(); data.upkeep = payload()
+  try {
+    await render(UpkeepSheet, props())
+    assert.match(document.body.textContent, /Current catch-up settings are unavailable here/)
+    assert.doesNotMatch(document.body.textContent, /it runs once when it wakes|Missed runs aren't replayed/)
+  } finally { await cleanup() }
+})
