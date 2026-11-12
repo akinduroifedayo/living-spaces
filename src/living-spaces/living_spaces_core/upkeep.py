@@ -133,7 +133,18 @@ def _jobs():
 
 
 def _mutate(action, jid, **args):
-    result = _call(action, job_id=jid, **args)
+    try:
+        result = _call(action, job_id=jid, **args)
+    except SpacesError as refusal:
+        absent = False
+        if action == "remove" and refusal.extra.get("reason") == "native_refused":
+            try:
+                absent = all(job["job_id"] != jid for job in _jobs()["jobs"])
+            except SpacesError:
+                pass
+        if not absent:
+            raise
+        return {"success": True, "already_absent": True, "native": refusal.extra.get("native")}
     job = next((job for job in _jobs()["jobs"] if job["job_id"] == jid), None)
     if action == "remove":
         valid = job is None
@@ -149,11 +160,28 @@ def _mutate(action, jid, **args):
 
 
 def _create(**args):
-    result = _call("create", **args)
-    jid = result.get("job_id")
-    if not isinstance(jid, str) or not any(job["job_id"] == jid for job in _jobs()["jobs"]):
-        raise SpacesError("blocked", "Hermes cron creation could not be verified", reason="cron_unverified", native=result)
-    return jid
+    jid = None
+    try:
+        result = _call("create", **args)
+        jid = result.get("job_id")
+        if not isinstance(jid, str) or not any(job["job_id"] == jid for job in _jobs()["jobs"]):
+            raise SpacesError("blocked", "Hermes cron creation could not be verified", reason="cron_unverified", native=result)
+        return jid
+    except SpacesError as exc:
+        failure = exc
+        native = exc.extra.get("native")
+        if jid is None and isinstance(native, dict) and native.get("job_saved") is True:
+            jid = native.get("job_id")
+    if not isinstance(jid, str):
+        raise failure
+    try:
+        _mutate("remove", jid)
+    except SpacesError as cleanup:
+        raise SpacesError("blocked", f"{failure.message}; cleanup of the newly created Hermes cron job {jid} also failed: "
+                          f"{cleanup.message}. Job {jid} may remain paused and unlinked.",
+                          reason="cron_cleanup_failed", orphan_job_id=jid,
+                          original=failure.to_dict(), cleanup=cleanup.to_dict()) from failure
+    raise failure
 
 
 def validate_upkeep(upkeep):
@@ -308,11 +336,19 @@ def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
                 shim.unlink(missing_ok=True)
             raise
         try:
+            _mutate("resume", jid)
             if old and any(job["job_id"] == old["cron_job_id"] for job in _jobs()["jobs"]):
                 _mutate("remove", old["cron_job_id"])
-            _mutate("resume", jid)
-        except SpacesError:
-            _mutate("remove", jid)
+        except SpacesError as failure:
+            if not had_shim:
+                shim.unlink(missing_ok=True)
+            try:
+                _mutate("remove", jid)
+            except SpacesError as cleanup:
+                raise SpacesError("blocked", f"{failure.message}; cleanup of the newly created Hermes cron job {jid} also failed: "
+                                  f"{cleanup.message}. Job {jid} may remain paused and unlinked.",
+                                  reason="cron_cleanup_failed", orphan_job_id=jid,
+                                  original=failure.to_dict(), cleanup=cleanup.to_dict()) from failure
             raise
         if kind == "agent":
             shim.unlink(missing_ok=True)

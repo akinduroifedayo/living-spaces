@@ -66,6 +66,13 @@ def _roots():
             except OSError:
                 continue
         roots.extend((root, resolved))
+    temp = Path(os.path.abspath(tempfile.gettempdir()))
+    real_temp = _real(temp)
+    for global_home in _hermes_homes():
+        scratch, resolved = global_home / "cache/scratch", _real(global_home) / "cache/scratch"
+        if _real(scratch) == resolved and _within(temp, scratch) and _within(real_temp, resolved):
+            roots.extend((temp, real_temp))
+            break
     return roots
 
 
