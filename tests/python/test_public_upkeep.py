@@ -100,9 +100,16 @@ class PublicUpkeepTests(unittest.TestCase):
         for reply in replies:
             with self.subTest(reply=reply):
                 fx.ctx.run_reply = reply
-                result = fx.runs.start_refresh(sid, trigger="manual", actor="user")
-                self.assertEqual(result["dispatch"], reply)
-                self.assertNotIn("triggered", result)
+                job = reply.get("job", {})
+                if (job.get("executed") is False or job.get("execution_success") is False
+                        or job.get("execution_skipped")):
+                    with self.assertRaises(fx.core.SpacesError) as caught:
+                        fx.runs.start_refresh(sid, trigger="manual", actor="user")
+                    self.assertEqual(caught.exception.extra["native"], reply)
+                else:
+                    result = fx.runs.start_refresh(sid, trigger="manual", actor="user")
+                    self.assertEqual(result["dispatch"], reply)
+                    self.assertNotIn("triggered", result)
                 self.assertEqual(fx.upkeep.upkeep_action(sid, "run", actor="user")["dispatch"], reply)
         fx.ctx.run_reply = {"success": False, "error": "Provider refused"}
         with self.assertRaises(fx.core.SpacesError) as caught:
