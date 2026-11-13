@@ -470,17 +470,37 @@ def refresh_now(sid, upkeep, *, actor):
         else:
             jid = link["cron_job_id"]
     try:
+        if created:
+            _mutate("resume", jid)
         native = _run_now(sid, jid)
+        job = native.get("job") if isinstance(native, dict) else None
+        if isinstance(job, dict) and (job.get("executed") is False
+                                      or job.get("execution_skipped")
+                                      or job.get("execution_success") is False):
+            raise SpacesError("blocked", "Hermes cron did not complete the refresh execution",
+                              reason="native_refused", native=native)
     except SpacesError as failure:
         if created:
+            pause_failure = None
+            try:
+                _mutate("pause", jid, reason=f"Living Spaces refresh by {actor} failed")
+            except SpacesError as unpaused:
+                pause_failure = unpaused
             try:
                 if any(job["job_id"] == jid for job in _jobs()["jobs"]):
                     _mutate("remove", jid)
             except SpacesError as cleanup:
+                if pause_failure is None:
+                    state = f"Disabling it succeeded before cleanup was attempted. Job {jid} may remain paused and unlinked."
+                    extra = {}
+                else:
+                    state = (f"Disabling it also failed: {pause_failure.message}. "
+                             f"Job {jid} may still be enabled and consume quota, and may remain unlinked.")
+                    extra = {"pause": pause_failure.to_dict()}
                 raise SpacesError("blocked", f"{failure.message}; cleanup of the newly created Hermes cron job {jid} also failed: "
-                                  f"{cleanup.message}. Job {jid} may remain unlinked.",
+                                  f"{cleanup.message}. {state}",
                                   reason="cron_cleanup_failed", orphan_job_id=jid,
-                                  original=failure.to_dict(), cleanup=cleanup.to_dict()) from failure
+                                  original=failure.to_dict(), cleanup=cleanup.to_dict(), **extra) from failure
         raise
     return {"kind": "cron", "cron_job_id": jid, "dispatch": native}
 
