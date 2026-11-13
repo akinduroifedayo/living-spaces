@@ -45,6 +45,12 @@ class SharedCron:
     def remove_job(self, jid):
         return self.call('remove_job', jid)
 
+    def pause_job(self, jid, reason=None):
+        return self.call('pause_job', jid, reason=reason)
+
+    def resume_job(self, jid):
+        return self.call('resume_job', jid)
+
     def trigger_job(self, jid):
         return self.call('trigger_job', jid)
 
