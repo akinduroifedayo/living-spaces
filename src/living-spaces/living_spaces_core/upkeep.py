@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -18,6 +19,8 @@ AGENT_PROMPT_LIMIT = 8000
 # Refresh now runs its one-shot explicitly. The native slot exists only because a once job needs one, so it is
 # set far beyond a normal run. The run holds the claim until it finishes and the pause lands only after that, so
 # a run still in flight past the slot (7 days awake, or a host suspended across it) can be claimed once more.
+# A one-shot created already due was tried instead: Hermes's dispatch-limit guard retired it mid-run and a
+# successful run was reported as failed, so the bounded slot stays.
 ONE_SHOT_SLOT = "in 7d"
 _CONTEXTS = {}
 UNAVAILABLE = {
@@ -416,22 +419,42 @@ def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
     return get_upkeep(sid)
 
 
+def _carry_run_reply(error, native):
+    # Rule: every error raised after a run was dispatched carries the run reply at top-level native. If the
+    # error held a different reply of its own, the whole original error moves under post_run_error.
+    if error.extra.get("native") is native:
+        return error
+    return SpacesError(error.code, error.message, **{**error.extra, "native": native, "post_run_error": error.to_dict()})
+
+
+@contextmanager
+def _after_run(native):
+    try:
+        yield
+    except SpacesError as exc:
+        carried = _carry_run_reply(exc, native)
+        if carried is exc:
+            raise
+        raise carried from exc
+
+
 def _run_now(sid, jid):
     # Public run may execute inline and call Space tools, so never hold SQLite's write lock here.
     native = _mutate("run", jid)
-    try:
-        with db.write() as conn:
-            row = conn.execute("SELECT status FROM spaces WHERE id=?", (sid,)).fetchone()
-            if row is None or row["status"] == "archived":
-                if any(job["job_id"] == jid for job in _jobs()["jobs"]):
-                    _mutate("remove" if row is None else "pause", jid)
-                code = "not_found" if row is None else "archived"
-                raise SpacesError(code, "Space was deleted or archived during the run request", native=native)
-    except SpacesError:
-        raise
-    except Exception as exc:
-        raise SpacesError("blocked", f"Hermes accepted the run, but Living Spaces could not recheck the Space afterwards: {exc}",
-                          reason="post_run_check_failed", native=native) from exc
+    with _after_run(native):
+        try:
+            with db.write() as conn:
+                row = conn.execute("SELECT status FROM spaces WHERE id=?", (sid,)).fetchone()
+                if row is None or row["status"] == "archived":
+                    if any(job["job_id"] == jid for job in _jobs()["jobs"]):
+                        _mutate("remove" if row is None else "pause", jid)
+                    code = "not_found" if row is None else "archived"
+                    raise SpacesError(code, "Space was deleted or archived during the run request", native=native)
+        except SpacesError:
+            raise
+        except Exception as exc:
+            raise SpacesError("blocked", f"Hermes accepted the run, but Living Spaces could not recheck the Space afterwards: {exc}",
+                              reason="post_run_check_failed", native=native) from exc
     return native
 
 
@@ -464,8 +487,13 @@ def upkeep_action(sid, action, *, actor):
         if action == "remove":
             _shim(sid).unlink(missing_ok=True)
             conn.execute("DELETE FROM upkeep_links WHERE space=?", (sid,))
-    native = _run_now(sid, link["cron_job_id"]) if action == "run" and link is not None else None
-    result = get_upkeep(sid)
+    if action == "run" and link is not None:
+        native = _run_now(sid, link["cron_job_id"])
+        with _after_run(native):
+            result = get_upkeep(sid)
+    else:
+        native = None
+        result = get_upkeep(sid)
     if action == "run":
         result["dispatch"] = native
     return result
@@ -483,9 +511,11 @@ def refresh_now(sid, upkeep, *, actor):
                           name=_once_name(sid), no_agent=False, deliver="local", catch_up=True, paused=True)
         else:
             jid = link["cron_job_id"]
+    dispatched = False
     try:
         if created:
             _mutate("resume", jid)
+        dispatched = True  # from here on, every SpacesError from _run_now carries the run reply as native
         native = _run_now(sid, jid)
         job = native.get("job") if isinstance(native, dict) else None
         if isinstance(job, dict) and (job.get("executed") is False
@@ -511,6 +541,8 @@ def refresh_now(sid, upkeep, *, actor):
                     state = (f"Disabling it also failed: {pause_failure.message}. "
                              f"Job {jid} may still be enabled and consume quota, and may remain unlinked.")
                     extra = {"pause": pause_failure.to_dict()}
+                if dispatched and "native" in failure.extra:
+                    extra["native"] = failure.extra["native"]
                 raise SpacesError("blocked", f"{failure.message}; cleanup of the newly created Hermes cron job {jid} also failed: "
                                   f"{cleanup.message}. {state}",
                                   reason="cron_cleanup_failed", orphan_job_id=jid,
@@ -519,10 +551,11 @@ def refresh_now(sid, upkeep, *, actor):
     # dispatch stays the verbatim native reply; one_shot records what happened to the owned job afterwards.
     result = {"kind": "cron", "cron_job_id": jid, "dispatch": native}
     if created and isinstance(job, dict) and job.get("executed") is True:
-        if job.get("execution_success") is True:
-            result["one_shot"] = _consume_one_shot(jid, native, actor=actor)
-        elif job.get("execution_mode") == "background":
-            result["one_shot"] = _consume_one_shot(jid, native, actor=actor, background=True)
+        with _after_run(native):
+            if job.get("execution_success") is True:
+                result["one_shot"] = _consume_one_shot(jid, native, actor=actor)
+            elif job.get("execution_mode") == "background":
+                result["one_shot"] = _consume_one_shot(jid, native, actor=actor, background=True)
     return result
 
 
