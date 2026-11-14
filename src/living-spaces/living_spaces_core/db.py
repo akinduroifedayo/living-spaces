@@ -8,7 +8,7 @@ import threading
 from contextlib import contextmanager
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 DDL = """
 CREATE TABLE IF NOT EXISTS spaces(id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
@@ -48,7 +48,9 @@ CREATE TABLE IF NOT EXISTS grants(space TEXT NOT NULL REFERENCES spaces(id) ON D
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT, space TEXT NOT NULL, at REAL NOT NULL,
   actor TEXT NOT NULL, action TEXT NOT NULL, capability TEXT, outcome TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY, space TEXT NOT NULL, created_at REAL NOT NULL,
-  closed_at REAL, head_rev INTEGER NOT NULL);
+  closed_at REAL, head_rev INTEGER NOT NULL, lifecycle TEXT,
+  log_errors INTEGER NOT NULL DEFAULT 0, log_warnings INTEGER NOT NULL DEFAULT 0,
+  log_dropped INTEGER NOT NULL DEFAULT 0, log_unconfirmed INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY, space TEXT NOT NULL,
   trigger TEXT NOT NULL CHECK(trigger IN ('manual','schedule','chat')), handler TEXT NOT NULL, actor TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('queued','running','succeeded','failed','canceled','blocked')),
@@ -58,7 +60,7 @@ CREATE TABLE IF NOT EXISTS upkeep_links(space TEXT NOT NULL REFERENCES spaces(id
   kind TEXT NOT NULL CHECK(kind IN ('agent','feed')), created_at REAL NOT NULL, created_by TEXT NOT NULL,
   PRIMARY KEY(space, cron_job_id));
 CREATE TABLE IF NOT EXISTS logs(id INTEGER PRIMARY KEY AUTOINCREMENT, space TEXT NOT NULL, session TEXT, rev INTEGER,
-  at REAL NOT NULL, level TEXT NOT NULL, msg TEXT NOT NULL);
+  at REAL NOT NULL, level TEXT NOT NULL, msg TEXT NOT NULL, attribution TEXT NOT NULL DEFAULT 'ingestion_head');
 CREATE INDEX IF NOT EXISTS changes_space_seq ON changes(space, seq);
 CREATE INDEX IF NOT EXISTS changes_record_rev ON changes(space, collection, record_id, rev);
 CREATE INDEX IF NOT EXISTS records_space_coll ON records(space, collection, updated_at);
@@ -102,10 +104,12 @@ def connect() -> sqlite3.Connection:
             conn.executescript(DDL)
             conn.execute("BEGIN IMMEDIATE")
             try:
-                from .migrations import grant_internet_access, link_native_upkeep, add_action_refusal_reason
+                from .migrations import (grant_internet_access, link_native_upkeep,
+                                         add_action_refusal_reason, add_runtime_diagnostics)
                 grant_internet_access(conn)
                 link_native_upkeep(conn)
                 add_action_refusal_reason(conn)
+                add_runtime_diagnostics(conn)
                 conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 conn.execute("COMMIT")
             except BaseException:

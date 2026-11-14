@@ -415,7 +415,7 @@ def spaces_write_records(core, args, owner):
 
 def spaces_read_logs(core, args, owner):
     sid = _space(core, args)
-    return core.read_logs(sid, limit=100, level=_text(core, args, "level", required=False))
+    return core.read_logs(sid, limit=100, level=_text(core, args, "level", required=False), include_summary=True)
 
 
 def spaces_revisions(core, args, owner):
@@ -549,9 +549,11 @@ TOOLS = [
         ["space", "ops"])),
     (spaces_read_logs, _schema(
         "spaces_read_logs",
-        "Read the Space's recent runtime console output, uncaught errors and sandbox policy violations (newest "
-        "first). Check it after the user opens a new or changed Space, and whenever they report it is blank or "
-        "broken. Fix what you find with spaces_edit_file." + REF_NOTE,
+        "Return newest-first entries with revision attribution and a current-head summary. "
+        "Summary gives opened, session counts loaded/failed/unreported, and error/warning/dropped/unconfirmed-entry totals. "
+        "Session totals survive retention and ignore the entry filter. Reports require opening the Space. "
+        "Loaded means entry settled; unreported means no lifecycle received. Unconfirmed means delivery was not acknowledged. "
+        "Reports do not prove application correctness or complete delivery." + REF_NOTE,
         {"space": SPACE_ARG, "level": {"type": "string", "enum": ["error", "warn", "info", "log"],
                                        "description": "Only this level."}},
         ["space"])),

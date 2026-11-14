@@ -102,6 +102,11 @@ class AdapterCase(unittest.TestCase):
         }
         for name, value in returns.items():
             setattr(self.core, name, Mock(return_value=value))
+        self.log_summary = {"rev": 2, "opened": False, "sessions": 0, "loaded": 0, "failed": 0,
+                            "unreported": 0, "errors": 0, "warnings": 0, "dropped": 0, "unconfirmed": 0}
+        self.core.read_logs.side_effect = lambda *args, **kwargs: (
+            {"entries": self.core.read_logs.return_value, "summary": self.log_summary}
+            if kwargs.get("include_summary") else self.core.read_logs.return_value)
         self.core.grants = types.SimpleNamespace(FUTURE={"camera": "Unavailable"})
         constants = types.ModuleType("hermes_constants")
         constants.get_hermes_home = lambda: Path(self.temp.name)
@@ -308,9 +313,14 @@ def tool_success(name):
         self.assertTrue(reply["ok"], reply)
         target = getattr(self.core, TARGETS[name])
         target.assert_called_once()
-        if name in ("spaces_list", "spaces_read_file", "spaces_query", "spaces_write_records", "spaces_read_logs",
+        if name in ("spaces_list", "spaces_read_file", "spaces_query", "spaces_write_records",
                     "spaces_revisions", "spaces_refresh", "spaces_schedule_upkeep", "spaces_upkeep"):
             self.assertEqual(reply, {"ok": True, "result": target.return_value})
+        elif name == "spaces_read_logs":
+            self.assertEqual(reply, {"ok": True, "result": {
+                "entries": target.return_value, "summary": self.log_summary,
+            }})
+            target.assert_called_once_with(SID, limit=100, level="error", include_summary=True)
         elif name == "spaces_get":
             self.assertEqual(reply["result"], {**DETAIL, "files": self.core.list_files.return_value})
         elif name == "spaces_restore":

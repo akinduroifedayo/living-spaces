@@ -5,7 +5,7 @@ import vm from 'node:vm'
 import { spaceLoader, projectResolver } from '../../../src/guest/loader.mjs'
 
 const tick = () => new Promise(resolve => setImmediate(resolve))
-function loaderFixture(files = []) {
+function loaderFixture(files = [], scripts = []) {
   const events = new Map()
   const messages = []
   const timers = []
@@ -13,12 +13,19 @@ function loaderFixture(files = []) {
   const element = tag => ({ tag, attributes: [], style: {}, children: [], setAttribute(k, v) { this[k] = v }, append(...nodes) { this.children.push(...nodes) }, replaceChildren(...nodes) { this.children = nodes } })
   const document = {
     head: element('head'), body: element('body'),
+    documentElement: element('html'), querySelector() { return null },
     createElement: element,
     addEventListener: (name, cb) => events.set(name, cb)
   }
   const window = { parent, addEventListener: (name, cb) => events.set(name, cb), removeEventListener: name => events.delete(name) }
   const port = { postMessage: message => messages.push(structuredClone(message)), close() { this.closed = true } }
-  const context = vm.createContext({ window, document, Map, Set, Error, TypeError, Promise, Object, JSON, String, Uint8Array, Blob, URL, atob, console: Object.fromEntries(['log', 'info', 'warn', 'error', 'debug', 'trace', 'dir', 'table', 'assert'].map(level => [level, () => {}])), setInterval(fn, ms) { timers.push({ fn, ms }); return timers.length }, clearInterval() {} })
+  const DOMParser = class {
+    parseFromString() {
+      return { title: '', documentElement: element('html'), head: { childNodes: [] },
+        body: { attributes: [], childNodes: [] }, querySelectorAll: selector => selector === 'script' ? scripts : [] }
+    }
+  }
+  const context = vm.createContext({ window, document, DOMParser, Map, Set, Error, TypeError, Promise, Object, JSON, String, Uint8Array, Blob, URL, atob, console: Object.fromEntries(['log', 'info', 'warn', 'error', 'debug', 'trace', 'dir', 'table', 'assert'].map(level => [level, () => {}])), setInterval(fn, ms) { timers.push({ fn, ms }); return timers.length }, clearInterval() {} })
   vm.runInContext(`(${spaceLoader.toString()})((${projectResolver.toString()})())`, context)
   events.get('message')({ source: parent, data: { type: 'space-boot', v: 1, grants: ['data'], bundle: { space: { id: 'fixture', name: 'Fixture' }, rev: 3, manifest: { entry: 'index.html' }, files } }, ports: [port] })
   return { api: window.space, port, messages, events, timers, document, context }
@@ -94,12 +101,15 @@ test('missing entry produces a visible error screen and a bounded diagnostic', a
   const log = f.messages.at(-1)
   assert.equal(log.op, 'log')
   assert.ok(log.args.entries[0].msg.includes('Entry not found'))
+  assert.equal(log.args.lifecycle, 'failed')
   assert.ok(Number.isInteger(log.id))
 })
 test('console, errors, rejected promises and CSP diagnostics share a fifty-entry batch', async () => {
   const f = loaderFixture()
   await tick()
   f.timers[0].fn()
+  reply(f, f.messages.at(-1), { stored: f.messages.at(-1).args.entries.length })
+  await tick()
   f.events.get('error')({ message: 'Public demo failure', filename: 'demo.js', lineno: 1 })
   f.events.get('unhandledrejection')({ reason: 'Public demo rejection' })
   f.events.get('securitypolicyviolation')({ effectiveDirective: 'connect-src', blockedURI: 'http://127.0.0.1:9/x' })
@@ -108,7 +118,76 @@ test('console, errors, rejected promises and CSP diagnostics share a fifty-entry
   const batch = f.messages.at(-1)
   assert.equal(batch.args.entries.length, 50)
   assert.equal(batch.args.entries.at(-1).msg, 'Space log overflow: dropped 54 entries')
-  assert.deepEqual(Object.keys(batch.args), ['entries'])
+  assert.equal(batch.args.dropped, 54)
+  assert.equal(batch.args.unconfirmed, 0)
   assert.ok(batch.args.entries.some(entry => entry.msg.includes('connect-src')))
   assert.ok(batch.args.entries.some(entry => entry.msg.includes('unhandled rejection')))
+})
+
+test('successful entry reports loaded once after entry scripts settle', async () => {
+  const script = { attributes: [{ name: 'type', value: 'module' }], type: 'module', textContent: 'export {}', remove() {} }
+  const f = loaderFixture([{ path: 'index.html', mime: 'text/html', text: '<main>Demo</main>' }], [script])
+  await tick()
+  f.timers[0].fn()
+  assert.equal(f.messages.length, 0)
+  f.document.body.children.at(-1).onload()
+  await tick()
+  f.timers[0].fn()
+  const report = f.messages.at(-1)
+  assert.deepEqual(report.args, { entries: [], dropped: 0, unconfirmed: 0, lifecycle: 'loaded' })
+  reply(f, report, { stored: 0 })
+  await tick()
+  f.timers[0].fn()
+  assert.equal(f.messages.length, 1)
+  assert.equal(f.events.has('message'), false)
+})
+
+test('script failure reports failed with its existing loader message even after console flooding', async () => {
+  const script = { attributes: [{ name: 'type', value: 'module' }], type: 'module', textContent: 'broken import', remove() {}, getAttribute() { return null } }
+  const f = loaderFixture([{ path: 'index.html', mime: 'text/html', text: '' }], [script])
+  vm.runInContext('for (let i = 0; i < 60; i++) console.log("noise", i)', f.context)
+  f.document.body.children.at(-1).onerror()
+  await tick()
+  f.timers[0].fn()
+  const report = f.messages.at(-1)
+  assert.equal(report.args.lifecycle, 'failed')
+  assert.equal(report.args.entries.length, 50)
+  assert.match(report.args.entries[0].msg, /Space failed to load:.*Script failed: entry module/s)
+  assert.equal(report.args.dropped, 12)
+})
+
+test('throttled batches retain lifecycle and cumulative dropped counts until acknowledged', async () => {
+  const f = loaderFixture()
+  await tick()
+  f.timers[0].fn()
+  const first = f.messages.at(-1)
+  reply(f, first, { stored: 0, throttled: true })
+  await tick()
+  f.timers[0].fn()
+  const retry = f.messages.at(-1)
+  assert.equal(retry.args.lifecycle, 'failed')
+  assert.equal(retry.args.dropped, first.args.entries.length)
+  assert.equal(retry.args.unconfirmed, 0)
+  reply(f, retry, { stored: retry.args.entries.length })
+  await tick()
+  f.timers[0].fn()
+  assert.equal(f.messages.length, 2)
+})
+
+test('failed sends report unconfirmed entries separately from known drops and bound in-flight batches', async () => {
+  const f = loaderFixture()
+  await tick()
+  f.timers[0].fn()
+  const first = f.messages.at(-1)
+  vm.runInContext('for (let i = 0; i < 60; i++) console.log("noise", i)', f.context)
+  f.timers[0].fn()
+  assert.equal(f.messages.length, 1)
+  f.port.onmessage({ data: { v: 1, id: first.id, ok: false, error: { code: 'blocked', message: 'Unavailable' } } })
+  await tick()
+  f.timers[0].fn()
+  const retry = f.messages.at(-1)
+  assert.equal(retry.args.lifecycle, 'failed')
+  assert.equal(retry.args.unconfirmed, first.args.entries.length)
+  assert.equal(retry.args.dropped, 11)
+  assert.equal(retry.args.entries.length, 50)
 })

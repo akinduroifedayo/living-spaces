@@ -386,13 +386,18 @@ function consoleFixture() {
     v: 1, type: 'space-boot', grants: ['logs'],
     bundle: { space: { id: 'fixture', name: 'Fixture' }, rev: 1, manifest: {}, files: [] }
   }, ports: [port] })
-  return { context, messages, flush: () => timers[0]() }
+  return { context, messages, flush: () => timers[0](), acknowledge() {
+    const message = messages.at(-1)
+    port.onmessage({ data: { v: 1, id: message.id, ok: true, result: { stored: message.args.entries.length } } })
+  } }
 }
 
 test('guest console makes truncation visible within the 4000-character cap and preserves original counts', async () => {
   const f = consoleFixture()
   await new Promise(resolve => setImmediate(resolve))
   f.flush()
+  f.acknowledge()
+  await new Promise(resolve => setImmediate(resolve))
   const source = ['x'.repeat(4001), 'é'.repeat(12345), '😀'.repeat(3000)]
   for (const text of source) {
     f.context.input = text
@@ -413,6 +418,8 @@ test('guest console preserves messages at the cap and reports the combined count
   const f = consoleFixture()
   await new Promise(resolve => setImmediate(resolve))
   f.flush()
+  f.acknowledge()
+  await new Promise(resolve => setImmediate(resolve))
   vm.runInContext('console.log("x".repeat(4000)); console.log("a".repeat(3000), "b".repeat(2000))', f.context)
   f.flush()
   const entries = f.messages.at(-1).args.entries
@@ -420,6 +427,31 @@ test('guest console preserves messages at the cap and reports the combined count
   assert.ok(entries[1].msg.length <= 4000)
   assert.match(entries[1].msg, /truncated/i)
   assert.ok(entries[1].msg.includes('5001'))
+})
+
+test('host forwards lifecycle and loss metadata and explicitly acknowledges throttling', async () => {
+  const f = fixture(async (op, args) => ({ ok: true, result: { stored: args.entries.length } }))
+  try {
+    const args = { entries: [], lifecycle: 'loaded', dropped: 8, unconfirmed: 2 }
+    f.frame.peer.postMessage(request({ id: 91, op: 'log', args }))
+    f.frame.peer.postMessage(request({ id: 92, op: 'log', args }))
+    await until(() => f.replies.length === 2)
+    assert.deepEqual(f.calls, [['log', args]])
+    assert.deepEqual(f.replies.find(reply => reply.id === 92).result, { stored: 0, throttled: true })
+  } finally { f.cleanup() }
+})
+
+test('host rejects invalid lifecycle and loss metadata before dispatch', async () => {
+  const f = fixture()
+  try {
+    for (const [index, metadata] of [{ lifecycle: 'ready' }, { lifecycle: null }, { dropped: -1 },
+      { dropped: Number.MAX_SAFE_INTEGER + 1 }, { unconfirmed: true }].entries()) {
+      f.frame.peer.postMessage(request({ id: 100 + index, op: 'log', args: { entries: [], ...metadata } }))
+    }
+    await until(() => f.replies.length === 5)
+    assert.equal(f.calls.length, 0)
+    assert.ok(f.replies.every(reply => reply.error.code === 'invalid'))
+  } finally { f.cleanup() }
 })
 
 test('sparse log entries settle invalid without dispatch', async () => {

@@ -31,6 +31,7 @@ def _require(conn, sid, session):
     row = conn.execute("SELECT * FROM sessions WHERE id=? AND space=? AND closed_at IS NULL", (session, sid)).fetchone()
     if row is None:
         raise SpacesError("session_invalid", "Session is closed, unknown or belongs to another Space")
+    return row
 
 
 def require(sid, session):

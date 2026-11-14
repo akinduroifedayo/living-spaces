@@ -1443,6 +1443,9 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
     if (denied) return reject(denied);
     let args = m.args;
     if (m.op === "log") {
+      if (args.lifecycle !== void 0 && !["loaded", "failed"].includes(args.lifecycle) || ["dropped", "unconfirmed"].some((key) => args[key] !== void 0 && (!Number.isSafeInteger(args[key]) || args[key] < 0))) {
+        return reject({ code: "invalid", message: "Invalid log metadata" });
+      }
       if (!Array.isArray(args.entries) || Array.from(args.entries).some((entry) => !entry || typeof entry.level !== "string" || typeof entry.msg !== "string")) {
         return reject({ code: "invalid", message: "Invalid log entries" });
       }
@@ -1453,11 +1456,12 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
       const now = performance.now();
       if (now - lastLog < 500) {
         overflow();
-        reply({ ok: true, result: { stored: 0 } });
+        reply({ ok: true, result: { stored: 0, throttled: true } });
         return;
       }
       lastLog = now;
       args = { entries: args.entries };
+      for (const key of ["lifecycle", "dropped", "unconfirmed"]) if (m.args[key] !== void 0) args[key] = m.args[key];
     }
     try {
       const result = await call(m.op, args);

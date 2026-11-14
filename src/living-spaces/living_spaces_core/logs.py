@@ -42,7 +42,12 @@ def redact_values(value):
     return redact(value) if isinstance(value, str) else value
 
 
-def _add_logs(conn, sid, session, entries):
+def _add_logs(conn, sid, session, entries, *, lifecycle=None, dropped=0, unconfirmed=0):
+    if lifecycle is not None and lifecycle not in ("loaded", "failed"):
+        raise SpacesError("invalid", "Log lifecycle must be loaded or failed")
+    for name, count in (("dropped", dropped), ("unconfirmed", unconfirmed)):
+        limits.integer(count, name)
+        limits.check(count, 2**53 - 1, name)
     if not isinstance(entries, list):
         raise SpacesError("invalid", "Log entries must be an array")
     limits.check(len(entries), limits.LOG_ENTRIES, "log entries")
@@ -58,12 +63,19 @@ def _add_logs(conn, sid, session, entries):
         limits.check(len(message), limits.LOG_MESSAGE, "redacted log message characters")
         clean.append((entry["level"], message))
     space = db.space(conn, sid)
+    rev, attribution = space["head_rev"], "unattributed"
     if session is not None:
         from .sessions import _require
-        _require(conn, sid, session)
+        opened = _require(conn, sid, session)
+        rev, attribution = opened["head_rev"], "session_opened"
+        conn.execute("""UPDATE sessions SET lifecycle=coalesce(lifecycle,?),
+            log_errors=log_errors+?, log_warnings=log_warnings+?, log_dropped=max(log_dropped,?),
+            log_unconfirmed=max(log_unconfirmed,?) WHERE id=?""",
+                     (lifecycle, sum(level == "error" for level, _ in clean),
+                      sum(level == "warn" for level, _ in clean), dropped, unconfirmed, session))
     for level, message in clean:
-        conn.execute("INSERT INTO logs(space,session,rev,at,level,msg) VALUES(?,?,?,?,?,?)",
-                     (sid, session, space["head_rev"], db.now(), level, message))
+        conn.execute("INSERT INTO logs(space,session,rev,at,level,msg,attribution) VALUES(?,?,?,?,?,?,?)",
+                     (sid, session, rev, db.now(), level, message, attribution))
     conn.execute("DELETE FROM logs WHERE space=? AND id NOT IN (SELECT id FROM logs WHERE space=? ORDER BY id DESC LIMIT ?)",
                  (sid, sid, limits.LOG_HISTORY))
     return len(clean)
@@ -74,12 +86,23 @@ def add_logs(sid, session, entries):
         return _add_logs(conn, sid, session, entries)
 
 
-def read_logs(sid, limit=100, level=None):
+def read_logs(sid, limit=100, level=None, *, include_summary=False):
     limits.integer(limit, "limit")
     if level is not None:
         limits.text(level, "level")
     with db.read() as conn:
-        db.space(conn, sid)
-        return [dict(row) for row in conn.execute(
+        space = db.space(conn, sid)
+        entries = [dict(row) for row in conn.execute(
             "SELECT * FROM logs WHERE space=? AND (? IS NULL OR level=?) ORDER BY id DESC LIMIT ?",
             (sid, level, level, limit))]
+        if not include_summary:
+            return entries
+        totals = conn.execute("""SELECT count(*) AS sessions,
+            coalesce(sum(lifecycle='loaded'),0) AS loaded, coalesce(sum(lifecycle='failed'),0) AS failed,
+            coalesce(sum(lifecycle IS NULL),0) AS unreported, coalesce(sum(log_errors),0) AS errors,
+            coalesce(sum(log_warnings),0) AS warnings, coalesce(sum(log_dropped),0) AS dropped,
+            coalesce(sum(log_unconfirmed),0) AS unconfirmed
+            FROM sessions WHERE space=? AND head_rev=?""", (sid, space["head_rev"])).fetchone()
+        return {"entries": entries, "summary": {
+            "rev": space["head_rev"], "opened": totals["sessions"] > 0, **dict(totals),
+        }}

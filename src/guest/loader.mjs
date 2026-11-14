@@ -123,6 +123,12 @@ export function spaceLoader(resolver) {
   const listeners = { change: new Set(), run: new Set(), bot: new Set() }
   const logQueue = []
   let dropped = 0
+  let unconfirmed = 0
+  let lifecycle = null
+  let reportedLifecycle = null
+  let reportedDropped = 0
+  let reportedUnconfirmed = 0
+  let logInFlight = false
   class SpaceError extends Error {
     constructor(error) {
       super(error.message)
@@ -158,14 +164,19 @@ export function spaceLoader(resolver) {
       return '[unserializable]'
     }
   }
-  const pushLog = (level, parts) => {
-    if (logQueue.length === 50) { dropped++; return }
+  const pushLog = (level, parts, priority = false) => {
+    if (logQueue.length === 50) {
+      dropped++
+      if (!priority) return
+      logQueue.pop()
+    }
     let msg = parts.map(safeText).join(' ')
     if (msg.length > 4000) {
       const marker = ` [truncated; original ${msg.length} chars]`
       msg = msg.slice(0, 4000 - marker.length) + marker
     }
-    logQueue.push({ level, msg })
+    if (priority) logQueue.unshift({ level, msg })
+    else logQueue.push({ level, msg })
   }
   for (const level of Object.getOwnPropertyNames(console).filter(name => typeof console[name] === 'function')) {
     const original = console[level].bind(console)
@@ -178,12 +189,31 @@ export function spaceLoader(resolver) {
   window.addEventListener('unhandledrejection', e => pushLog('error', ['unhandled rejection:', e.reason]))
   document.addEventListener('securitypolicyviolation', e => pushLog('warn', [`blocked by sandbox policy: ${e.effectiveDirective} ${e.blockedURI}`]))
   const logTimer = setInterval(() => {
-    if (!port || closed || !logQueue.length) return
+    if (!port || closed || logInFlight) return
+    if (!logQueue.length && dropped === reportedDropped && unconfirmed === reportedUnconfirmed && lifecycle === reportedLifecycle) return
     const entries = logQueue.splice(0)
-    if (dropped) entries[entries.length - 1] = { level: 'warn', msg: `Space log overflow: dropped ${dropped + 1} entries` }
-    const args = { entries }
-    dropped = 0
-    send('log', args).catch(() => {})
+    const overflow = dropped > reportedDropped
+    if (overflow) {
+      if (entries.length === 50) { entries.pop(); dropped++ }
+      entries.push({ level: 'warn', msg: `Space log overflow: dropped ${dropped} entries` })
+    }
+    const originals = entries.length - Number(overflow)
+    const args = { entries, dropped, unconfirmed }
+    if (lifecycle !== reportedLifecycle) args.lifecycle = lifecycle
+    logInFlight = true
+    send('log', args).then(result => {
+      if (result.throttled || (result.stored === 0 && entries.length)) {
+        dropped += originals
+        return
+      }
+      if (result.stored !== entries.length) throw new Error('Unconfirmed log delivery')
+      reportedDropped = args.dropped
+      reportedUnconfirmed = args.unconfirmed
+      if (args.lifecycle) reportedLifecycle = args.lifecycle
+    }).catch(() => {
+      // A failed reply cannot tell us whether the backend stored the batch.
+      unconfirmed += originals
+    }).finally(() => { logInFlight = false })
   }, 510)
   const api = {
     meta: null,
@@ -214,7 +244,7 @@ export function spaceLoader(resolver) {
   Object.defineProperty(window, '__spaceImport', { value: (base, ref, options) => import(resolver.moduleRef(base, String(ref)), options) })
 
   const showError = error => {
-    pushLog('error', ['Space failed to load:', error])
+    pushLog('error', ['Space failed to load:', error], true)
     const panel = document.createElement('section')
     panel.setAttribute('role', 'alert')
     panel.style.cssText = 'padding:24px;font:16px system-ui;color:#971b1b;background:#fff4f4'
@@ -369,6 +399,11 @@ export function spaceLoader(resolver) {
       pending.delete(message.id)
       message.ok ? request.resolve(message.result) : request.reject(new SpaceError(message.error))
     }
-    boot(e.data.bundle, e.data.grants).catch(showError)
+    boot(e.data.bundle, e.data.grants).then(() => {
+      lifecycle = 'loaded'
+    }, error => {
+      lifecycle = 'failed'
+      showError(error)
+    })
   })
 }

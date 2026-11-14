@@ -13,7 +13,7 @@ _OPS = {
     "bot.request": (None, {"activation_id", "text"}, {"records"}),
     "refresh": (None, set(), set()),
     "runs.list": (None, set(), {"limit"}),
-    "log": ("logs", {"entries"}, set()),
+    "log": ("logs", {"entries"}, {"lifecycle", "dropped", "unconfirmed"}),
 }
 
 
@@ -24,7 +24,7 @@ def _mutate(sid, session, op, args):
         allowed = grants._check(conn, sid, capability)
         if allowed:
             if op == "log":
-                result = {"stored": logs._add_logs(conn, sid, session, args["entries"])}
+                result = {"stored": logs._add_logs(conn, sid, session, **args)}
             else:
                 db.space(conn, sid, writable=True)
                 if op == "data.batch":

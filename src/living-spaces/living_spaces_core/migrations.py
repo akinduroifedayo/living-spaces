@@ -108,6 +108,19 @@ def add_action_refusal_reason(conn):
         conn.execute("ALTER TABLE action_intents ADD COLUMN refusal_reason TEXT")
 
 
+def add_runtime_diagnostics(conn):
+    for table, columns in {
+        "logs": {"attribution": "TEXT NOT NULL DEFAULT 'ingestion_head'"},
+        "sessions": {"lifecycle": "TEXT", "log_errors": "INTEGER NOT NULL DEFAULT 0",
+                     "log_warnings": "INTEGER NOT NULL DEFAULT 0", "log_dropped": "INTEGER NOT NULL DEFAULT 0",
+                     "log_unconfirmed": "INTEGER NOT NULL DEFAULT 0"},
+    }.items():
+        existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+        for name, declaration in columns.items():
+            if name not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {declaration}")
+
+
 def link_native_upkeep(conn):
     """Convert legacy schedules rows to upkeep links, then drop schedules and Refresh grants."""
     if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='schedules'").fetchone():
