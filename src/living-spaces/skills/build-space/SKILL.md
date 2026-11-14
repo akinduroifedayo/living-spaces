@@ -146,59 +146,27 @@ its result. Run them inside the callback after `space.put` confirms, or check
 that the returned record exists. Disable editable creation fields while saving
 so a confirmation cannot clear newer input.
 
-## Design the canvas (you are the designer here)
+## Design the canvas
 
 A Space is an open canvas that belongs to you, the bot that made it. It has no
 house style. The user asked for a thing, and you get to decide how that thing
-looks. Make something they would show a friend. If the user names a style or
+looks. If the user names a style or
 their own design skill is installed (impeccable or another), follow that
 instead. The visual defaults below are suggestions, not templates or limits.
 Accessibility, truthful data, permissions and durable-save rules still apply.
 
-### 1. Commit to an art direction before you write code
+### Build the world with real materials
 
-Choose the surface's mode first: **Operate** for tools and games, **Read** for
-documents, **Experience** for a visual piece. A working tool is not a marketing
-page: let the work lead, not a decorative welcome screen. Then write a
-three-line brief for yourself (a comment in `styles.css` is enough):
-- **Concept:** one image from the subject's own world, not "a dashboard".
-  Weather could be an observatory, an airport departures board or a
-  watercolour almanac. A reading list could be a library card catalogue or
-  a broadsheet. A memory game could be a deck of letterpress cards on felt.
-- **Material and light:** what the surface is made of (paper, glass, enamel,
-  night sky, felt, CRT phosphor) and whether it is light or dark. Choose from
-  the scene of use, not the category.
-- **Signature:** the one move people will remember, for example a hero
-  illustration, a giant typographic numeral, a custom chart shape, a
-  texture, or a motion moment.
-
-Then commit to it. Every colour, typeface, radius, icon and empty state should
-belong to that concept. When torn between safe and committed, commit. Two
-Spaces from the same bot should not look like siblings unless the user asked
-for that.
-
-### 2. Build the world with real materials
-
-- **Type:** pick a display face with character and a readable text face.
-  Bundle an appropriately licensed WOFF2 and declare `@font-face`; the optional
+- **Type:** Bundle an appropriately licensed WOFF2 and declare `@font-face`; the optional
   `font:inter` / `font:dm-sans` libraries supply local text faces. A font name in
   CSS does not download it. Deliberate system stacks are valid offline fallbacks.
-  Use expressive scale when the content earns it, not uniformly tiny type or
-  a giant numeral on every screen. Use `clamp()` and tabular numerals for data.
-- **Colour:** a ground, an ink and one or two accents with a job. Tint
-  neutrals toward the concept's hue. Gradients, grain, glow, glass and deep
-  shadows are all fine when they are the material you chose, not a garnish.
-- **Depth and texture:** layer the canvas. Background art, a hero band, a
-  surface that sits on it. Soft offset shadows, inner light, noise or paper
-  texture (an SVG `feTurbulence` filter or a generated tile), and
-  `backdrop-filter` all count.
-- **Imagery:** give the concept a visual signature where it helps. A reading
+  Use `clamp()` and tabular numerals for data.
+- **Imagery:** A reading
   tool can be typographic; imagery is not a mandatory extra request or cost.
   - Generate it. When an approved image tool and cost envelope are available,
     use them for hero art, scene
     illustrations, spot illustrations for empty states, sprites, card backs,
-    textures and icon sets. Prompt in the concept's style, and ask for
-    transparent PNGs for cut-outs. Do not switch providers or use a paid/API
+    textures and icon sets. Do not switch providers or use a paid/API
     fallback to bypass an unavailable tool. Draw SVG instead. Put the result in
     the project: this revision supports `files` with `{"b64", "mime"}`.
     Use `{"from_path":"..."}` or `{"from_url":"..."}` when the actual tool
@@ -222,44 +190,25 @@ for that.
     asset. Size it to its display role; compress large images before bundling.
     Generated art is not a documentary photo or a data visualization. Never
     present an invented skyline, person or condition as observed evidence.
-- **Icons:** one consistent family (bundled `lucide`, a web library, or
-  your own SVG set). Emoji is fine as a deliberate voice (a game), not as a
-  stand-in for an icon system.
 
-### 3. Lay out the job, not a grid of cards
+### Lay out the job
 
-Decide what the user comes back for and make it the hero of the first
-viewport. Then arrange the rest by importance, with real size contrast.
-- **Dashboard:** one dominant visual that answers the main question (today's
-  sky, this week's spend), then supporting measures, then detail on demand.
-  Put measure, unit, period and denominator in titles and headers.
+- **Dashboard:** Put measure, unit, period and denominator in titles and headers.
 - **Mini app / tracker:** the working surface leads (the board, the list, the
   calendar). Creation stays one step away, and status sits close to the
   thing it describes. Keep search, result count and results adjacent; a secondary
   creation form belongs behind a labelled disclosure, not between query and results.
   Preserve its draft and keyboard focus when opening or closing it.
-- **Game:** the board is the stage. Score, turn and restart are findable
-  but quiet. Celebrate a win.
+- **Game:** Score, turn and restart are findable
+  but quiet.
 - **Document:** a reading measure of about 65–75ch, generous margins, useful
-  headings and imagery set into the text like a magazine.
-- **Visual piece / live board:** let the artwork or board fill the stage; do
-  not constrain it to a document column. Keep spatial meaning on narrow screens.
+  headings.
+- **Visual piece / live board:** Keep spatial meaning on narrow screens.
 
-Avoid the default look: a row of identical stat cards, then a grid of
-same-size cards, all with the same border and radius. Vary the shapes: full
-bleed bands, an asymmetric split, a list without boxes, one feature panel.
-Never put a card inside a card.
+### Make data visual
 
-### 4. Make data visual, and make it yours
-
-Charts are part of the art direction. Draw them for this subject:
-- a temperature ribbon or a sun-and-moon arc for weather, a radial clock
-  for a schedule, a heat calendar for habits, a small-multiples strip for
-  cities, a bar of real tiles for game progress, a timeline for research.
 - Use local SVG or Canvas, a bundled chart library appropriate to the data
   (`lightweight-charts` is for time series), or a locally vendored dependency.
-  Style axes, gridlines and labels in the
-  concept's type and colour, or remove them when direct labels read better.
 - Keep the numbers honest. Use real calculations, units on every axis or
   label, and a text summary or table on demand. Don't invent trends, and
   never identify a series by colour alone. Compute the domain from all eligible
@@ -270,33 +219,29 @@ Charts are part of the art direction. Draw them for this subject:
   measured from start to finish includes time away. Format long durations in
   hours/minutes; never relabel existing timestamps as active play.
 
-### 5. Add motion that means something
+### Add motion that means something
 
-Plan one authored moment per view: numbers counting up to a fresh value, the
-sun arc drawing in, cards flipping, a new record sliding into place, or a
-loading shimmer in the concept's material. Use a short exponential ease-out
-(150–400ms for routine feedback). Prefer `transform` and `opacity`; profile
+Prefer `transform` and `opacity`; profile
 `clip-path`, filters and large blur layers before using them. Keep essential
 content visible if animation fails. Under `prefers-reduced-motion: reduce`, show
 the end state instead, including drawn strokes and loading indicators. Motion
 should not hide a result or delay a control. Offer pause for ongoing ambient art.
 
-### 6. Design every state in the same world
+### Design every state
 
-- **First run / empty:** an illustration or scene from the concept, one
+- **First run / empty:** one
   sentence on what belongs here, and the next action. Don't fabricate
   records or metrics.
-- **Loading:** a skeleton or shimmer shaped like the real content. Keep
+- **Loading:** Keep
   last-good data and drafts on screen while reloading.
-- **Error / offline / Internet off:** stay in character. Name what failed,
+- **Error / offline / Internet off:** Name what failed,
   what survived and the recovery action. Say "Internet access is off for this
   Space" only from authoritative host state (`not_granted`). Never draw
   something that looks like the host's permission switch.
 - **Saved / conflict:** persistent text (`SaveIndicator`, `ConflictBanner`,
   or your own styled equivalents). No toast-only feedback.
-- **Success:** a little delight when a goal is reached.
 
-### 7. Fit any width
+### Fit any width
 
 The canvas can be narrower than the app window because the host's navigation
 and frame take space. Use fluid type (`clamp()`), wrapping grids and container
@@ -308,7 +253,7 @@ targets at least 44px. Long names wrap and never overflow. Record both app and
 canvas dimensions when checking wide, 390px and 320px app windows; a no-overflow
 measurement alone does not prove the main task is visible or reachable.
 
-### 8. The floor (keep these whatever the style)
+### The floor (keep these whatever the style)
 
 Visible focus rings; labelled inputs and icon buttons; body text at least
 4.5:1 contrast (large text 3:1), checked on top of any image or gradient
@@ -333,7 +278,7 @@ Use no kit CSS, its quiet base, or one of six optional canvas materials:
 colour blocks). Set `data-theme="letterpress"` on **body**. These six are CSS
 attributes, **not accepted manifest preset names**. They choose their own light
 or dark scheme. They contain no downloaded fonts, generated images or app logic.
-Override tokens and composition freely; a material alone is not an art direction.
+Override tokens and composition freely.
 
 Useful primitives: `space-hero`, `space-display`, `space-asymmetric`,
 `space-ledger`, `space-rail`, `space-panel` and `space-state`. Motion is opt-in:
@@ -347,15 +292,13 @@ not a mandated starting screen. These docs are source references, not files
 automatically copied into each created Space.
 
 `manifest.theme` presets (`editorial`, `terminal`, `playful`, `minimal`,
-`data`, `journal`, `game`) only set kit tokens. Treat them as palettes to
-start from, not as an art direction. `accent` colours the Space's tile in the
-Spaces tab; pick the hue closest to your concept.
+`data`, `journal`, `game`) only set kit tokens. `accent` colours the Space's tile in the
+Spaces tab.
 
 References: [Weather Window](references/weather-window/index.html) uses its
 own visual language without kit CSS. [Showcase sources](../../runtime/kit/showcase/README.md)
 are further technique references, not proof of chat generation or qualification;
-consult their verification receipts before claiming live behaviour. Read them
-for ambition and technique, not to copy their look.
+consult their verification receipts before claiming live behaviour.
 
 ## JavaScript-controlled forms
 
