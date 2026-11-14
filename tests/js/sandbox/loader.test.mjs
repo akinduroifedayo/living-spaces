@@ -134,6 +134,15 @@ test('entry module scripts load from a blob URL so the browser fires load', asyn
   assert.equal(appended.textContent || '', '')
 })
 
+test('entry module scripts keep a non-relative src instead of replacing it with their inline text', async () => {
+  const script = { attributes: [{ name: 'type', value: 'module' }, { name: 'src', value: 'https://cdn.example.test/app.js' }], type: 'module', textContent: '', remove() {} }
+  const f = loaderFixture([{ path: 'index.html', mime: 'text/html', text: '<main>Demo</main>' }], [script])
+  await tick()
+  const appended = f.document.body.children.at(-1)
+  assert.equal(appended.type, 'module')
+  assert.equal(appended.getAttribute ? appended.getAttribute('src') : appended.src, 'https://cdn.example.test/app.js')
+})
+
 test('successful entry reports loaded once after entry scripts settle', async () => {
   const script = { attributes: [{ name: 'type', value: 'module' }], type: 'module', textContent: 'export {}', remove() {} }
   const f = loaderFixture([{ path: 'index.html', mime: 'text/html', text: '<main>Demo</main>' }], [script])

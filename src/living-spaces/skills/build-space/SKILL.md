@@ -155,12 +155,18 @@ their own design skill is installed (impeccable or another), follow that
 instead. The visual defaults below are suggestions, not templates or limits.
 Accessibility, truthful data, permissions and durable-save rules still apply.
 
+Choose the surface's mode first: **Operate** for tools and games, **Read** for
+documents, **Experience** for a visual piece. A working tool is not a marketing
+page: let the work lead, not a decorative welcome screen.
+
 ### Build the world with real materials
 
-- **Type:** Bundle an appropriately licensed WOFF2 and declare `@font-face`; the optional
+- **Type:** pick a readable text face.
+  Bundle an appropriately licensed WOFF2 and declare `@font-face`; the optional
   `font:inter` / `font:dm-sans` libraries supply local text faces. A font name in
   CSS does not download it. Deliberate system stacks are valid offline fallbacks.
-  Use `clamp()` and tabular numerals for data.
+  Use expressive scale when the content earns it, not uniformly tiny type or
+  a giant numeral on every screen. Use `clamp()` and tabular numerals for data.
 - **Imagery:** A reading
   tool can be typographic; imagery is not a mandatory extra request or cost.
   - Generate it. When an approved image tool and cost envelope are available,
@@ -193,14 +199,15 @@ Accessibility, truthful data, permissions and durable-save rules still apply.
 
 ### Lay out the job
 
-- **Dashboard:** Put measure, unit, period and denominator in titles and headers.
+- **Dashboard:** one dominant visual that answers the main question (today's
+  sky, this week's spend), then supporting measures, then detail on demand.
+  Put measure, unit, period and denominator in titles and headers.
 - **Mini app / tracker:** the working surface leads (the board, the list, the
   calendar). Creation stays one step away, and status sits close to the
   thing it describes. Keep search, result count and results adjacent; a secondary
   creation form belongs behind a labelled disclosure, not between query and results.
   Preserve its draft and keyboard focus when opening or closing it.
-- **Game:** Score, turn and restart are findable
-  but quiet.
+- **Game:** Score, turn and restart are findable.
 - **Document:** a reading measure of about 65–75ch, generous margins, useful
   headings.
 - **Visual piece / live board:** Keep spatial meaning on narrow screens.
