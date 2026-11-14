@@ -129,6 +129,7 @@ export function spaceLoader(resolver) {
   let reportedDropped = 0
   let reportedUnconfirmed = 0
   let logInFlight = false
+  let logsDenied = false
   class SpaceError extends Error {
     constructor(error) {
       super(error.message)
@@ -189,7 +190,7 @@ export function spaceLoader(resolver) {
   window.addEventListener('unhandledrejection', e => pushLog('error', ['unhandled rejection:', e.reason]))
   document.addEventListener('securitypolicyviolation', e => pushLog('warn', [`blocked by sandbox policy: ${e.effectiveDirective} ${e.blockedURI}`]))
   const logTimer = setInterval(() => {
-    if (!port || closed || logInFlight) return
+    if (!port || closed || logInFlight || logsDenied) return
     if (!logQueue.length && dropped === reportedDropped && unconfirmed === reportedUnconfirmed && lifecycle === reportedLifecycle) return
     const entries = logQueue.splice(0)
     const overflow = dropped > reportedDropped
@@ -210,7 +211,9 @@ export function spaceLoader(resolver) {
       reportedDropped = args.dropped
       reportedUnconfirmed = args.unconfirmed
       if (args.lifecycle) reportedLifecycle = args.lifecycle
-    }).catch(() => {
+    }).catch(error => {
+      // The host refused Diagnostics for this session; retrying cannot succeed.
+      if (error?.code === 'not_granted') { logsDenied = true; logQueue.length = 0; return }
       // A failed reply cannot tell us whether the backend stored the batch.
       unconfirmed += originals
     }).finally(() => { logInFlight = false })

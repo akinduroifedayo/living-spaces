@@ -191,3 +191,30 @@ test('failed sends report unconfirmed entries separately from known drops and bo
   assert.equal(retry.args.dropped, 11)
   assert.equal(retry.args.entries.length, 50)
 })
+
+test('a terminal not_granted reply stops log delivery instead of retrying every tick', async () => {
+  const f = loaderFixture()
+  await tick()
+  f.timers[0].fn()
+  assert.equal(f.messages.length, 1)
+  const first = f.messages[0]
+  assert.equal(first.op, 'log')
+  f.port.onmessage({ data: { v: 1, id: first.id, ok: false, error: { code: 'not_granted', message: 'Approve logs in Permissions', capability: 'logs' } } })
+  await tick()
+  for (let i = 0; i < 5; i++) f.timers[0].fn()
+  vm.runInContext('console.error("after denial")', f.context)
+  for (let i = 0; i < 5; i++) f.timers[0].fn()
+  assert.equal(f.messages.length, 1)
+})
+
+test('a transient log failure still retries', async () => {
+  const f = loaderFixture()
+  await tick()
+  f.timers[0].fn()
+  const first = f.messages[0]
+  f.port.onmessage({ data: { v: 1, id: first.id, ok: false, error: { code: 'busy', message: 'Try again' } } })
+  await tick()
+  f.timers[0].fn()
+  assert.equal(f.messages.length, 2)
+  assert.equal(f.messages[1].op, 'log')
+})
