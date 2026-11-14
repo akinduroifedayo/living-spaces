@@ -1,7 +1,9 @@
 from contextlib import ExitStack, contextmanager
 import copy
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import json
+import re
 import unittest
 from unittest.mock import patch
 
@@ -39,6 +41,8 @@ class PausedRefusingContext(SyntheticContext):
             reply = {"success": False, "error": "Synthetic activation policy refusal"}
             self.activation_refusals.append(copy.deepcopy(reply))
             return json.dumps(reply)
+        if action == "create":
+            return self.create_with_slot(name, args)
         if action != "run":
             return super().dispatch_tool(name, args)
 
@@ -77,22 +81,62 @@ class PausedRefusingContext(SyntheticContext):
                      execution_error=execution["error"])}
         else:
             assert self.outcome is RunOutcome.INLINE, self.outcome
-            sid = job["name"].split(":")[1]
-            count = len([effect for effect in self.effects if effect["space"] == sid]) + 1
-            marker = {"space": sid, "job_id": jid, "execution_count": count}
-            written = self.fx.projects.write_files(
-                sid, files={"refresh-effect.json": json.dumps(marker)},
-                author="agent:refresh-double", summary="Synthetic inline refresh effect")
-            observed = json.loads(self.fx.core.read_file(sid, "refresh-effect.json")["text"])
-            self.effects.append({**observed, "rev": written["rev"]})
-            execution = self.cron.execution(jid, status="completed")
-            reply = {"success": True, "job": dict(self.format_job(job), executed=True,
+            execution = self.execute(jid, origin="manual")
+            # Hermes treats a manual run as an extra fire (cron/extra_fire.py): mark_job_run stamps
+            # the outcome but leaves repeat.completed, enabled, state and the pending next_run_at
+            # slot untouched, so a one-shot stays due for the scheduler.
+            self.cron.jobs[jid].update(last_run_at=datetime.now(timezone.utc).isoformat(), last_status="ok")
+            reply = {"success": True, "job": dict(self.format_job(self.cron.get_job(jid)), executed=True,
                      execution_mode="inline", execution_success=execution["status"] == "completed",
                      execution_id=execution["id"])}
-            if job.get("repeat") == 1:
-                self.cron.remove_job(jid)
         self.run_replies.append(copy.deepcopy(reply))
         return json.dumps(reply)
+
+    def create_with_slot(self, name, args):
+        # Hermes parses "in <N>m" as a once schedule whose slot is creation time + N minutes and
+        # stores repeat as {"times", "completed"}; the shared fixture stores a fixed 2027 slot.
+        created = json.loads(super().dispatch_tool(name, args))
+        match = re.fullmatch(r"in (\d+)m", args.get("schedule", ""))
+        if not created.get("success") or match is None:
+            return json.dumps(created)
+        job = self.cron.jobs[created["job_id"]]
+        slot = datetime.now(timezone.utc) + timedelta(minutes=int(match.group(1)))
+        job.update(schedule={"kind": "once", "run_at": slot.isoformat(), "display": "once " + args["schedule"]},
+                   schedule_display="once " + args["schedule"], next_run_at=slot.isoformat(),
+                   repeat={"times": args.get("repeat"), "completed": 0})
+        created["job"] = self.format_job(job)
+        return json.dumps(created)
+
+    def execute(self, jid, *, origin):
+        job = self.cron.get_job(jid)
+        sid = job["name"].split(":")[1]
+        count = len([effect for effect in self.effects if effect["space"] == sid]) + 1
+        marker = {"space": sid, "job_id": jid, "execution_count": count}
+        written = self.fx.projects.write_files(
+            sid, files={"refresh-effect.json": json.dumps(marker)},
+            author="agent:refresh-double", summary=f"Synthetic {origin} refresh effect")
+        observed = json.loads(self.fx.core.read_file(sid, "refresh-effect.json")["text"])
+        self.effects.append({**observed, "rev": written["rev"], "origin": origin})
+        return self.cron.execution(jid, status="completed")
+
+    def scheduler_tick(self, now):
+        """One Hermes scheduler tick for one-shots: get_due_jobs eligibility, then a scheduled fire
+        whose mark_job_run -> _advance_after_run spends the repeat budget and retires the record."""
+        fired = []
+        for jid, job in list(self.cron.jobs.items()):
+            next_run = job.get("next_run_at")
+            if (job.get("enabled") is not True or job.get("state") != "scheduled" or next_run is None
+                    or datetime.fromisoformat(next_run) > now):
+                continue
+            assert job["schedule"].get("kind") == "once", f"recurring advance is not modeled: {jid}"
+            self.execute(jid, origin="scheduled")
+            repeat = job["repeat"]
+            repeat["completed"] += 1
+            job.update(last_run_at=now.isoformat(), last_status="ok")
+            if repeat["times"] is not None and repeat["completed"] >= repeat["times"]:
+                job.update(enabled=False, state="completed", next_run_at=None)
+            fired.append(jid)
+        return fired
 
 
 class AgentRefreshDispatchTests(unittest.TestCase):
@@ -171,6 +215,35 @@ class AgentRefreshDispatchTests(unittest.TestCase):
             result = self.refresh(sid, observation)
             self.assert_executed_once(sid, result)
             self.assertIsNone(self.fx.upkeep.get_upkeep(sid)["link"])
+
+    def test_scheduler_double_fires_unrun_one_shot_once(self):
+        sid = self.fx.make()
+        created = json.loads(self.ctx.dispatch_tool("cronjob_manage", {
+            "action": "create", "prompt": "Update this Space.", "schedule": "in 1m", "repeat": 1,
+            "name": f"living-spaces:{sid}:once", "no_agent": False, "deliver": "local"}))
+        jid = created["job_id"]
+        due = datetime.now(timezone.utc) + timedelta(minutes=2)
+        self.assertEqual(self.ctx.scheduler_tick(due - timedelta(minutes=1, seconds=30)), [])
+        self.assertEqual(self.ctx.scheduler_tick(due), [jid])
+        self.assertEqual(self.ctx.scheduler_tick(due + timedelta(minutes=5)), [])
+        job = self.fx.cron.get_job(jid)
+        self.assertEqual((job["enabled"], job["state"], job["next_run_at"], job["repeat"]),
+                         (False, "completed", None, {"times": 1, "completed": 1}))
+        self.assertEqual([effect["origin"] for effect in self.ctx.effects if effect["space"] == sid], ["scheduled"])
+
+    def test_fresh_refresh_is_not_executed_again_by_scheduler(self):
+        sid = self.fx.make()
+        with self.observe(sid, "Fresh Refresh now, then a scheduler tick past the one-shot slot") as observation:
+            result = self.refresh(sid, observation)
+            self.assert_executed_once(sid, result)
+            observation["scheduler_fired"] = self.ctx.scheduler_tick(
+                datetime.now(timezone.utc) + timedelta(minutes=2))
+            effects = [effect for effect in self.ctx.effects if effect["space"] == sid]
+            self.assertEqual([(effect["origin"], effect["execution_count"]) for effect in effects],
+                             [("manual", 1)])
+            self.assertEqual(observation["scheduler_fired"], [])
+            self.assertEqual([entry for entry in self.fx.cron.executions
+                              if entry["job_id"] == result["cron_job_id"]][1:], [])
 
     def test_enabled_linked_refresh_executes_once(self):
         sid = self.fx.make()
