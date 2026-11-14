@@ -245,6 +245,120 @@ class AgentRefreshDispatchTests(unittest.TestCase):
             self.assertEqual([entry for entry in self.fx.cron.executions
                               if entry["job_id"] == result["cron_job_id"]][1:], [])
 
+    def refuse(self, *actions, job_id):
+        original = self.ctx.dispatch_tool
+        refused = []
+
+        def dispatch(name, args):
+            if args["action"] in actions and args.get("job_id") == job_id():
+                refused.append(args["action"])
+                return json.dumps({"success": False, "error": "Synthetic " + args["action"] + " refusal"})
+            return original(name, args)
+        return patch.object(self.ctx, "dispatch_tool", side_effect=dispatch), refused
+
+    def unrelated_jobs(self):
+        other = self.fx.make()
+        self.fx.schedule(other)
+        json.loads(self.ctx.dispatch_tool("cronjob_manage", {
+            "action": "create", "prompt": "Unrelated daily brief.", "schedule": "in 1m", "repeat": 1,
+            "name": "daily-brief", "no_agent": False, "deliver": "local"}))
+        return self.fx.cron.list_jobs(include_disabled=True)
+
+    def fresh_once_id(self):
+        return next((entry["job_id"] for entry in reversed(self.ctx.run_attempts)), None)
+
+    def test_successful_fresh_refresh_retires_only_its_one_shot(self):
+        unrelated = self.unrelated_jobs()
+        sid = self.fx.make()
+        with self.observe(sid, "Fresh Refresh now beside a linked job and an unrelated one-shot") as observation:
+            result = self.refresh(sid, observation)
+            self.assert_executed_once(sid, result)
+            jid = result["cron_job_id"]
+            self.assertEqual(result["one_shot"], {"job_id": jid, "consumed": "removed"})
+            self.assertIsNone(self.fx.cron.get_job(jid))
+            self.assertEqual(self.fx.cron.list_jobs(include_disabled=True), unrelated)
+            shown = self.fx.upkeep.get_upkeep(sid)
+            self.assertEqual((shown["link"], shown["one_shots"]), (None, []))
+
+    def test_linked_refresh_keeps_its_recurring_job(self):
+        sid = self.fx.make()
+        first = self.fx.schedule(sid)
+        jid = first["link"]["cron_job_id"]
+        before = self.fx.cron.get_job(jid)
+        with self.observe(sid, "Linked recurring job is not invocation-owned") as observation:
+            result = self.refresh(sid, observation)
+            self.assert_executed_once(sid, result)
+            self.assertNotIn("one_shot", result)
+            after = self.fx.cron.get_job(jid)
+            self.assertEqual({key: after[key] for key in ("enabled", "state", "next_run_at", "schedule")},
+                             {key: before[key] for key in ("enabled", "state", "next_run_at", "schedule")})
+
+    def test_unremovable_one_shot_is_disabled_and_reported(self):
+        sid = self.fx.make()
+        refusal, refused = self.refuse("remove", job_id=self.fresh_once_id)
+        with self.observe(sid, "Successful fresh refresh whose one-shot removal is refused") as observation:
+            with refusal:
+                result = self.refresh(sid, observation)
+            self.assert_executed_once(sid, result)
+            jid = result["cron_job_id"]
+            self.assertEqual(refused, ["remove"])
+            self.assertEqual((result["one_shot"]["job_id"], result["one_shot"]["consumed"]), (jid, "paused"))
+            self.assertIn("Synthetic remove refusal", json.dumps(result["one_shot"]["cleanup"]))
+            self.assertIs(self.fx.cron.get_job(jid)["enabled"], False)
+            shots = self.fx.upkeep.get_upkeep(sid)["one_shots"]
+            self.assertEqual([(shot["id"], shot["enabled"]) for shot in shots], [(jid, False)])
+            observation["scheduler_fired"] = self.ctx.scheduler_tick(
+                datetime.now(timezone.utc) + timedelta(minutes=2))
+            self.assertEqual(observation["scheduler_fired"], [])
+            self.assertEqual([effect["origin"] for effect in self.ctx.effects if effect["space"] == sid], ["manual"])
+
+    def test_unconsumed_one_shot_is_not_reported_as_success(self):
+        sid = self.fx.make()
+        refusal, refused = self.refuse("pause", "remove", job_id=self.fresh_once_id)
+        with self.observe(sid, "Successful fresh refresh whose one-shot can be neither paused nor removed") as observation:
+            with refusal, self.assertRaises(self.fx.core.SpacesError) as caught:
+                self.refresh(sid, observation)
+            error = caught.exception.to_dict()
+            jid = self.ctx.run_attempts[-1]["job_id"]
+            self.assertEqual(sorted(refused), ["pause", "remove"])
+            self.assertEqual((error["code"], error["reason"], error["orphan_job_id"]),
+                             ("blocked", "one_shot_not_consumed", jid))
+            self.assertEqual(error["native"], self.ctx.run_replies[-1])
+            self.assertIs(error["native"]["job"]["execution_success"], True)
+            self.assertIn("Synthetic pause refusal", json.dumps(error["pause"]))
+            self.assertIn("Synthetic remove refusal", json.dumps(error["cleanup"]))
+            self.assertIn("may run again", error["message"])
+            self.assertIs(self.fx.cron.get_job(jid)["enabled"], True)
+            self.assertEqual([effect["origin"] for effect in self.ctx.effects if effect["space"] == sid], ["manual"])
+
+    def test_failed_fresh_refresh_is_cleaned_not_consumed(self):
+        self.healthy_control()
+        for outcome in (RunOutcome.FAILED, RunOutcome.SKIPPED):
+            with self.subTest(outcome=outcome.value):
+                sid = self.fx.make()
+                before = self.fx.cron.list_jobs(include_disabled=True)
+                self.ctx.outcome = outcome
+                with self.observe(sid, "Fresh one-shot whose inline run fails, " + outcome.value) as observation:
+                    with self.assertRaises(self.fx.core.SpacesError) as caught:
+                        self.refresh(sid, observation)
+                    self.assertEqual((caught.exception.code, caught.exception.extra["reason"]),
+                                     ("blocked", "native_refused"))
+                    self.assertEqual(caught.exception.extra["native"], self.ctx.run_replies[-1])
+                    self.assertEqual(self.fx.cron.list_jobs(include_disabled=True), before)
+                    self.assertEqual(self.ctx.scheduler_tick(datetime.now(timezone.utc) + timedelta(minutes=2)), [])
+                    self.assertEqual([effect for effect in self.ctx.effects if effect["space"] == sid], [])
+
+    def test_cron_origin_refresh_is_refused_without_creating_a_one_shot(self):
+        sid = self.fx.make()
+        before = self.fx.cron.list_jobs(include_disabled=True)
+        self.ctx.execution = {"job_id": "synthetic-running-cron"}
+        with self.observe(sid, "Refresh now requested from inside a cron execution") as observation:
+            with self.assertRaises(self.fx.core.SpacesError) as caught:
+                self.refresh(sid, observation)
+            self.assertEqual(caught.exception.extra["reason"], "cron_recursion")
+            self.assertEqual(self.fx.cron.list_jobs(include_disabled=True), before)
+            self.assertEqual(self.ctx.run_attempts, [])
+
     def test_enabled_linked_refresh_executes_once(self):
         sid = self.fx.make()
         first = self.fx.schedule(sid)
