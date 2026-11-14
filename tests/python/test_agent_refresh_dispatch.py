@@ -593,6 +593,30 @@ class AgentRefreshDispatchTests(unittest.TestCase):
             self.assert_no_scheduler_rerun(sid, jid, (timedelta(minutes=2), timedelta(days=8)))
             self.assertEqual([effect["origin"] for effect in self.ctx.effects if effect["space"] == sid], ["manual"])
 
+    def test_refused_post_run_list_keeps_the_failed_run_diagnostic(self):
+        sid = self.fx.make()
+        dispatch = self.ctx.dispatch_tool
+        refused = []
+        self.ctx.outcome = RunOutcome.FAILED
+
+        def list_refused_once_after_run(name, args):
+            if args["action"] == "list" and self.ctx.run_replies and not refused:
+                refused.append({"success": False, "error": "cron store locked"})
+                return json.dumps(refused[-1])
+            return dispatch(name, args)
+        with self.observe(sid, "Fresh inline run fails, then the post-run job list is refused once") as observation:
+            with patch.object(self.ctx, "dispatch_tool", side_effect=list_refused_once_after_run), \
+                    self.assertRaises(self.fx.core.SpacesError) as caught:
+                self.refresh(sid, observation)
+            error = caught.exception.to_dict()
+            jid = self.ctx.run_attempts[-1]["job_id"]
+            self.assertEqual(error["native"], self.ctx.run_replies[-1])
+            self.assertIs(error["native"]["job"]["execution_success"], False)
+            self.assertEqual(error["native"]["job"]["execution_error"], "Synthetic model unavailable")
+            self.assertEqual(error["verification"]["native"], refused[0])
+            self.assertIn("cron store locked", error["message"])
+            self.assertIsNone(self.fx.cron.get_job(jid))
+
     def test_store_failure_after_run_is_reported_and_cleaned(self):
         sid = self.fx.make()
         write = self.fx.db.write
