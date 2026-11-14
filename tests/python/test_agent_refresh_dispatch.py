@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 import json
 import re
+import sqlite3
 import unittest
 from unittest.mock import patch
 
@@ -31,6 +32,9 @@ class PausedRefusingContext(SyntheticContext):
         self.run_attempts = []
         self.run_replies = []
         self.effects = []
+        self.run_duration = timedelta(0)
+        self.tick_after_run = False
+        self.fail_write_after_run = False
 
     def dispatch_tool(self, name, args):
         assert name == "cronjob_manage", name
@@ -86,21 +90,35 @@ class PausedRefusingContext(SyntheticContext):
             # the outcome but leaves repeat.completed, enabled, state and the pending next_run_at
             # slot untouched, so a one-shot stays due for the scheduler.
             self.cron.jobs[jid].update(last_run_at=datetime.now(timezone.utc).isoformat(), last_status="ok")
+            ended = datetime.now(timezone.utc) + self.run_duration
+            self.settle_extra_fire(jid, ended)
             reply = {"success": True, "job": dict(self.format_job(self.cron.get_job(jid)), executed=True,
                      execution_mode="inline", execution_success=execution["status"] == "completed",
                      execution_id=execution["id"])}
+            if self.tick_after_run:
+                # A scheduler tick lands after mark_job_run cleared the claim and before the caller
+                # sees the reply, which is the window the plugin cannot close after the fact.
+                self.ticks_during_run = self.scheduler_tick(ended)
         self.run_replies.append(copy.deepcopy(reply))
         return json.dumps(reply)
+
+    def settle_extra_fire(self, jid, ended):
+        # cron/extra_fire.settle: a once slot that passed while the manual run was in flight becomes
+        # due at the run's end instead of being kept in the future.
+        job = self.cron.jobs[jid]
+        slot = job.get("next_run_at")
+        if job["schedule"].get("kind") == "once" and slot and datetime.fromisoformat(slot) <= ended:
+            job["next_run_at"] = ended.isoformat()
 
     def create_with_slot(self, name, args):
         # Hermes parses "in <N>m" as a once schedule whose slot is creation time + N minutes and
         # stores repeat as {"times", "completed"}; the shared fixture stores a fixed 2027 slot.
         created = json.loads(super().dispatch_tool(name, args))
-        match = re.fullmatch(r"in (\d+)m", args.get("schedule", ""))
+        match = re.fullmatch(r"in (\d+)([mhd])", args.get("schedule", ""))
         if not created.get("success") or match is None:
             return json.dumps(created)
         job = self.cron.jobs[created["job_id"]]
-        slot = datetime.now(timezone.utc) + timedelta(minutes=int(match.group(1)))
+        slot = datetime.now(timezone.utc) + timedelta(minutes=int(match.group(1)) * {"m": 1, "h": 60, "d": 1440}[match.group(2)])
         job.update(schedule={"kind": "once", "run_at": slot.isoformat(), "display": "once " + args["schedule"]},
                    schedule_display="once " + args["schedule"], next_run_at=slot.isoformat(),
                    repeat={"times": args.get("repeat"), "completed": 0})
@@ -498,6 +516,62 @@ class AgentRefreshDispatchTests(unittest.TestCase):
             self.assertEqual(self.fx.upkeep.get_upkeep(sid)["link"], first["link"])
             self.assertEqual(self.fx.upkeep._shim(sid).read_bytes(), shim_before)
             self.assertEqual([effect for effect in self.ctx.effects if effect["space"] == sid], [])
+
+    def assert_no_scheduler_rerun(self, sid, jid, horizon):
+        for later in horizon:
+            self.assertEqual(self.ctx.scheduler_tick(datetime.now(timezone.utc) + later), [], later)
+        self.assertEqual([effect["origin"] for effect in self.ctx.effects if effect["space"] == sid
+                          and effect["origin"] == "scheduled"], [])
+        job = self.fx.cron.get_job(jid)
+        self.assertTrue(job is None or job["enabled"] is False, job)
+
+    def test_background_fresh_refresh_is_not_run_again_by_scheduler(self):
+        sid = self.fx.make()
+        self.ctx.outcome = RunOutcome.BACKGROUND
+        with self.observe(sid, "Fresh Refresh now dispatched to the background, then scheduler ticks") as observation:
+            result = self.refresh(sid, observation)
+            jid = result["cron_job_id"]
+            self.assertEqual(result["dispatch"], self.ctx.run_replies[-1])
+            self.assertEqual(result["one_shot"], {"job_id": jid, "consumed": "paused", "execution_mode": "background"})
+            self.assertEqual([entry["status"] for entry in self.fx.cron.executions if entry["job_id"] == jid],
+                             ["running"])
+            self.assertEqual([shot["id"] for shot in self.fx.upkeep.get_upkeep(sid)["one_shots"]], [jid])
+            self.assert_no_scheduler_rerun(sid, jid, (timedelta(minutes=2), timedelta(days=2)))
+
+    def test_inline_run_outlasting_its_slot_is_not_claimed_by_scheduler(self):
+        for duration in (timedelta(seconds=90), timedelta(hours=6)):
+            with self.subTest(duration=str(duration)):
+                sid = self.fx.make()
+                self.ctx.run_duration = duration
+                self.ctx.tick_after_run = True
+                with self.observe(sid, "Fresh inline run longer than the one-shot slot, tick before consumption") as observation:
+                    result = self.refresh(sid, observation)
+                    observation["ticks_during_run"] = self.ctx.ticks_during_run
+                    self.assertEqual(self.ctx.ticks_during_run, [])
+                    self.assert_executed_once(sid, result)
+                    self.assertEqual(result["one_shot"], {"job_id": result["cron_job_id"], "consumed": "removed"})
+                    self.assert_no_scheduler_rerun(sid, result["cron_job_id"], (timedelta(days=2),))
+
+    def test_store_failure_after_run_is_reported_and_cleaned(self):
+        sid = self.fx.make()
+        write = self.fx.db.write
+
+        def failing_write():
+            if self.ctx.run_replies:
+                raise sqlite3.OperationalError("database is locked")
+            return write()
+        with self.observe(sid, "Fresh inline run succeeds, then the SQLite recheck raises") as observation:
+            with patch.object(self.fx.db, "write", side_effect=failing_write), \
+                    self.assertRaises(self.fx.core.SpacesError) as caught:
+                self.refresh(sid, observation)
+            error = caught.exception.to_dict()
+            jid = self.ctx.run_attempts[-1]["job_id"]
+            self.assertEqual((error["code"], error["reason"]), ("blocked", "post_run_check_failed"))
+            self.assertIn("database is locked", error["message"])
+            self.assertEqual(error["native"], self.ctx.run_replies[-1])
+            self.assertIsNone(self.fx.cron.get_job(jid))
+            self.assert_no_scheduler_rerun(sid, jid, (timedelta(minutes=2), timedelta(days=2)))
+            self.assertEqual([effect["origin"] for effect in self.ctx.effects if effect["space"] == sid], ["manual"])
 
 
 if __name__ == "__main__":
