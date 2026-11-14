@@ -150,13 +150,15 @@ test('F5 exhausted cleanup is observable and a later destroy retries', async () 
 })
 
 const openingRoute = { connectionId: 'backend-a', profile: 'demo-profile', targetProfile: 'demo', mode: 'remote' }
+const described = { profile_id: 'demo', capabilities: ['durable-admission-v1', 'plugin-rpc-v1'] }
+const describe = target => [target, 'runtime.describe', {}, 5000]
 function routing() {
   let connectionId = openingRoute.connectionId, profile = openingRoute.profile
   const requests = []
   const host = {
     state: { connectionId: { get: () => connectionId }, profile: { get: () => profile } },
     profileRoutes: async () => [openingRoute],
-    requestProfile: async (...args) => { requests.push(structuredClone(args)); return { closed: true } }
+    requestProfile: async (...args) => { requests.push(structuredClone(args)); return args[1] === 'runtime.describe' ? described : { closed: true } }
   }
   return { host, requests, switch() { connectionId = 'backend-b'; profile = 'other-profile' } }
 }
@@ -177,7 +179,7 @@ test('F5 close uses the opening backend after a profile switch, including a late
   opening.resolve({ session: 'late-session', head_rev: 1, grants: [] })
   await f.session.ready
   assert.deepEqual(requests, [{ path: '/spaces/demo-space/sessions', method: 'POST' }])
-  assert.deepEqual(route.requests, [[openingRoute, 'plugin.living-spaces.close_session', { space_id: 'demo-space', session: 'late-session' }, 5000]])
+  assert.deepEqual(route.requests, [describe(openingRoute), [openingRoute, 'plugin.living-spaces.close_session', { space_id: 'demo-space', session: 'late-session' }, 5000]])
 })
 
 test('active-scope cleanup uses public REST with the five-second timeout', async () => {
@@ -201,7 +203,7 @@ test('an opening response after a scope switch is closed without mounting even b
   opening.resolve({ session: 'late-session', head_rev: 1, grants: [] })
   await f.session.ready
   assert.equal(mounts, 0)
-  assert.deepEqual(route.requests, [[openingRoute, 'plugin.living-spaces.close_session', { space_id: 'demo-space', session: 'late-session' }, 5000]])
+  assert.deepEqual(route.requests, [describe(openingRoute), [openingRoute, 'plugin.living-spaces.close_session', { space_id: 'demo-space', session: 'late-session' }, 5000]])
 })
 
 test('a bundle and writes arriving after a scope switch cannot mount or report saved', async () => {
@@ -226,7 +228,7 @@ test('a bundle and writes arriving after a scope switch cannot mount or report s
     if (phase === 'bundle') { await assert.rejects(f.session.ready, /backend changed/); assert.equal(mounts, 0) }
     else { assert.equal((await result).error.code, 'session_invalid'); assert.deepEqual(writes.map(value => value.status), ['saving']) }
     await f.session.destroy()
-    assert.equal(route.requests.length, 1)
+    assert.equal(route.requests.filter(([, method]) => method === 'plugin.living-spaces.close_session').length, 1)
   }
 })
 
@@ -239,7 +241,36 @@ test('local cleanup selects only the unique primary route in the captured profil
   await f.session.ready
   route.switch()
   await f.session.destroy()
-  assert.deepEqual(route.requests, [[primary, 'plugin.living-spaces.close_session', { space_id: 'demo-space', session: 'demo-session' }, 5000]])
+  assert.deepEqual(route.requests, [describe(primary), [primary, 'plugin.living-spaces.close_session', { space_id: 'demo-space', session: 'demo-session' }, 5000]])
+})
+
+test('cross-scope cleanup checks plugin-rpc-v1 on the opening route before calling the plugin method', async () => {
+  const route = routing()
+  const f = fixture(() => ({ ok: true }), { host: route.host, backend: openingRoute })
+  await f.session.ready
+  route.switch()
+  await f.session.destroy()
+  assert.deepEqual(route.requests, [
+    describe(openingRoute),
+    [openingRoute, 'plugin.living-spaces.close_session', { space_id: 'demo-space', session: 'demo-session' }, 5000]
+  ])
+})
+
+test('cross-scope cleanup on a gateway without plugin-rpc-v1 reports why and never calls the plugin method', async () => {
+  const route = routing(), errors = []
+  route.host.requestProfile = async (...args) => {
+    route.requests.push(structuredClone(args))
+    if (args[1] === 'runtime.describe') return { profile_id: 'demo', capabilities: ['durable-admission-v1'] }
+    return { closed: true }
+  }
+  const f = fixture(() => ({ ok: true }), { host: route.host, backend: openingRoute, onCloseError: error => errors.push(error) })
+  await f.session.ready
+  route.switch()
+  await assert.rejects(f.session.destroy(), /plugin-rpc-v1/)
+  assert.deepEqual(route.requests.map(([, method]) => method), ['runtime.describe'])
+  assert.equal(errors.length, 1)
+  assert.match(errors[0].message, /plugin-rpc-v1/)
+  assert.equal(f.calls.filter(call => call.method === 'DELETE').length, 0)
 })
 
 for (const failure of ['missing', 'ambiguous', 'unsupported', 'error-result']) {
@@ -250,8 +281,9 @@ for (const failure of ['missing', 'ambiguous', 'unsupported', 'error-result']) {
     route.switch()
     if (failure === 'missing') route.host.profileRoutes = async () => []
     if (failure === 'ambiguous') route.host.profileRoutes = async () => [openingRoute, { ...openingRoute, targetProfile: 'other' }]
-    if (failure === 'unsupported') route.host.requestProfile = async () => { throw Object.assign(new Error('Method not found'), { code: -32601 }) }
-    if (failure === 'error-result') route.host.requestProfile = async () => ({ error: { code: 'blocked', message: 'Cleanup blocked' } })
+    const plugin = answer => async (target, method) => method === 'runtime.describe' ? described : answer()
+    if (failure === 'unsupported') route.host.requestProfile = plugin(() => { throw Object.assign(new Error('Method not found'), { code: -32601 }) })
+    if (failure === 'error-result') route.host.requestProfile = plugin(() => ({ error: { code: 'blocked', message: 'Cleanup blocked' } }))
     await assert.rejects(f.session.destroy())
     assert.equal(errors.length, 3)
     assert.equal(f.calls.filter(call => call.method === 'DELETE').length, 0)

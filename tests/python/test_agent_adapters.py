@@ -184,6 +184,26 @@ class ToolTests(AdapterCase):
         self.tool("spaces_refresh", profile_name="ContextBot")
         self.assertEqual(self.core.start_refresh.call_args.kwargs["actor"], "agent:ContextBot")
 
+    def test_owner_label_survives_absent_or_unusable_optional_metadata(self):
+        class Unreadable:
+            @property
+            def profile_name(self):
+                raise LookupError("metadata is not available on this host")
+
+        profile_home = Path(self.temp.name) / "profiles" / "demo"
+        for context in ({}, {"parent_agent": Unreadable()}, {"profile_name": "  default  "},
+                        {"context": "not metadata", "tool_context": 7, "bot_name": ["DemoBot"]}):
+            with self.subTest(context=context):
+                sys.modules["hermes_constants"].get_hermes_home = lambda: profile_home
+                self.assertTrue(self.tool("spaces_refresh", **context)["ok"])
+                self.assertEqual(self.core.start_refresh.call_args.kwargs["actor"], "agent:demo")
+
+        def unavailable():
+            raise ValueError("home is not resolvable here")
+        sys.modules["hermes_constants"].get_hermes_home = unavailable
+        self.assertTrue(self.tool("spaces_refresh", parent_agent=Unreadable())["ok"])
+        self.assertEqual(self.core.start_refresh.call_args.kwargs["actor"], "agent:Hermes")
+
     def test_mutation_attribution(self):
         for name, keyword in (("spaces_write_files", "author"), ("spaces_edit_file", "author"),
                               ("spaces_write_records", "actor"), ("spaces_restore", "author"),

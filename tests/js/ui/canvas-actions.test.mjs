@@ -184,7 +184,7 @@ test('Space actions refuse stale REST while cleanup uses the captured public rou
   const host = {
     state: { connectionId: { get: () => active.connectionId }, profile: { get: () => active.profile } },
     profileRoutes: async () => [ownerRoute, otherRoute],
-    requestProfile: async (...args) => { routed.push(args); return { closed: true } }
+    requestProfile: async (...args) => { routed.push(args); return args[1] === 'runtime.describe' ? { capabilities: ['plugin-rpc-v1'] } : { closed: true } }
   }
   const rest = async (path, options) => {
     calls.push({ path, ...options, connectionId: active.connectionId, profile: active.profile })
@@ -204,7 +204,7 @@ test('Space actions refuse stale REST while cleanup uses the captured public rou
   await session.destroy()
   assert.ok(calls.some(call => call.path.endsWith('/actions/context')))
   assert.ok(calls.every(call => call.connectionId === ownerRoute.connectionId && call.profile === ownerRoute.profile))
-  assert.deepEqual(routed, [[ownerRoute, 'plugin.living-spaces.close_session', { space_id: 'canvas', session: 'bridge-session' }, 5000]])
+  assert.deepEqual(routed, [[ownerRoute, 'runtime.describe', {}, 5000], [ownerRoute, 'plugin.living-spaces.close_session', { space_id: 'canvas', session: 'bridge-session' }, 5000]])
   assert.equal((await mounted.call('bot.request', request)).error.code, 'session_invalid')
 })
 

@@ -176,7 +176,7 @@ test('page scope switches retain late-open tokens only for original-owner RPC cl
   const opening = Promise.withResolvers(), requests = [], routed = []
   sdk.host.state.profile.get = () => profile
   sdk.host.profileRoutes = async () => [route]
-  sdk.host.requestProfile = async (...args) => { routed.push(args); return { closed: true } }
+  sdk.host.requestProfile = async (...args) => { routed.push(args); return args[1] === 'runtime.describe' ? { capabilities: ['plugin-rpc-v1'] } : { closed: true } }
   const ctx = { rest: async (path, options = {}) => {
     requests.push({ path, ...options, profile })
     if (path.endsWith('/sessions')) return profile === 'profile-a' ? opening.promise : { session: 'session-b', head_rev: 1, grants: [] }
@@ -188,7 +188,7 @@ test('page scope switches retain late-open tokens only for original-owner RPC cl
     profile = 'profile-b'
     await render(SpacesPage, { ctx })
     await act(async () => opening.resolve({ session: 'late-session-a', head_rev: 1, grants: [] }))
-    assert.deepEqual(routed, [[route, 'plugin.living-spaces.close_session', { space_id: 'demo-space', session: 'late-session-a' }, 5000]])
+    assert.deepEqual(routed, [[route, 'runtime.describe', {}, 5000], [route, 'plugin.living-spaces.close_session', { space_id: 'demo-space', session: 'late-session-a' }, 5000]])
     assert.equal(requests.some(request => request.method === 'DELETE'), false)
     await act(async () => view.unmount())
     assert.deepEqual(requests.filter(request => request.method === 'DELETE'), [{ path: '/spaces/demo-space/sessions/session-b', method: 'DELETE', timeoutMs: 5000, profile: 'profile-b' }])
@@ -303,7 +303,10 @@ test('F5 the view pins public session cleanup and notifies after exhaustion', as
   sdk.host.state.connectionId.get = () => connection
   sdk.host.state.profile.get = () => profile
   sdk.host.profileRoutes = async () => [route]
-  sdk.host.requestProfile = async (...args) => { requests.push(args); throw new Error('Cleanup unavailable') }
+  sdk.host.requestProfile = async (...args) => {
+    if (args[1] === 'runtime.describe') return { capabilities: ['plugin-rpc-v1'] }
+    requests.push(args); throw new Error('Cleanup unavailable')
+  }
   sdk.host.notifyError = (...args) => notifications.push(args)
   console.warn = () => {}
   try {
