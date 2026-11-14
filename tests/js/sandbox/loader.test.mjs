@@ -124,6 +124,16 @@ test('console, errors, rejected promises and CSP diagnostics share a fifty-entry
   assert.ok(batch.args.entries.some(entry => entry.msg.includes('unhandled rejection')))
 })
 
+test('entry module scripts load from a blob URL so the browser fires load', async () => {
+  const script = { attributes: [{ name: 'type', value: 'module' }], type: 'module', textContent: 'import "https://space.invalid/app.js"', remove() {} }
+  const f = loaderFixture([{ path: 'index.html', mime: 'text/html', text: '<main>Demo</main>' }], [script])
+  await tick()
+  const appended = f.document.body.children.at(-1)
+  assert.equal(appended.type, 'module')
+  assert.match(appended.src || '', /^blob:/, 'browsers fire no load event for inline module scripts')
+  assert.equal(appended.textContent || '', '')
+})
+
 test('successful entry reports loaded once after entry scripts settle', async () => {
   const script = { attributes: [{ name: 'type', value: 'module' }], type: 'module', textContent: 'export {}', remove() {} }
   const f = loaderFixture([{ path: 'index.html', mime: 'text/html', text: '<main>Demo</main>' }], [script])

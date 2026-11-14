@@ -366,7 +366,9 @@ export function spaceLoader(resolver) {
     for (const old of scripts) {
       const script = document.createElement('script')
       for (const attribute of old.attributes) script.setAttribute(attribute.name, attribute.value)
-      script.textContent = old.type === 'module' ? old.textContent : resolver.rewriteImports(entryPath, old.textContent)
+      // Browsers fire no load event for inline module scripts, so serve module text from a blob URL.
+      if (old.type === 'module') script.src = blob({ mime: 'text/javascript' }, old.textContent)
+      else script.textContent = resolver.rewriteImports(entryPath, old.textContent)
       const done = script.src || script.type === 'module' ? new Promise((resolve, reject) => {
         script.onload = resolve
         script.onerror = () => reject(new Error(`Script failed: ${old.getAttribute('src') || 'entry module'}`))
