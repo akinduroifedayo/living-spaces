@@ -15,6 +15,9 @@ ACTIONS = ("pause", "resume", "run", "remove")
 ONE_SHOT_LIMIT = 5
 AGENT_MIN_MINUTES = 15
 AGENT_PROMPT_LIMIT = 8000
+# Refresh now runs its one-shot explicitly. The native slot exists only because a once job needs one,
+# so it is set far beyond any run: the scheduler can never claim it while the explicit run is in flight.
+ONE_SHOT_SLOT = "in 7d"
 _CONTEXTS = {}
 UNAVAILABLE = {
     "prompt": "The public cron tool exposes only a prompt preview, not the full task.",
@@ -411,13 +414,19 @@ def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
 def _run_now(sid, jid):
     # Public run may execute inline and call Space tools, so never hold SQLite's write lock here.
     native = _mutate("run", jid)
-    with db.write() as conn:
-        row = conn.execute("SELECT status FROM spaces WHERE id=?", (sid,)).fetchone()
-        if row is None or row["status"] == "archived":
-            if any(job["job_id"] == jid for job in _jobs()["jobs"]):
-                _mutate("remove" if row is None else "pause", jid)
-            code = "not_found" if row is None else "archived"
-            raise SpacesError(code, "Space was deleted or archived during the run request", native=native)
+    try:
+        with db.write() as conn:
+            row = conn.execute("SELECT status FROM spaces WHERE id=?", (sid,)).fetchone()
+            if row is None or row["status"] == "archived":
+                if any(job["job_id"] == jid for job in _jobs()["jobs"]):
+                    _mutate("remove" if row is None else "pause", jid)
+                code = "not_found" if row is None else "archived"
+                raise SpacesError(code, "Space was deleted or archived during the run request", native=native)
+    except SpacesError:
+        raise
+    except Exception as exc:
+        raise SpacesError("blocked", f"Hermes accepted the run, but Living Spaces could not recheck the Space afterwards: {exc}",
+                          reason="post_run_check_failed", native=native) from exc
     return native
 
 
@@ -465,7 +474,7 @@ def refresh_now(sid, upkeep, *, actor):
         link = _link(conn, sid)
         created = not (link and link["kind"] == "agent")
         if created:
-            jid = _create(prompt=agent_prompt(sid, upkeep.get("prompt")), schedule="in 1m", repeat=1,
+            jid = _create(prompt=agent_prompt(sid, upkeep.get("prompt")), schedule=ONE_SHOT_SLOT, repeat=1,
                           name=_once_name(sid), no_agent=False, deliver="local", catch_up=True, paused=True)
         else:
             jid = link["cron_job_id"]
@@ -502,19 +511,32 @@ def refresh_now(sid, upkeep, *, actor):
                                   reason="cron_cleanup_failed", orphan_job_id=jid,
                                   original=failure.to_dict(), cleanup=cleanup.to_dict(), **extra) from failure
         raise
+    # dispatch stays the verbatim native reply; one_shot records what happened to the owned job afterwards.
     result = {"kind": "cron", "cron_job_id": jid, "dispatch": native}
-    if created and isinstance(job, dict) and job.get("executed") is True and job.get("execution_success") is True:
-        result["one_shot"] = _consume_one_shot(jid, native, actor=actor)
+    if created and isinstance(job, dict) and job.get("executed") is True:
+        if job.get("execution_success") is True:
+            result["one_shot"] = _consume_one_shot(jid, native, actor=actor)
+        elif job.get("execution_mode") == "background":
+            result["one_shot"] = _consume_one_shot(jid, native, actor=actor, background=True)
     return result
 
 
-def _consume_one_shot(jid, native, *, actor):
-    # Hermes counts a manual run as an extra fire: the once slot stays due, so the scheduler would run it again.
+def _consume_one_shot(jid, native, *, actor, background=False):
+    # Hermes counts a manual run as an extra fire, so the once slot stays pending after the run. A background
+    # run is still in flight, and removing its job would cancel it, so that job is only disabled.
     pause_failure = None
     try:
         _mutate("pause", jid, reason=f"Living Spaces refresh by {actor} already ran this one-shot")
     except SpacesError as exc:
         pause_failure = exc
+    if background:
+        if pause_failure is None:
+            return {"job_id": jid, "consumed": "paused", "execution_mode": "background"}
+        raise SpacesError("blocked", f"The refresh started in the background, but its Hermes cron one-shot {jid} "
+                          f"could not be disabled ({pause_failure.message}). It may run again at its scheduled "
+                          "time; pause or remove it from Upkeep after this run finishes.",
+                          reason="one_shot_not_consumed", orphan_job_id=jid, native=native,
+                          pause=pause_failure.to_dict()) from pause_failure
     try:
         _mutate("remove", jid)
         return {"job_id": jid, "consumed": "removed"}

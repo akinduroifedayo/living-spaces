@@ -567,7 +567,7 @@ class NativeCronTests(UpkeepCase):
         result = self.refresh()
         job = jobs.get_job(result["cron_job_id"])
         try:
-            self.assertEqual(job["schedule"]["expr"], "in 1m")
+            self.assertEqual(job["schedule"]["expr"], upkeep.ONE_SHOT_SLOT)
             self.assertEqual(job["name"], "living-spaces:research-desk:once")
             self.assertFalse(job["no_agent"])
             self.assertEqual(job["deliver"], "local")
