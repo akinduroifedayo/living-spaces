@@ -617,6 +617,90 @@ class AgentRefreshDispatchTests(unittest.TestCase):
             self.assertIn("cron store locked", error["message"])
             self.assertIsNone(self.fx.cron.get_job(jid))
 
+    def after_run(self, *, mutate=None, refuse_list=None):
+        """Patch dispatch so `mutate` runs right after the native run reply exists, then refuse the
+        post-run `list` numbered `refuse_list` (1 = _mutate's own verification list)."""
+        dispatch = self.ctx.dispatch_tool
+        state = {"returned": False, "lists": 0, "refused": []}
+
+        def wrapped(name, args):
+            if args["action"] == "list" and state["returned"]:
+                state["lists"] += 1
+                if state["lists"] == refuse_list:
+                    state["refused"].append({"success": False, "error": "cron store locked after run"})
+                    return json.dumps(state["refused"][-1])
+            reply = dispatch(name, args)
+            if args["action"] == "run":
+                if mutate:
+                    mutate()
+                state["returned"] = True
+            return reply
+        return patch.object(self.ctx, "dispatch_tool", side_effect=wrapped), state
+
+    def assert_run_reply_survives(self, error, state):
+        # Rule: every error raised after a run was dispatched carries the run reply at top-level native.
+        self.assertEqual(error["native"], self.ctx.run_replies[-1])
+        self.assertIs(error["native"]["job"]["execution_success"], False)
+        self.assertEqual(error["native"]["job"]["execution_error"], "Synthetic model unavailable")
+        self.assertEqual(error["post_run_error"]["native"], state["refused"][0])
+        self.assertIn("cron store locked after run", error["message"])
+
+    def test_archived_after_run_with_refused_cleanup_list_keeps_the_run_reply(self):
+        sid = self.fx.make()
+        self.ctx.outcome = RunOutcome.FAILED
+        patcher, state = self.after_run(mutate=lambda: self.fx.projects.set_status(sid, "archived", actor="user"),
+                                        refuse_list=2)
+        with self.observe(sid, "Fresh refresh fails, Space archived during the run, post-run recheck list refused") as observation:
+            with patcher, self.assertRaises(self.fx.core.SpacesError) as caught:
+                self.refresh(sid, observation)
+            error = caught.exception.to_dict()
+            self.assertEqual(len(state["refused"]), 1)
+            self.assert_run_reply_survives(error, state)
+            self.assertIsNone(self.fx.cron.get_job(self.ctx.run_attempts[-1]["job_id"]))
+
+    def test_deleted_after_linked_run_with_refused_cleanup_list_keeps_the_run_reply(self):
+        sid = self.fx.make()
+        self.fx.schedule(sid)
+        self.ctx.outcome = RunOutcome.FAILED
+        patcher, state = self.after_run(
+            mutate=lambda: self.fx.projects.delete_space(sid, actor="user", confirm=sid), refuse_list=2)
+        with patcher, self.assertRaises(self.fx.core.SpacesError) as caught:
+            self.fx.upkeep.upkeep_action(sid, "run", actor="user")
+        error = caught.exception.to_dict()
+        self.assertEqual(len(state["refused"]), 1)
+        self.assert_run_reply_survives(error, state)
+
+    def test_status_read_after_linked_run_keeps_the_run_reply(self):
+        # get_upkeep tolerates a refused list, but its Space lookup raises not_found if the Space is
+        # deleted between the run and the status read.
+        sid = self.fx.make()
+        self.fx.schedule(sid)
+        self.ctx.outcome = RunOutcome.FAILED
+        gone = self.fx.core.SpacesError("not_found", "Space not found")
+        with patch.object(self.fx.upkeep, "_read", side_effect=gone), \
+                self.assertRaises(self.fx.core.SpacesError) as caught:
+            self.fx.upkeep.upkeep_action(sid, "run", actor="user")
+        error = caught.exception.to_dict()
+        self.assertEqual(error["code"], "not_found")
+        self.assertEqual(error["native"], self.ctx.run_replies[-1])
+        self.assertIs(error["native"]["job"]["execution_success"], False)
+        self.assertEqual(error["native"]["job"]["execution_error"], "Synthetic model unavailable")
+        self.assertEqual(error["post_run_error"], {"code": "not_found", "message": "Space not found"})
+
+    def test_cleanup_failure_after_failed_run_keeps_the_run_reply_on_top(self):
+        sid = self.fx.make()
+        self.ctx.outcome = RunOutcome.FAILED
+        refusal, refused = self.refuse("pause", "remove", job_id=self.fresh_once_id)
+        with self.observe(sid, "Fresh refresh fails and its one-shot can be neither paused nor removed") as observation:
+            with refusal, self.assertRaises(self.fx.core.SpacesError) as caught:
+                self.refresh(sid, observation)
+            error = caught.exception.to_dict()
+            self.assertEqual(error["reason"], "cron_cleanup_failed")
+            self.assertEqual(error["native"], self.ctx.run_replies[-1])
+            self.assertIs(error["native"]["job"]["execution_success"], False)
+            self.assertEqual(error["native"]["job"]["execution_error"], "Synthetic model unavailable")
+            self.assertEqual(error["original"]["native"], self.ctx.run_replies[-1])
+
     def test_store_failure_after_run_is_reported_and_cleaned(self):
         sid = self.fx.make()
         write = self.fx.db.write
