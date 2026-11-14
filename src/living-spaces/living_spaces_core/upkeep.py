@@ -15,8 +15,9 @@ ACTIONS = ("pause", "resume", "run", "remove")
 ONE_SHOT_LIMIT = 5
 AGENT_MIN_MINUTES = 15
 AGENT_PROMPT_LIMIT = 8000
-# Refresh now runs its one-shot explicitly. The native slot exists only because a once job needs one,
-# so it is set far beyond any run: the scheduler can never claim it while the explicit run is in flight.
+# Refresh now runs its one-shot explicitly. The native slot exists only because a once job needs one, so it is
+# set far beyond a normal run. The run holds the claim until it finishes and the pause lands only after that, so
+# a run still in flight past the slot (7 days awake, or a host suspended across it) can be claimed once more.
 ONE_SHOT_SLOT = "in 7d"
 _CONTEXTS = {}
 UNAVAILABLE = {
@@ -145,6 +146,8 @@ def _mutate(action, jid, **args):
     try:
         job = next((job for job in _jobs()["jobs"] if job["job_id"] == jid), None)
     except SpacesError as verification:
+        if action == "run":
+            verification.extra.setdefault("native", result)
         if action != "remove":
             raise
         message = f"{failure.message}; " if failure else ""
