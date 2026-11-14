@@ -533,8 +533,8 @@ def _consume_one_shot(jid, native, *, actor, background=False):
         if pause_failure is None:
             return {"job_id": jid, "consumed": "paused", "execution_mode": "background"}
         raise SpacesError("blocked", f"The refresh started in the background, but its Hermes cron one-shot {jid} "
-                          f"could not be disabled ({pause_failure.message}). It may run again at its scheduled "
-                          "time; pause or remove it from Upkeep after this run finishes.",
+                          f"could not be disabled ({pause_failure.message}). It stays scheduled for about 7 days after this "
+                          "refresh and may run again then; pause or remove it from Upkeep after this run finishes.",
                           reason="one_shot_not_consumed", orphan_job_id=jid, native=native,
                           pause=pause_failure.to_dict()) from pause_failure
     try:
@@ -544,8 +544,8 @@ def _consume_one_shot(jid, native, *, actor, background=False):
         if pause_failure is None:
             return {"job_id": jid, "consumed": "paused", "cleanup": cleanup.to_dict()}
         raise SpacesError("blocked", f"The refresh ran, but its Hermes cron one-shot {jid} could not be disabled "
-                          f"({pause_failure.message}) or removed ({cleanup.message}). It may run again at its "
-                          "scheduled time; pause or remove it from Upkeep.",
+                          f"({pause_failure.message}) or removed ({cleanup.message}). It stays scheduled for about 7 days "
+                          "after this refresh and may run again then; pause or remove it from Upkeep.",
                           reason="one_shot_not_consumed", orphan_job_id=jid, native=native,
                           pause=pause_failure.to_dict(), cleanup=cleanup.to_dict()) from cleanup
 
