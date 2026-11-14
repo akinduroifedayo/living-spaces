@@ -502,7 +502,30 @@ def refresh_now(sid, upkeep, *, actor):
                                   reason="cron_cleanup_failed", orphan_job_id=jid,
                                   original=failure.to_dict(), cleanup=cleanup.to_dict(), **extra) from failure
         raise
-    return {"kind": "cron", "cron_job_id": jid, "dispatch": native}
+    result = {"kind": "cron", "cron_job_id": jid, "dispatch": native}
+    if created and isinstance(job, dict) and job.get("executed") is True and job.get("execution_success") is True:
+        result["one_shot"] = _consume_one_shot(jid, native, actor=actor)
+    return result
+
+
+def _consume_one_shot(jid, native, *, actor):
+    # Hermes counts a manual run as an extra fire: the once slot stays due, so the scheduler would run it again.
+    pause_failure = None
+    try:
+        _mutate("pause", jid, reason=f"Living Spaces refresh by {actor} already ran this one-shot")
+    except SpacesError as exc:
+        pause_failure = exc
+    try:
+        _mutate("remove", jid)
+        return {"job_id": jid, "consumed": "removed"}
+    except SpacesError as cleanup:
+        if pause_failure is None:
+            return {"job_id": jid, "consumed": "paused", "cleanup": cleanup.to_dict()}
+        raise SpacesError("blocked", f"The refresh ran, but its Hermes cron one-shot {jid} could not be disabled "
+                          f"({pause_failure.message}) or removed ({cleanup.message}). It may run again at its "
+                          "scheduled time; pause or remove it from Upkeep.",
+                          reason="one_shot_not_consumed", orphan_job_id=jid, native=native,
+                          pause=pause_failure.to_dict(), cleanup=cleanup.to_dict()) from cleanup
 
 
 def pause_for_archive(conn, sid):
