@@ -147,7 +147,9 @@ def _mutate(action, jid, **args):
         job = next((job for job in _jobs()["jobs"] if job["job_id"] == jid), None)
     except SpacesError as verification:
         if action == "run":
-            verification.extra.setdefault("native", result)
+            # The run reply owns native; the failed verification keeps its own reply under verification.
+            raise SpacesError(verification.code, verification.message, **{**verification.extra, "action": action, "job_id": jid,
+                              "native": result, "verification": verification.to_dict()}) from verification
         if action != "remove":
             raise
         message = f"{failure.message}; " if failure else ""
