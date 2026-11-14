@@ -631,19 +631,21 @@ def _maintainer(context):
 
 
 def _owner(context):
+    # Display label only. Hermes does not document these nested fields as stable, so any of them may be absent.
     for source in (context, context.get("context"), context.get("tool_context"), context.get("parent_agent")):
-        if source is None:
-            continue
         for key in ("profile_name", "bot_name"):
-            name = source.get(key) if isinstance(source, dict) else getattr(source, key, None)
-            if isinstance(name, str) and name.strip() and name != "default":
+            try:
+                name = source.get(key) if isinstance(source, dict) else getattr(source, key, None)
+            except Exception:
+                continue
+            if isinstance(name, str) and name.strip() not in ("", "default"):
                 return name.strip()
     try:
         from hermes_constants import get_hermes_home
         home = Path(get_hermes_home())
         if home.parent.name == "profiles" and not home.name.startswith("."):
             return home.name
-    except (ImportError, OSError, RuntimeError):
+    except Exception:
         pass
     return "Hermes"
 

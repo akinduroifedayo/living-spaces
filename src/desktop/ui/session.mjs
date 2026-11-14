@@ -38,6 +38,10 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
         try {
           if (active()) return await rest(`${base}/sessions/${encodeURIComponent(session)}`, { method: 'DELETE', timeoutMs: 5000 })
           const route = await profileRoute(host, scope)
+          const identity = await host.requestProfile(route, 'runtime.describe', {}, 5000)
+          if (!identity?.capabilities?.includes('plugin-rpc-v1')) {
+            throw Object.assign(new Error('The owning gateway does not advertise plugin-rpc-v1, so this Space session stays open until the Space is archived or deleted'), { final: true })
+          }
           const result = await host.requestProfile(route, 'plugin.living-spaces.close_session', { space_id: sid, session }, 5000)
           if (result?.closed !== true) throw new Error(result?.error?.message || 'Space session cleanup was not confirmed')
           return result
@@ -45,7 +49,7 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
           // Archive and delete close sessions on the server first, so the session is already gone.
           if (/session_invalid/.test(errorCode(error))) return { closed: true }
           onCloseError(error)
-          if (attempt === 3) throw error
+          if (attempt === 3 || error.final) throw error
           await new Promise(resolve => setTimeout(resolve, 250 * attempt))
         }
       }
