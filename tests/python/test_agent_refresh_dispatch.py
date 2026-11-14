@@ -552,6 +552,47 @@ class AgentRefreshDispatchTests(unittest.TestCase):
                     self.assertEqual(result["one_shot"], {"job_id": result["cron_job_id"], "consumed": "removed"})
                     self.assert_no_scheduler_rerun(sid, result["cron_job_id"], (timedelta(days=2),))
 
+    def test_inline_run_outlasting_the_seven_day_slot_can_be_claimed_once_more_then_never(self):
+        sid = self.fx.make()
+        self.ctx.run_duration = timedelta(days=8)
+        self.ctx.tick_after_run = True
+        with self.observe(sid, "Fresh inline run longer than the 7-day slot, tick before consumption") as observation:
+            result = self.refresh(sid, observation)
+            jid = result["cron_job_id"]
+            observation["ticks_during_run"] = self.ctx.ticks_during_run
+            self.assertEqual(self.ctx.ticks_during_run, [jid])
+            self.assertEqual([effect["origin"] for effect in self.ctx.effects if effect["space"] == sid],
+                             ["manual", "scheduled"])
+            self.assertIsNone(self.fx.cron.get_job(jid))
+            for later in (timedelta(days=9), timedelta(days=30)):
+                self.assertEqual(self.ctx.scheduler_tick(datetime.now(timezone.utc) + later), [], later)
+            self.assertEqual([effect["origin"] for effect in self.ctx.effects if effect["space"] == sid],
+                             ["manual", "scheduled"])
+
+    def test_unverifiable_run_keeps_the_native_reply(self):
+        sid = self.fx.make()
+        dispatch = self.ctx.dispatch_tool
+        failed = []
+
+        def list_fails_once_after_run(name, args):
+            if args["action"] == "list" and self.ctx.run_replies and not failed:
+                failed.append(args)
+                raise OSError("cron store unavailable")
+            return dispatch(name, args)
+        with self.observe(sid, "Fresh inline run succeeds, then the post-run job list fails once") as observation:
+            with patch.object(self.ctx, "dispatch_tool", side_effect=list_fails_once_after_run), \
+                    self.assertRaises(self.fx.core.SpacesError) as caught:
+                self.refresh(sid, observation)
+            error = caught.exception.to_dict()
+            jid = self.ctx.run_attempts[-1]["job_id"]
+            self.assertEqual(len(failed), 1)
+            self.assertEqual(error["native"], self.ctx.run_replies[-1])
+            self.assertIs(error["native"]["job"]["execution_success"], True)
+            self.assertIn("cron store unavailable", error["message"])
+            self.assertIsNone(self.fx.cron.get_job(jid))
+            self.assert_no_scheduler_rerun(sid, jid, (timedelta(minutes=2), timedelta(days=8)))
+            self.assertEqual([effect["origin"] for effect in self.ctx.effects if effect["space"] == sid], ["manual"])
+
     def test_store_failure_after_run_is_reported_and_cleaned(self):
         sid = self.fx.make()
         write = self.fx.db.write
