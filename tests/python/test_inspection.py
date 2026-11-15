@@ -1270,6 +1270,44 @@ class ReviewTwelveRepairTests(InspectionCase):
         self.assertTrue(any(item.startswith("text_withheld") for item in report["limitations"]), report)
 
 
+class ReviewThirteenRepairTests(InspectionCase):
+    """Frozen regressions for review-13 (Codex gpt-6-astra, REJECT at 155acc6). Each failed before its repair.
+    DOM named properties reach the isolated world's global, so a guest element id could shadow the observer state."""
+
+    FLIP = ('<script type="module">const m = document.getElementById("m");'
+            'setInterval(() => { m.textContent = m.textContent === "AAAA" ? "BBBB" : "AAAA" }, 150)</script>')
+
+    @needs_browser
+    def test_aa1_a_named_form_cannot_freeze_the_mutation_counter(self):
+        sid = self.space("Form", '<form id="__lsMutations"><input name="n" type="hidden"></form><main id=m>AAAA</main>'
+                         + self.FLIP)
+        report = self.inspect(sid, timeout_s=5)
+        self.assertEqual(report["outcome"], "timed_out", report)
+        self.assertFalse(report["readiness"]["settled"])
+
+    @needs_browser
+    def test_aa1_a_named_div_cannot_crash_the_report(self):
+        sid = self.space("Div", '<div id="__lsMutations"></div><main id=m>AAAA</main>' + self.FLIP)
+        report = self.inspect(sid, timeout_s=5)
+        self.assertEqual(report["outcome"], "timed_out", report)
+        self.assertNotEqual(report.get("code"), "inspection_failed", report)
+
+    @needs_browser
+    def test_aa1_control_a_named_element_on_a_static_space_still_settles(self):
+        sid = self.space("Still", '<div id="__lsMutations"></div><main>quiet</main>')
+        report = self.inspect(sid)
+        self.assertEqual(report["outcome"], "loaded", report)
+        self.assertEqual(report["text"]["content"], "quiet")
+
+    def test_aa2_a_sample_without_an_integer_counter_is_not_accepted(self):
+        for mutations in (None, "3", {}, 1.5, True):
+            with self.subTest(mutations=mutations):
+                self.assertFalse(inspection._valid_sample({"chars": 1, "nodes": 1, "failure": False,
+                                                           "mutations": mutations, "text": "x", "title": ""}))
+        self.assertTrue(inspection._valid_sample({"chars": 1, "nodes": 1, "failure": False, "mutations": 0,
+                                                  "text": "x", "title": ""}))
+
+
 class BoundaryTests(InspectionCase):
     def test_unavailable_renderer_is_reported_not_faked(self):
         sid = self.space("Any", "<main>x</main>")

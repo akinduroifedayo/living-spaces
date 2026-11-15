@@ -134,6 +134,18 @@ def _redact(text):
         return WITHHELD_DEEP.format(len(text))
 
 
+def _is_int(value):
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _valid_sample(value):
+    """A sample from the isolated world is accepted only with the fields settledness and the report rely on, each
+    of the right type; anything else is an unsuccessful observation, never a settled one."""
+    return (isinstance(value, dict) and all(_is_int(value.get(key)) for key in ("chars", "nodes", "mutations"))
+            and isinstance(value.get("failure"), bool) and isinstance(value.get("text"), str)
+            and isinstance(value.get("title"), str))
+
+
 def _withheld_reason(clean, chars):
     """The reason when `clean` is a marker this module generated for `chars` of input; None for guest text,
     including guest text that merely starts with "[WITHHELD"."""
@@ -847,9 +859,15 @@ class _Run:
                 "contextId": self.worlds[frame], "returnByValue": True, "timeout": 1500,
                 # The observer lives in the isolated world: the Space cannot see, stop or fake it.
                 "expression": """(() => { const b = document.body; const t = b ? b.innerText : '';
-                  const m = globalThis.__lsMutations ??= (() => { const s = { n: 0 };
+                  // Keyed by a Symbol: DOM named properties (an element id or name) reach this world's global as
+                  // string keys and could shadow a string-keyed slot; they can never produce a Symbol key.
+                  const K = Symbol.for('ls-inspect-mutations');
+                  if (!Object.prototype.hasOwnProperty.call(globalThis, K)) {
+                    const s = { n: 0 };
                     new MutationObserver(r => { s.n += r.length }).observe(document, { subtree: true, childList: true,
-                      characterData: true, attributes: true }); return s })();
+                      characterData: true, attributes: true });
+                    Object.defineProperty(globalThis, K, { value: s }) }
+                  const m = globalThis[K];
                   return { text: t.slice(0, %d), chars: t.length, mutations: m.n,
                            title: String(document.title).slice(0, 1000), title_chars: String(document.title).length,
                            text_cut: t.length > %d, title_cut: String(document.title).length > 1000,""" % (keep, keep) + """ nodes: document.getElementsByTagName('*').length,
@@ -859,7 +877,7 @@ class _Run:
                                     document.querySelector('section[role=alert] h1').textContent === 'This Space could not load' } })()"""},
                 session, timeout=2)
             value = result.get("result", {}).get("value")
-            if not (isinstance(value, dict) and "chars" in value):
+            if not _valid_sample(value):
                 self.worlds.pop(frame, None)
                 return None
             return value
