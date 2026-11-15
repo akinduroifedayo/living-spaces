@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import patch
 
@@ -416,6 +417,187 @@ class ProtocolBoundTests(unittest.TestCase):
             inspection.Browser("/usr/bin/true", 1024, 768, 0)
         self.assertEqual(set(os.listdir("/dev/fd")), before_fds)
         self.assertEqual(set(Path(tempfile.gettempdir()).glob("ls-inspect-*")), before_dirs)
+
+
+@needs_browser
+class ReviewTwoRepairTests(InspectionCase):
+    """Frozen regressions for review-2 (Codex gpt-6-astra, REJECT at 94452bb). Each failed before its repair."""
+
+    def test_r1_credential_cut_by_the_browser_clip_is_still_redacted(self):
+        sid = self.space("Cut", '<main>api_key="' + "private phrase " * 80 + '"</main>')
+        report = self.inspect(sid, text_limit=100)
+        self.assertNotIn("private", report["text"]["content"], report["text"])
+        self.assertIn("[REDACTED]", report["text"]["content"])
+
+    def _settling(self, on_settle):
+        """Wrap sample() so `on_settle(run)` runs on the sample where the Space has been stable for SETTLE_MS."""
+        original, state = inspection._Run.sample, {}
+
+        def sample(run):
+            value = original(run)
+            if value is not None:
+                state.setdefault("first", time.monotonic())
+                if time.monotonic() - state["first"] >= inspection.SETTLE_MS / 1000 + 0.3:
+                    on_settle(run)
+            return value
+        return patch.object(inspection._Run, "sample", sample)
+
+    def test_r2_a_navigation_seen_at_the_settling_sample_is_not_loaded(self):
+        sid = self.space("Nav", "<main>steady</main>")
+        with self._settling(lambda run: setattr(run, "reloaded", True)):
+            report = self.inspect(sid, timeout_s=8)
+        self.assertEqual(report["outcome"], "failed", report)
+        self.assertEqual(report["readiness"]["reason"], "space_navigated")
+
+    def test_r2_settling_after_the_deadline_is_timed_out(self):
+        sid = self.space("Late", "<main>steady</main>")
+        started = time.monotonic()
+        with self._settling(lambda run: time.sleep(max(0.0, started + 3.4 - time.monotonic()))):
+            report = self.inspect(sid, timeout_s=3)
+        self.assertEqual(report["outcome"], "timed_out", report)
+        self.assertFalse(report["readiness"]["settled"])
+
+    def test_r3_equal_length_changes_never_settle(self):
+        sid = self.space("Flip", '<main id=m>AAAA</main><script type="module">'
+                         'const m = document.getElementById("m");'
+                         'setInterval(() => { m.textContent = m.textContent === "AAAA" ? "BBBB" : "AAAA" }, 150)</script>')
+        report = self.inspect(sid, timeout_s=5)
+        self.assertEqual(report["outcome"], "timed_out", report)
+        self.assertFalse(report["readiness"]["settled"])
+        self.assertEqual(report["readiness"]["reason"], "content_still_changing")
+
+    def test_r3_control_static_space_still_settles(self):
+        sid = self.space("Still", "<main>quiet</main>")
+        self.assertEqual(self.inspect(sid)["outcome"], "loaded")
+
+    def test_r4_launch_works_when_descriptors_sit_around_100(self):
+        path, _ = inspection.find_renderer()
+        filler = []
+        while True:
+            fd = os.open(os.devnull, os.O_RDONLY)
+            if fd >= 98:
+                os.close(fd)
+                break
+            filler.append(fd)
+        try:
+            browser = inspection.Browser(path, 1024, 768, time.monotonic() + 15)
+        finally:
+            for fd in filler:
+                os.close(fd)
+        try:
+            self.assertIn("product", browser.call("Browser.getVersion"))
+        finally:
+            browser.close()
+
+    def test_r5_cancellation_inside_the_constructor_releases_everything(self):
+        path, _ = inspection.find_renderer()
+        real_pipe, calls = os.pipe, []
+
+        def pipe():
+            calls.append(1)
+            if len(calls) == 2:
+                raise KeyboardInterrupt
+            return real_pipe()
+
+        before_fds = set(os.listdir("/dev/fd"))
+        before_dirs = set(Path(tempfile.gettempdir()).glob("ls-inspect-*"))
+        with patch.object(inspection.os, "pipe", pipe), self.assertRaises(KeyboardInterrupt):
+            inspection.Browser(path, 1024, 768, time.monotonic() + 10)
+        self.assertEqual(set(os.listdir("/dev/fd")), before_fds)
+        self.assertEqual(set(Path(tempfile.gettempdir()).glob("ls-inspect-*")), before_dirs)
+
+    def test_r5_failure_after_spawn_kills_the_browser(self):
+        path, _ = inspection.find_renderer()
+        before_dirs = set(Path(tempfile.gettempdir()).glob("ls-inspect-*"))
+        spawned = []
+        real_spawn = os.posix_spawn
+
+        def spawn(*args, **kwargs):
+            spawned.append(real_spawn(*args, **kwargs))
+            return spawned[-1]
+
+        with patch.object(inspection.os, "posix_spawn", spawn), \
+                patch.object(inspection.os, "set_blocking", side_effect=OSError(9, "Bad file descriptor")), \
+                self.assertRaises(inspection._LaunchFailed):
+            inspection.Browser(path, 1024, 768, time.monotonic() + 10)
+        self.assertEqual(len(spawned), 1)
+        with self.assertRaises(ChildProcessError):
+            os.waitpid(spawned[0], os.WNOHANG)                    # already reaped
+        self.assertEqual(set(Path(tempfile.gettempdir()).glob("ls-inspect-*")), before_dirs)
+
+
+class ReviewTwoProtocolTests(unittest.TestCase):
+    """Review-2 F6 and F7, without a browser."""
+
+    def test_r6_complete_messages_buffered_during_a_stalled_write_are_bounded(self):
+        browser = inspection.Browser.__new__(inspection.Browser)
+        browser.deadline, browser.buf, browser.next_id, browser.responses, browser.listeners = \
+            time.monotonic() + 5, b"", 0, {}, []
+        browser.max_message, browser.pid, browser.tmp = 0, None, None
+        incoming_r, incoming_w = os.pipe()
+        outgoing_r, outgoing_w = os.pipe()               # never read: the write stalls
+        self.addCleanup(os.close, outgoing_r)
+        browser._use_pipes(incoming_r, outgoing_w)
+        stop = threading.Event()
+
+        def flood():
+            try:
+                while not stop.is_set():
+                    os.write(incoming_w, b'{"method":"x"}\0' * 64)
+            except OSError:
+                pass
+            finally:
+                os.close(incoming_w)
+
+        writer = threading.Thread(target=flood)
+        writer.start()
+        started = time.monotonic()
+        try:
+            with patch.object(inspection, "MAX_BUFFERED", 64 * 1024), self.assertRaises(inspection._Closed):
+                browser.send("Runtime.evaluate", {"expression": "x" * (4 * 1024 * 1024)})
+            self.assertLess(time.monotonic() - started, 4)
+            self.assertLessEqual(len(browser.buf), 64 * 1024 + (1 << 20))
+        finally:
+            stop.set()
+            browser.close()
+            writer.join()
+
+    def _run(self, deadline, results):
+        class FakeBrowser:
+            listeners = []
+
+            def __init__(self):
+                self.deadline, self.sent = deadline, []
+
+            def call(self, method, params=None, session=None, timeout=None):
+                self.sent.append(params["expression"])
+                return {}
+
+        class Adapter:
+            calls = 0
+
+            def call(self, op, args):
+                Adapter.calls += 1
+                return {"ok": True, "result": results}
+
+        run = inspection._Run(FakeBrowser(), Adapter(), 100, False)
+        return run, Adapter
+
+    def test_r7_requests_are_not_served_after_the_deadline(self):
+        run, adapter = self._run(time.monotonic() - 1, "x")
+        with self.assertRaises(inspection._Timeout):
+            run.serve({"requests": [{"id": i, "op": "meta", "args": {}} for i in range(1000)]})
+        self.assertEqual(adapter.calls, 0)
+
+    def test_r7_replies_are_batched_and_the_response_budget_holds(self):
+        run, adapter = self._run(time.monotonic() + 30, "y" * 300_000)
+        with patch.object(inspection, "MAX_REPLY_TOTAL", 1_000_000):
+            run.serve({"requests": [{"id": i, "op": "meta", "args": {}} for i in range(10)]})
+        self.assertGreater(len(run.b.sent), 1)
+        self.assertTrue(all(len(body) <= inspection.MAX_REPLY_BATCH + 400_000 for body in run.b.sent))
+        self.assertLess(adapter.calls, 10)                                # served until the budget, then refused
+        self.assertEqual(sum(body.count('"code": "limit"') for body in run.b.sent), 10 - adapter.calls)
+        self.assertEqual(run.reply_budget_exhausted, 10 - adapter.calls)
 
 
 class BoundaryTests(InspectionCase):
