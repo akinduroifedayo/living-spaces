@@ -671,7 +671,7 @@ def refresh_now(sid, upkeep, *, actor):
             native = failure.extra.get("native", native)
         terminal = not dispatched or _refresh_outcome(native) in ("completed", "refused")
         try:
-            if created:
+            if created and failure.code != "not_found":
                 _cleanup_failed_refresh(jid, failure, actor=actor, native=native, may_be_running=not terminal)
         except SpacesError as cleanup:
             failure = cleanup
