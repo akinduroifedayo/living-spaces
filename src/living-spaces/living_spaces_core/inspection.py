@@ -55,6 +55,8 @@ TEXT_SLACK = 256                                         # extra raw characters 
 MAX_BUFFERED = 16 * 1024 * 1024                          # all undispatched DevTools input; larger ends as error
 MAX_REPLY_BATCH = 512 * 1024                             # bridge replies are sent to the page in batches this size
 MAX_REPLY_TOTAL = 32 * 1024 * 1024                       # bridge reply bytes per inspection; then requests are refused
+MAX_REPLY_ITEM = limits.BRIDGE_BYTES                     # one bridge reply; larger is refused with a limit error
+MAX_QUERY_BYTES = 32 * 1024 * 1024                       # stored record bytes one query may decode
 # Chromium does not know the shell's `webrtc 'block'` CSP directive and says so once per sandboxed document. It is
 # emitted for the packaged shell on every Space, so it is reported apart from the Space's own errors.
 HOST_NOTICES = ("Unrecognized Content-Security-Policy directive 'webrtc'.",)
@@ -64,6 +66,7 @@ HOST_URL = "https://inspect.living-spaces.invalid/"
 HOST_PAGE = "<!doctype html><html><head><meta charset=utf-8><title>Living Spaces inspection</title></head><body></body></html>"
 
 _slots = threading.BoundedSemaphore(MAX_CONCURRENT)
+REPLY_LIMITED = {"ok": False, "error": {"code": "limit", "message": "Inspection reply limit reached; reply not sent"}}
 
 _CANDIDATES = {
     "darwin": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -121,7 +124,13 @@ def _redact(text):
 
 # A credential assignment whose quoted value runs to the end of the text: the closing quote was cut off.
 _CUT_CREDENTIAL = re.compile(r'''(?<![\w])(?P<prefix>(?P<q>["']?)(?:''' + logs._CREDENTIAL_KEY.pattern
-                             + r''')(?P=q)\s*[:=]\s*)["'][^"']*\Z''', re.IGNORECASE)
+                             + r''')(?P=q)\s*[:=]\s*)(?P<open>["'])(?:\\.|(?!(?P=open)).)*\Z''',
+                             re.IGNORECASE | re.DOTALL)
+
+
+def _redact_cut(text):
+    """Redact, treating a quoted credential that runs to the end of the text as cut off and secret."""
+    return _redact(_CUT_CREDENTIAL.sub(lambda match: match["prefix"] + '"[REDACTED]"', text))
 
 
 def _clip(text, size=ENTRY_CHARS):
@@ -198,8 +207,9 @@ class PassiveAdapter:
         "net.fetch": "Inspection makes no network requests",
     }
 
-    def __init__(self, snapshot):
+    def __init__(self, snapshot, deadline=None):
         self.snap = snapshot
+        self.deadline = deadline
         self.refused = {}
         self.denied = {}
         self.served = {}
@@ -209,6 +219,8 @@ class PassiveAdapter:
     def call(self, op, args):
         try:
             return {"ok": True, "result": self._call(op, args)}
+        except _Timeout:
+            raise
         except SpacesError as exc:
             return {"ok": False, "error": exc.to_dict()}
         except Exception:
@@ -258,8 +270,14 @@ class PassiveAdapter:
             options.setdefault("limit", 500)
             options.setdefault("offset", 0)
             records._query_args(collection, options.get("where"), options.get("order"), options["limit"], options["offset"])
-            rows = [records._record(row) for row in conn.execute(
-                "SELECT * FROM records WHERE space=? AND collection=? ORDER BY id", (sid, collection))]
+            rows, size = [], 0
+            for row in conn.execute("SELECT * FROM records WHERE space=? AND collection=? ORDER BY id", (sid, collection)):
+                size += sum(len(row[key] or "") for key in ("data", "source", "source_meta"))
+                if size > MAX_QUERY_BYTES:
+                    raise SpacesError("limit", "Collection is too large to query during inspection")
+                if self.deadline is not None and len(rows) % 256 == 0 and time.monotonic() >= self.deadline:
+                    raise _Timeout()
+                rows.append(records._record(row))
             page, total = records._select(rows, **options)
             return {"records": page, "total": total, "seq": self.snap.seq}
         records._ids(args["collection"], args["id"])                       # data.get
@@ -280,7 +298,9 @@ class _Closed(Exception):
 
 
 class _LaunchFailed(Exception):
-    pass
+    def __init__(self, message, receipt):
+        super().__init__(message)
+        self.receipt = receipt
 
 
 class _Crashed(Exception):
@@ -344,9 +364,9 @@ class Browser:
                 except OSError:
                     pass
             self.read_fd = self.write_fd = -1
-            self.close()
+            receipt = self.close()
             if isinstance(exc, OSError):
-                raise _LaunchFailed(exc.strerror or type(exc).__name__) from exc
+                raise _LaunchFailed(exc.strerror or type(exc).__name__, receipt) from exc
             raise
 
     def _use_pipes(self, read_fd, write_fd):
@@ -363,23 +383,35 @@ class Browser:
         if not chunk:
             raise _Closed("Browser exited")
         self.buf += chunk
-        if len(self.buf) > MAX_BUFFERED:
+        if len(self.buf) - getattr(self, "consumed", 0) > MAX_BUFFERED:
             raise _Closed("Undispatched DevTools traffic exceeded the inspection buffer cap")
         if len(self.buf) - (self.buf.rfind(b"\0") + 1) > MAX_MESSAGE:
             raise _Closed("A DevTools message exceeded the inspection size cap")
 
     def _dispatch(self):
-        while b"\0" in self.buf:
-            raw, self.buf = self.buf.split(b"\0", 1)
-            if len(raw) > MAX_MESSAGE:
-                raise _Closed("A DevTools message exceeded the inspection size cap")
-            self.max_message = max(self.max_message, len(raw))
-            message = json.loads(raw)
-            if "id" in message:
-                self.responses[message["id"]] = message
-            else:
-                for listener in self.listeners:
-                    listener(message)
+        """Hand complete buffered messages to their consumers, without copying the rest of the buffer per message
+        and without outliving the deadline. Listeners may send, and a send buffers newly read input by appending
+        to self.buf; appends leave earlier offsets valid, so the live buffer is indexed rather than a local copy."""
+        self.consumed = 0
+        try:
+            while True:
+                end = self.buf.find(b"\0", self.consumed)
+                if end < 0:
+                    break
+                raw, self.consumed = self.buf[self.consumed:end], end + 1
+                if len(raw) > MAX_MESSAGE:
+                    raise _Closed("A DevTools message exceeded the inspection size cap")
+                self.max_message = max(self.max_message, len(raw))
+                message = json.loads(raw)
+                if "id" in message:
+                    self.responses[message["id"]] = message
+                else:
+                    for listener in self.listeners:
+                        listener(message)
+                if time.monotonic() >= self.deadline:
+                    raise _Timeout()
+        finally:
+            self.buf, self.consumed = self.buf[self.consumed:], 0
 
     def send(self, method, params=None, session=None):
         """Write one message without blocking past the deadline. Incoming data is buffered, not dispatched, so
@@ -507,7 +539,7 @@ class _Run:
         self.crashed = False
         self.worlds = {}          # frameId -> isolated world context, reused so its mutation counter persists
         self.reply_bytes = 0
-        self.reply_budget_exhausted = 0
+        self.reply_limited = 0
         self.stable_since = None  # when the current unchanged observation began (None: changing or unobserved)
         self.last_traffic = None
         browser.listeners.append(self.on_event)
@@ -651,23 +683,27 @@ class _Run:
             return None
 
     def serve(self, drained):
-        """Answer queued bridge requests within the deadline and the reply budget, sending replies in batches."""
+        """Answer queued bridge requests within the deadline and the reply limits, sending replies in batches."""
         batch, size, answered = [], 0, False
         for request in drained.get("requests", []):
             if time.monotonic() >= self.b.deadline:
                 raise _Timeout()
-            if self.reply_bytes >= MAX_REPLY_TOTAL:
-                self.reply_budget_exhausted += 1
-                reply = {"ok": False, "error": {"code": "limit", "message": "Inspection reply budget is exhausted"}}
+            item = None
+            if self.reply_bytes < MAX_REPLY_TOTAL:
+                item = f"[{int(request['id'])},{json.dumps(self.adapter.call(request.get('op'), request.get('args') or {}))}]"
+                if len(item) > MAX_REPLY_ITEM or self.reply_bytes + len(item) > MAX_REPLY_TOTAL:
+                    item = None
+            if item is None:
+                # Refusals are small and bounded by the page's queue cap, so they do not count against the budget.
+                self.reply_limited += 1
+                item = f"[{int(request['id'])},{json.dumps(REPLY_LIMITED)}]"
             else:
-                reply = self.adapter.call(request.get("op"), request.get("args") or {})
-            item = f"[{int(request['id'])},{json.dumps(reply)}]"
-            self.reply_bytes += len(item)
-            batch.append(item)
-            size += len(item)
-            if size >= MAX_REPLY_BATCH:
+                self.reply_bytes += len(item)
+            if batch and size + len(item) > MAX_REPLY_BATCH:
                 self._reply(batch)
                 batch, size, answered = [], 0, True
+            batch.append(item)
+            size += len(item)
         for event in drained.get("events", []):
             kind = event.get("kind")
             if kind == "booted":
@@ -735,7 +771,7 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit):
         shell = SHELL.read_text(encoding="utf-8")
         runner = RUNNER.read_text(encoding="utf-8")
         report["inspection"]["harness_sha256"] = hashlib.sha256((runner + "\0" + shell).encode()).hexdigest()
-        adapter = PassiveAdapter(snap)
+        adapter = PassiveAdapter(snap, deadline=clock + timeout_s)
         withhold = "logs" not in snap.granted
         if withhold:
             report["limitations"].append("diagnostics_not_granted: console text is withheld and the guest cannot report lifecycle")
@@ -746,7 +782,9 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit):
             report["outcome"] = "error"
             report["error"] = {"code": "renderer_launch_failed", "message": _clip(f"The browser could not start: {exc}", 300)}
             report["limitations"].append("not_rendered: no runtime observation was made")
-            report["cleanup"] = {"process_exited": True, "temp_removed": True}
+            report["cleanup"] = exc.receipt
+            if not (exc.receipt["process_exited"] and exc.receipt["temp_removed"]):
+                report["limitations"].append("cleanup_incomplete: the inspection browser or its files may remain")
             report["inspection"]["duration_ms"] = round((time.monotonic() - clock) * 1000)
             return report
         try:
@@ -870,13 +908,12 @@ def _finish(run, adapter, report):
         readiness["failure_panel"] = sample["failure"]
         text, chars = sample["text"], sample["chars"]
         report["dom"] = {key: sample[key] for key in ("nodes", "images", "canvases", "svgs")}
-        if chars > len(text):
-            # The browser cut the text: a quoted credential may have lost its closing quote at the cut.
-            text = _CUT_CREDENTIAL.sub(lambda match: match["prefix"] + '"[REDACTED]"', text)
-        clean = _redact(text)                    # redact before clipping, so a clipped secret is still caught
+        # The browser may have cut the text, so a quoted credential can lose its closing quote; redact before
+        # clipping, so a clipped secret is still caught.
+        clean = _redact_cut(text)
         report["text"] = {"content": clean[:run.text_limit], "chars": chars,
                           "truncated": chars > run.text_limit or len(clean) > run.text_limit,
-                          "title": _clip(sample["title"], 200)}
+                          "title": _clip(_redact_cut(sample["title"]), 200)}
         if not text.strip() and not (sample["images"] or sample["canvases"] or sample["svgs"]):
             report["limitations"].append("blank_suspected: the Space rendered no text, images, canvas or SVG")
     else:

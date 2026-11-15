@@ -1,4 +1,5 @@
 """spaces_inspect: runs real Spaces in a throwaway local Chromium and checks what is reported and what is not touched."""
+import contextlib
 import hashlib
 import json
 import os
@@ -594,10 +595,125 @@ class ReviewTwoProtocolTests(unittest.TestCase):
         with patch.object(inspection, "MAX_REPLY_TOTAL", 1_000_000):
             run.serve({"requests": [{"id": i, "op": "meta", "args": {}} for i in range(10)]})
         self.assertGreater(len(run.b.sent), 1)
-        self.assertTrue(all(len(body) <= inspection.MAX_REPLY_BATCH + 400_000 for body in run.b.sent))
-        self.assertLess(adapter.calls, 10)                                # served until the budget, then refused
-        self.assertEqual(sum(body.count('"code": "limit"') for body in run.b.sent), 10 - adapter.calls)
-        self.assertEqual(run.reply_budget_exhausted, 10 - adapter.calls)
+        self.assertTrue(all(len(body) <= inspection.MAX_REPLY_BATCH + inspection.MAX_REPLY_ITEM for body in run.b.sent))
+        self.assertLessEqual(sum(len(body) for body in run.b.sent), 1_000_000 + 10 * 200)
+        self.assertEqual(sum(body.count('"code": "limit"') for body in run.b.sent), run.reply_limited)
+        self.assertEqual(run.reply_limited, 7)
+
+
+@needs_browser
+class ReviewThreeRepairTests(InspectionCase):
+    """Frozen regressions for review-3 (Codex gpt-6-astra, REJECT at 75085a0). Each failed before its repair."""
+
+    def test_s1_cut_credential_in_the_title_is_redacted(self):
+        sid = self.space("T", '<title>api_key="' + "private phrase " * 100 + '"</title><main>x</main>')
+        report = self.inspect(sid)
+        self.assertNotIn("private", report["text"]["title"], report["text"])
+
+    def test_s1_cut_credential_containing_an_apostrophe_is_redacted(self):
+        sid = self.space("A", '<main>password="' + "don't share this " * 40 + '"</main>')
+        report = self.inspect(sid, text_limit=100)
+        self.assertNotIn("share", report["text"]["content"], report["text"])
+        self.assertIn("[REDACTED]", report["text"]["content"])
+
+    def test_s1_a_generic_secret_cut_at_the_clip_is_not_partly_returned(self):
+        token = "Q" * 30 + "abcdefghijklmnopqrstuvwxyz0123456789" * 20         # one long secret-shaped token
+        sid = self.space("G", "<main>" + "word " * 50 + token + "</main>")
+        report = self.inspect(sid, text_limit=4000)
+        self.assertNotIn("QQQQ", report["text"]["content"], report["text"])
+
+    def test_s4_launch_failure_reports_the_real_cleanup_receipt(self):
+        sid = self.space("Any", "<main>x</main>")
+        fake = self.home / "not-a-browser"
+        fake.write_bytes(b"\x00\x01 not an executable format")
+        fake.chmod(0o755)
+        with patch.dict(os.environ, {inspection.BROWSER_ENV: str(fake)}), \
+                patch.object(inspection.Browser, "close",
+                             lambda b, real=inspection.Browser.close: {**real(b), "temp_removed": False}):
+            report = self.inspect(sid, timeout_s=5)
+        self.assertEqual(report["error"]["code"], "renderer_launch_failed")
+        self.assertEqual(report["cleanup"], {"process_exited": True, "temp_removed": False})
+        self.assertTrue(any(item.startswith("cleanup_incomplete") for item in report["limitations"]))
+
+
+class ReviewThreeProtocolTests(InspectionCase):
+    """Review-3 S2 and S3, without a browser."""
+
+    def test_s2_dispatching_a_buffered_flood_honours_the_deadline(self):
+        browser = inspection.Browser.__new__(inspection.Browser)
+        browser.buf = b'{"method":"Runtime.consoleAPICalled","params":{"type":"log","args":[]}}\0' * 60000
+        browser.deadline, browser.next_id, browser.responses, browser.max_message = time.monotonic() + 0.3, 0, {}, 0
+        seen = []
+        browser.listeners = [lambda message: (seen.append(1), time.sleep(0.0005))]   # a listener with real cost
+        started = time.monotonic()
+        with self.assertRaises(inspection._Timeout):
+            browser._dispatch()
+        self.assertLess(time.monotonic() - started, 1.5)
+        self.assertLess(len(seen), 60000)
+
+    def _serve(self, results, **limits_):
+        class FakeBrowser:
+            listeners = []
+            deadline = time.monotonic() + 30
+
+            def __init__(self):
+                self.sent = []
+
+            def call(self, method, params=None, session=None, timeout=None):
+                self.sent.append(params["expression"])
+                return {}
+
+        class Adapter:
+            calls = 0
+
+            def call(self, op, args):
+                Adapter.calls += 1
+                return {"ok": True, "result": results}
+
+        run = inspection._Run(FakeBrowser(), Adapter(), 100, False)
+        with (patch.multiple(inspection, **limits_) if limits_ else contextlib.nullcontext()):
+            run.serve({"requests": [{"id": i, "op": "meta", "args": {}} for i in range(10)]})
+        return run, Adapter.calls
+
+    def test_s3_one_oversized_reply_is_refused_not_sent(self):
+        run, calls = self._serve("z" * (2 * 1024 * 1024))
+        self.assertTrue(all(len(body) <= inspection.MAX_REPLY_BATCH + inspection.MAX_REPLY_ITEM for body in run.b.sent))
+        self.assertEqual(sum(len(body) for body in run.b.sent) < 64 * 1024, True)
+        self.assertEqual(run.reply_limited, 10)
+
+    def test_s3_total_reply_bytes_never_exceed_the_budget(self):
+        run, calls = self._serve("y" * 300_000, MAX_REPLY_TOTAL=1_000_000)
+        self.assertLessEqual(sum(len(body) for body in run.b.sent), 1_000_000 + 10 * 200)
+        self.assertEqual(calls, 10)
+        self.assertEqual(run.reply_limited, 10 - 3)
+
+    def snapshot_adapter(self, rows, size):
+        sid = projects.create_space("Big", owner="Demo", author="agent:demo", files={"index.html": "<main>x</main>"})["id"]
+        grants.decide(sid, "data", "grant", actor="user")
+        for index in range(rows):
+            records.put(sid, "items", f"r{index:04}", {"v": "x" * size}, actor="agent:demo")
+        conn = inspection._open_snapshot()
+        self.addCleanup(conn.close)
+        return inspection.PassiveAdapter(inspection.Snapshot(conn, sid, 1))
+
+    def test_s3_query_refuses_a_collection_over_the_byte_budget(self):
+        adapter = self.snapshot_adapter(20, 10_000)
+        with patch.object(inspection, "MAX_QUERY_BYTES", 100_000):
+            reply = adapter.call("data.query", {"collection": "items", "limit": 1})
+        self.assertEqual(reply["ok"], False, reply)
+        self.assertEqual(reply["error"]["code"], "limit")
+
+    def test_s3_query_stops_at_the_deadline(self):
+        adapter = self.snapshot_adapter(5, 10)
+        adapter.deadline = time.monotonic() - 1
+        with self.assertRaises(inspection._Timeout):
+            adapter.call("data.query", {"collection": "items"})
+
+    def test_s3_control_small_query_is_served(self):
+        adapter = self.snapshot_adapter(3, 10)
+        reply = adapter.call("data.query", {"collection": "items", "limit": 2})
+        self.assertTrue(reply["ok"], reply)
+        self.assertEqual((len(reply["result"]["records"]), reply["result"]["total"]), (2, 3))
 
 
 class BoundaryTests(InspectionCase):
