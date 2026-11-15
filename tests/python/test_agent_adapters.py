@@ -50,6 +50,7 @@ PARAMS = {
     "spaces_write_records": {"space": SID, "ops": [{"op": "put", "collection": "papers", "id": "demo",
                                                      "data": {"notes": "Demo note"}, "base_rev": 3}]},
     "spaces_read_logs": {"space": SID, "level": "error"},
+    "spaces_inspect": {"space": SID, "rev": 2},
     "spaces_revisions": {"space": SID},
     "spaces_restore": {"space": SID, "rev": 1},
     "spaces_refresh": {"space": SID},
@@ -61,7 +62,7 @@ TARGETS = {
     "spaces_list": "list_spaces", "spaces_get": "get_space", "spaces_create": "create_space",
     "spaces_read_file": "read_file", "spaces_write_files": "write_files", "spaces_edit_file": "edit_file",
     "spaces_query": "query", "spaces_write_records": "batch", "spaces_read_logs": "read_logs",
-    "spaces_revisions": "list_revisions", "spaces_restore": "restore_revision",
+    "spaces_inspect": "inspect", "spaces_revisions": "list_revisions", "spaces_restore": "restore_revision",
     "spaces_refresh": "start_refresh", "spaces_schedule_upkeep": "schedule_upkeep", "spaces_upkeep": "get_upkeep",
 }
 
@@ -96,7 +97,8 @@ class AdapterCase(unittest.TestCase):
                 {"path": "app.js", "text": "export const value = 2"}, {"path": "vendor/preact.mjs", "text": ""}]},
             "open_session": {"session": "session_demo", "grants": [], "head_rev": 2}, "require": None,
             "close_session": None, "dispatch": {"ok": True, "result": {"records": []}},
-            "changes_since": {"seq": 8, "changes": []}, "list_runs": [{"id": "run_demo"}],
+            "changes_since": {"seq": 8, "changes": []},
+            "inspect": {"space": SID, "rev": 2, "outcome": "loaded", "screenshot": None}, "list_runs": [{"id": "run_demo"}],
             "set_status": None, "set_pinned": None, "touch_opened": None,
             "delete_space": {"deleted": True, "removed": {"records": 2, "revisions": 3, "upkeep": False}},
         }

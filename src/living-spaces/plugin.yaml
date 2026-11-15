@@ -18,6 +18,7 @@ provides_tools:
   - spaces_query
   - spaces_write_records
   - spaces_read_logs
+  - spaces_inspect
   - spaces_revisions
   - spaces_restore
   - spaces_refresh

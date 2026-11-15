@@ -13,3 +13,9 @@ from .bridge import dispatch
 from .runs import list_runs, start_refresh
 from .upkeep import configure_context, get_upkeep, schedule_upkeep, upkeep_action
 from .actions import bind_maintainer, action_context, claim_action, observe_action, reject_action
+
+
+def inspect(ref, rev, **options):
+    """Run spaces_inspect. The inspection module loads only when an agent asks for one."""
+    from .inspection import inspect as run
+    return run(ref, rev, **options)

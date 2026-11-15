@@ -80,7 +80,7 @@ Projects allow 25 MiB, 600 files, and 8 MiB per file. A Space allows 50,000 reco
 
 ## Recovery and removal
 
-Use chat to ask the bot to inspect scoped runtime logs and repair the Space. The tools include `spaces_read_logs`, `spaces_revisions`, and `spaces_restore`. Code restore and user-data recovery are separate.
+Use chat to ask the bot to inspect scoped runtime logs and repair the Space. The tools include `spaces_read_logs`, `spaces_inspect`, `spaces_revisions`, and `spaces_restore`. `spaces_inspect` is optional and runs one saved revision in a throwaway local Chrome-family browser. It reads the data read-only and refuses writes, Refresh, bot requests and network calls. It reports runtime errors and visible text, but takes no screenshot. Code restore and user-data recovery are separate.
 
 Back up the database with a SQLite-aware backup or with its owning runtime stopped. SQLite uses a write-ahead log, so copying only a live database file can omit recent writes.
 

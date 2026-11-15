@@ -500,6 +500,15 @@ to open the Space. After it has mounted, call `spaces_read_logs` for runtime
 errors, import failures, and policy violations. Empty logs before mounting do
 not prove it works. Fix errors with `spaces_edit_file` and check again.
 
+When you want runtime evidence before the user opens it, you may call
+`spaces_inspect` with the `rev` the write returned. It runs that revision once in
+a throwaway local browser with read-only data and reports the outcome, errors,
+visible text and limitations. It changes nothing, and writes, Refresh, bot
+requests and network calls are refused and counted. It has no screenshot, so it
+cannot judge layout or looks. `loaded` is not proof the Space is right.
+`unavailable` means no local Chrome-family browser. It is optional: use it when
+it helps, and decide any fix yourself.
+
 Use `spaces_revisions` to inspect history and `spaces_restore` to recover a
 working code revision. Restore creates a new revision and leaves records alone.
 `incompatible` means the old code expects another data version. Explain that

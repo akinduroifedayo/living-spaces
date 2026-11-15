@@ -111,7 +111,7 @@ def _field(record, name):
     return value if value is not None else (record["source"] or {}).get(name)
 
 
-def query(sid, collection, *, where=None, order=None, limit=500, offset=0):
+def _query_args(collection, where, order, limit, offset):
     limits.identifier(collection, "collection")
     limits.integer(limit, "limit")
     limits.integer(offset, "offset")
@@ -119,20 +119,30 @@ def query(sid, collection, *, where=None, order=None, limit=500, offset=0):
         limits.object_json(where)
     if order is not None:
         limits.text(order, "order")
+
+
+def _select(rows, *, where=None, order=None, limit=500, offset=0):
+    """Filter, order and page one collection's records (sorted by id). Shared by live and snapshot reads."""
+    rows = [row for row in rows if all(_field(row, field) == value for field, value in (where or {}).items())]
+    def sort_key(record):
+        value = _field(record, order.lstrip("-")) if order else None
+        if value is None:
+            value = record["updated_at"]
+        if isinstance(value, (int, float)):
+            return (0, value, record["id"])
+        return (1, value if isinstance(value, str) else limits.dumps(value), record["id"])
+    rows.sort(key=sort_key, reverse=bool(order and order.startswith("-")))
+    return rows[offset:offset + limit], len(rows)
+
+
+def query(sid, collection, *, where=None, order=None, limit=500, offset=0):
+    _query_args(collection, where, order, limit, offset)
     with db.read() as conn:
         db.space(conn, sid)
         rows = [_record(row) for row in conn.execute("SELECT * FROM records WHERE space=? AND collection=? ORDER BY id",
                                                     (sid, collection))]
-        rows = [row for row in rows if all(_field(row, field) == value for field, value in (where or {}).items())]
-        def sort_key(record):
-            value = _field(record, order.lstrip("-")) if order else None
-            if value is None:
-                value = record["updated_at"]
-            if isinstance(value, (int, float)):
-                return (0, value, record["id"])
-            return (1, value if isinstance(value, str) else limits.dumps(value), record["id"])
-        rows.sort(key=sort_key, reverse=bool(order and order.startswith("-")))
-        return {"records": rows[offset:offset + limit], "total": len(rows), "seq": _seq(conn, sid)}
+        page, total = _select(rows, where=where, order=order, limit=limit, offset=offset)
+        return {"records": page, "total": total, "seq": _seq(conn, sid)}
 
 
 def _batch(conn, sid, ops, *, actor):

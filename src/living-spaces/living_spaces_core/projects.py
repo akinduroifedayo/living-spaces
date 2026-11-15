@@ -241,18 +241,23 @@ def create_space(name, *, description="", owner, files=None, manifest=None, libr
     return result
 
 
+def _resolve(conn, ref):
+    limits.text(ref, "space reference")
+    rows = conn.execute("SELECT id,name FROM spaces ORDER BY id").fetchall()
+    if any(row["id"] == ref for row in rows):
+        return ref
+    matches = [dict(row) for row in rows if row["name"].casefold() == ref.casefold()]
+    if len(matches) == 1:
+        return matches[0]["id"]
+    if matches:
+        raise SpacesError("ambiguous", "Several Spaces have that exact name", candidates=matches)
+    raise SpacesError("not_found", "Space not found")
+
+
 def resolve_space(ref):
     limits.text(ref, "space reference")
     with db.read() as conn:
-        rows = conn.execute("SELECT id,name FROM spaces ORDER BY id").fetchall()
-        if any(row["id"] == ref for row in rows):
-            return ref
-        matches = [dict(row) for row in rows if row["name"].casefold() == ref.casefold()]
-        if len(matches) == 1:
-            return matches[0]["id"]
-        if matches:
-            raise SpacesError("ambiguous", "Several Spaces have that exact name", candidates=matches)
-        raise SpacesError("not_found", "Space not found")
+        return _resolve(conn, ref)
 
 
 def _summary(row):
