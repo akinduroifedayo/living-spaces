@@ -16,7 +16,7 @@ from .errors import SpacesError
 
 TIMEOUT = 20
 RESPONSE_BYTES = 5 * 1024 * 1024
-USER_AGENT = 'LivingSpaces/0.1.0 (+https://github.com/akinduroifedayo/living-spaces)'
+USER_AGENT = 'LivingSpaces/0.1.1 (+https://github.com/akinduroifedayo/living-spaces)'
 _METHODS = {'GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'}
 _REDIRECTS = {301, 302, 303, 307, 308}
 _STRIPPED = {'host', 'content-length', 'transfer-encoding',
