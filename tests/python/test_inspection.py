@@ -57,6 +57,15 @@ def table_dump(path):
         conn.close()
 
 
+
+def sent_replies(expression):
+    """Decode a bridge reply expression exactly as the page does: JSON.parse("<json>")."""
+    prefix = "JSON.parse("
+    assert expression.startswith(prefix), expression[:40]
+    literal, _ = json.JSONDecoder().raw_decode(expression[len(prefix):])
+    return json.loads(literal)
+
+
 class InspectionCase(unittest.TestCase):
     def setUp(self):
         (ROOT / ".run").mkdir(exist_ok=True)
@@ -599,7 +608,8 @@ class ReviewTwoProtocolTests(unittest.TestCase):
         self.assertGreater(len(run.b.sent), 1)
         self.assertTrue(all(len(body) <= inspection.MAX_REPLY_BATCH + inspection.MAX_REPLY_ITEM for body in run.b.sent))
         self.assertLessEqual(sum(len(body) for body in run.b.sent), 1_000_000 + 10 * 200)
-        self.assertEqual(sum(body.count('"code": "limit"') for body in run.b.sent), run.reply_limited)
+        self.assertEqual(sum(1 for body in run.b.sent for _, reply in sent_replies(body)
+                             if reply.get("error", {}).get("code") == "limit"), run.reply_limited)
         self.assertEqual(run.reply_limited, 7)
 
 
@@ -997,6 +1007,55 @@ class ReviewSevenRepairTests(InspectionCase):
         browser.listeners, browser.awaited = [], {7}
         browser._dispatch()
         self.assertEqual(list(browser.responses), [7])
+
+
+class ReviewEightRepairTests(InspectionCase):
+    """Frozen regressions for review-8 (Codex gpt-6-astra, REJECT at fbc47e0). Each failed before its repair."""
+
+    def stubborn_browser(self):
+        """A Browser whose 'browser' is a real process group that ignores SIGTERM, with a real profile dir."""
+        browser = inspection.Browser.__new__(inspection.Browser)
+        browser.tmp = tempfile.mkdtemp(prefix="ls-inspect-test-")
+        browser.read_fd = browser.write_fd = -1
+        browser.pid = os.posix_spawn("/bin/sh", ["/bin/sh", "-c", 'trap "" TERM; exec /bin/sleep 30'],
+                                     {"PATH": "/usr/bin:/bin"}, setsid=True)
+        time.sleep(0.3)                                    # let the trap install before SIGTERM arrives
+        self.addCleanup(shutil.rmtree, browser.tmp, True)
+        return browser
+
+    def test_v1_cancellation_during_cleanup_still_kills_and_removes_then_reraises(self):
+        browser = self.stubborn_browser()
+        pid, tmp = browser.pid, browser.tmp
+        real_sleep, calls = time.sleep, []
+
+        def sleep(seconds):
+            calls.append(seconds)
+            if len(calls) == 1:
+                raise KeyboardInterrupt                    # cancellation lands in the termination wait
+            real_sleep(seconds)
+
+        with patch.object(inspection.time, "sleep", sleep), self.assertRaises(KeyboardInterrupt):
+            browser.close()
+        with self.assertRaises(ChildProcessError):
+            os.waitpid(pid, os.WNOHANG)                    # killed and reaped despite the cancellation
+        self.assertFalse(os.path.exists(tmp))
+        self.assertIsNone(browser.pid)
+
+    def test_v1_control_uncancelled_cleanup_returns_a_complete_receipt(self):
+        browser = self.stubborn_browser()
+        self.assertEqual(browser.close(), {"process_exited": True, "temp_removed": True})
+
+    @needs_browser
+    def test_v2_reply_fields_named_proto_reach_the_space(self):
+        sid = self.space("P", '<main id=m>…</main><script type="module">'
+                         'const r = await space.get("notes", "a");'
+                         'document.getElementById("m").textContent = Object.hasOwn(r.data, "__proto__") ? '
+                         '"own:" + r.data["__proto__"].marker + ":" + r.data.safe : "lost:" + JSON.stringify(r.data)'
+                         '</script>')
+        records.put(sid, "notes", "a", json.loads('{"__proto__": {"marker": "saved value"}, "safe": 1}'),
+                    actor="agent:demo")
+        report = self.inspect(sid)
+        self.assertEqual(report["text"]["content"], "own:saved value:1", report["text"])
 
 
 class BoundaryTests(InspectionCase):

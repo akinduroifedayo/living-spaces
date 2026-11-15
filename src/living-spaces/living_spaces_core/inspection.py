@@ -519,17 +519,33 @@ class Browser:
         return message.get("result", {})
 
     def close(self):
-        """Terminate the process group, reap it, delete the profile. Idempotent; returns a cleanup receipt."""
+        """Terminate the process group, reap it, delete the profile. Idempotent; returns a cleanup receipt.
+
+        Cancellation arriving during cleanup is deferred: cleanup restarts in its fast form (SIGKILL, no grace
+        period), finishes, and only then is the cancellation re-raised. Every step is idempotent, so a restart
+        repeats nothing harmful."""
+        deferred = None
+        while True:
+            try:
+                receipt = self._close(fast=deferred is not None)
+                break
+            except (KeyboardInterrupt, SystemExit) as exc:
+                deferred = deferred or exc
+        if deferred is not None:
+            raise deferred
+        return receipt
+
+    def _close(self, fast):
         receipt = {"process_exited": self.pid is None, "temp_removed": False}
         for fd in ("write_fd", "read_fd"):
             try:
                 os.close(getattr(self, fd))
-            except (OSError, AttributeError):
+            except (OSError, AttributeError, TypeError):
                 pass
             setattr(self, fd, -1)
         if self.pid:
             end = time.monotonic() + CLEANUP_S
-            for sig in (signal.SIGTERM, signal.SIGKILL):
+            for sig in ((signal.SIGKILL,) if fast else (signal.SIGTERM, signal.SIGKILL)):
                 try:
                     os.killpg(self.pid, sig)
                 except (ProcessLookupError, PermissionError):     # already gone, or only a zombie leader left
@@ -550,7 +566,8 @@ class Browser:
                 os.killpg(self.pid, signal.SIGKILL)       # stragglers left in the group after the parent exits
             except (ProcessLookupError, PermissionError):
                 pass
-            self.pid = None if receipt["process_exited"] else self.pid
+            if receipt["process_exited"]:
+                self.pid = None
         if not self.tmp:
             receipt["temp_removed"] = True
             return receipt
@@ -792,8 +809,10 @@ class _Run:
         return answered or active
 
     def _reply(self, items):
-        body = ",".join(items)
-        self.b.call("Runtime.evaluate", {"expression": f"[{body}].forEach(([i, r]) => __lsInspect.reply(i, r))",
+        # Parsed with JSON.parse, not evaluated as a literal: a literal turns a "__proto__" key into a prototype
+        # setter and the field silently disappears, while JSON.parse keeps it as an own property (as in Desktop).
+        body = json.dumps("[" + ",".join(items) + "]")
+        self.b.call("Runtime.evaluate", {"expression": f"JSON.parse({body}).forEach(([i, r]) => __lsInspect.reply(i, r))",
                                          "returnByValue": True}, self.page, timeout=5)
 
 
@@ -923,7 +942,8 @@ def _drive(run, snap, shell, runner, width, height, deadline, report):
         b.pump(time.monotonic() + 0.05)
     b.call("Runtime.evaluate", {"expression": runner, "returnByValue": True}, session)
     mounted = b.call("Runtime.evaluate", {
-        "expression": f"__lsInspect.mount({json.dumps(snap.bundle(shell))}, {json.dumps(snap.grants)})",
+        "expression": f"__lsInspect.mount(JSON.parse({json.dumps(json.dumps(snap.bundle(shell)))}), "
+                      f"JSON.parse({json.dumps(json.dumps(snap.grants))}))",
         "returnByValue": True}, session)
     if mounted.get("exceptionDetails"):
         raise _Closed("The sandbox host could not mount this Space")
