@@ -1074,7 +1074,8 @@ class ReviewNineRepairTests(InspectionCase):
                 out = self.finish(text, title=text)
                 self.assertNotIn("demo-only-secret", out["content"])
                 self.assertNotIn("demo-only-secret", out["title"])
-                self.assertIn("[REDACTED]", out["content"])
+                # Since review-11, cut text that may be JSON is withheld whole; other forms are pattern-redacted.
+                self.assertTrue("[REDACTED]" in out["content"] or out["content"].startswith("[WITHHELD"), out)
 
     def test_w1_control_uncut_json_is_still_redacted_structurally(self):
         text = json.dumps({"authorization": {"token": "demo-only-secret"}, "note": "kept"})
@@ -1082,10 +1083,13 @@ class ReviewNineRepairTests(InspectionCase):
         self.assertNotIn("demo-only-secret", out)
         self.assertIn("kept", out)
 
-    def test_w1_control_cut_text_without_credentials_is_kept(self):
+    def test_w1_control_credential_free_json_is_kept_whole_and_withheld_only_when_cut(self):
+        # Known cost of the review-11 invariant: cut JSON is withheld even without credentials. Uncut JSON and
+        # cut prose are returned as before.
         text = json.dumps({"settings": {"theme": "dark", "padding": "ordinary words " * 100}})
+        self.assertEqual(inspection._redact_cut(text, cut=False), text)
         out = self.finish(text)
-        self.assertTrue(out["content"].startswith('{"settings": {"theme": "dark"'), out["content"])
+        self.assertEqual(out["content"], "[WITHHELD: JSON cut short cannot be redacted safely; 356 chars]"[:100])
 
     def test_w2_complete_unicode_text_is_not_reported_truncated(self):
         run = type("R", (), {"text_limit": 2, "entries": [], "counts": {"error": 0}, "dropped": 0,
@@ -1154,6 +1158,69 @@ class ReviewTenRepairTests(InspectionCase):
                      json.dumps([{"api_key": ["s"]}, "plain"])):
             with self.subTest(text=text[:30]):
                 self.assertEqual(inspection._redact_cut(text, cut=False), inspection.logs.redact(text))
+
+
+class ReviewElevenRepairTests(InspectionCase):
+    """Frozen regressions for review-11 (Codex gpt-6-astra, REJECT at 08caec3). Each failed before its repair.
+
+    Premise change: rounds 9-11 each found another way truncated JSON slips past textual redaction. The invariant
+    is now "never reveal what logs.redact(full text) would remove": when cut text could be a JSON container
+    (it starts with { or [), structural redaction is impossible, so the text is withheld, not pattern-redacted."""
+
+    finish = ReviewFiveRepairTests.finish
+
+    def test_y1_cut_json_with_escaped_key_is_withheld(self):
+        payload = r'{"\u0070assword": {"value": "demo-only-secret", "padding": "' + "ordinary words " * 120 + '"}}'
+        self.assertNotIn("demo-only-secret", inspection.logs.redact(payload))
+        out = self.finish(payload, title=payload)
+        self.assertNotIn("demo-only-secret", out["content"])
+        self.assertNotIn("demo-only-secret", out["title"])
+        self.assertTrue(out["content"].startswith("[WITHHELD"), out["content"])
+
+    def test_y1_any_cut_json_container_is_withheld_whatever_the_encoding(self):
+        for payload in ('  [{"k": "v", "pad": "' + "w " * 300, '{"\\u0061pi_key": "s' + "x" * 400,
+                        '{"x": {"y": {"PASS\\u0057ORD": "s", "pad": "' + "w " * 300):
+            with self.subTest(payload=payload[:20]):
+                self.assertTrue(self.finish(payload)["content"].startswith("[WITHHELD"))
+
+    def test_y1_control_cut_prose_is_kept_and_uncut_json_is_redacted_structurally(self):
+        prose = "Today's plan: " + "ordinary words " * 60
+        self.assertEqual(self.finish(prose)["content"], prose[:100])
+        whole = json.dumps({"password": {"v": "demo-only-secret"}, "note": "kept"})
+        out = self.finish(whole)
+        self.assertNotIn("demo-only-secret", out["content"])
+        self.assertIn("kept", out["content"])
+
+    DEEP = '{"password":{"value":"demo-only-secret"},"padding":' + "[" * 600 + "0" + "]" * 600 + "}"
+
+    def test_y2_deeply_nested_json_is_withheld_not_regex_redacted(self):
+        report_text = self.finish(self.DEEP)                  # cut: withheld as cut JSON
+        self.assertNotIn("demo-only-secret", report_text["content"])
+        self.assertNotIn("demo-only-secret", inspection._redact(self.DEEP))
+        self.assertNotIn("demo-only-secret", inspection._redact_cut(self.DEEP, cut=False))
+
+    def test_y2_deeply_nested_console_entry_is_withheld(self):
+        run = ReviewSixRepairTests.fake_run(self)  # type: ignore[arg-type]
+        run.record("console", "error", self.DEEP)
+        self.assertNotIn("demo-only-secret", json.dumps(run.entries))
+
+    def test_y2_control_shallow_json_console_entry_is_redacted_not_withheld(self):
+        run = ReviewSixRepairTests.fake_run(self)  # type: ignore[arg-type]
+        run.record("console", "error", json.dumps({"password": "s3", "note": "kept"}))
+        self.assertIn("kept", run.entries[0]["text"])
+        self.assertNotIn("s3", run.entries[0]["text"])
+
+    def test_y3_collection_budget_counts_utf8_bytes(self):
+        adapter = ReviewSevenRepairTests.adapter_with(self, 1, lambda i: {"v": "🟢" * 1000})  # type: ignore[arg-type]
+        with patch.object(inspection, "MAX_QUERY_BYTES", 2000):
+            reply = adapter.call("data.query", {"collection": "items"})
+        self.assertEqual(reply.get("error", {}).get("code"), "limit", reply)
+
+    def test_y3_control_ascii_under_budget_is_served(self):
+        adapter = ReviewSevenRepairTests.adapter_with(self, 1, lambda i: {"v": "g" * 1000})  # type: ignore[arg-type]
+        with patch.object(inspection, "MAX_QUERY_BYTES", 2000):
+            reply = adapter.call("data.query", {"collection": "items"})
+        self.assertTrue(reply["ok"], reply)
 
 
 class BoundaryTests(InspectionCase):

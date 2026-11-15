@@ -113,13 +113,17 @@ def _bounded(value, name, bounds):
     return value
 
 
+WITHHELD_DEEP = "[WITHHELD: JSON nested too deeply to redact safely; {} chars]"
+WITHHELD_CUT_JSON = "[WITHHELD: JSON cut short cannot be redacted safely; {} chars]"
+
+
 def _redact(text):
-    """logs.redact, but never failing on guest-shaped input (deeply nested JSON recurses past the limit)."""
+    """logs.redact, but never failing on guest-shaped input. JSON nested past the recursion limit is withheld:
+    a textual fallback would reveal credential objects that structural redaction removes."""
     try:
         return logs.redact(text)
     except RecursionError:
-        text = logs._SECRETS.sub("[REDACTED]", text)
-        return logs._CREDENTIAL_ASSIGNMENT.sub(lambda match: match["prefix"] + '"[REDACTED]"', text)
+        return WITHHELD_DEEP.format(len(text))
 
 
 # A credential assignment whose quoted value runs to the end of the text: the closing quote was cut off.
@@ -189,20 +193,34 @@ _ESCAPED_CREDENTIAL = re.compile(r'''(?<=\\)["'](?:''' + logs._CREDENTIAL_KEY.pa
 
 
 def _parses_as_container(text):
+    """True when logs.redact would redact text structurally (it is a whole JSON object or array). Too deep to
+    parse counts as a container, so it reaches _redact and is withheld rather than pattern-redacted."""
     try:
         return isinstance(json.loads(text), (dict, list))
-    except (ValueError, RecursionError):
+    except RecursionError:
+        return True
+    except ValueError:
         return False
 
 
+def _could_be_json_container(text):
+    """Whether the uncut text might have been a JSON object or array (logs.redact's structural case)."""
+    return text.lstrip()[:1] in ("{", "[")
+
+
 def _redact_cut(text, cut=True):
-    """Redact text that may have been cut short. Complete JSON gets logs.redact's structural redaction untouched.
-    Otherwise credential objects/arrays are redacted (through their close, or through the cut), and everything
+    """Redact text that may have been cut short. Complete JSON gets logs.redact's structural redaction untouched;
+    cut text that may have been JSON, and JSON too deep to redact, is withheld. Otherwise credential objects/arrays are redacted (through their close, or through the cut), and everything
     after an escaped credential key is redacted. When cut, the final unfinished token is dropped (an unquoted or generic secret cut
     short no longer looks like one), and a quoted credential or Bearer value running to the end is treated as
     secret. Closed scalar values are left to logs.redact, as everywhere else."""
+    # The invariant: never reveal what logs.redact would remove from the whole text.
     if not cut and _parses_as_container(text):
         return _redact(text)            # complete JSON: the shared structural redaction, before any textual rewrite
+    if cut and _could_be_json_container(text):
+        # The whole text may have been JSON that logs.redact would redact structurally (whatever its key encoding);
+        # a cut cannot be redacted that way, so nothing of it is returned.
+        return WITHHELD_CUT_JSON.format(len(text))
     if cut:
         text = _drop_partial_token(text)
     # Text that is not JSON (or was cut, so no longer parses): logs.redact only sees credential objects/arrays
@@ -382,7 +400,8 @@ class PassiveAdapter:
             where = options.pop("where", None) or {}
             rows, size = [], 0
             for row in conn.execute("SELECT * FROM records WHERE space=? AND collection=? ORDER BY id", (sid, collection)):
-                size += sum(len(row[key] or "") for key in ("data", "source", "source_meta"))
+                size += sum(len((row[key] or "").encode("utf-8", "surrogatepass"))      # bytes, not characters
+                            for key in ("data", "source", "source_meta"))
                 if size > MAX_QUERY_BYTES:
                     self.limited["collection_too_large"] = self.limited.get("collection_too_large", 0) + 1
                     raise SpacesError("limit", "Collection is too large to query during inspection")
@@ -1076,6 +1095,10 @@ def _finish(run, adapter, report):
                           "truncated": bool(sample.get("text_cut")) or len(clean) > run.text_limit,
                           "title": _clip(_redact_cut(sample["title"],
                                                      cut=bool(sample.get("title_cut"))), 200)}
+        if clean.startswith("[WITHHELD"):
+            report["limitations"].append("text_withheld: the visible text could not be redacted safely (" +
+                                         clean[len("[WITHHELD: "):clean.index(";")] + "); raise text_limit to "
+                                         "return it whole, or read the Space's records instead")
         if not text.strip() and not (sample["images"] or sample["canvases"] or sample["svgs"]):
             report["limitations"].append("blank_suspected: the Space rendered no text, images, canvas or SVG")
     else:
