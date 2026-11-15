@@ -286,6 +286,20 @@ class BoundaryTests(InspectionCase):
         self.assertIn(report["outcome"], ("error", "timed_out"))
         self.assertEqual(report["cleanup"]["temp_removed"], True)
 
+    def test_browser_that_cannot_start_is_an_error_and_leaves_nothing_behind(self):
+        # Frozen regression: a failed posix_spawn left its ls-inspect-* profile directory behind.
+        sid = self.space("Any", "<main>x</main>")
+        fake = self.home / "not-a-browser"
+        fake.write_bytes(b"\x00\x01 not an executable format")
+        fake.chmod(0o755)
+        before = set(Path(tempfile.gettempdir()).glob("ls-inspect-*"))
+        with patch.dict(os.environ, {inspection.BROWSER_ENV: str(fake)}):
+            report = self.inspect(sid, timeout_s=5)
+        self.assertEqual(report["outcome"], "error", report)
+        self.assertEqual(report["error"]["code"], "renderer_launch_failed")
+        self.assertEqual(set(Path(tempfile.gettempdir()).glob("ls-inspect-*")), before)
+        self.assertEqual(inspection._slots._value, inspection.MAX_CONCURRENT)
+
     def test_missing_revision_space_and_entry(self):
         sid = self.space("Present", "<main>x</main>")
         for space, rev, code in ((sid, 99, "not_found"), ("absent-space", 1, "not_found"), (sid, 0, "invalid")):

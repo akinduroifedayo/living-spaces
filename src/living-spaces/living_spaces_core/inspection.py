@@ -257,6 +257,10 @@ class _Closed(Exception):
     pass
 
 
+class _LaunchFailed(Exception):
+    pass
+
+
 class Browser:
     """A throwaway Chromium driven over --remote-debugging-pipe. One instance per inspection."""
 
@@ -292,6 +296,13 @@ class Browser:
                         (os.POSIX_SPAWN_DUP2, 102, 3), (os.POSIX_SPAWN_DUP2, 103, 4)]
             actions += [(os.POSIX_SPAWN_CLOSE, high) for _, high in park]
             self.pid = os.posix_spawn(path, argv, env, setsid=True, file_actions=actions)
+        except OSError as exc:
+            # Nothing was started: release our pipe ends and the profile directory before reporting.
+            for fd in (self.write_fd, self.read_fd):
+                os.close(fd)
+            self.write_fd = self.read_fd = -1
+            shutil.rmtree(self.tmp, ignore_errors=True)
+            raise _LaunchFailed(exc.strerror or type(exc).__name__) from exc
         finally:
             for fd in (to_child, from_child, stderr, devnull):
                 os.close(fd)
@@ -602,7 +613,15 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit):
         if withhold:
             report["limitations"].append("diagnostics_not_granted: console text is withheld and the guest cannot report lifecycle")
         deadline = clock + timeout_s
-        browser = Browser(path, width, height, deadline)
+        try:
+            browser = Browser(path, width, height, deadline)
+        except _LaunchFailed as exc:
+            report["outcome"] = "error"
+            report["error"] = {"code": "renderer_launch_failed", "message": _clip(f"The browser could not start: {exc}", 300)}
+            report["limitations"].append("not_rendered: no runtime observation was made")
+            report["cleanup"] = {"process_exited": True, "temp_removed": True}
+            report["inspection"]["duration_ms"] = round((time.monotonic() - clock) * 1000)
+            return report
         try:
             run = _Run(browser, adapter, text_limit, withhold)
             _drive(run, snap, shell, runner, width, height, deadline, report)
