@@ -125,6 +125,48 @@ class LifecycleAtomicTests(unittest.TestCase):
         self.addCleanup(self.stack.close)
         self.fx = CustomizationFixture(self.stack)
 
+    def pending_one_shot(self, sid):
+        fx = self.fx
+        name = f'living-spaces:{sid}:once'
+        created = json.loads(fx.ctx.dispatch_tool('cronjob_manage', dict(
+            action='create', name=name, schedule=fx.upkeep.ONE_SHOT_SLOT,
+            repeat=1, paused=False, no_agent=False, deliver='local', catch_up=True,
+            prompt=f'Update public demo records only for Space {sid}.')))
+        self.assertIs(created.get('success'), True, created)
+        jid = created.get('job_id')
+        self.assertIsInstance(jid, str, created)
+        self.assertTrue(jid, created)
+        self.assertEqual(created['job']['job_id'], jid)
+        self.assertEqual(created['job']['name'], name)
+        listed = json.loads(fx.ctx.dispatch_tool('cronjob_manage', dict(
+            action='list', include_disabled=True)))
+        self.assertIs(listed.get('success'), True, listed)
+        self.assertIsInstance(listed.get('jobs'), list, listed)
+        self.assertEqual(listed['count'], len(listed['jobs']))
+        matches = [job for job in listed['jobs'] if job['job_id'] == jid]
+        self.assertEqual(len(matches), 1, listed)
+        job = matches[0]
+        self.assertEqual(job['job_id'], jid)
+        self.assertEqual(job['name'], name)
+        self.assertIs(job['enabled'], True)
+        self.assertEqual(job['state'], 'scheduled')
+        self.assertEqual(job['schedule'], fx.upkeep.ONE_SHOT_SLOT)
+        self.assertTrue(job['next_run_at'])
+        self.assertIsNone(job['last_run_at'])
+        self.assertIsNone(job['last_status'])
+        native = fx.cron.get_job(jid)
+        self.assertIsNotNone(native)
+        self.assertEqual(native['id'], jid)
+        self.assertEqual(native['repeat'], 1)
+        self.assertIs(native['paused'], False)
+        self.assertIs(native['no_agent'], False)
+        self.assertEqual(native['deliver'], 'local')
+        self.assertIs(native['catch_up'], True)
+        self.assertNotIn('manual_run_at', native)
+        self.assertEqual(fx.cron.list_executions(job_id=jid), [])
+        self.assertNotIn(('trigger', jid), fx.cron.calls)
+        return jid
+
     def processes(self, sid, modes):
         fx = self.fx
         cron = SharedCron(fx.home / 'synthetic-cron.db')
@@ -218,7 +260,7 @@ class LifecycleAtomicTests(unittest.TestCase):
     def test_one_shot_remove_failure_does_not_orphan_it(self):
         fx = self.fx
         sid = fx.make()
-        jid = fx.runs.start_refresh(sid, trigger='manual', actor='user')['cron_job_id']
+        jid = self.pending_one_shot(sid)
         with patch.object(fx.cron, 'remove_job', side_effect=OSError('synthetic remove failure')):
             with self.assertRaises(fx.core.SpacesError):
                 fx.projects.delete_space(sid, actor='user', confirm=sid)
@@ -231,7 +273,7 @@ class LifecycleAtomicTests(unittest.TestCase):
     def test_archive_importerror_pending_one_shot_refuses_and_preserves_space(self):
         fx = self.fx
         sid = fx.make()
-        jid = fx.runs.start_refresh(sid, trigger='manual', actor='user')['cron_job_id']
+        jid = self.pending_one_shot(sid)
         session = fx.sessions.open_session(sid)['session']
         with patch.object(fx.ctx, 'dispatch_tool', side_effect=ImportError('synthetic unavailable')):
             with self.assertRaises(fx.core.SpacesError) as caught:
