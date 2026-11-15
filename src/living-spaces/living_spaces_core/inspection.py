@@ -133,7 +133,14 @@ _CUT_CREDENTIAL = re.compile(r'''(?<![\w])(?P<prefix>(?P<q>["']?)(?:''' + logs._
 # A quoted Bearer value that runs to the end of the text (logs.redact covers the closed form).
 _CUT_BEARER = re.compile(r'''\b(?P<prefix>Bearer\s+)(?P<open>["'])(?:\\.|(?!(?P=open))[^\\])*\\?\Z''',
                          re.IGNORECASE | re.DOTALL)
-_PARTIAL_TOKEN = re.compile(r"\S+\Z")
+
+
+def _drop_partial_token(text):
+    """Drop the unfinished final token of cut text (a single reverse scan; the regex \\S+\\Z was quadratic)."""
+    end = len(text)
+    while end and not text[end - 1].isspace():
+        end -= 1
+    return text[:end]
 # A credential key whose value is an object or array. Cut JSON no longer parses, so logs.redact's structural
 # redaction cannot see it; the whole container (through its close, or through the cut) is redacted instead.
 _CREDENTIAL_CONTAINER = re.compile(r'''(?<![\w])(?P<prefix>(?P<q>["']?)(?:''' + logs._CREDENTIAL_KEY.pattern
@@ -174,16 +181,36 @@ def _redact_containers(text):
     return "".join(out) + text[position:]
 
 
+# An escaped credential key (JSON held inside a JSON string, e.g. {\\"password\\": ...). Once the outer JSON no
+# longer parses, nothing can tell where that value ends, so everything after the key is redacted.
+# Anchored on the quote after one backslash (fixed-width lookbehind), not on a backslash run, so it is linear.
+_ESCAPED_CREDENTIAL = re.compile(r'''(?<=\\)["'](?:''' + logs._CREDENTIAL_KEY.pattern + r''')\\+["']\s*[:=]''',
+                                 re.IGNORECASE)
+
+
+def _parses_as_container(text):
+    try:
+        return isinstance(json.loads(text), (dict, list))
+    except (ValueError, RecursionError):
+        return False
+
+
 def _redact_cut(text, cut=True):
-    """Redact text that may have been cut short. Credential objects/arrays are always redacted (through their
-    close, or through the cut). When cut, the final unfinished token is dropped (an unquoted or generic secret cut
+    """Redact text that may have been cut short. Complete JSON gets logs.redact's structural redaction untouched.
+    Otherwise credential objects/arrays are redacted (through their close, or through the cut), and everything
+    after an escaped credential key is redacted. When cut, the final unfinished token is dropped (an unquoted or generic secret cut
     short no longer looks like one), and a quoted credential or Bearer value running to the end is treated as
     secret. Closed scalar values are left to logs.redact, as everywhere else."""
+    if not cut and _parses_as_container(text):
+        return _redact(text)            # complete JSON: the shared structural redaction, before any textual rewrite
     if cut:
-        text = _PARTIAL_TOKEN.sub("", text)
-    # Credential objects/arrays are redacted whether or not the text was cut: logs.redact only sees them when the
-    # whole text is JSON, and inspection output may be stricter than the shared log redactor.
+        text = _drop_partial_token(text)
+    # Text that is not JSON (or was cut, so no longer parses): logs.redact only sees credential objects/arrays
+    # structurally, so they are redacted textually here; inspection output may be stricter than the shared redactor.
     text = _redact_containers(text)
+    escaped = _ESCAPED_CREDENTIAL.search(text)
+    if escaped:
+        text = text[:escaped.end()] + ' "[REDACTED]"'
     if cut:
         text = _CUT_CREDENTIAL.sub(lambda match: match["prefix"] + '"[REDACTED]"', text)
         text = _CUT_BEARER.sub(lambda match: match["prefix"] + "[REDACTED]", text)

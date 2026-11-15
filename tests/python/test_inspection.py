@@ -1101,6 +1101,61 @@ class ReviewNineRepairTests(InspectionCase):
         self.assertFalse(report["text"]["truncated"])
 
 
+class ReviewTenRepairTests(InspectionCase):
+    """Frozen regressions for review-10 (Codex gpt-6-astra, REJECT at d4f5265). Each failed before its repair."""
+
+    finish = ReviewFiveRepairTests.finish
+    REVIEW_CASE = '{"note":"password: {}", "nested":"{\\"password\\":\\"demo-only-secret\\"}"}'
+
+    def test_x1_valid_json_is_redacted_structurally_before_any_textual_rewrite(self):
+        self.assertEqual(json.loads(self.REVIEW_CASE)["nested"], '{"password":"demo-only-secret"}')
+        out = self.finish(self.REVIEW_CASE, title=self.REVIEW_CASE)
+        self.assertNotIn("demo-only-secret", out["content"])
+        self.assertNotIn("demo-only-secret", out["title"])
+        self.assertNotIn("demo-only-secret", inspection._redact_cut(self.REVIEW_CASE, cut=False))
+
+    def test_x1_cut_escaped_nested_credentials_are_redacted(self):
+        for text in ('{"nested":"{\\"password\\":\\"demo-only-secret' + "w" * 400,
+                     '{"nested":"{\\"password\\":{\\"v\\":\\"demo-only-secret\\", \\"pad\\":\\"' + "w " * 300):
+            with self.subTest(text=text[:30]):
+                out = self.finish(text, title=text)
+                self.assertNotIn("demo-only-secret", out["content"])
+                self.assertNotIn("demo-only-secret", out["title"])
+
+    def test_x1_closed_escaped_credential_mid_cut_text_is_redacted(self):
+        # Uncut, the shared redactor finds this through the nested JSON string; the cut must not expose it.
+        whole = json.dumps({"n": json.dumps({"password": "demo-only-secret"}), "pad": "ordinary words " * 100})
+        self.assertNotIn("demo-only-secret", inspection.logs.redact(whole))
+        out = self.finish(whole, title=whole)
+        self.assertNotIn("demo-only-secret", out["content"])
+        self.assertNotIn("demo-only-secret", out["title"])
+
+    def test_x1_control_ordinary_cut_text_is_untouched(self):
+        text = 'Say "hello" to the team: ' + "ordinary words " * 60
+        self.assertEqual(self.finish(text)["content"], text[:100])
+
+    def test_x2_cut_redaction_is_linear_on_adversarial_runs(self):
+        # Found by Forge while timing the X1 repair: \\S+\\Z (since b99bb8f) took ~5 s on 50k characters.
+        for text in ("a" * 200000 + " ", "\\" * 200000 + "x", '\\"password\\" ' * 20000,
+                     'password="' * 20000, "[" * 200000, "Bearer '" * 20000):
+            with self.subTest(text=text[:12]):
+                started = time.monotonic()
+                inspection._redact_cut(text, cut=True)
+                inspection._redact_cut(text, cut=False)
+                self.assertLess(time.monotonic() - started, 2.0)
+
+    def test_x2_control_partial_token_semantics(self):
+        self.assertEqual(inspection._drop_partial_token("one two thr"), "one two ")
+        self.assertEqual(inspection._drop_partial_token("one two "), "one two ")
+        self.assertEqual(inspection._drop_partial_token("token"), "")
+
+    def test_x1_control_matches_the_shared_redactor_on_valid_json(self):
+        for text in (self.REVIEW_CASE, json.dumps({"password": {"a": "s3"}, "note": "kept"}),
+                     json.dumps([{"api_key": ["s"]}, "plain"])):
+            with self.subTest(text=text[:30]):
+                self.assertEqual(inspection._redact_cut(text, cut=False), inspection.logs.redact(text))
+
+
 class BoundaryTests(InspectionCase):
     def test_unavailable_renderer_is_reported_not_faked(self):
         sid = self.space("Any", "<main>x</main>")
