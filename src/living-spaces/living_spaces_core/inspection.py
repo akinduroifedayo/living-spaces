@@ -230,6 +230,26 @@ class PassiveAdapter:
         self.lifecycle = None
         self.guest_logs = {"entries": 0, "dropped": 0, "unconfirmed": 0}
 
+    def _order_and_page(self, rows, order, limit, offset):
+        """records._select's ordering and paging (already filtered), with the field parsed once and the deadline
+        checked while keys are built; the sort itself then runs on precomputed keys."""
+        field = order.lstrip("-") if order else None
+        keyed = []
+        for record in rows:
+            self._check_deadline()                       # per record: a clock read is far cheaper than a key
+            value = records._field(record, field) if field else None
+            if value is None:
+                value = record["updated_at"]
+            if isinstance(value, (int, float)):
+                key = (0, value, record["id"])
+            else:
+                key = (1, value if isinstance(value, str) else limits.dumps(value), record["id"])
+            keyed.append((key, record))
+        self._check_deadline()
+        keyed.sort(key=lambda pair: pair[0], reverse=bool(order and order.startswith("-")))
+        self._check_deadline()
+        return [record for _, record in keyed[offset:offset + limit]], len(keyed)
+
     def _check_deadline(self):
         if self.deadline is not None and time.monotonic() >= self.deadline:
             raise _Timeout()
@@ -300,7 +320,7 @@ class PassiveAdapter:
                 if all(records._field(record, field) == value for field, value in where.items()):
                     rows.append(record)
             self._check_deadline()
-            page, total = records._select(rows, **options)
+            page, total = self._order_and_page(rows, options.get("order"), options["limit"], options["offset"])
             return {"records": page, "total": total, "seq": self.snap.seq}
         records._ids(args["collection"], args["id"])                       # data.get
         row = records._row(conn, sid, args["collection"], args["id"])
@@ -562,6 +582,8 @@ class _Run:
         self.worlds = {}          # frameId -> isolated world context, reused so its mutation counter persists
         self.reply_bytes = 0
         self.reply_limited = 0
+        self.limited = {}         # reason -> requests refused by inspection's own limits (not by policy)
+        self.contexts = {}        # (sessionId, executionContextId) -> frameId
         self.stable_since = None  # when the current unchanged observation began (None: changing or unobserved)
         self.last_traffic = None
         browser.listeners.append(self.on_event)
@@ -637,7 +659,15 @@ class _Run:
                     self.network.append(_clip(url, 200))
                 self.b.send("Fetch.failRequest", {"requestId": params["requestId"], "errorReason": "BlockedByClient"},
                             session)
-        elif method == "Runtime.consoleAPICalled" and session != self.page:
+        elif method == "Runtime.executionContextCreated":
+            context = params.get("context", {})
+            frame = (context.get("auxData") or {}).get("frameId")
+            if frame and isinstance(context.get("id"), int):
+                self.contexts[(session, context["id"])] = frame
+        elif method == "Runtime.consoleAPICalled" and (session != self.page or self.contexts.get(
+                (session, params.get("executionContextId")), self.page_target) != self.page_target):
+            # Out-of-process frames have their own session; an in-process guest frame shares the page session and
+            # is told apart by its execution context. Only the host frame's own console is excluded.
             parts = [arg.get("value", arg.get("description", arg.get("type"))) for arg in params.get("args", [])]
             self.record("console", params.get("type", "log"), " ".join(str(part) for part in parts))
         elif method == "Runtime.exceptionThrown":
@@ -711,14 +741,17 @@ class _Run:
         for request in drained.get("requests", []):
             if time.monotonic() >= self.b.deadline:
                 raise _Timeout()
-            item = None
+            item, reason = None, "reply_budget"
             if self.reply_bytes < MAX_REPLY_TOTAL:
                 item = f"[{int(request['id'])},{json.dumps(self.adapter.call(request.get('op'), request.get('args') or {}))}]"
-                if len(item) > MAX_REPLY_ITEM or self.reply_bytes + len(item) > MAX_REPLY_TOTAL:
+                if len(item) > MAX_REPLY_ITEM:
+                    item, reason = None, "reply_too_large"
+                elif self.reply_bytes + len(item) > MAX_REPLY_TOTAL:
                     item = None
             if item is None:
                 # Refusals are small and bounded by the page's queue cap, so they do not count against the budget.
                 self.reply_limited += 1
+                self.limited[reason] = self.limited.get(reason, 0) + 1
                 item = f"[{int(request['id'])},{json.dumps(REPLY_LIMITED)}]"
             else:
                 self.reply_bytes += len(item)
@@ -727,6 +760,9 @@ class _Run:
                 batch, size, answered = [], 0, True
             batch.append(item)
             size += len(item)
+        if isinstance(drained.get("refused"), int) and drained["refused"] > self.limited.get("queue_full", 0):
+            self.limited["queue_full"] = drained["refused"]      # the page reports a running total
+            active = True
         for event in drained.get("events", []):
             kind = event.get("kind")
             if kind == "booted":
@@ -954,6 +990,10 @@ def _finish(run, adapter, report):
     report["errors"] = run.entries
     report["counts"] = {**run.counts, "dropped": run.dropped, "guest_reported": adapter.guest_logs}
     report["blocked"] = dict(adapter.refused)
+    report["limited"] = dict(getattr(run, "limited", {}))
+    if report["limited"]:
+        report["limitations"].append("requests_limited: some bridge requests were refused by inspection's own size "
+                                     "or queue limits, so the Space may have behaved differently than in Desktop")
     report["denied"] = dict(adapter.denied)
     report["served"] = dict(adapter.served)
     report["network"] = {"blocked": run.network_blocked, "attempts": run.network}

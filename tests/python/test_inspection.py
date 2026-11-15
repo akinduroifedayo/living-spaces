@@ -836,6 +836,112 @@ class ReviewFiveRepairTests(InspectionCase):
         self.assertEqual(reply["result"]["records"], live["records"])
 
 
+class ReviewSixRepairTests(InspectionCase):
+    """Frozen regressions for review-6 (Codex gpt-6-astra, REJECT at b99bb8f). Each failed before its repair."""
+
+    def snapshot_adapter(self, rows):
+        sid = projects.create_space("Big", owner="Demo", author="agent:demo", files={"index.html": "<main>x</main>"})["id"]
+        grants.decide(sid, "data", "grant", actor="user")
+        for index in range(rows):
+            records.put(sid, "items", f"r{index:05}", {"v": index % 7, "s": f"k{index}"}, actor="agent:demo")
+        conn = inspection._open_snapshot()
+        self.addCleanup(conn.close)
+        return inspection.PassiveAdapter(inspection.Snapshot(conn, sid, 1))
+
+    def test_t1_a_huge_order_string_is_parsed_once(self):
+        # At b99bb8f this took ~5 s for 2,000 records (the order string was re-stripped per record).
+        adapter = self.snapshot_adapter(2000)
+        adapter.deadline = time.monotonic() + 30
+        started = time.monotonic()
+        reply = adapter.call("data.query", {"collection": "items", "order": "-" * 900000 + "v", "limit": 1})
+        self.assertLess(time.monotonic() - started, 1.0)
+        self.assertTrue(reply["ok"], reply)
+
+    def test_t1_ordering_stops_at_the_deadline(self):
+        adapter = self.snapshot_adapter(1500)
+        real_field = records._field
+
+        def slow_field(record, name):                    # key building that would far outlive the deadline
+            time.sleep(0.002)
+            return real_field(record, name)
+
+        adapter.deadline = time.monotonic() + 0.4
+        started = time.monotonic()
+        with patch.object(inspection.records, "_field", slow_field), self.assertRaises(inspection._Timeout):
+            adapter.call("data.query", {"collection": "items", "order": "v", "limit": 1})
+        self.assertLess(time.monotonic() - started, 1.5)
+
+    def test_t1_control_ordering_matches_production(self):
+        adapter = self.snapshot_adapter(40)
+        adapter.deadline = time.monotonic() + 30
+        for order in ("v", "-v", "s", "-s", "missing", "--v", None):
+            for where in (None, {"v": 3}):
+                args = {"collection": "items", "limit": 9, "offset": 2, **({"order": order} if order else {}),
+                        **({"where": where} if where else {})}
+                with self.subTest(order=order, where=where):
+                    reply = adapter.call("data.query", args)
+                    live = records.query(adapter.snap.sid, "items", where=where, order=order, limit=9, offset=2)
+                    self.assertEqual(reply["result"]["records"], live["records"])
+                    self.assertEqual(reply["result"]["total"], live["total"])
+
+    def fake_run(self):
+        class FakeBrowser:
+            listeners = []
+            deadline = time.monotonic() + 30
+
+            def __init__(self):
+                self.sent = []
+
+            def call(self, method, params=None, session=None, timeout=None):
+                self.sent.append(params["expression"])
+                return {}
+
+            def send(self, *args, **kwargs):
+                return 0
+
+        class Adapter:
+            refused, denied, served, lifecycle, guest_logs = {}, {}, {}, "loaded", {}
+
+            def call(self, op, args):
+                return {"ok": True, "result": "z" * (2 * 1024 * 1024)}
+
+        run = inspection._Run(FakeBrowser(), Adapter(), 100, False)
+        run.page, run.page_target = "PAGE", "HOSTFRAME"
+        return run
+
+    def test_t2_queue_overflow_and_reply_limits_are_reported(self):
+        run = self.fake_run()
+        run.serve({"requests": [{"id": 1, "op": "meta", "args": {}}], "events": [], "refused": 7})
+        report = {"readiness": {}, "limitations": [], "outcome": "loaded", "text": None}
+        inspection._finish(run, run.adapter, report)
+        self.assertEqual(report["limited"], {"queue_full": 7, "reply_too_large": 1}, report)
+        self.assertTrue(any(item.startswith("requests_limited") for item in report["limitations"]))
+
+    def test_t2_control_no_limits_no_noise(self):
+        run = self.fake_run()
+        report = {"readiness": {}, "limitations": [], "outcome": "loaded", "text": None}
+        inspection._finish(run, run.adapter, report)
+        self.assertEqual(report["limited"], {})
+        self.assertFalse(any(item.startswith("requests_limited") for item in report["limitations"]))
+
+    def test_t3_guest_console_errors_on_the_page_session_are_counted(self):
+        run = self.fake_run()
+        run.on_event({"method": "Runtime.executionContextCreated", "sessionId": "PAGE",
+                      "params": {"context": {"id": 5, "auxData": {"frameId": "GUESTFRAME"}}}})
+        run.on_event({"method": "Runtime.consoleAPICalled", "sessionId": "PAGE",
+                      "params": {"type": "error", "executionContextId": 5, "args": [{"value": "in-process guest"}]}})
+        self.assertEqual(run.counts["error"], 1)
+        self.assertEqual(run.entries[0]["text"], "in-process guest")
+
+    def test_t3_control_host_page_console_is_still_ignored(self):
+        run = self.fake_run()
+        run.on_event({"method": "Runtime.executionContextCreated", "sessionId": "PAGE",
+                      "params": {"context": {"id": 1, "auxData": {"frameId": "HOSTFRAME", "isDefault": True}}}})
+        run.on_event({"method": "Runtime.consoleAPICalled", "sessionId": "PAGE",
+                      "params": {"type": "error", "executionContextId": 1, "args": [{"value": "host"}]}})
+        self.assertEqual(run.counts["error"], 0)
+
+
 class BoundaryTests(InspectionCase):
     def test_unavailable_renderer_is_reported_not_faked(self):
         sid = self.space("Any", "<main>x</main>")
