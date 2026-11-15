@@ -226,6 +226,7 @@ class PassiveAdapter:
         self.deadline = deadline
         self.refused = {}
         self.denied = {}
+        self.limited = {}
         self.served = {}
         self.lifecycle = None
         self.guest_logs = {"entries": 0, "dropped": 0, "unconfirmed": 0}
@@ -237,7 +238,7 @@ class PassiveAdapter:
         keyed = []
         for record in rows:
             self._check_deadline()                       # per record: a clock read is far cheaper than a key
-            value = records._field(record, field) if field else None
+            value = records._field(record, field) if order else None      # as records._select: "-" sorts by ""
             if value is None:
                 value = record["updated_at"]
             if isinstance(value, (int, float)):
@@ -313,6 +314,7 @@ class PassiveAdapter:
             for row in conn.execute("SELECT * FROM records WHERE space=? AND collection=? ORDER BY id", (sid, collection)):
                 size += sum(len(row[key] or "") for key in ("data", "source", "source_meta"))
                 if size > MAX_QUERY_BYTES:
+                    self.limited["collection_too_large"] = self.limited.get("collection_too_large", 0) + 1
                     raise SpacesError("limit", "Collection is too large to query during inspection")
                 self._check_deadline()
                 record = records._record(row)
@@ -359,6 +361,7 @@ class Browser:
         self.buf = b""
         self.next_id = 0
         self.responses = {}
+        self.awaited = set()      # ids a call() is waiting for; other acknowledgements are dropped on arrival
         self.listeners = []
         self.max_message = 0
         self.read_fd = self.write_fd = -1
@@ -446,7 +449,8 @@ class Browser:
                 self.max_message = max(self.max_message, len(raw))
                 message = json.loads(raw)
                 if "id" in message:
-                    self.responses[message["id"]] = message
+                    if message["id"] in self.awaited:
+                        self.responses[message["id"]] = message
                 else:
                     for listener in self.listeners:
                         listener(message)
@@ -498,12 +502,17 @@ class Browser:
         self._dispatch()
 
     def call(self, method, params=None, session=None, timeout=None):
+        # send() only buffers input, so the response cannot be dispatched before its id is marked awaited.
         id_ = self.send(method, params, session)
+        self.awaited.add(id_)
         until = time.monotonic() + timeout if timeout else self.deadline
-        while id_ not in self.responses:
-            if time.monotonic() >= until:
-                raise _Timeout()
-            self.pump(until)
+        try:
+            while id_ not in self.responses:
+                if time.monotonic() >= until:
+                    raise _Timeout()
+                self.pump(until)
+        finally:
+            self.awaited.discard(id_)             # a call that gave up does not keep a late response either
         message = self.responses.pop(id_)
         if "error" in message:
             raise RuntimeError(message["error"].get("message", "DevTools error"))
@@ -719,7 +728,8 @@ class _Run:
                     new MutationObserver(r => { s.n += r.length }).observe(document, { subtree: true, childList: true,
                       characterData: true, attributes: true }); return s })();
                   return { text: t.slice(0, %d), chars: t.length, mutations: m.n,
-                           title: String(document.title).slice(0, 1000), title_chars: String(document.title).length,""" % keep + """ nodes: document.getElementsByTagName('*').length,
+                           title: String(document.title).slice(0, 1000), title_chars: String(document.title).length,
+                           text_cut: t.length > %d, title_cut: String(document.title).length > 1000,""" % (keep, keep) + """ nodes: document.getElementsByTagName('*').length,
                            images: document.images.length, canvases: document.getElementsByTagName('canvas').length,
                            svgs: document.getElementsByTagName('svg').length,
                            failure: !!document.querySelector('section[role=alert] h1') &&
@@ -970,27 +980,28 @@ def _finish(run, adapter, report):
         report["dom"] = {key: sample[key] for key in ("nodes", "images", "canvases", "svgs")}
         # The browser may have cut the text, so a quoted credential can lose its closing quote; redact before
         # clipping, so a clipped secret is still caught.
-        clean = _redact_cut(text, cut=chars > len(text))
+        clean = _redact_cut(text, cut=bool(sample.get("text_cut")))    # the browser says whether it cut (UTF-16)
         report["text"] = {"content": clean[:run.text_limit], "chars": chars,
                           "truncated": chars > run.text_limit or len(clean) > run.text_limit,
                           "title": _clip(_redact_cut(sample["title"],
-                                                     cut=sample.get("title_chars", 0) > len(sample["title"])), 200)}
+                                                     cut=bool(sample.get("title_cut"))), 200)}
         if not text.strip() and not (sample["images"] or sample["canvases"] or sample["svgs"]):
             report["limitations"].append("blank_suspected: the Space rendered no text, images, canvas or SVG")
     else:
         report["text"] = None
     if report["outcome"] == "timed_out" and adapter.lifecycle and "reason" not in readiness:
         # The guest said it loaded, yet nothing settled in time: say which half kept moving.
+        # Bridge traffic is observed directly, so it is named first when both kept moving.
         now = time.monotonic()
-        changing = run.stable_since is None or now - run.stable_since < SETTLE_MS / 1000
-        readiness["reason"] = "content_still_changing" if changing else "bridge_still_active"
+        busy = run.last_traffic is not None and now - run.last_traffic < SETTLE_MS / 1000
+        readiness["reason"] = "bridge_still_active" if busy else "content_still_changing"
     if report["outcome"] in (None, "timed_out") and readiness["shell_booted"] and not adapter.lifecycle \
             and "reason" not in readiness:
         readiness["reason"] = "lifecycle_not_reported_before_deadline"
     report["errors"] = run.entries
     report["counts"] = {**run.counts, "dropped": run.dropped, "guest_reported": adapter.guest_logs}
     report["blocked"] = dict(adapter.refused)
-    report["limited"] = dict(getattr(run, "limited", {}))
+    report["limited"] = {**getattr(run, "limited", {}), **getattr(adapter, "limited", {})}
     if report["limited"]:
         report["limitations"].append("requests_limited: some bridge requests were refused by inspection's own size "
                                      "or queue limits, so the Space may have behaved differently than in Desktop")

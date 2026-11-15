@@ -779,6 +779,8 @@ class ReviewFiveRepairTests(InspectionCase):
         adapter = type("A", (), {"lifecycle": "loaded", "guest_logs": {}, "refused": {}, "denied": {}, "served": {}})()
         report = {"readiness": {}, "limitations": [], "outcome": "loaded",
                   "text": {"text": text[:keep], "chars": len(text), "title": title[:1000], "title_chars": len(title),
+                           # The browser reports its own cuts (review-7 U1); model them as the sample() script does.
+                           "text_cut": len(text) > keep, "title_cut": len(title) > 1000,
                            "nodes": 1, "images": 0,
                            "canvases": 0, "svgs": 0, "failure": False, "mutations": 0}}
         inspection._finish(run, adapter, report)
@@ -940,6 +942,61 @@ class ReviewSixRepairTests(InspectionCase):
         run.on_event({"method": "Runtime.consoleAPICalled", "sessionId": "PAGE",
                       "params": {"type": "error", "executionContextId": 1, "args": [{"value": "host"}]}})
         self.assertEqual(run.counts["error"], 0)
+
+
+class ReviewSevenRepairTests(InspectionCase):
+    """Frozen regressions for review-7 (Codex gpt-6-astra, ACCEPT-WITH-FIXES at 099570f). Each failed before repair."""
+
+    @needs_browser
+    def test_u1_uncut_unicode_text_and_title_are_returned_whole(self):
+        sid = self.space("U", "<title>Done 🟢</title><main>Status 🟢 ready</main>")
+        report = self.inspect(sid)
+        self.assertEqual(report["text"]["content"], "Status 🟢 ready", report["text"])
+        self.assertEqual(report["text"]["title"], "Done 🟢")
+        self.assertFalse(report["text"]["truncated"])
+
+    @needs_browser
+    def test_u1_emoji_only_text_survives(self):
+        sid = self.space("E", "<main>🟢🟢🟢</main>")
+        self.assertEqual(self.inspect(sid)["text"]["content"], "🟢🟢🟢")
+
+    def adapter_with(self, rows, data):
+        sid = projects.create_space("Q", owner="Demo", author="agent:demo", files={"index.html": "<main>x</main>"})["id"]
+        grants.decide(sid, "data", "grant", actor="user")
+        for index in range(rows):
+            records.put(sid, "items", f"r{index:03}", data(index), actor="agent:demo")
+        conn = inspection._open_snapshot()
+        self.addCleanup(conn.close)
+        adapter = inspection.PassiveAdapter(inspection.Snapshot(conn, sid, 1))
+        adapter.deadline = time.monotonic() + 30
+        return adapter
+
+    def test_u2_collection_size_refusal_is_reported_in_limited(self):
+        adapter = self.adapter_with(5, lambda i: {"v": "x" * 1000})
+        with patch.object(inspection, "MAX_QUERY_BYTES", 2000):
+            reply = adapter.call("data.query", {"collection": "items", "limit": 1})
+        self.assertEqual(reply["error"]["code"], "limit")
+        run = ReviewSixRepairTests.fake_run(self)  # type: ignore[arg-type]  # uses no ReviewSix state
+        report = {"readiness": {}, "limitations": [], "outcome": "loaded", "text": None}
+        inspection._finish(run, adapter, report)
+        self.assertEqual(report["limited"], {"collection_too_large": 1}, report)
+        self.assertTrue(any(item.startswith("requests_limited") for item in report["limitations"]))
+
+    def test_u3_order_dash_matches_production(self):
+        adapter = self.adapter_with(4, lambda i: {"": 3 - i, "n": i})
+        for order in ("-", "--", "-n", "n"):
+            with self.subTest(order=order):
+                reply = adapter.call("data.query", {"collection": "items", "order": order})
+                live = records.query(adapter.snap.sid, "items", order=order)
+                self.assertEqual([r["id"] for r in reply["result"]["records"]], [r["id"] for r in live["records"]])
+
+    def test_u4_unawaited_acknowledgements_are_not_retained(self):
+        browser = inspection.Browser.__new__(inspection.Browser)
+        browser.buf = b"".join(b'{"id":%d,"result":{}}\0' % i for i in range(1, 100001))
+        browser.deadline, browser.next_id, browser.responses, browser.max_message = time.monotonic() + 30, 0, {}, 0
+        browser.listeners, browser.awaited = [], {7}
+        browser._dispatch()
+        self.assertEqual(list(browser.responses), [7])
 
 
 class BoundaryTests(InspectionCase):
