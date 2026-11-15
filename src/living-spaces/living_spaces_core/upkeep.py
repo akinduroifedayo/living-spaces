@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import uuid
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -136,7 +137,7 @@ def _jobs():
     return result
 
 
-def _mutate(action, jid, **args):
+def _mutate(action, jid, *, on_run_reply=None, **args):
     result = None
     failure = None
     try:
@@ -146,12 +147,19 @@ def _mutate(action, jid, **args):
             raise
         failure = exc
         failure.extra.update(action=action, job_id=jid)
+    if action == "run" and on_run_reply is not None:
+        try:
+            on_run_reply(result)
+        except Exception as exc:
+            raise SpacesError("blocked", f"Hermes accepted the run, but its refresh claim could not be updated: {exc}",
+                              reason="post_run_check_failed", native=result, action=action, job_id=jid) from exc
     try:
         job = next((job for job in _jobs()["jobs"] if job["job_id"] == jid), None)
     except SpacesError as verification:
         if action == "run":
             # The run reply owns native; the failed verification keeps its own reply under verification.
-            raise SpacesError(verification.code, verification.message, **{**verification.extra, "action": action, "job_id": jid,
+            raise SpacesError("blocked", verification.message, **{**verification.extra, "reason": "post_run_check_failed",
+                              "action": action, "job_id": jid,
                               "native": result, "verification": verification.to_dict()}) from verification
         if action != "remove":
             raise
@@ -238,7 +246,7 @@ def agent_prompt(sid, prompt):
 def _space(conn, sid):
     if not isinstance(sid, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,47}", sid):
         raise SpacesError("invalid", "Invalid Space id")
-    row = conn.execute("SELECT status FROM spaces WHERE id=?", (sid,)).fetchone()
+    row = conn.execute("SELECT status,created_at FROM spaces WHERE id=?", (sid,)).fetchone()
     if row is None:
         raise SpacesError("not_found", "Space not found")
     return row
@@ -280,10 +288,11 @@ def _job(job):
     }
 
 
-def _owned_jobs(sid, link, jobs):
+def _owned_jobs(sid, link, jobs, *, claim=None):
     linked_id = link["cron_job_id"] if link else None
+    claimed_id = claim["cron_job_id"] if claim else None
     names = (f"living-spaces:{sid}", _once_name(sid))
-    return [job for job in jobs if job["job_id"] == linked_id or job.get("name") in names]
+    return [job for job in jobs if job["job_id"] in (linked_id, claimed_id) or job.get("name") in names]
 
 
 def _read(sid):
@@ -424,6 +433,9 @@ def _carry_run_reply(error, native):
     # error held a different reply of its own, the whole original error moves under post_run_error.
     if error.extra.get("native") is native:
         return error
+    if error.extra.get("reason") in ("native_refused", "cron_unavailable", "cron_unverified", "cron_response_invalid"):
+        return SpacesError("blocked", error.message, **{**error.extra, "reason": "post_run_check_failed",
+                           "native": native, "verification": error.to_dict(), "post_run_error": error.to_dict()})
     return SpacesError(error.code, error.message, **{**error.extra, "native": native, "post_run_error": error.to_dict()})
 
 
@@ -438,9 +450,9 @@ def _after_run(native):
         raise carried from exc
 
 
-def _run_now(sid, jid):
+def _run_now(sid, jid, *, on_reply=None):
     # Public run may execute inline and call Space tools, so never hold SQLite's write lock here.
-    native = _mutate("run", jid)
+    native = _mutate("run", jid, on_run_reply=on_reply)
     with _after_run(native):
         try:
             with db.write() as conn:
@@ -474,19 +486,24 @@ def upkeep_action(sid, action, *, actor):
             if action == "resume":
                 _mutate(action, link["cron_job_id"])
         else:
-            targets = _owned_jobs(sid, link, _jobs()["jobs"])
-            if link is None and not targets:
+            claim = _refresh_claim(conn, sid)
+            targets = _owned_jobs(sid, link, _jobs()["jobs"], claim=claim)
+            target_ids = {job["job_id"] for job in targets}
+            if action == "remove" and claim:
+                target_ids.add(claim["cron_job_id"])
+            if link is None and not target_ids:
                 raise SpacesError("not_found", "No upkeep scheduled")
             args = {"reason": f"Paused from Living Spaces by {actor}"} if action == "pause" else {}
-            for jid in sorted(job["job_id"] for job in targets):
+            for jid in sorted(target_ids):
                 _mutate(action, jid, **args)
-            remaining = _owned_jobs(sid, link, _jobs()["jobs"])
+            remaining = _owned_jobs(sid, link, _jobs()["jobs"], claim=claim)
             if ((action == "remove" and remaining)
                     or (action == "pause" and any(job.get("enabled") is not False for job in remaining))):
                 raise SpacesError("blocked", f"This Space's upkeep {action} could not be verified", reason="cron_unverified")
         if action == "remove":
             _shim(sid).unlink(missing_ok=True)
             conn.execute("DELETE FROM upkeep_links WHERE space=?", (sid,))
+            conn.execute("DELETE FROM refresh_claims WHERE space=?", (sid,))
     if action == "run" and link is not None:
         native = _run_now(sid, link["cron_job_id"])
         with _after_run(native):
@@ -499,11 +516,126 @@ def upkeep_action(sid, action, *, actor):
     return result
 
 
+def _refresh_outcome(native):
+    if not isinstance(native, dict):
+        return "unresolved"
+    if native.get("success") is False:
+        return "refused"
+    job = native.get("job")
+    if not isinstance(job, dict):
+        return "unresolved"
+    if (job.get("executed") is False or job.get("execution_skipped")
+            or job.get("execution_success") is False):
+        return "refused"
+    if job.get("executed") is True:
+        if job.get("execution_success") is True:
+            return "completed"
+        if job.get("execution_mode") == "background":
+            return "background"
+    return "unresolved"
+
+
+def _refresh_claim(conn, sid):
+    row = conn.execute("SELECT * FROM refresh_claims WHERE space=?", (sid,)).fetchone()
+    return dict(row) if row else None
+
+
+def _update_refresh_claim(claim, native, *, phase="pending", settled=False):
+    baseline = "null" if claim["created_one_shot"] else None
+    job = native.get("job") if isinstance(native, dict) else None
+    if (not claim["created_one_shot"] and isinstance(job, dict) and _refresh_outcome(native) == "background"
+            and job.get("job_id") == claim["cron_job_id"] and "last_run_at" in job
+            and (job["last_run_at"] is None or _seconds(job["last_run_at"]) is not None)):
+        # Native acquires the per-job fire claim before producing this reply. An earlier list
+        # stamp could belong to a run that finished before our native claim was acquired.
+        baseline = json.dumps(job["last_run_at"])
+    if phase != "pending":
+        phase = "background" if _refresh_outcome(native) == "background" and baseline is not None else "unresolved"
+    try:
+        with db.write() as conn:
+            identity = (claim["space"], claim["space_created_at"], claim["token"])
+            if settled:
+                conn.execute("DELETE FROM refresh_claims WHERE space=? AND space_created_at=? AND token=?", identity)
+            else:
+                conn.execute("UPDATE refresh_claims SET native=?,baseline_completion=?,phase=? "
+                             "WHERE space=? AND space_created_at=? AND token=?",
+                             (json.dumps(native), baseline, phase, *identity))
+    except Exception as exc:
+        raise SpacesError("blocked", f"Could not preserve the refresh claim for job {claim['cron_job_id']}: {exc}",
+                          reason="post_run_check_failed", native=native, cron_job_id=claim["cron_job_id"]) from exc
+
+
+def _join_refresh(conn, claim, *, actor):
+    native = json.loads(claim["native"]) if claim["native"] is not None else None
+    result = {"kind": "cron", "cron_job_id": claim["cron_job_id"], "dispatch": native,
+              "joined": True, "refresh_state": claim["phase"]}
+    if claim["phase"] == "background":
+        try:
+            job = next((job for job in _jobs()["jobs"] if job["job_id"] == claim["cron_job_id"]), None)
+        except SpacesError as exc:
+            result["recovery"] = {"reason": "refresh_outcome_unknown", "verification": exc.to_dict()}
+            return result
+        stamp = job.get("last_run_at") if job else None
+        if (_seconds(stamp) is not None and claim["baseline_completion"] is not None
+                and stamp != json.loads(claim["baseline_completion"])):
+            if claim["created_one_shot"]:
+                with _after_run(native):
+                    _consume_one_shot(claim["cron_job_id"], native, actor=actor)
+            conn.execute("DELETE FROM refresh_claims WHERE space=? AND token=?", (claim["space"], claim["token"]))
+            return None
+        if job is None:
+            result["refresh_state"] = "unresolved"
+            result["recovery"] = {"reason": "refresh_outcome_unknown",
+                                  "message": "The native job is missing, not confirmed finished. Use Upkeep Remove to recover."}
+    elif claim["phase"] == "unresolved":
+        result["recovery"] = {"reason": "refresh_outcome_unknown",
+                              "message": "Native completion is unconfirmed. Use Upkeep Remove before retrying."}
+    return result
+
+
+def _cleanup_failed_refresh(jid, failure, *, actor, native, may_be_running):
+    pause_failure = None
+    try:
+        _mutate("pause", jid, reason=f"Living Spaces refresh by {actor} failed")
+    except SpacesError as unpaused:
+        pause_failure = unpaused
+    try:
+        if may_be_running:
+            if pause_failure is not None:
+                raise pause_failure
+        elif any(job["job_id"] == jid for job in _jobs()["jobs"]):
+            _mutate("remove", jid)
+    except SpacesError as cleanup:
+        if pause_failure is None:
+            state = f"Disabling it succeeded before cleanup was attempted. Job {jid} may remain paused and unlinked."
+            extra = {}
+        else:
+            state = (f"Disabling it also failed: {pause_failure.message}. "
+                     f"Job {jid} may still be enabled and consume quota, and may remain unlinked.")
+            extra = {"pause": pause_failure.to_dict()}
+        if native is not None:
+            extra["native"] = native
+        if may_be_running:
+            state += " Its execution may still be running, so it was not removed and its refresh claim is retained."
+        raise SpacesError("blocked", f"{failure.message}; cleanup of the newly created Hermes cron job {jid} also failed: "
+                          f"{cleanup.message}. {state}", reason="cron_cleanup_failed", orphan_job_id=jid,
+                          original=failure.to_dict(), cleanup=cleanup.to_dict(), **extra) from failure
+
+
 def refresh_now(sid, upkeep, *, actor):
     _scheduling_allowed()
     with db.write() as conn:
-        if _space(conn, sid)["status"] == "archived":
+        space = _space(conn, sid)
+        if space["status"] == "archived":
             raise SpacesError("archived", "Unarchive the Space before refreshing")
+        claim = _refresh_claim(conn, sid)
+        if claim and claim["space_created_at"] != space["created_at"]:
+            conn.execute("DELETE FROM refresh_claims WHERE space=? AND token=?", (sid, claim["token"]))
+            claim = None
+        if claim:
+            joined = _join_refresh(conn, claim, actor=actor)
+            if joined is not None:
+                return joined
         link = _link(conn, sid)
         created = not (link and link["kind"] == "agent")
         if created:
@@ -511,51 +643,58 @@ def refresh_now(sid, upkeep, *, actor):
                           name=_once_name(sid), no_agent=False, deliver="local", catch_up=True, paused=True)
         else:
             jid = link["cron_job_id"]
+        conn.execute("INSERT INTO refresh_claims(space,space_created_at,token,cron_job_id,created_one_shot,"
+                     "baseline_completion,phase,created_at) VALUES(?,?,?,?,?,?,'pending',?)",
+                     (sid, space["created_at"], uuid.uuid4().hex, jid, int(created), "null" if created else None, db.now()))
+        claim = _refresh_claim(conn, sid)
+        assert claim is not None
     dispatched = False
+    native = None
     try:
-        if created:
-            _mutate("resume", jid)
-        dispatched = True  # from here on, every SpacesError from _run_now carries the run reply as native
-        native = _run_now(sid, jid)
-        job = native.get("job") if isinstance(native, dict) else None
-        if isinstance(job, dict) and (job.get("executed") is False
-                                      or job.get("execution_skipped")
-                                      or job.get("execution_success") is False):
+        with db.write() as conn:
+            current = _space(conn, sid)
+            owned = _refresh_claim(conn, sid)
+            if (current["created_at"] != claim["space_created_at"] or owned is None
+                    or owned["token"] != claim["token"]):
+                raise SpacesError("blocked", "This refresh was removed before dispatch", reason="refresh_claim_lost")
+            if current["status"] == "archived":
+                raise SpacesError("archived", "Unarchive the Space before refreshing")
+            if created:
+                _mutate("resume", jid)
+        dispatched = True
+        native = _run_now(sid, jid, on_reply=lambda reply: _update_refresh_claim(claim, reply))
+        if _refresh_outcome(native) == "refused":
             raise SpacesError("blocked", "Hermes cron did not complete the refresh execution",
                               reason="native_refused", native=native)
     except SpacesError as failure:
-        if created:
-            pause_failure = None
-            try:
-                _mutate("pause", jid, reason=f"Living Spaces refresh by {actor} failed")
-            except SpacesError as unpaused:
-                pause_failure = unpaused
-            try:
-                if any(job["job_id"] == jid for job in _jobs()["jobs"]):
-                    _mutate("remove", jid)
-            except SpacesError as cleanup:
-                if pause_failure is None:
-                    state = f"Disabling it succeeded before cleanup was attempted. Job {jid} may remain paused and unlinked."
-                    extra = {}
-                else:
-                    state = (f"Disabling it also failed: {pause_failure.message}. "
-                             f"Job {jid} may still be enabled and consume quota, and may remain unlinked.")
-                    extra = {"pause": pause_failure.to_dict()}
-                if dispatched and "native" in failure.extra:
-                    extra["native"] = failure.extra["native"]
-                raise SpacesError("blocked", f"{failure.message}; cleanup of the newly created Hermes cron job {jid} also failed: "
-                                  f"{cleanup.message}. {state}",
-                                  reason="cron_cleanup_failed", orphan_job_id=jid,
-                                  original=failure.to_dict(), cleanup=cleanup.to_dict(), **extra) from failure
-        raise
+        if dispatched:
+            native = failure.extra.get("native", native)
+        terminal = not dispatched or _refresh_outcome(native) in ("completed", "refused")
+        try:
+            if created:
+                _cleanup_failed_refresh(jid, failure, actor=actor, native=native, may_be_running=not terminal)
+        except SpacesError as cleanup:
+            failure = cleanup
+            terminal = False
+        try:
+            _update_refresh_claim(claim, native, phase="unresolved", settled=terminal)
+        except SpacesError as claim_failure:
+            failure.extra["claim_error"] = claim_failure.to_dict()
+        raise failure
     # dispatch stays the verbatim native reply; one_shot records what happened to the owned job afterwards.
     result = {"kind": "cron", "cron_job_id": jid, "dispatch": native}
-    if created and isinstance(job, dict) and job.get("executed") is True:
+    outcome = _refresh_outcome(native)
+    try:
         with _after_run(native):
-            if job.get("execution_success") is True:
-                result["one_shot"] = _consume_one_shot(jid, native, actor=actor)
-            elif job.get("execution_mode") == "background":
-                result["one_shot"] = _consume_one_shot(jid, native, actor=actor, background=True)
+            if created and outcome in ("completed", "background"):
+                result["one_shot"] = _consume_one_shot(jid, native, actor=actor, background=outcome == "background")
+            _update_refresh_claim(claim, native, phase="unresolved", settled=outcome == "completed")
+    except SpacesError as failure:
+        try:
+            _update_refresh_claim(claim, native, phase="unresolved")
+        except SpacesError as claim_failure:
+            failure.extra["claim_error"] = claim_failure.to_dict()
+        raise
     return result
 
 
@@ -590,11 +729,12 @@ def _consume_one_shot(jid, native, *, actor, background=False):
 
 def pause_for_archive(conn, sid):
     link = _link(conn, sid)
+    claim = _refresh_claim(conn, sid)
     try:
-        targets = {job["job_id"] for job in _owned_jobs(sid, link, _jobs()["jobs"])}
+        targets = {job["job_id"] for job in _owned_jobs(sid, link, _jobs()["jobs"], claim=claim)}
         for jid in sorted(targets):
             _mutate("pause", jid, reason="Living Space archived")
-        if any(job.get("enabled") is not False for job in _owned_jobs(sid, link, _jobs()["jobs"])):
+        if any(job.get("enabled") is not False for job in _owned_jobs(sid, link, _jobs()["jobs"], claim=claim)):
             raise SpacesError("blocked", "This Space's upkeep pause could not be verified", reason="cron_unverified")
     except SpacesError as exc:
         raise SpacesError("blocked", "Could not pause this Space's upkeep, so it was not archived", reason=exc.message) from exc
@@ -604,11 +744,15 @@ def on_delete(conn, sid):
     """Remove future native work within the caller's Space deletion transaction."""
     _space(conn, sid)
     link = _link(conn, sid)
-    targets = {job["job_id"] for job in _owned_jobs(sid, link, _jobs()["jobs"])}
+    claim = _refresh_claim(conn, sid)
+    targets = {job["job_id"] for job in _owned_jobs(sid, link, _jobs()["jobs"], claim=claim)}
+    if claim:
+        targets.add(claim["cron_job_id"])
     for jid in sorted(targets):
         _mutate("remove", jid)
-    if _owned_jobs(sid, link, _jobs()["jobs"]):
+    if _owned_jobs(sid, link, _jobs()["jobs"], claim=claim):
         raise SpacesError("blocked", "This Space's upkeep removal could not be verified", reason="cron_unverified")
     _shim(sid).unlink(missing_ok=True)
     conn.execute("DELETE FROM upkeep_links WHERE space=?", (sid,))
+    conn.execute("DELETE FROM refresh_claims WHERE space=?", (sid,))
     return link is not None

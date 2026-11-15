@@ -59,6 +59,11 @@ CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY, space TEXT NOT NULL,
 CREATE TABLE IF NOT EXISTS upkeep_links(space TEXT NOT NULL REFERENCES spaces(id), cron_job_id TEXT NOT NULL UNIQUE,
   kind TEXT NOT NULL CHECK(kind IN ('agent','feed')), created_at REAL NOT NULL, created_by TEXT NOT NULL,
   PRIMARY KEY(space, cron_job_id));
+CREATE TABLE IF NOT EXISTS refresh_claims(space TEXT PRIMARY KEY REFERENCES spaces(id) ON DELETE CASCADE,
+  space_created_at REAL NOT NULL, token TEXT NOT NULL UNIQUE, cron_job_id TEXT NOT NULL,
+  created_one_shot INTEGER NOT NULL CHECK(created_one_shot IN (0,1)), baseline_completion TEXT,
+  phase TEXT NOT NULL CHECK(phase IN ('pending','background','unresolved')), native TEXT,
+  created_at REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS logs(id INTEGER PRIMARY KEY AUTOINCREMENT, space TEXT NOT NULL, session TEXT, rev INTEGER,
   at REAL NOT NULL, level TEXT NOT NULL, msg TEXT NOT NULL, attribution TEXT NOT NULL DEFAULT 'ingestion_head');
 CREATE INDEX IF NOT EXISTS changes_space_seq ON changes(space, seq);
