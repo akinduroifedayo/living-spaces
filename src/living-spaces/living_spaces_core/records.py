@@ -211,7 +211,12 @@ def upsert_sources(sid, collection, entries, *, actor):
 
     if not isinstance(entries, list):
         raise SpacesError("invalid", "entries must be an array")
-    limits.check(len(entries), limits.FEED_ENTRIES, "source entries")
+    feed_source = bool(entries) and all(
+        isinstance(entry, (tuple, list)) and len(entry) == 3
+        and isinstance(entry[2], dict) and entry[2].get("handler") == "feed"
+        for entry in entries
+    )
+    limits.check(len(entries), limits.FEED_ENTRIES if feed_source else limits.BATCH_OPS, "source entries")
     limits.identifier(collection, "collection")
     limits.text(actor, "actor")
     counts = {"added": 0, "updated": 0, "unchanged": 0}
