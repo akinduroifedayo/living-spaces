@@ -466,6 +466,13 @@ def delete_space(sid, *, actor, confirm):
         removed["upkeep"] = had_upkeep
         for table in ("changes", "recovery_points", "audit", "sessions", "runs", "logs"):
             conn.execute(f"DELETE FROM {table} WHERE space=?", (sid,))
+        conn.execute("""DELETE FROM blobs WHERE sha IN (
+            SELECT file.value FROM revisions, json_each(revisions.files) AS file
+            WHERE revisions.space=?
+            EXCEPT
+            SELECT file.value FROM revisions, json_each(revisions.files) AS file
+            WHERE revisions.space!=?
+        )""", (sid, sid))
         conn.execute("DELETE FROM spaces WHERE id=?", (sid,))
     return {"deleted": True, "removed": removed}
 

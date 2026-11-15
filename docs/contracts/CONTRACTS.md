@@ -272,6 +272,10 @@ Errors use HTTP 4xx with `{"error":{"code","message",...}}` (404 not_found, 400 
 
 Project ≤ 25 MB total, ≤ 600 files, file ≤ 8 MB. Record `data` ≤ 256 KB serialized, `source` ≤ 64 KB. ≤ 50,000 records per Space. Batch ≤ 500 ops. Logs keep the last 2,000 per Space. Bridge message ≤ 1 MB. Feed ≤ 3 MB, ≤ 1,000 entries per source. Revisions are kept forever in release 1, and blobs are deduplicated.
 
+Feed parsing and source ingest (`records.upsert_sources`) share `limits.FEED_ENTRIES`, currently 1,000 entries per source. Larger inputs fail with `limit` before record writes, without truncation. Each source ingest uses one transaction for all entries and their change rows, including the final Internet grant check for feeds. An entry failure or a denied grant rolls back the entire source ingest. User record batches remain independently capped at `limits.BATCH_OPS`, currently 500 operations.
+
+Deleting a Space collects blobs referenced by any of its historical revisions only when no revision of any surviving Space references the same SHA. Blob cleanup and the Space's database row deletions share one transaction. A failed transaction retains both revisions and blobs. Unrelated orphan blobs are not collected.
+
 ## 11. Sandbox (carried from the spike, `src/desktop/sandbox`)
 
 Nested srcdoc frames, `sandbox="allow-scripts"` only (opaque origin), the CSP below on both frames, and the shell frame's `frame-src 'none'` governing the inner frame's navigation. Project files become frame-local `blob:` URLs. Import maps resolve relative ESM and bare names from `manifest.imports`. CSP: `default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline' blob:; img-src blob: data:; font-src blob: data:; media-src blob: data:; worker-src blob:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; manifest-src 'none'; webrtc 'block'` (`webrtc` is declared but not enforced by this Chromium, a disclosed limit). Runtime errors, `console.*` and CSP violations go to `log` (batched). External links are offered by the host only, never by app navigation.
