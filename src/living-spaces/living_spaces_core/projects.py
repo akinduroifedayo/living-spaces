@@ -229,6 +229,8 @@ def create_space(name, *, description="", owner, files=None, manifest=None, libr
         at = db.now()
         conn.execute("INSERT INTO spaces(id,name,description,owner,status,data_version,accent,icon,created_at,updated_at) VALUES(?,?,?,?,'building',?,?,?,?,?)",
                      (sid, normalized["name"], normalized["description"], owner, normalized["data"]["version"], normalized["accent"], normalized["icon"], at, at))
+        from . import maintenance
+        maintenance.create_identity(conn, sid)
         grants._seed(conn, sid, normalized, author)
         if changed or supplied is not None or libraries:
             stored = _store_files(conn, {}, changed)
@@ -435,7 +437,8 @@ def set_status(sid, status, *, actor):
     if status not in ("archived", "active", "building"):
         raise SpacesError("invalid", "Invalid Space status")
     limits.text(actor, "actor")
-    with db.write() as conn:
+    from . import maintenance
+    with maintenance.control(sid, "archive" if status == "archived" else "status", actor=actor) as op, maintenance.transaction(op) as conn:
         space = db.space(conn, sid)
         if status == "archived" and space["status"] != "archived":
             upkeep.pause_for_archive(conn, sid)
@@ -446,8 +449,7 @@ def set_status(sid, status, *, actor):
                      (status, db.now() if status == "archived" else None, db.now(), sid))
         if status == "archived":
             conn.execute("UPDATE sessions SET closed_at=coalesce(closed_at,?) WHERE space=?", (db.now(), sid))
-    if status == "archived":
-        runs.cancel_pending(sid, "archived")
+            runs.cancel_pending(sid, "archived")
     return get_space(sid)
 
 
@@ -455,11 +457,10 @@ def delete_space(sid, *, actor, confirm):
     limits.text(actor, "actor")
     if confirm != sid:
         raise SpacesError("invalid", "Deletion confirmation must equal the Space id")
-    with db.read() as conn:
+    from . import maintenance
+    with maintenance.control(sid, "delete", actor=actor) as op, maintenance.transaction(op) as conn:
         db.space(conn, sid)
-    runs.cancel_pending(sid, "deleted")
-    with db.write() as conn:
-        db.space(conn, sid)
+        runs.cancel_pending(sid, "deleted")
         had_upkeep = upkeep.on_delete(conn, sid)
         removed = {table: conn.execute(f"SELECT count(*) FROM {table} WHERE space=?", (sid,)).fetchone()[0]
                    for table in ("records", "revisions")}

@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import threading
 import uuid
+from contextlib import nullcontext
 
-from . import db, feeds
+from . import db, feeds, maintenance
 from .errors import SpacesError
 
 STALE_SECONDS = 120
@@ -19,7 +20,8 @@ def _run(row):
 
 
 def get_run(run_id):
-    with db.read() as conn:
+    current = maintenance.connection()
+    with nullcontext(current) if current is not None else db.read() as conn:
         row = conn.execute("SELECT * FROM runs WHERE id=?", (run_id,)).fetchone()
     if row is None:
         raise SpacesError("not_found", "Refresh run not found")
@@ -51,7 +53,8 @@ def freshness(sid):
 
 
 def cancel_pending(sid, reason):
-    with db.write() as conn:
+    current = maintenance.connection()
+    with nullcontext(current) if current is not None else db.write() as conn:
         rows = conn.execute("SELECT * FROM runs WHERE space=? AND status IN ('queued','running')", (sid,)).fetchall()
         for row in rows:
             detail = json.loads(row["detail"])
@@ -97,11 +100,13 @@ def start_refresh(sid, *, trigger, actor, wait=False, session=None):
         row = conn.execute("SELECT * FROM runs WHERE space=? AND status IN ('queued','running') ORDER BY queued_at LIMIT 1", (sid,)).fetchone()
         if row:
             return _run(row)
+        attachment = maintenance.admit_feed(conn, sid) if not reason else None
         detail = {"reason": reason} if reason else {}
         conn.execute("INSERT INTO runs(id,space,trigger,handler,actor,status,queued_at,ended_at,changed,detail,heartbeat_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", (
             run_id, sid, trigger, handler, actor, "blocked" if reason else "queued", now, now if reason else None,
             json.dumps({"added": 0, "updated": 0, "unchanged": 0, "removed": 0}), json.dumps(detail), now,
         ))
+        maintenance.bind_feed(conn, sid, run_id, attachment)
     if not reason:
         if wait:
             _work(run_id, manifest_upkeep)
@@ -119,6 +124,8 @@ def _require_running(run_id):
     if run["status"] != "running" or run["detail"].get("cancel_reason"):
         raise _Canceled()
     with db.read() as conn:
+        if not maintenance.feed_is_current(conn, run_id):
+            raise _Canceled()
         space = conn.execute("SELECT status FROM spaces WHERE id=?", (run["space"],)).fetchone()
     if space is None or space["status"] == "archived":
         raise _Canceled()
@@ -149,7 +156,8 @@ def _work(run_id, upkeep):
             _require_running(run_id)
             result = {"id": source.get("id"), "ok": False, "added": 0, "updated": 0, "unchanged": 0}
             try:
-                _, as_of = feeds.refresh_source(run["space"], source, actor=run["actor"], before_write=lambda: _require_running(run_id), counts=result)
+                with maintenance.feed_writes(run_id):
+                    _, as_of = feeds.refresh_source(run["space"], source, actor=run["actor"], before_write=lambda: _require_running(run_id), counts=result)
                 result["ok"] = True
                 source_as_of = max(source_as_of or as_of, as_of)
             except _Canceled:
@@ -157,6 +165,8 @@ def _work(run_id, upkeep):
             except Exception as exc:
                 result["error"] = str(exc)
                 if isinstance(exc, SpacesError):
+                    if exc.extra.get("reason") == "feed_canceled":
+                        raise _Canceled() from exc
                     result["error_detail"] = exc.to_dict()
                     if "limit" in exc.extra and "actual" in exc.extra:
                         result["error"] += f" (limit {exc.extra['limit']}, actual {exc.extra['actual']})"

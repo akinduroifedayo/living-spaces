@@ -64,6 +64,19 @@ CREATE TABLE IF NOT EXISTS refresh_claims(space TEXT PRIMARY KEY REFERENCES spac
   created_one_shot INTEGER NOT NULL CHECK(created_one_shot IN (0,1)), baseline_completion TEXT,
   phase TEXT NOT NULL CHECK(phase IN ('pending','background','unresolved')), native TEXT,
   created_at REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS maintenance_spaces(space TEXT PRIMARY KEY REFERENCES spaces(id) ON DELETE CASCADE,
+  incarnation TEXT NOT NULL UNIQUE, link_generation INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS maintenance_operations(token TEXT PRIMARY KEY, space TEXT NOT NULL,
+  incarnation TEXT NOT NULL, command TEXT NOT NULL, owner TEXT NOT NULL, cron_job_id TEXT,
+  link_generation INTEGER NOT NULL, phase TEXT NOT NULL, outcome TEXT, native TEXT, error TEXT,
+  created_at REAL NOT NULL);
+CREATE INDEX IF NOT EXISTS maintenance_active ON maintenance_operations(space,incarnation,phase);
+CREATE TABLE IF NOT EXISTS maintenance_effects(id TEXT PRIMARY KEY,
+  operation TEXT NOT NULL REFERENCES maintenance_operations(token), action TEXT NOT NULL,
+  cron_job_id TEXT, phase TEXT NOT NULL, native TEXT, verification TEXT,
+  obligation TEXT, resolved INTEGER NOT NULL DEFAULT 0 CHECK(resolved IN (0,1)));
+CREATE TABLE IF NOT EXISTS maintenance_feeds(run TEXT PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,
+  incarnation TEXT NOT NULL, operation TEXT REFERENCES maintenance_operations(token));
 CREATE TABLE IF NOT EXISTS logs(id INTEGER PRIMARY KEY AUTOINCREMENT, space TEXT NOT NULL, session TEXT, rev INTEGER,
   at REAL NOT NULL, level TEXT NOT NULL, msg TEXT NOT NULL, attribution TEXT NOT NULL DEFAULT 'ingestion_head');
 CREATE INDEX IF NOT EXISTS changes_space_seq ON changes(space, seq);
@@ -115,6 +128,8 @@ def connect() -> sqlite3.Connection:
                 link_native_upkeep(conn)
                 add_action_refusal_reason(conn)
                 add_runtime_diagnostics(conn)
+                from . import maintenance
+                maintenance.initialize(conn)
                 conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 conn.execute("COMMIT")
             except BaseException:
@@ -141,6 +156,8 @@ def write():
     try:
         conn.execute("BEGIN IMMEDIATE")
         try:
+            from . import maintenance
+            maintenance.fence_feed_write(conn)
             yield conn
         except BaseException:
             conn.execute("ROLLBACK")
