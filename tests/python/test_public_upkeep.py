@@ -86,8 +86,6 @@ class PublicUpkeepTests(unittest.TestCase):
 
     def test_run_preserves_queue_forward_inline_failure_and_skipped_responses(self):
         fx = self.fx
-        sid = fx.make()
-        fx.schedule(sid)
         replies = [
             {"success": True, "forwarded_to_gateway": True, "note": "Forwarded"},
             {"success": True, "job": {"job_id": "synthetic", "executed": True,
@@ -99,6 +97,8 @@ class PublicUpkeepTests(unittest.TestCase):
         ]
         for reply in replies:
             with self.subTest(reply=reply):
+                sid = fx.make()
+                fx.schedule(sid)
                 fx.ctx.run_reply = reply
                 job = reply.get("job", {})
                 if (job.get("executed") is False or job.get("execution_success") is False
@@ -111,6 +111,8 @@ class PublicUpkeepTests(unittest.TestCase):
                     self.assertEqual(result["dispatch"], reply)
                     self.assertNotIn("triggered", result)
                 self.assertEqual(fx.upkeep.upkeep_action(sid, "run", actor="user")["dispatch"], reply)
+        sid = fx.make()
+        fx.schedule(sid)
         fx.ctx.run_reply = {"success": False, "error": "Provider refused"}
         with self.assertRaises(fx.core.SpacesError) as caught:
             fx.runs.start_refresh(sid, trigger="manual", actor="user")
