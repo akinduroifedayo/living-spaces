@@ -14,3 +14,4 @@ harness/out/
 *.db
 *.db-wal
 *.db-shm
+.fv-tools/

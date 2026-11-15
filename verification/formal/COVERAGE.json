@@ -1,0 +1,227 @@
+{
+  "repo_baseline": "4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98",
+  "checks": {
+    "refresh_model": {
+      "kind": "modeled-only",
+      "tool": "TLA+ / TLC 1.7.4",
+      "runs": "verification/formal/tla.py RUNS",
+      "model": "verification/formal/refresh/RefreshOneShot.tla",
+      "sync_commit": "4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98",
+      "covers": {
+        "src/living-spaces/living_spaces_core/upkeep.py": [
+          "ONE_SHOT_SLOT",
+          "_call",
+          "_mutate",
+          "_run_now",
+          "refresh_now",
+          "_consume_one_shot",
+          "upkeep_action (pause/remove)",
+          "pause_for_archive",
+          "on_delete"
+        ],
+        "src/living-spaces/living_spaces_core/projects.py": [
+          "set_status (archive)",
+          "delete_space"
+        ]
+      },
+      "properties": [
+        "AtMostOnce",
+        "NoSuccessForSkippedRun",
+        "NoFalseRefusal",
+        "NoRefusalAfterSuccessfulRun (finding F1)"
+      ],
+      "bounds": "one Refresh now request; one user action (pause, remove, archive or delete) at any point; cron resume/pause/remove/list refusals on or off; one post-run DB failure; linked or fresh start; every interleaving with the native scheduler"
+    },
+    "refresh_one_shot": {
+      "kind": "generated-real-code-tested",
+      "tool": "Python 3 exhaustive bounded enumeration, fake public cron",
+      "script": "verification/formal/checks/refresh_one_shot.py",
+      "sync_commit": "4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98",
+      "covers": {
+        "src/living-spaces/living_spaces_core/upkeep.py": [
+          "refresh_now",
+          "_create",
+          "_mutate",
+          "_run_now",
+          "_consume_one_shot",
+          "_call",
+          "_jobs",
+          "pause_for_archive",
+          "on_delete"
+        ],
+        "src/living-spaces/living_spaces_core/projects.py": [
+          "set_status",
+          "delete_space"
+        ]
+      },
+      "properties": [
+        "AtMostOnce",
+        "NoSuccessForSkipped",
+        "NoFalseRefusal",
+        "NoLeftoverOneShot"
+      ],
+      "bounds": "2844 scenarios: 3 starts x 3 run outcomes x 4 mid-run events x every set of at most two refusals among the first three resume/pause/remove/list calls"
+    },
+    "refresh_concurrency": {
+      "kind": "generated-real-code-tested",
+      "tool": "Python 3 threads with a barrier inside the fake cron run",
+      "script": "verification/formal/checks/refresh_concurrency.py",
+      "sync_commit": "4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98",
+      "covers": {
+        "src/living-spaces/living_spaces_core/runs.py": [
+          "start_refresh"
+        ],
+        "src/living-spaces/living_spaces_core/upkeep.py": [
+          "refresh_now"
+        ]
+      },
+      "properties": [
+        "OneRunAtATime (finding F3)"
+      ],
+      "bounds": "3 trigger pairs (manual+chat, manual+manual, chat+chat), both requests held inside their native run together"
+    },
+    "records_integrity": {
+      "kind": "generated-real-code-tested",
+      "tool": "Python 3 seeded random operation sequences against a reference model",
+      "script": "verification/formal/checks/records_integrity.py",
+      "sync_commit": "4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98",
+      "covers": {
+        "src/living-spaces/living_spaces_core/records.py": [
+          "_concurrency",
+          "_put",
+          "put",
+          "_delete",
+          "delete",
+          "_batch",
+          "batch",
+          "_upsert_source",
+          "upsert_source",
+          "changes_since",
+          "_next_rev",
+          "create_recovery_point",
+          "restore_recovery_point"
+        ],
+        "src/living-spaces/living_spaces_core/db.py": [
+          "write",
+          "space"
+        ]
+      },
+      "properties": [
+        "Conflict",
+        "RevMonotonic",
+        "UserOwned",
+        "BatchAtomic",
+        "Isolation",
+        "Cursor"
+      ],
+      "bounds": "seeds 0..119, 30 steps each (3600 steps), 2 Spaces x 2 collections x 3 ids"
+    },
+    "bridge_authority": {
+      "kind": "mechanically-verified-within-bound",
+      "tool": "Python 3 exhaustive enumeration on real bridge.dispatch",
+      "script": "verification/formal/checks/bridge_authority.py",
+      "sync_commit": "4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98",
+      "covers": {
+        "src/living-spaces/living_spaces_core/bridge.py": [
+          "_OPS",
+          "dispatch",
+          "_call",
+          "_mutate"
+        ],
+        "src/living-spaces/living_spaces_core/sessions.py": [
+          "open_session",
+          "close_session",
+          "_require",
+          "require"
+        ],
+        "src/living-spaces/living_spaces_core/grants.py": [
+          "_check",
+          "check",
+          "decide"
+        ]
+      },
+      "properties": [
+        "Authority",
+        "NoEffect"
+      ],
+      "bounds": "800 cases: 8 grant sets x 5 session kinds x 10 ops x space-arg spoof on/off; net.fetch and bot.request are excluded"
+    },
+    "delete_residue": {
+      "kind": "generated-real-code-tested",
+      "tool": "Python 3 scenario on real delete_space with schema introspection",
+      "script": "verification/formal/checks/delete_residue.py",
+      "sync_commit": "4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98",
+      "covers": {
+        "src/living-spaces/living_spaces_core/projects.py": [
+          "create_space (id reuse)",
+          "delete_space"
+        ],
+        "src/living-spaces/living_spaces_core/upkeep.py": [
+          "on_delete"
+        ],
+        "src/living-spaces/living_spaces_core/db.py": [
+          "DDL"
+        ]
+      },
+      "properties": [
+        "Gone",
+        "Untouched",
+        "Fresh",
+        "Blobs (finding F2)"
+      ],
+      "bounds": "every table with a space column at run time; populated: records, changes, revisions, recovery_points, runs, logs, sessions, audit, grants, upkeep_links; maintainers/action_intents/action_keys are checked but not populated"
+    },
+    "net_boundary": {
+      "kind": "generated-real-code-tested",
+      "tool": "Python 3 seeded generated URLs, DNS answers and redirects; resolver and socket faked",
+      "script": "verification/formal/checks/net_boundary.py",
+      "sync_commit": "4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98",
+      "covers": {
+        "src/living-spaces/living_spaces_core/net.py": [
+          "_target",
+          "_public",
+          "_addresses",
+          "_fetch_public"
+        ]
+      },
+      "properties": [
+        "NoPrivateConnect",
+        "Pinned",
+        "HttpsOnly",
+        "CredentialsStay"
+      ],
+      "bounds": "seeds 0..19999, up to 4 redirects, 1-3 DNS answers per name"
+    },
+    "inspection_readonly": {
+      "kind": "mechanically-verified-within-bound",
+      "tool": "Python 3 exhaustive enumeration on real inspection.Snapshot/PassiveAdapter vs live bridge.dispatch; no browser",
+      "script": "verification/formal/checks/inspection_readonly.py",
+      "sync_commit": "8008dcc6f77c3f5cb51f966ab1241bd9f89dc37a",
+      "covers": {
+        "src/living-spaces/living_spaces_core/inspection.py": [
+          "_open_snapshot",
+          "Snapshot",
+          "PassiveAdapter.call",
+          "PassiveAdapter._call",
+          "PassiveAdapter._order_and_page"
+        ],
+        "src/living-spaces/living_spaces_core/records.py": [
+          "_query_args",
+          "_select",
+          "query"
+        ],
+        "src/living-spaces/living_spaces_core/projects.py": [
+          "_resolve",
+          "resolve_space"
+        ]
+      },
+      "properties": [
+        "ReadOnly",
+        "Refused",
+        "SameAsLive",
+        "Snapshot"
+      ],
+      "bounds": "6768 calls: 8 grant sets x 2 (space-arg spoof) x 423 calls (405 queries = 5 where x 9 order x 3 limit x 3 offset, plus get/meta/runs/log/unknown/6 writes) over 7 records; not applicable on trees without inspection.py; the Chromium runner, DevTools pipe, redaction and network blocking are NOT covered"
+    }
+  }
+}
