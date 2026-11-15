@@ -123,8 +123,10 @@ def _redact(text):
 
 
 # A credential assignment whose quoted value runs to the end of the text: the closing quote was cut off.
+# The two value alternatives are disjoint (an escape starts with a backslash, an ordinary character never does),
+# so matching is linear; a dangling backslash at the cut is allowed explicitly.
 _CUT_CREDENTIAL = re.compile(r'''(?<![\w])(?P<prefix>(?P<q>["']?)(?:''' + logs._CREDENTIAL_KEY.pattern
-                             + r''')(?P=q)\s*[:=]\s*)(?P<open>["'])(?:\\.|(?!(?P=open)).)*\Z''',
+                             + r''')(?P=q)\s*[:=]\s*)(?P<open>["'])(?:\\.|(?!(?P=open))[^\\])*\\?\Z''',
                              re.IGNORECASE | re.DOTALL)
 
 
@@ -685,6 +687,7 @@ class _Run:
     def serve(self, drained):
         """Answer queued bridge requests within the deadline and the reply limits, sending replies in batches."""
         batch, size, answered = [], 0, False
+        active = False                       # host-side denials are bridge activity too
         for request in drained.get("requests", []):
             if time.monotonic() >= self.b.deadline:
                 raise _Timeout()
@@ -714,12 +717,13 @@ class _Run:
                 # The sandbox host refuses ungranted operations itself, before they reach the adapter.
                 op = event["op"] if event["op"] in bridge._OPS else "unknown"
                 self.adapter.denied[op] = self.adapter.denied.get(op, 0) + 1
+                active = True
             if kind in ("error", "log-overflow", "reloaded"):
                 self.events.append({"kind": kind, **({"message": _clip(event["message"], 300)} if event.get("message") else {})})
         if batch:
             self._reply(batch)
             answered = True
-        return answered
+        return answered or active
 
     def _reply(self, items):
         body = ",".join(items)

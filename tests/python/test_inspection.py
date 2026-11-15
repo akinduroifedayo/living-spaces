@@ -617,9 +617,14 @@ class ReviewThreeRepairTests(InspectionCase):
         self.assertIn("[REDACTED]", report["text"]["content"])
 
     def test_s1_a_generic_secret_cut_at_the_clip_is_not_partly_returned(self):
+        # Review-4 F3: the input must actually exceed text_limit + TEXT_SLACK, so the browser clip cuts the token.
         token = "Q" * 30 + "abcdefghijklmnopqrstuvwxyz0123456789" * 20         # one long secret-shaped token
-        sid = self.space("G", "<main>" + "word " * 50 + token + "</main>")
-        report = self.inspect(sid, text_limit=4000)
+        body = "word " * 50 + token
+        self.assertGreater(len(body), 400 + inspection.TEXT_SLACK)
+        sid = self.space("G", "<main>" + body + "</main>")
+        report = self.inspect(sid, text_limit=400)
+        self.assertTrue(report["text"]["truncated"])
+        self.assertGreater(report["text"]["chars"], 400 + inspection.TEXT_SLACK)
         self.assertNotIn("QQQQ", report["text"]["content"], report["text"])
 
     def test_s4_launch_failure_reports_the_real_cleanup_receipt(self):
@@ -714,6 +719,42 @@ class ReviewThreeProtocolTests(InspectionCase):
         reply = adapter.call("data.query", {"collection": "items", "limit": 2})
         self.assertTrue(reply["ok"], reply)
         self.assertEqual((len(reply["result"]["records"]), reply["result"]["total"]), (2, 3))
+
+
+class ReviewFourRepairTests(InspectionCase):
+    """Frozen regressions for review-4 (Codex gpt-6-astra, REJECT at af49a0a). Each failed before its repair."""
+
+    def test_q1_backslash_runs_redact_in_linear_time(self):
+        for n in (40, 400, 4000):
+            for text in ('password="' + "\\" * n + 'x" end', 'password="' + "\\" * n, "api_key='" + "\\" * n + "'"):
+                started = time.monotonic()
+                inspection._redact_cut(text)
+                self.assertLess(time.monotonic() - started, 0.5, (n, text[:20]))
+
+    def test_q1_control_cut_and_closed_values_still_redact(self):
+        self.assertNotIn("secret", inspection._redact_cut('password="sec\\"ret secret'))
+        self.assertNotIn("secret", inspection._redact_cut('password="secret\\'))   # ends in a dangling escape
+        self.assertIn("visible", inspection._redact_cut('password="x" visible'))
+
+    @needs_browser
+    def test_q2_continuous_denied_requests_are_not_settled(self):
+        sid = self.space("Deny", '<main>static</main><script type="module">'
+                         'setInterval(() => space.get("notes", "n").catch(() => {}), 200)</script>')
+        grants.decide(sid, "data", "deny", actor="user")
+        report = self.inspect(sid, timeout_s=5)
+        self.assertEqual(report["outcome"], "timed_out", report)
+        self.assertFalse(report["readiness"]["settled"])
+        self.assertEqual(report["readiness"]["reason"], "bridge_still_active")
+        self.assertGreater(report["denied"].get("data.get", 0), 5)
+
+    @needs_browser
+    def test_q2_control_one_denial_then_quiet_still_settles(self):
+        sid = self.space("Once", '<main>static</main><script type="module">'
+                         'space.get("notes", "n").catch(() => {})</script>')
+        grants.decide(sid, "data", "deny", actor="user")
+        report = self.inspect(sid)
+        self.assertEqual(report["outcome"], "loaded", report)
+        self.assertEqual(report["denied"], {"data.get": 1})
 
 
 class BoundaryTests(InspectionCase):
