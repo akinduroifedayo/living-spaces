@@ -1058,6 +1058,49 @@ class ReviewEightRepairTests(InspectionCase):
         self.assertEqual(report["text"]["content"], "own:saved value:1", report["text"])
 
 
+class ReviewNineRepairTests(InspectionCase):
+    """Frozen regressions for review-9 (Codex gpt-6-astra, REJECT at 91d2010). Each failed before its repair."""
+
+    finish = ReviewFiveRepairTests.finish
+
+    CONTAINERS = [json.dumps({"authorization": {"token": "demo-only-secret", "padding": "ordinary words " * 100}}),
+                  json.dumps({"password": ["demo-only-secret", "ordinary words " * 100]}),
+                  'api_key = {"inner": "demo-only-secret", "pad": "' + "w " * 300 + '"}',
+                  "lead text " * 5 + json.dumps({"a": 1, "client_secret": [["demo-only-secret"] * 50]})]
+
+    def test_w1_cut_credential_containers_are_redacted_in_body_and_title(self):
+        for text in self.CONTAINERS:
+            with self.subTest(text=text[:40]):
+                out = self.finish(text, title=text)
+                self.assertNotIn("demo-only-secret", out["content"])
+                self.assertNotIn("demo-only-secret", out["title"])
+                self.assertIn("[REDACTED]", out["content"])
+
+    def test_w1_control_uncut_json_is_still_redacted_structurally(self):
+        text = json.dumps({"authorization": {"token": "demo-only-secret"}, "note": "kept"})
+        out = inspection._redact_cut(text, cut=False)
+        self.assertNotIn("demo-only-secret", out)
+        self.assertIn("kept", out)
+
+    def test_w1_control_cut_text_without_credentials_is_kept(self):
+        text = json.dumps({"settings": {"theme": "dark", "padding": "ordinary words " * 100}})
+        out = self.finish(text)
+        self.assertTrue(out["content"].startswith('{"settings": {"theme": "dark"'), out["content"])
+
+    def test_w2_complete_unicode_text_is_not_reported_truncated(self):
+        run = type("R", (), {"text_limit": 2, "entries": [], "counts": {"error": 0}, "dropped": 0,
+                             "network_blocked": 0, "network": [], "events": [], "host_notices": {}, "booted": True,
+                             "stable_since": None})()
+        adapter = type("A", (), {"lifecycle": "loaded", "guest_logs": {}, "refused": {}, "denied": {}, "served": {}})()
+        report = {"readiness": {}, "limitations": [], "outcome": "loaded",
+                  "text": {"text": "🟢🟢", "chars": 4, "title": "", "title_chars": 0, "text_cut": False,
+                           "title_cut": False, "nodes": 1, "images": 0, "canvases": 0, "svgs": 0,
+                           "failure": False, "mutations": 0}}
+        inspection._finish(run, adapter, report)
+        self.assertEqual(report["text"]["content"], "🟢🟢")
+        self.assertFalse(report["text"]["truncated"])
+
+
 class BoundaryTests(InspectionCase):
     def test_unavailable_renderer_is_reported_not_faked(self):
         sid = self.space("Any", "<main>x</main>")

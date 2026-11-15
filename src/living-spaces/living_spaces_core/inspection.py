@@ -134,14 +134,57 @@ _CUT_CREDENTIAL = re.compile(r'''(?<![\w])(?P<prefix>(?P<q>["']?)(?:''' + logs._
 _CUT_BEARER = re.compile(r'''\b(?P<prefix>Bearer\s+)(?P<open>["'])(?:\\.|(?!(?P=open))[^\\])*\\?\Z''',
                          re.IGNORECASE | re.DOTALL)
 _PARTIAL_TOKEN = re.compile(r"\S+\Z")
+# A credential key whose value is an object or array. Cut JSON no longer parses, so logs.redact's structural
+# redaction cannot see it; the whole container (through its close, or through the cut) is redacted instead.
+_CREDENTIAL_CONTAINER = re.compile(r'''(?<![\w])(?P<prefix>(?P<q>["']?)(?:''' + logs._CREDENTIAL_KEY.pattern
+                                   + r''')(?P=q)\s*[:=]\s*)(?=[\[{])''', re.IGNORECASE)
+
+
+def _container_end(text, start):
+    """Index just past the bracket closing text[start], or len(text) when the cut came first. Linear."""
+    depth, quote, index = 0, None, start
+    while index < len(text):
+        char = text[index]
+        if quote:
+            if char == "\\":
+                index += 1
+            elif char == quote:
+                quote = None
+        elif char in "\"'":
+            quote = char
+        elif char in "[{":
+            depth += 1
+        elif char in "]}":
+            depth -= 1
+            if depth == 0:
+                return index + 1
+        index += 1
+    return len(text)
+
+
+def _redact_containers(text):
+    out, position = [], 0
+    while True:
+        match = _CREDENTIAL_CONTAINER.search(text, position)
+        if not match:
+            break
+        end = _container_end(text, match.end())
+        out.append(text[position:match.end()] + '"[REDACTED]"')
+        position = end
+    return "".join(out) + text[position:]
 
 
 def _redact_cut(text, cut=True):
-    """Redact text that may have been cut short. When it was, the final unfinished token is dropped (an unquoted
-    or generic secret cut short no longer looks like one), and a quoted credential or Bearer value that runs to
-    the end is treated as secret. Closed values are left to logs.redact, as everywhere else."""
+    """Redact text that may have been cut short. Credential objects/arrays are always redacted (through their
+    close, or through the cut). When cut, the final unfinished token is dropped (an unquoted or generic secret cut
+    short no longer looks like one), and a quoted credential or Bearer value running to the end is treated as
+    secret. Closed scalar values are left to logs.redact, as everywhere else."""
     if cut:
         text = _PARTIAL_TOKEN.sub("", text)
+    # Credential objects/arrays are redacted whether or not the text was cut: logs.redact only sees them when the
+    # whole text is JSON, and inspection output may be stricter than the shared log redactor.
+    text = _redact_containers(text)
+    if cut:
         text = _CUT_CREDENTIAL.sub(lambda match: match["prefix"] + '"[REDACTED]"', text)
         text = _CUT_BEARER.sub(lambda match: match["prefix"] + "[REDACTED]", text)
     return _redact(text)
@@ -1002,7 +1045,8 @@ def _finish(run, adapter, report):
         # clipping, so a clipped secret is still caught.
         clean = _redact_cut(text, cut=bool(sample.get("text_cut")))    # the browser says whether it cut (UTF-16)
         report["text"] = {"content": clean[:run.text_limit], "chars": chars,
-                          "truncated": chars > run.text_limit or len(clean) > run.text_limit,
+                          # The browser's own cut flag, or the Python-side clip; never UTF-16 vs code points.
+                          "truncated": bool(sample.get("text_cut")) or len(clean) > run.text_limit,
                           "title": _clip(_redact_cut(sample["title"],
                                                      cut=bool(sample.get("title_cut"))), 200)}
         if not text.strip() and not (sample["images"] or sample["canvases"] or sample["svgs"]):
