@@ -1308,6 +1308,34 @@ class ReviewThirteenRepairTests(InspectionCase):
                                                   "text": "x", "title": ""}))
 
 
+class ReviewFourteenRepairTests(InspectionCase):
+    """Frozen regressions for review-14 (Codex gpt-6-astra, ACCEPT-WITH-FIXES at f5ebd67). Each failed before repair."""
+
+    def test_bb1_malformed_denied_events_are_counted_as_activity(self):
+        run = ReviewSixRepairTests.fake_run(self)  # type: ignore[arg-type]
+        run.adapter.denied = {}
+        for op in (None, 7, {"x": 1}, "data.put"):
+            with self.subTest(op=op):
+                self.assertTrue(run.serve({"requests": [], "events": [{"kind": "denied", "op": op}]}))
+        self.assertEqual(run.adapter.denied, {"unknown": 3, "data.put": 1})
+
+    @needs_browser
+    def test_bb2_a_guest_console_error_with_the_notice_text_is_counted(self):
+        notice = inspection.HOST_NOTICES[0].replace("'", "\\'")
+        sid = self.space("Mimic", f"<main>m</main><script type=module>console.error('{notice}')</script>")
+        report = self.inspect(sid)
+        self.assertEqual(report["outcome"], "loaded_with_errors", report)
+        self.assertEqual(report["counts"].get("error"), 1, report["counts"])
+
+    @needs_browser
+    def test_bb2_control_the_real_browser_notice_is_still_set_aside(self):
+        sid = self.space("Quiet", "<main>q</main>")
+        report = self.inspect(sid)
+        self.assertEqual(report["outcome"], "loaded", report)
+        self.assertEqual(report["counts"].get("error", 0), 0, report)
+        self.assertTrue(report["host_notices"], report)            # Chrome 157 emits it; it is reported, not hidden
+
+
 class BoundaryTests(InspectionCase):
     def test_unavailable_renderer_is_reported_not_faked(self):
         sid = self.space("Any", "<main>x</main>")

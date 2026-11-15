@@ -60,6 +60,7 @@ MAX_QUERY_BYTES = 32 * 1024 * 1024                       # stored record bytes o
 # Chromium does not know the shell's `webrtc 'block'` CSP directive and says so once per sandboxed document. It is
 # emitted for the packaged shell on every Space, so it is reported apart from the Space's own errors.
 HOST_NOTICES = ("Unrecognized Content-Security-Policy directive 'webrtc'.",)
+HOST_NOTICE_SOURCE = "browser:security"        # Log.entryAdded source Chrome 157 uses for that notice
 # The host page is served by DevTools itself (never the network) from an https origin, so the Space gets a secure
 # context as it does in Desktop; crypto.randomUUID and other secure-context APIs then behave the same.
 HOST_URL = "https://inspect.living-spaces.invalid/"
@@ -736,7 +737,9 @@ class _Run:
         level = {"warn": "warning", "assert": "error", "log": "info", "debug": "info", "verbose": "info",
                  "trace": "info", "dir": "info", "table": "info"}.get(level, level)
         level = level if level in self.counts else "info"
-        if text in HOST_NOTICES:
+        # Only the browser's own security log entry is set aside; the same words from guest console or exception
+        # output are ordinary guest errors and are counted.
+        if source == HOST_NOTICE_SOURCE and text in HOST_NOTICES:
             self.host_notices[text] = self.host_notices.get(text, 0) + 1
             return
         self.counts[level] += 1
@@ -920,9 +923,11 @@ class _Run:
                 self.booted = True
             elif kind == "reloaded":
                 self.reloaded = True
-            elif kind == "denied" and isinstance(event.get("op"), str):
-                # The sandbox host refuses ungranted operations itself, before they reach the adapter.
-                op = event["op"] if event["op"] in bridge._OPS else "unknown"
+            elif kind == "denied":
+                # The sandbox host refuses ungranted operations itself, before they reach the adapter. Every denial
+                # counts as activity, including malformed ones (a non-string op is counted as "unknown").
+                op = event.get("op")
+                op = op if isinstance(op, str) and op in bridge._OPS else "unknown"
                 self.adapter.denied[op] = self.adapter.denied.get(op, 0) + 1
                 active = True
             if kind in ("error", "log-overflow", "reloaded"):
