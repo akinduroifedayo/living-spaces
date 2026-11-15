@@ -6,11 +6,14 @@ real code with generated inputs: hosts written as names, dotted, decimal, hex, o
 private and public addresses, DNS answers that mix private and public addresses, and up to four redirects.
 
 Properties, judged by an independent deny list (not the code's own _public):
-  NoPrivateConnect   no connection is ever opened to loopback, private, link-local, CGNAT, multicast, reserved,
+  VettedIpArgument   _connection is never passed loopback, private, link-local, CGNAT, multicast, reserved,
                      unspecified or broadcast space, including IPv4 embedded in IPv6 (mapped, NAT64, 6to4)
-  Pinned             the address connected to is one the resolver returned for that hop's host
-  HttpsOnly          every connection is HTTPS on port 443 or 8443
+  ResolvedIpArgument the address passed to _connection is one the resolver returned for that hop's host
+  PortAllowlist      _connection receives only port 443 or 8443 after URL validation
   CredentialsStay    Authorization and Cookie are never sent after a redirect to another host or port
+
+The transport is faked in full, including _PinnedHTTPS. This does not check actual socket pinning, TLS certificate
+validation or SNI. The properties describe arguments crossing that boundary, not real network connections.
 """
 from __future__ import annotations
 
@@ -71,7 +74,8 @@ class World:
     def __init__(self, rng):
         self.rng = rng
         self.dns = {}
-        self.connections = []   # (host, port, ip, headers)
+        self.connections = []
+        self.opened = []
         self.redirects = []
         self.next_location = []
         self.resolved = {}
@@ -87,6 +91,7 @@ class World:
         return list(answers)
 
     def connection(self, host, port, ip, timeout):
+        self.opened.append((host, port, ip))
         world = self
 
         class Response:
@@ -154,16 +159,23 @@ def check(core, home):
             stats["blocked" if exc.code == "blocked" else "invalid"] += 1
         stats["scenarios"] += 1
         story = f"start {start}, redirects {list(zip(world.redirects, world.next_location))}, DNS {world.dns}"
+        for host, port, ip in world.opened:
+            if denied(ip) or any(denied(a) for a in world.resolved.get(host, ())):
+                raise Violation(f"VettedIpArgument: passed {ip} for {host!r} with an unsafe address in its DNS answers. {story}")
+            if ip not in world.resolved.get(host, set()) | {literal(host)}:
+                raise Violation(f"ResolvedIpArgument: passed {ip}, which the resolver did not return for {host!r}. {story}")
+            if port not in (443, 8443):
+                raise Violation(f"PortAllowlist: passed port {port}. {story}")
         first = None
         crossed = False
         for host, port, ip, headers in world.connections:
             stats["connections"] += 1
             if denied(ip):
-                raise Violation(f"NoPrivateConnect: connected to {ip} for host {host!r}. {story}. connections {world.connections}")
+                raise Violation(f"VettedIpArgument: passed {ip} for host {host!r}. {story}. requests {world.connections}")
             if ip not in world.resolved.get(host, set()) | {literal(host)}:
-                raise Violation(f"Pinned: connected to {ip}, which no resolver answer for {host!r} gave. {story}")
+                raise Violation(f"ResolvedIpArgument: passed {ip}, which no resolver answer for {host!r} gave. {story}")
             if port not in (443, 8443):
-                raise Violation(f"HttpsOnly: connected to port {port}. {story}")
+                raise Violation(f"PortAllowlist: passed port {port}. {story}")
             first = first or (host, port)
             crossed = crossed or (host, port) != first
             stats["cross_host_hops"] += crossed

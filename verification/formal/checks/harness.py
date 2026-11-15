@@ -40,7 +40,7 @@ def main(check):
     except Violation as exc:
         print(f"VIOLATION: {exc}")
         sys.exit(1)
-    except Exception as exc:  # a harness or modeling error, never a pass
+    except Exception as exc:
         import traceback
         traceback.print_exc()
         print(f"ERROR: {type(exc).__name__}: {exc}")

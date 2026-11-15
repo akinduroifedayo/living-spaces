@@ -26,9 +26,9 @@ IDS = ("a", "b", "c")
 
 class Model:
     def __init__(self):
-        self.rows = {}      # (sid, coll, rid) -> {"data", "source", "meta", "rev"}
-        self.maxrev = {}    # (sid, coll, rid) -> highest rev ever written
-        self.log = {}       # sid -> [(coll, rid, op, rev)]
+        self.rows = {}
+        self.maxrev = {}
+        self.log = {}
 
     def _bump(self, key, op):
         rev = self.maxrev.get(key, 0) + 1
@@ -101,18 +101,25 @@ def code(fn):
         return exc.code
 
 
-def compare(core, model, sids, history):
+def compare(core, model, sids, history, target):
     for sid in sids:
         got = stored(core, sid)
         want = {k[1:]: {kk: vv for kk, vv in v.items()} for k, v in model.rows.items() if k[0] == sid}
         if got != want:
             diff = {k: (got.get(k), want.get(k)) for k in set(got) | set(want) if got.get(k) != want.get(k)}
-            raise Violation(f"stored records of {sid} differ from the model after: {' ; '.join(history[-6:])}. "
+            prop = "RecordState"
+            if sid != target:
+                prop = "Isolation"
+            elif any(got.get(k, {}).get("rev") != want.get(k, {}).get("rev") for k in diff):
+                prop = "RevMonotonic"
+            elif history[-1].startswith("upsert_source"):
+                prop = "UserOwned"
+            raise Violation(f"{prop}: stored records of {sid} differ from the model after: {' ; '.join(history[-6:])}. "
                             f"(stored, model) per record: {diff}")
         changes = core.changes_since(sid, 0, limit=100000)["changes"]
         seqs = [c["seq"] for c in changes]
         if seqs != sorted(set(seqs)):
-            raise Violation(f"changes_since({sid!r}, 0) seq is not strictly increasing: {seqs}")
+            raise Violation(f"Cursor: changes_since({sid!r}, 0) seq is not strictly increasing: {seqs}")
         # Per record, the change history must match in order. Order across records inside one restore is
         # not promised (records.py:268-272 deletes in SQLite row order), so it is not compared.
         def per_record(entries):
@@ -122,7 +129,7 @@ def compare(core, model, sids, history):
             return grouped
         log = [(c["collection"], c["id"], c["op"], c["rev"]) for c in changes]
         if per_record(log) != per_record(model.log.get(sid, [])):
-            raise Violation(f"change log of {sid} differs from the model after: {' ; '.join(history[-6:])}. "
+            raise Violation(f"Cursor: change log of {sid} differs from the model after: {' ; '.join(history[-6:])}. "
                             f"stored tail {log[-4:]}, model tail {model.log.get(sid, [])[-4:]}")
 
 
@@ -177,31 +184,42 @@ def step(core, model, rng, sids, points, history):
     else:
         mine = [p for p in points if p[0] == sid]
         if not mine:
-            return
+            return sid
         _, pid, snap = rng.choice(mine)
         before = model.snapshot(sid)
         model.restore(sid, snap)
         got = code(lambda: records.restore_recovery_point(sid, pid, actor="user"))
         want = "ok"
-        if got == "ok":  # restore takes its own recovery point of the prior state first (records.py:266)
+        if got == "ok":
             points.append((sid, records.list_recovery_points(sid)[0]["id"], before))
         label = f"restore_recovery_point({sid},{pid})"
     history.append(f"{label} -> {got}")
     if got != want:
-        raise Violation(f"{label} returned {got}, the model expects {want}. Steps before: {' ; '.join(history[-6:-1])}")
+        prop = "BatchAtomic" if kind == "batch" else "Conflict" if want == "conflict" else "ModelReturn"
+        raise Violation(f"{prop}: {label} returned {got}, the model expects {want}. Steps before: {' ; '.join(history[-6:-1])}")
+    return sid
 
 
 def check(core, home):
+    from living_spaces_core import records
+    sid = space(core, "Numeric stale revision")
+    records.put(sid, "tasks", "stale", {"n": 1}, actor="user", base_rev=0)
+    current = records.put(sid, "tasks", "stale", {"n": 2}, actor="user", base_rev=1)
+    if current["rev"] != 2:
+        raise Violation(f"RevMonotonic: two writes produced rev {current['rev']}, expected 2")
+    stale = code(lambda: records.put(sid, "tasks", "stale", {"n": 3}, actor="user", base_rev=1))
+    if stale != "conflict":
+        raise Violation(f"Conflict: numeric stale base_rev=1 at current rev=2 returned {stale}, expected conflict")
     total = 0
     for seed in range(SEQUENCES):
         rng = random.Random(seed)
         sids = [space(core, f"Records {seed} A"), space(core, f"Records {seed} B")]
         model, points, history = Model(), [], []
         for _ in range(STEPS):
-            step(core, model, rng, sids, points, history)
-            compare(core, model, sids, history)
+            target = step(core, model, rng, sids, points, history)
+            compare(core, model, sids, history, target)
             total += 1
-    return {"sequences": SEQUENCES, "steps": total, "seeds": f"0..{SEQUENCES - 1}"}
+    return {"sequences": SEQUENCES, "steps": total, "seeds": f"0..{SEQUENCES - 1}", "numeric_stale_fixture_operations": 3}
 
 
 if __name__ == "__main__":

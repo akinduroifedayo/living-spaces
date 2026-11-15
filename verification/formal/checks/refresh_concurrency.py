@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import threading
 
-from harness import main
+from harness import Violation, main
 from refresh_one_shot import FakeCron
 
 AGENT = {"upkeep": {"handler": "agent", "prompt": "Update the list"}}
@@ -36,23 +36,28 @@ def overlap(core, cron, sid, pair):
             try:
                 barrier.wait(timeout=3)
             except threading.BrokenBarrierError:
-                pass  # the other request never reached a run: that is the property holding
+                pass
         with lock:
             return original(name, args)
 
     cron.dispatch_tool = dispatch
     replies = []
+    errors = []
 
     def press(trigger, who):
         try:
             replies.append(runs.start_refresh(sid, trigger=trigger, actor=who, wait=True))
         except core.SpacesError as exc:
             replies.append(exc.to_dict())
+        except Exception as exc:
+            errors.append(exc)
 
     threads = [threading.Thread(target=press, args=(t, f"{t}-{i}")) for i, t in enumerate(pair)]
     [t.start() for t in threads]
     [t.join(timeout=30) for t in threads]
     cron.dispatch_tool = original
+    if any(t.is_alive() for t in threads) or len(replies) != 2 or errors:
+        raise Violation(f"ProbeCompleted: concurrent probe did not finish both requests: replies={replies}, errors={errors}")
     return replies
 
 
@@ -68,6 +73,8 @@ def check(core, home):
         scenario["sid"] = sid
         replies = overlap(core, cron, sid, pair)
         ran = [e for e in cron.executions if e[2]]
+        if not ran or len(ran) > 2:
+            raise Violation(f"OneRunAtATime: expected the fixed one run or known F3 two runs; got {ran}, replies {replies}")
         if len(ran) > 1:
             findings.setdefault("F3", {"what": "overlapping agent Refresh now requests each start a native run",
                                        "count": 0,
@@ -75,7 +82,8 @@ def check(core, home):
                                                   f"trigger={pair[1]!r}) at once: native runs {ran}; replies "
                                                   f"{[r.get('one_shot', r) for r in replies]}"})
             findings["F3"]["count"] += 1
-    return {"pairs": [list(p) for p in PAIRS], "known_findings": findings}
+    return {"pairs": [list(p) for p in PAIRS], "known_findings": findings,
+            "known_findings_gone": [] if findings else ["F3"]}
 
 
 if __name__ == "__main__":

@@ -30,7 +30,8 @@
         "NoFalseRefusal",
         "NoRefusalAfterSuccessfulRun (finding F1)"
       ],
-      "bounds": "one Refresh now request; one user action (pause, remove, archive or delete) at any point; cron resume/pause/remove/list refusals on or off; one post-run DB failure; linked or fresh start; every interleaving with the native scheduler"
+      "bounds": "one request and one job; at most one user pause/remove/archive/delete; separate native mutation/readback, execution/reply and DB recheck actions; nondeterministic resume/pause/remove/list refusals and post-run DB failure; linked or fresh start; scheduler only for fresh jobs; normal clock reaches slot after return, long-run control reaches it during execution; 79394 baseline states",
+      "excludes": ["recurring linked-job scheduler execution", "forwarded or metadata-free native replies", "explicit run refusal while the job exists", "create/DB-commit failures", "lost acknowledgements", "crashes/timeouts", "other mid-request wall-clock delays", "historical dispatch-limit retirement mid-run", "multi-job and filesystem lifecycle effects"]
     },
     "refresh_one_shot": {
       "kind": "generated-real-code-tested",
@@ -60,7 +61,8 @@
         "NoFalseRefusal",
         "NoLeftoverOneShot"
       ],
-      "bounds": "2844 scenarios: 3 starts x 3 run outcomes x 4 mid-run events x every set of at most two refusals among the first three resume/pause/remove/list calls"
+      "bounds": "2844 scenarios: 3 starts x 3 run outcomes x 4 mid-run events x every set of at most two refusals among the first three resume/pause/remove/list calls; due-slot control assumes a one-minute delay before resume",
+      "excludes": ["create/run refusal", "all consume-phase list failures", "forwarded or metadata-free replies", "native dispatch-limit retirement"]
     },
     "refresh_concurrency": {
       "kind": "generated-real-code-tested",
@@ -114,7 +116,7 @@
         "Isolation",
         "Cursor"
       ],
-      "bounds": "seeds 0..119, 30 steps each (3600 steps), 2 Spaces x 2 collections x 3 ids"
+      "bounds": "seeds 0..119, 30 steps each (3600 generated steps), 2 generated Spaces x 2 collections x 3 ids, plus a separate three-operation numeric stale-revision fixture"
     },
     "bridge_authority": {
       "kind": "mechanically-verified-within-bound",
@@ -173,7 +175,7 @@
     },
     "net_boundary": {
       "kind": "generated-real-code-tested",
-      "tool": "Python 3 seeded generated URLs, DNS answers and redirects; resolver and socket faked",
+      "tool": "Python 3 seeded generated URLs, DNS answers and redirects; resolver and complete transport faked; no TLS/SNI/socket-pinning verification",
       "script": "verification/formal/checks/net_boundary.py",
       "sync_commit": "4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98",
       "covers": {
@@ -185,9 +187,9 @@
         ]
       },
       "properties": [
-        "NoPrivateConnect",
-        "Pinned",
-        "HttpsOnly",
+        "VettedIpArgument",
+        "ResolvedIpArgument",
+        "PortAllowlist",
         "CredentialsStay"
       ],
       "bounds": "seeds 0..19999, up to 4 redirects, 1-3 DNS answers per name"

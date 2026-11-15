@@ -38,12 +38,11 @@ def ops(collection_rev):
     }
 
 
-def counts(sid):
+def stored(sid):
     from living_spaces_core import db
     with db.read() as conn:
-        return {t: conn.execute(f"SELECT count(*), coalesce(sum(length(CAST(rowid AS TEXT))),0) FROM {t} WHERE space=?", (sid,)).fetchone()[0]
-                for t in TABLES} | {"record_state": [tuple(r) for r in conn.execute(
-                    "SELECT collection,id,rev,data FROM records WHERE space=? ORDER BY collection,id", (sid,))]}
+        return {t: [tuple(r) for r in conn.execute(f"SELECT * FROM {t} WHERE space=? ORDER BY rowid", (sid,))]
+                for t in TABLES}
 
 
 def set_grants(core, sid, on):
@@ -72,17 +71,23 @@ def check(core, home):
                                "unknown": lambda: "not-a-real-session-token-000000000000",
                                "nonstring": lambda: 12345}[kind]()
                     cap, args = ops(seed["rev"])[op_name]
+                    if op_name == "data.batch":
+                        try:
+                            args["ops"][0]["base_rev"] = records.get(a, "tasks", "other")["rev"]
+                        except core.SpacesError as exc:
+                            if exc.code != "not_found":
+                                raise
                     if spoof:
                         args = {**args, "space": b}
-                    before_a, before_b = counts(a), counts(b)
+                    before_a, before_b = stored(a), stored(b)
                     reply = core.dispatch(a, session, op_name, args)
-                    after_a, after_b = counts(a), counts(b)
+                    after_a, after_b = stored(a), stored(b)
                     cases += 1
                     authorized = kind == "open" and cap != "unknown" and (cap is None or cap in on)
                     story = (f"dispatch({a!r}, <session {kind}>, {op_name!r}, {args}) with grants {sorted(on) or 'none'} "
                              f"returned {reply}")
-                    data_keys = ("records", "changes", "runs", "logs", "record_state")
-                    if after_b != before_b and not (kind == "other" and _only_session_rows(before_b, after_b)):
+                    data_keys = ("records", "changes", "runs", "logs")
+                    if after_b != before_b:
                         raise Violation(f"NoEffect: the other Space {b!r} changed. {story}. before {before_b} after {after_b}")
                     if not authorized:
                         if reply.get("ok"):
@@ -95,7 +100,7 @@ def check(core, home):
                                             f"before {before_a} after {after_a}")
                         denied += 1
                     else:
-                        if not reply.get("ok") and reply["error"]["code"] in ("session_invalid", "not_granted"):
+                        if not reply.get("ok"):
                             raise Violation(f"Authority: an authorized call was refused. {story}")
                         allowed += 1
                     if isinstance(session, str):
@@ -107,10 +112,6 @@ def _closed(core, sid):
     token = core.open_session(sid)["session"]
     core.close_session(token)
     return token
-
-
-def _only_session_rows(before, after):
-    return all(before[k] == after[k] for k in before if k != "sessions")
 
 
 if __name__ == "__main__":

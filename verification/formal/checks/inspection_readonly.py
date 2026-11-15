@@ -47,9 +47,9 @@ def calls():
         yield "data.query", args
     for rid in ("r0", "r3", "nope"):
         yield "data.get", {"collection": "tasks", "id": rid}
-    yield "data.get", {"collection": "tasks"}                                  # missing required argument
-    yield "data.query", {"collection": "tasks", "limit": 0}                     # invalid limit
-    yield "data.query", {"collection": "tasks", "bogus": 1}                     # unknown argument
+    yield "data.get", {"collection": "tasks"}
+    yield "data.query", {"collection": "tasks", "limit": 0}
+    yield "data.query", {"collection": "tasks", "bogus": 1}
     yield "meta", {}
     for limit in (1, 50, 0):
         yield "runs.list", {"limit": limit}
@@ -103,9 +103,9 @@ def check(core, home):
                             want_code = "not_granted"
                         else:
                             want_code = "blocked"
-                        if got.get("ok") or got["error"]["code"] not in (want_code, "invalid"):
+                        if got.get("ok") or got["error"]["code"] != want_code:
                             raise Violation(f"Refused: expected {want_code}. {story}")
-                    elif op != "log":
+                    else:
                         live = core.dispatch(sid, session, op, dict(args))
                         if got != live:
                             raise Violation(f"SameAsLive: the live bridge returned {live}. {story}")
@@ -117,6 +117,7 @@ def check(core, home):
                 raise Violation(f"Snapshot: a record written after the snapshot opened was served: {late}")
         finally:
             conn.close()
+    commits.conn.close()
     return {"applicable": True, "cases": cases}
 
 

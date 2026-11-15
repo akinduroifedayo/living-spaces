@@ -14,10 +14,12 @@ Properties, for one Refresh now request:
 """
 from __future__ import annotations
 
+import hashlib
 import itertools
 import json
 import re
 import sqlite3
+import sys
 
 from harness import Violation, main, space
 
@@ -26,6 +28,8 @@ FAULT_ACTIONS = ("resume", "pause", "remove", "list")
 DURING_RUN = (None, "archive", "delete")
 POST_RUN_DB = (False, True)
 STARTS = ("fresh", "linked_enabled", "linked_paused")
+MINUTES_BEFORE_RESUME = 1
+KNOWN_F1_CASES_SHA256 = "65d451636e7abb4bfc5f29f390167b778254a31f997c94bafaa987e3f4f6e499"
 
 
 class FakeCron:
@@ -34,10 +38,11 @@ class FakeCron:
         self.core = core
         self.jobs = {}
         self.count = {}
-        self.executions = []  # (origin, job_id, ok)
+        self.executions = []
         self.next_id = 1
         self.armed_db_failure = False
         self.in_run = False
+        self.refusals = []
 
     def current_cron_execution(self):
         return None
@@ -52,40 +57,49 @@ class FakeCron:
     def view(self, job):
         return {k: v for k, v in job.items() if k != "pending"}
 
-    def due_at_create(self, schedule):
+    def due_by_resume(self, schedule):
         match = re.fullmatch(r"in (\d+)([mhd])", schedule or "")
         if not match:
             return True
         minutes = int(match.group(1)) * {"m": 1, "h": 60, "d": 1440}[match.group(2)]
-        return minutes <= 1
+        return minutes <= MINUTES_BEFORE_RESUME
 
     def fire(self, jid, origin):
         job = self.jobs[jid]
         self.executions.append((origin, jid, True))
         if job["repeat"] == 1:
-            del self.jobs[jid]  # a spent once job is retired
+            del self.jobs[jid]
 
     def tick(self):
-        """The native scheduler fires every enabled once job whose slot is due."""
         for jid, job in list(self.jobs.items()):
             if job["enabled"] and job["pending"] and job.get("due"):
                 self.fire(jid, "scheduled")
 
     def fault(self, action):
         n = self.count[action] = self.count.get(action, 0) + 1
-        return (action, n) in self.s["faults"]
+        refused = (action, n) in self.s["faults"]
+        if refused:
+            phase = "other"
+            frame = sys._getframe(1)
+            while frame is not None:
+                if frame.f_code.co_name in ("_consume_one_shot", "on_delete", "pause_for_archive", "_run_now"):
+                    phase = frame.f_code.co_name
+                    break
+                frame = frame.f_back
+            self.refusals.append((action, n, phase))
+        return refused
 
     def dispatch_tool(self, name, args):
         assert name == "cronjob_manage"
         action = args["action"]
         if action in FAULT_ACTIONS and self.fault(action):
-            return json.dumps({"success": False, "error": f"injected {action} refusal"})
+            return json.dumps({"success": False, "error": f"injected {action} refusal #{self.count[action]}"})
         if action == "list":
             jobs = [self.view(j) for j in self.jobs.values()]
             return json.dumps({"success": True, "count": len(jobs), "jobs": jobs})
         if action == "create":
             jid = self.add(args["name"], not args.get("paused", False), args["schedule"], args.get("repeat"))
-            self.jobs[jid]["due"] = self.due_at_create(args["schedule"])
+            self.jobs[jid]["due"] = self.due_by_resume(args["schedule"])
             return json.dumps({"success": True, "job_id": jid})
         jid = args["job_id"]
         job = self.jobs.get(jid)
@@ -95,7 +109,7 @@ class FakeCron:
             job["enabled"] = action == "resume"
             job["state"] = "scheduled" if job["enabled"] else "paused"
             if action == "resume":
-                self.tick()  # a slot already due is claimed by the scheduler as soon as the job is enabled
+                self.tick()
             return json.dumps({"success": True, "job": self.view(job)})
         if action == "remove":
             del self.jobs[jid]
@@ -106,7 +120,7 @@ class FakeCron:
                                                             "execution_skipped": "Job is paused"}})
             outcome = self.s["outcome"]
             self.executions.append(("manual", jid, outcome != "inline_fail"))
-            try:  # the user's archive or delete is a separate request; its own failure is reported to the user
+            try:
                 if self.s["during_run"] == "archive":
                     self.core.set_status(self.s["sid"], "archived", actor="user")
                 elif self.s["during_run"] == "delete":
@@ -170,7 +184,7 @@ def check_one(core, s):
     finally:
         db.write = real_write
     once = [j for j in cron.jobs.values() if j["name"] == f"living-spaces:{sid}:once"]
-    for job in once:  # the 7-day slot arrives later
+    for job in once:
         job["due"] = True
     cron.tick()
     created = s["start"] == "fresh"
@@ -190,24 +204,25 @@ def check_one(core, s):
         native = error.extra.get("native")
         ran = isinstance(native, dict) and isinstance(native.get("job"), dict) and native["job"].get("executed") is True
         if not ran:
-            # A failure report after an execution that succeeded must carry that run's reply (upkeep.py:422-438).
             violations.append(("NoFalseRefusal", story))
-        elif error.extra.get("reason") == "native_refused" and not error.message.startswith(
-                ("Hermes cron did not complete", "Hermes cron run refused")):
-            # Finding F1: a cron call refused after the run itself (the job-list verification at upkeep.py:149-155,
-            # or the archive pause at upkeep.py:449-450) keeps reason native_refused from _call
-            # (upkeep.py:123-125), so a run that succeeded is reported as refused.
-            violations.append(("NoFalseRefusal", story, "F1"))
+        elif error.extra.get("reason") == "native_refused":
+            injected_post_run_refusal = any(
+                phase == "_run_now"
+                and error.message == f"Hermes cron {action} refused: injected {action} refusal #{n}"
+                for action, n, phase in cron.refusals)
+            if injected_post_run_refusal:
+                violations.append(("NoFalseRefusal", story, "F1"))
+            else:
+                violations.append(("NoFalseRefusal", story))
     tag = "ok" if error is None else error.extra.get("reason") or error.code
     return tag, violations
 
 
-# Findings in the code at the sync commit. They are reported, never counted as a pass or a new failure.
 KNOWN = {"F1": "a successful run is reported as refused when a cron call after the run is refused"}
 
 
 def check(core, home):
-    results, findings, unknown = {}, {}, []
+    results, findings, unknown, finding_cases = {}, {}, [], []
     for n, s in enumerate(scenarios()):
         s["n"] = n
         tag, violations = check_one(core, s)
@@ -215,6 +230,7 @@ def check(core, home):
         for v in violations:
             if len(v) == 3:
                 findings.setdefault(v[2], {"count": 0, "example": v[1]})["count"] += 1
+                finding_cases.append([s["start"], s["outcome"], s["during_run"], s["post_run_db"], sorted(s["faults"])])
             else:
                 unknown.append(v)
     if unknown:
@@ -223,7 +239,11 @@ def check(core, home):
             first.setdefault(prop, story)
         raise Violation(f"{len(unknown)} scenario(s) broke a property. " +
                         " | ".join(f"{prop}: {story}" for prop, story in first.items()))
-    return {"scenarios": sum(results.values()), "outcomes": results,
+    finding_hash = hashlib.sha256(json.dumps(finding_cases, separators=(",", ":")).encode()).hexdigest()
+    if finding_hash != KNOWN_F1_CASES_SHA256:
+        raise Violation(f"KnownFindingDrift: F1 scenario set changed: {len(finding_cases)} cases, sha256={finding_hash}. "
+                        "Review the source and F1 attribution before updating its synced baseline.")
+    return {"scenarios": sum(results.values()), "outcomes": results, "f1_scenarios_sha256": finding_hash,
             "known_findings": {k: {"what": KNOWN[k], **v} for k, v in findings.items()},
             "known_findings_gone": sorted(set(KNOWN) - set(findings))}
 

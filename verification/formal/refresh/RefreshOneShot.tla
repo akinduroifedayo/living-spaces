@@ -1,67 +1,82 @@
 ---------------------------- MODULE RefreshOneShot ----------------------------
 (***************************************************************************)
-(* One agent "Refresh now" request against native Hermes cron, as written *)
-(* in src/living-spaces/living_spaces_core/upkeep.py at the sync commit    *)
-(* recorded in verification/formal/COVERAGE.json.                          *)
+(* Bounded abstraction of upkeep.py at released 4aea12d. All source line    *)
+(* references below are to src/living-spaces/living_spaces_core/{file}.     *)
+(* Native mutations, their list readbacks, and the Space DB recheck are     *)
+(* separate actions. dbOwner serializes SQLite writers, NOT native cron.   *)
+(* A native effect survives a refused list and a rolled-back DB operation. *)
 (*                                                                         *)
-(* One refresh process walks refresh_now (upkeep.py:502-559) step by step. *)
-(* Each step is one public cronjob_manage call or one SQLite transaction,  *)
-(* the unit the code cannot split. The environment interleaves the native  *)
-(* scheduler, the user's Pause/Remove/Archive/Delete, cron refusals and a  *)
-(* DB failure after the run.                                               *)
+(* Native claim/extra-fire/due semantics are ASSUMPTIONS from Hermes        *)
+(* a317c07 and tests/python/test_agent_refresh_dispatch.py:53-157,541-569,  *)
+(* not properties proved here. A manual fire does not spend repeat=1.      *)
+(* Invocation/claim, execution, claim release, and reply are separate.     *)
+(* Scheduler claim, execution, and retirement are likewise separate.       *)
+(* Background start counts an invocation, never successful completion.     *)
+(* Background release abstracts completion/cancellation with unknown       *)
+(* outcome; it adds no okExecs. Scheduler success/failure is nondeterministic.*)
 (*                                                                         *)
-(* Broken* constants reintroduce historical defects (a)-(d). All FALSE is  *)
-(* the code at the sync commit.                                            *)
+(* Bounds: one refresh, one job, at most one user pause/remove/archive/    *)
+(* delete. Only invocation-owned fresh jobs have scheduler fires; recurring*)
+(* linked-job scheduling is OUTSIDE AtMostOnce and outside this model.     *)
+(* A successful paused create plus its DB commit is collapsed in Create.  *)
+(* This is invisible to these actors while the SQLite writer excludes     *)
+(* user actions and the paused job cannot fire. Create/DB-commit failures, *)
+(* orphan discovery, other jobs, multiple requests, native lost-ack effects,*)
+(* crashes, timeouts and historical dispatch-limit retirement are omitted. *)
+(* Accepted forwarded/unknown replies, supported by the product, are       *)
+(* explicitly BOUNDED OUT. No completion is inferred from their absence.   *)
+(*                                                                         *)
+(* User lifecycle is a ONE-JOB slice: list, mutate, verify, final list, DB  *)
+(* commit or abort. It preserves native effects on verification failure.   *)
+(* Shim/filesystem failures, cancellation side effects, multiple targets,  *)
+(* and lifecycle DB commit failures are omitted. This is NOT a full        *)
+(* archive/delete or cross-store atomicity proof. The archived/deleted     *)
+(* _run_now recheck holds its DB writer across separate native calls.      *)
+(* Local computation between calls is folded into the preceding read or   *)
+(* reply. List reads are assumed coherent snapshots; no stale list cache.  *)
+(*                                                                         *)
+(* Normally the seven-day slot is reached only after the reply. AllowLongRun*)
+(* advances it during an inline execution. No other mid-request wall-clock*)
+(* delays are explored. Broken* flags are negative controls, not exact     *)
+(* reconstructions of every historical defect. In particular (d) explores *)
+(* due-at-resume scheduling followed by a manual skip/refusal, NOT the     *)
+(* historical dispatch-limit-mid-run retirement in upkeep.py:22-23.       *)
 (***************************************************************************)
 EXTENDS Naturals
 
 CONSTANTS
-    AllowLongRun,        \* explore an inline run that outlasts ONE_SHOT_SLOT (upkeep.py:19-24 residual)
-    BrokenNoResume,      \* (a) run the born-paused one-shot without resuming it
-    BrokenNoSkipCheck,   \* (a) report ok although the native run was skipped
-    BrokenNoConsume,     \* (b) leave the once slot pending after a manual inline run
-    BrokenNoBackgroundConsume, \* (c) background run leaves the one-shot enabled
-    BrokenNoPostRunCleanup,    \* (c) DB error after the run leaves the one-shot enabled
-    BrokenSlotDueAtCreate      \* (d) one-shot created already due
+    FreshOnly,
+    NoUserAction,
+    AllowLongRun,
+    BrokenNoResume,
+    BrokenNoSkipCheck,
+    BrokenNoConsume,
+    BrokenNoBackgroundConsume,
+    BrokenNoPostRunCleanup,
+    BrokenSlotDueAtCreate
 
 VARIABLES
-    env,         \* the environment for this behaviour, fixed at Init (see Env)
-    pc,          \* refresh process step
-    created,     \* this invocation owns a new one-shot (upkeep.py:508)
-    job,         \* native record of the job the request runs
-    slotDue,     \* wall clock has reached the pending once slot
-    reply,       \* native run reply kind
-    err,         \* the error the process is propagating, if any
-    pauseFailed, \* cleanup or consume pause refused
-    result,      \* what the caller is told
-    warned,      \* the reply says the job may run again
-    manualRan,   \* the manual run itself executed (inline or background start)
-    execs,       \* executions of the job attributable to this request
-    okExecs,     \* successful executions
-    space,       \* Space status
-    userBudget   \* user actions left (bounds the model)
+    env, pc, created, job, slotDue, reply, err, pauseFailed, removeFailed,
+    result, warned, manualRan, execs, okExecs, space, userBudget,
+    claim, userPc, userOp, dbOwner
 
-vars == <<env, pc, created, job, slotDue, reply, err, pauseFailed, result, warned,
-          manualRan, execs, okExecs, space, userBudget>>
+vars == <<env, pc, created, job, slotDue, reply, err, pauseFailed, removeFailed,
+          result, warned, manualRan, execs, okExecs, space, userBudget,
+          claim, userPc, userOp, dbOwner>>
 
-(* Linked: the Space already has a linked agent job (upkeep.py:507-513). linkedEnabled: that job is   *)
-(* enabled. longRun: an inline run outlasts the 7-day slot. cronFailures: public cron                *)
-(* resume/pause/remove/list may refuse (upkeep.py:115-126). dbFailure: the post-run SQLite recheck    *)
-(* raises (upkeep.py:453-457).                                                                       *)
 Env == [linked : BOOLEAN, linkedEnabled : BOOLEAN,
         longRun : IF AllowLongRun THEN BOOLEAN ELSE {FALSE},
         cronFailures : BOOLEAN, dbFailure : BOOLEAN]
-
 Linked == env.linked
 LinkedEnabled == env.linkedEnabled
 LongRun == env.longRun
 CronFailures == env.cronFailures
 DbFailure == env.dbFailure
-
 NoJob == [exists |-> FALSE, enabled |-> FALSE, pending |-> FALSE]
 
 Init ==
     /\ env \in Env
+    /\ (~FreshOnly \/ ~env.linked)
     /\ pc = "start"
     /\ created = ~Linked
     /\ job = IF Linked THEN [exists |-> TRUE, enabled |-> LinkedEnabled, pending |-> TRUE] ELSE NoJob
@@ -69,6 +84,7 @@ Init ==
     /\ reply = "none"
     /\ err = "none"
     /\ pauseFailed = FALSE
+    /\ removeFailed = FALSE
     /\ result = "pending"
     /\ warned = FALSE
     /\ manualRan = FALSE
@@ -76,11 +92,15 @@ Init ==
     /\ okExecs = 0
     /\ space = "active"
     /\ userBudget = 1
+    /\ claim = "none"
+    /\ userPc = "idle"
+    /\ userOp = "none"
+    /\ dbOwner = "none"
 
-(* upkeep.py:503-513: one db.write() transaction. An archived Space refuses (505-506). A fresh  *)
-(* request creates a paused one-shot named living-spaces:<sid>:once with slot ONE_SHOT_SLOT.    *)
+(* upkeep.py:503-514,183-190. Successful paused create/readback/DB commit    *)
+(* only, collapsed under the explicit creation bounds above.              *)
 Create ==
-    /\ pc = "start"
+    /\ pc = "start" /\ dbOwner = "none"
     /\ IF space # "active"
          THEN /\ pc' = "done" /\ result' = "err_other"
               /\ UNCHANGED <<job, slotDue>>
@@ -90,55 +110,97 @@ Create ==
                    THEN /\ job' = [exists |-> TRUE, enabled |-> FALSE, pending |-> TRUE]
                         /\ slotDue' = BrokenSlotDueAtCreate
                    ELSE UNCHANGED <<job, slotDue>>
-    /\ UNCHANGED <<created, reply, err, pauseFailed, warned, manualRan, execs, okExecs, space, userBudget>>
+    /\ UNCHANGED <<env, created, reply, err, pauseFailed, removeFailed, warned,
+                    manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
 
-(* upkeep.py:516-517 -> _mutate("resume") upkeep.py:139-180: resume, then verify enabled.       *)
+(* upkeep.py:517 -> 143. Native resume effect/refusal, not its readback.    *)
 Resume ==
     /\ pc = "resume"
-    /\ IF job.exists
-         THEN \/ /\ job' = [job EXCEPT !.enabled = TRUE] /\ pc' = "run" /\ err' = err
-              \/ /\ CronFailures /\ job' = job /\ pc' = "cleanup_pause" /\ err' = "pre_run"
-         ELSE /\ job' = job /\ pc' = "cleanup_pause" /\ err' = "pre_run"
-    /\ UNCHANGED <<created, slotDue, reply, pauseFailed, result, warned, manualRan, execs, okExecs, space, userBudget>>
+    /\ \/ /\ job.exists /\ job' = [job EXCEPT !.enabled = TRUE]
+          /\ pc' = "resume_verify" /\ err' = err
+       \/ /\ (~job.exists \/ CronFailures) /\ job' = job
+          /\ pc' = "cleanup_pause" /\ err' = "pre_run"
+    /\ UNCHANGED <<env, created, slotDue, reply, pauseFailed, removeFailed, result, warned,
+                    manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
 
-(* upkeep.py:519 -> _run_now upkeep.py:443 -> _mutate("run"). Native semantics from Hermes       *)
-(* tools/cronjob_tools.py _action_run: a missing job is refused, a paused job is skipped with   *)
-(* executed=False, otherwise the run executes inline (ok or failed) or starts in the background. *)
-(* A manual run is an extra fire: the once slot stays pending (test_agent_refresh_dispatch.py). *)
+(* upkeep.py:149-150,173-180. A successful resume can fail verification.    *)
+ResumeVerify ==
+    /\ pc = "resume_verify"
+    /\ \/ /\ job.exists /\ job.enabled /\ pc' = "run" /\ err' = err
+       \/ /\ (~job.exists \/ ~job.enabled \/ CronFailures)
+          /\ pc' = "cleanup_pause" /\ err' = "pre_run"
+    /\ UNCHANGED <<env, created, job, slotDue, reply, pauseFailed, removeFailed, result, warned,
+                    manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
+
+(* upkeep.py:443 ->143; assumed native _action_run eligibility/claim.       *)
 Run ==
     /\ pc = "run"
     /\ IF ~job.exists
-         THEN /\ reply' = "refused" /\ err' = "refused" /\ pc' = "cleanup_pause"
-              /\ UNCHANGED <<execs, okExecs, manualRan, slotDue>>
-         ELSE IF ~job.enabled
-         THEN /\ reply' = "skipped" /\ err' = err /\ pc' = "postcheck"
-              /\ UNCHANGED <<execs, okExecs, manualRan, slotDue>>
-         ELSE \/ /\ reply' = "inline_ok" /\ execs' = execs + 1 /\ okExecs' = okExecs + 1
-                 /\ manualRan' = TRUE /\ err' = err /\ pc' = "postcheck"
-                 /\ slotDue' = (slotDue \/ LongRun)
-              \/ /\ reply' = "inline_fail" /\ execs' = execs + 1 /\ okExecs' = okExecs
-                 /\ manualRan' = TRUE /\ err' = err /\ pc' = "postcheck"
-                 /\ slotDue' = (slotDue \/ LongRun)
-              \/ /\ reply' = "background" /\ execs' = execs + 1 /\ okExecs' = okExecs + 1
-                 /\ manualRan' = TRUE /\ err' = err /\ pc' = "postcheck" /\ slotDue' = slotDue
-    /\ UNCHANGED <<created, job, pauseFailed, result, warned, space, userBudget>>
+         THEN /\ reply' = "refused" /\ err' = "refused" /\ pc' = "cleanup_pause" /\ claim' = claim
+         ELSE IF ~job.enabled \/ claim # "none"
+         THEN /\ reply' = "skipped" /\ err' = err /\ pc' = "run_verify" /\ claim' = claim
+         ELSE /\ reply' = reply /\ err' = err /\ pc' = "run_execute" /\ claim' = "manual"
+    /\ UNCHANGED <<env, created, job, slotDue, pauseFailed, removeFailed, result, warned,
+                    manualRan, execs, okExecs, space, userBudget, userPc, userOp, dbOwner>>
 
-(* _mutate("run") verifies with a list after the run (upkeep.py:149-155); then _run_now rechecks *)
-(* the Space in its own db.write() (upkeep.py:446-457). Archived: pause; deleted: remove.       *)
-PostCheck ==
-    /\ pc = "postcheck"
-    /\ \/ /\ CronFailures /\ err' = "verify_refused" /\ pc' = "cleanup_pause"   \* reason native_refused, upkeep.py:149-155
-          /\ UNCHANGED <<job>>
-       \/ /\ DbFailure /\ err' = "post_run" /\ job' = job
+(* upkeep.py:443 native execution boundary; tests:74-101. This counts a    *)
+(* dispatch once; only inline_ok establishes successful completion.        *)
+RunExecute ==
+    /\ pc = "run_execute" /\ claim = "manual"
+    /\ \/ /\ reply' = "inline_ok" /\ okExecs' = okExecs + 1
+          /\ pc' = "run_release" /\ claim' = claim /\ slotDue' = (slotDue \/ LongRun)
+       \/ /\ reply' = "inline_fail" /\ okExecs' = okExecs
+          /\ pc' = "run_release" /\ claim' = claim /\ slotDue' = (slotDue \/ LongRun)
+       \/ /\ reply' = "background" /\ okExecs' = okExecs
+          /\ pc' = "run_reply" /\ claim' = "background" /\ slotDue' = slotDue
+    /\ execs' = execs + 1 /\ manualRan' = TRUE
+    /\ UNCHANGED <<env, created, job, err, pauseFailed, removeFailed, result, warned,
+                    space, userBudget, userPc, userOp, dbOwner>>
+
+(* upkeep.py:443 native return boundary; tests:89-101. Scheduler may claim  *)
+(* after the manual claim clears, BEFORE the plugin sees the run reply.    *)
+RunRelease ==
+    /\ pc = "run_release" /\ claim = "manual"
+    /\ pc' = "run_reply" /\ claim' = "none"
+    /\ UNCHANGED <<env, created, job, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, userPc, userOp, dbOwner>>
+
+(* upkeep.py:143 returns before the separate _jobs call at 150.            *)
+RunReply ==
+    /\ pc = "run_reply" /\ pc' = "run_verify"
+    /\ UNCHANGED <<env, created, job, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
+
+(* upkeep.py:149-155,175-176. Absence is valid for run; list refusal is not. *)
+RunVerify ==
+    /\ pc = "run_verify"
+    /\ \/ /\ pc' = "db_recheck" /\ err' = err
+       \/ /\ CronFailures /\ pc' = "cleanup_pause" /\ err' = "verify_refused"
+    /\ UNCHANGED <<env, created, job, slotDue, reply, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
+
+(* upkeep.py:446-457. The Space DB read is AFTER the native list. Archived  *)
+(* or deleted cleanup holds the DB writer but does not make cron atomic.   *)
+DBRecheck ==
+    /\ pc = "db_recheck" /\ dbOwner = "none"
+    /\ \/ /\ DbFailure /\ err' = "post_run" /\ dbOwner' = "none"
           /\ pc' = IF BrokenNoPostRunCleanup THEN "return_error" ELSE "cleanup_pause"
-       \/ /\ space = "archived" /\ err' = "post_run" /\ pc' = "cleanup_pause"
-          /\ job' = [job EXCEPT !.enabled = FALSE]
-       \/ /\ space = "deleted" /\ err' = "post_run" /\ pc' = "cleanup_pause"
-          /\ job' = NoJob
-       \/ /\ space = "active" /\ err' = err /\ job' = job /\ pc' = "skipcheck"
-    /\ UNCHANGED <<created, slotDue, reply, pauseFailed, result, warned, manualRan, execs, okExecs, space, userBudget>>
+       \/ /\ space # "active" /\ err' = "post_run" /\ pc' = "recheck_list" /\ dbOwner' = "refresh"
+       \/ /\ space = "active" /\ err' = err /\ pc' = "skipcheck" /\ dbOwner' = "none"
+    /\ UNCHANGED <<env, created, job, slotDue, reply, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp>>
 
-(* upkeep.py:520-525: executed=False, execution_skipped or execution_success=False is refused.  *)
+(* upkeep.py:449. This read is separate from both DBRecheck and mutation.  *)
+RecheckList ==
+    /\ pc = "recheck_list" /\ dbOwner = "refresh"
+    /\ \/ /\ job.exists /\ pc' = IF space = "deleted" THEN "recheck_remove" ELSE "recheck_pause"
+          /\ dbOwner' = dbOwner
+       \/ /\ (~job.exists \/ CronFailures) /\ pc' = "cleanup_pause" /\ dbOwner' = "none"
+    /\ UNCHANGED <<env, created, job, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp>>
+
+(* upkeep.py:520-525,553-558. Only evidenced inline/background execution    *)
+(* modes are in this model; accepted unknown/forwarded replies are omitted.*)
 SkipCheck ==
     /\ pc = "skipcheck"
     /\ IF reply \in {"skipped", "inline_fail"} /\ ~BrokenNoSkipCheck
@@ -147,123 +209,243 @@ SkipCheck ==
               /\ pc' = IF created /\ reply = "inline_ok" /\ ~BrokenNoConsume THEN "consume_pause"
                        ELSE IF created /\ reply = "background" /\ ~BrokenNoBackgroundConsume THEN "consume_pause"
                        ELSE "return_ok"
-    /\ UNCHANGED <<created, job, slotDue, reply, pauseFailed, result, warned, manualRan, execs, okExecs, space, userBudget>>
+    /\ UNCHANGED <<env, created, job, slotDue, reply, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
 
-(* Error path, created only (upkeep.py:526-550): pause, then remove if still listed.             *)
-CleanupPause ==
-    /\ pc = "cleanup_pause"
-    /\ IF ~created
-         THEN /\ pc' = "return_error" /\ job' = job /\ pauseFailed' = pauseFailed
-         ELSE IF job.exists
-         THEN \/ /\ job' = [job EXCEPT !.enabled = FALSE] /\ pauseFailed' = FALSE /\ pc' = "cleanup_remove"
-              \/ /\ CronFailures /\ job' = job /\ pauseFailed' = TRUE /\ pc' = "cleanup_remove"
-         ELSE /\ job' = job /\ pauseFailed' = TRUE /\ pc' = "cleanup_remove"
-    /\ UNCHANGED <<created, slotDue, reply, err, result, warned, manualRan, execs, okExecs, space, userBudget>>
+(* upkeep.py:527. Existing linked jobs are not invocation-owned cleanup.   *)
+CleanupLinked ==
+    /\ pc = "cleanup_pause" /\ ~created /\ pc' = "return_error"
+    /\ UNCHANGED <<env, created, job, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
 
-CleanupRemove ==
-    /\ pc = "cleanup_remove"
-    /\ IF job.exists
-         THEN \/ /\ job' = NoJob /\ pc' = "return_error" /\ warned' = warned
-              \/ /\ CronFailures /\ job' = job /\ pc' = "return_error"
-                 /\ warned' = (warned \/ pauseFailed)     \* upkeep.py:540-543 "may still be enabled"
-         ELSE /\ job' = job /\ pc' = "return_error" /\ warned' = warned
-    /\ UNCHANGED <<created, slotDue, reply, err, pauseFailed, result, manualRan, execs, okExecs, space, userBudget>>
+PauseStages == {"cleanup_pause", "consume_pause", "recheck_pause"}
+PauseVerifyStage(p) == CASE p = "cleanup_pause" -> "cleanup_pause_verify"
+                           [] p = "consume_pause" -> "consume_pause_verify"
+                           [] OTHER -> "recheck_pause_verify"
+PauseDoneStage(p) == CASE p \in {"cleanup_pause", "cleanup_pause_verify"} -> "cleanup_paused"
+                         [] p \in {"consume_pause", "consume_pause_verify"} -> "consume_paused"
+                         [] OTHER -> "recheck_paused"
 
-(* _consume_one_shot upkeep.py:562-588: pause; background stops there; inline also removes.     *)
-ConsumePause ==
-    /\ pc = "consume_pause"
-    /\ IF job.exists
-         THEN \/ /\ job' = [job EXCEPT !.enabled = FALSE] /\ pauseFailed' = FALSE
-              \/ /\ CronFailures /\ job' = job /\ pauseFailed' = TRUE
-         ELSE /\ job' = job /\ pauseFailed' = TRUE
-    /\ pc' = IF reply = "background" THEN "consume_background" ELSE "consume_remove"
-    /\ UNCHANGED <<created, slotDue, reply, err, result, warned, manualRan, execs, okExecs, space, userBudget>>
+(* upkeep.py:530,567,450 ->143. The pause call alone may succeed or refuse. *)
+NativePause ==
+    /\ pc \in PauseStages /\ (pc # "cleanup_pause" \/ created)
+    /\ \/ /\ job.exists /\ job' = [job EXCEPT !.enabled = FALSE]
+          /\ pauseFailed' = FALSE /\ pc' = PauseVerifyStage(pc)
+       \/ /\ (~job.exists \/ CronFailures) /\ job' = job
+          /\ pauseFailed' = TRUE /\ pc' = PauseDoneStage(pc)
+    /\ UNCHANGED <<env, created, slotDue, reply, err, removeFailed, result, warned,
+                    manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
 
-ConsumeBackground ==
-    /\ pc = "consume_background"
-    /\ IF pauseFailed
-         THEN /\ pc' = "return_error" /\ err' = "post_run" /\ warned' = TRUE   \* upkeep.py:573-577
-         ELSE /\ pc' = "return_ok" /\ err' = err /\ warned' = warned
-    /\ UNCHANGED <<created, job, slotDue, reply, pauseFailed, result, manualRan, execs, okExecs, space, userBudget>>
+(* upkeep.py:149-150,171-180. Native pause succeeded, readback may fail.     *)
+NativePauseVerify ==
+    /\ pc \in {"cleanup_pause_verify", "consume_pause_verify", "recheck_pause_verify"}
+    /\ \/ /\ job.exists /\ ~job.enabled /\ pauseFailed' = FALSE
+       \/ /\ (~job.exists \/ job.enabled \/ CronFailures) /\ pauseFailed' = TRUE
+    /\ pc' = PauseDoneStage(pc)
+    /\ UNCHANGED <<env, created, job, slotDue, reply, err, removeFailed, result, warned,
+                    manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
 
-ConsumeRemove ==
-    /\ pc = "consume_remove"
-    /\ IF job.exists
-         THEN \/ /\ job' = NoJob /\ pc' = "return_ok" /\ err' = err /\ warned' = warned
-              \/ /\ CronFailures /\ job' = job
-                 /\ IF pauseFailed
-                      THEN pc' = "return_error" /\ err' = "post_run" /\ warned' = TRUE  \* upkeep.py:584-588
-                      ELSE pc' = "return_ok" /\ err' = err /\ warned' = warned         \* upkeep.py:582-583
-         ELSE /\ job' = job /\ pc' = "return_ok" /\ err' = err /\ warned' = warned
-    /\ UNCHANGED <<created, slotDue, reply, pauseFailed, result, manualRan, execs, okExecs, space, userBudget>>
+(* upkeep.py:531-534,568-577,450-454. Release recheck's DB writer on error. *)
+PauseDone ==
+    /\ pc \in {"cleanup_paused", "consume_paused", "recheck_paused"}
+    /\ CASE pc = "cleanup_paused" -> /\ pc' = "cleanup_list" /\ err' = err /\ warned' = warned /\ dbOwner' = dbOwner
+         [] pc = "recheck_paused" -> /\ pc' = "cleanup_pause" /\ err' = err /\ warned' = warned /\ dbOwner' = "none"
+         [] pc = "consume_paused" /\ reply = "background" /\ pauseFailed ->
+              /\ pc' = "return_error" /\ err' = "post_run" /\ warned' = TRUE /\ dbOwner' = dbOwner
+         [] pc = "consume_paused" /\ reply = "background" /\ ~pauseFailed ->
+              /\ pc' = "return_ok" /\ err' = err /\ warned' = warned /\ dbOwner' = dbOwner
+         [] OTHER -> /\ pc' = "consume_remove" /\ err' = err /\ warned' = warned /\ dbOwner' = dbOwner
+    /\ UNCHANGED <<env, created, job, slotDue, reply, pauseFailed, removeFailed, result,
+                    manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp>>
 
+(* upkeep.py:534-549. The preliminary cleanup list can independently fail. *)
+CleanupList ==
+    /\ pc = "cleanup_list"
+    /\ \/ /\ job.exists /\ pc' = "cleanup_remove" /\ err' = err /\ warned' = warned
+       \/ /\ ~job.exists /\ pc' = "return_error" /\ err' = err /\ warned' = warned
+       \/ /\ CronFailures /\ pc' = "return_error" /\ err' = "post_run" /\ warned' = (warned \/ pauseFailed)
+    /\ UNCHANGED <<env, created, job, slotDue, reply, pauseFailed, removeFailed, result,
+                    manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
+
+RemoveVerifyStage(p) == CASE p = "cleanup_remove" -> "cleanup_remove_verify"
+                            [] p = "consume_remove" -> "consume_remove_verify"
+                            [] OTHER -> "recheck_remove_verify"
+RemoveDoneStage(p) == CASE p = "cleanup_remove_verify" -> "cleanup_removed"
+                          [] p = "consume_remove_verify" -> "consume_removed"
+                          [] OTHER -> "recheck_removed"
+
+(* upkeep.py:535,579,450 ->143-148. Even native remove refusal is followed *)
+(* by a separate readback; absence reconciles an already-absent job.       *)
+NativeRemove ==
+    /\ pc \in {"cleanup_remove", "consume_remove", "recheck_remove"}
+    /\ \/ job' = NoJob
+       \/ /\ CronFailures /\ job' = job
+    /\ pc' = RemoveVerifyStage(pc)
+    /\ UNCHANGED <<env, created, slotDue, reply, err, pauseFailed, removeFailed, result, warned,
+                    manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
+
+(* upkeep.py:149-170. Effect succeeded then verification refused is allowed.*)
+NativeRemoveVerify ==
+    /\ pc \in {"cleanup_remove_verify", "consume_remove_verify", "recheck_remove_verify"}
+    /\ \/ /\ ~job.exists /\ removeFailed' = FALSE
+       \/ /\ (job.exists \/ CronFailures) /\ removeFailed' = TRUE
+    /\ pc' = RemoveDoneStage(pc)
+    /\ UNCHANGED <<env, created, job, slotDue, reply, err, pauseFailed, result, warned,
+                    manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
+
+(* upkeep.py:536-550,580-588,450-454. Cleanup failure's top-level reason is *)
+(* cron_cleanup_failed, NOT the original native_refused (546-549).         *)
+RemoveDone ==
+    /\ pc \in {"cleanup_removed", "consume_removed", "recheck_removed"}
+    /\ CASE pc = "recheck_removed" ->
+              /\ pc' = "cleanup_pause" /\ dbOwner' = "none" /\ err' = err /\ warned' = warned
+         [] pc = "cleanup_removed" ->
+              /\ pc' = "return_error" /\ dbOwner' = dbOwner
+              /\ err' = IF removeFailed THEN "post_run" ELSE err
+              /\ warned' = (warned \/ (removeFailed /\ pauseFailed))
+         [] OTHER ->
+              /\ pc' = IF removeFailed /\ pauseFailed THEN "return_error" ELSE "return_ok"
+              /\ dbOwner' = dbOwner
+              /\ err' = IF removeFailed /\ pauseFailed THEN "post_run" ELSE err
+              /\ warned' = (warned \/ (removeFailed /\ pauseFailed))
+    /\ UNCHANGED <<env, created, job, slotDue, reply, pauseFailed, removeFailed, result,
+                    manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp>>
+
+(* upkeep.py:552-559. result=ok is dispatch acceptance, not background completion.*)
 ReturnOk ==
     /\ pc = "return_ok" /\ pc' = "done" /\ result' = "ok"
-    /\ UNCHANGED <<created, job, slotDue, reply, err, pauseFailed, warned, manualRan, execs, okExecs, space, userBudget>>
+    /\ UNCHANGED <<env, created, job, slotDue, reply, err, pauseFailed, removeFailed, warned,
+                    manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
 
+(* upkeep.py:125,154-155,524-550,573-588. Distinguish the refusal diagnostic *)
+(* from verification refusal and all post-run/cleanup errors.              *)
 ReturnError ==
     /\ pc = "return_error" /\ pc' = "done"
     /\ result' = CASE err = "refused" -> "err_refused"
                     [] err = "verify_refused" -> "err_verify_refused"
                     [] OTHER -> "err_other"
-    /\ UNCHANGED <<created, job, slotDue, reply, err, pauseFailed, warned, manualRan, execs, okExecs, space, userBudget>>
+    /\ UNCHANGED <<env, created, job, slotDue, reply, err, pauseFailed, removeFailed, warned,
+                    manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
 
-(* Environment. The once slot is 7 days out: the clock reaches it only after the request has    *)
-(* returned, unless a run outlasts it (LongRun) or the slot was due at creation (variant d).    *)
+(* upkeep.py:19-24. Bounded clock; all other long external-call delays omitted.*)
 ClockReachesSlot ==
-    /\ ~slotDue /\ job.exists /\ job.pending /\ pc = "done"
-    /\ slotDue' = TRUE
-    /\ UNCHANGED <<pc, created, job, reply, err, pauseFailed, result, warned, manualRan, execs, okExecs, space, userBudget>>
+    /\ ~slotDue /\ job.exists /\ job.pending /\ pc = "done" /\ slotDue' = TRUE
+    /\ UNCHANGED <<env, pc, created, job, reply, err, pauseFailed, removeFailed, result, warned,
+                    manualRan, execs, okExecs, space, userBudget, claim, userPc, userOp, dbOwner>>
 
-(* Hermes scheduler fire of a due one-shot: runs it and spends repeat=1, retiring the record.    *)
-(* Never during this request's own inline run, because the manual run holds the claim.          *)
-SchedulerFire ==
-    /\ created
-    /\ job.exists /\ job.enabled /\ job.pending /\ slotDue
-    /\ pc # "postcheck"
-    /\ job' = [exists |-> TRUE, enabled |-> FALSE, pending |-> FALSE]
-    /\ execs' = execs + 1 /\ okExecs' = okExecs + 1
-    /\ UNCHANGED <<pc, created, slotDue, reply, err, pauseFailed, result, warned, manualRan, space, userBudget>>
+(* upkeep.py:19-23; native assumption, tests:140-157. Only fresh once jobs. *)
+SchedulerClaim ==
+    /\ created /\ job.exists /\ job.enabled /\ job.pending /\ slotDue /\ claim = "none"
+    /\ claim' = "scheduler"
+    /\ UNCHANGED <<env, pc, created, job, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, userPc, userOp, dbOwner>>
 
-(* upkeep_action pause/remove act on every owned job, the one-shot included (upkeep.py:476-489). *)
-UserPause ==
-    /\ userBudget > 0 /\ job.exists /\ job.enabled
-    /\ job' = [job EXCEPT !.enabled = FALSE] /\ userBudget' = userBudget - 1
-    /\ UNCHANGED <<pc, created, slotDue, reply, err, pauseFailed, result, warned, manualRan, execs, okExecs, space>>
+(* Same native assumption. Already claimed work may run despite a pause.  *)
+(* Cancellation on remove is abstracted conservatively as may still run.  *)
+SchedulerExecute ==
+    /\ claim = "scheduler" /\ claim' = "scheduler_settle" /\ execs' = execs + 1
+    /\ okExecs' \in {okExecs, okExecs + 1}
+    /\ UNCHANGED <<env, pc, created, job, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, space, userBudget, userPc, userOp, dbOwner>>
 
-UserRemove ==
-    /\ userBudget > 0 /\ job.exists
-    /\ job' = NoJob /\ userBudget' = userBudget - 1
-    /\ UNCHANGED <<pc, created, slotDue, reply, err, pauseFailed, result, warned, manualRan, execs, okExecs, space>>
+(* Same native assumption. Scheduled completion spends repeat=1; a removed*)
+(* native record is never recreated by settling. Not dispatch-limit retirement.*)
+SchedulerRetire ==
+    /\ claim = "scheduler_settle" /\ claim' = "none"
+    /\ job' = IF job.exists THEN [exists |-> TRUE, enabled |-> FALSE, pending |-> FALSE] ELSE job
+    /\ UNCHANGED <<env, pc, created, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, userPc, userOp, dbOwner>>
 
-(* set_status archive pauses owned jobs in the same transaction (projects.py:433-441,           *)
-(* upkeep.py:591-600). It cannot run inside refresh_now's create transaction.                   *)
-UserArchive ==
-    /\ userBudget > 0 /\ space = "active" /\ pc # "start"
-    /\ space' = "archived" /\ userBudget' = userBudget - 1
-    /\ job' = IF job.exists THEN [job EXCEPT !.enabled = FALSE] ELSE job
-    /\ UNCHANGED <<pc, created, slotDue, reply, err, pauseFailed, result, warned, manualRan, execs, okExecs>>
+(* upkeep.py:563-564; tests:74-77,528-539. Unknown background outcome.      *)
+BackgroundRelease ==
+    /\ claim = "background" /\ claim' = "none"
+    /\ UNCHANGED <<env, pc, created, job, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, userPc, userOp, dbOwner>>
 
-(* delete_space removes owned jobs in its transaction (projects.py:449-465, upkeep.py:603-614).  *)
-UserDelete ==
-    /\ userBudget > 0 /\ space # "deleted" /\ pc # "start"
-    /\ space' = "deleted" /\ userBudget' = userBudget - 1
-    /\ job' = NoJob
-    /\ UNCHANGED <<pc, created, slotDue, reply, err, pauseFailed, result, warned, manualRan, execs, okExecs>>
+(* upkeep.py:466-486; projects.py:433-441,456-465. Start one SQLite writer;  *)
+(* the user operation's public cron calls are NOT inside one model action. *)
+UserStart ==
+    /\ ~NoUserAction
+    /\ userBudget > 0 /\ dbOwner = "none"
+    /\ userOp' \in {"pause", "remove", "archive", "delete"}
+    /\ space # "deleted" /\ (userOp' # "archive" \/ space = "active")
+    /\ userBudget' = userBudget - 1 /\ userPc' = "list" /\ dbOwner' = "user"
+    /\ UNCHANGED <<env, pc, created, job, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, claim>>
 
+UserRemoves == userOp \in {"remove", "delete"}
+
+(* upkeep.py:477,594,607. A one-job ownership snapshot. More targets omitted.*)
+UserList ==
+    /\ userPc = "list" /\ dbOwner = "user"
+    /\ \/ userPc' = IF job.exists THEN "mutate" ELSE "final_list"
+       \/ /\ CronFailures /\ userPc' = "abort"
+    /\ UNCHANGED <<env, pc, created, job, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, claim, userOp, dbOwner>>
+
+(* upkeep.py:482,596,609 ->143. Abort cannot roll back this native effect.  *)
+UserMutate ==
+    /\ userPc = "mutate" /\ dbOwner = "user"
+    /\ \/ /\ (job.exists \/ UserRemoves)
+          /\ job' = IF UserRemoves THEN NoJob ELSE [job EXCEPT !.enabled = FALSE]
+          /\ userPc' = "verify"
+       \/ /\ (~job.exists \/ CronFailures) /\ job' = job
+          /\ userPc' = IF UserRemoves THEN "verify" ELSE "abort"
+    /\ UNCHANGED <<env, pc, created, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, claim, userOp, dbOwner>>
+
+UserValid == IF UserRemoves THEN ~job.exists ELSE job.exists /\ ~job.enabled
+
+(* upkeep.py:149-180. A native effect followed by a refused list aborts DB. *)
+UserVerify ==
+    /\ userPc = "verify" /\ dbOwner = "user"
+    /\ \/ userPc' = IF UserValid THEN "final_list" ELSE "abort"
+       \/ /\ CronFailures /\ userPc' = "abort"
+    /\ UNCHANGED <<env, pc, created, job, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, claim, userOp, dbOwner>>
+
+(* upkeep.py:483-486,597-600,610-611. Absence also satisfies final pause.    *)
+UserFinalList ==
+    /\ userPc = "final_list" /\ dbOwner = "user"
+    /\ \/ userPc' = IF ~job.exists \/ (~UserRemoves /\ ~job.enabled) THEN "commit" ELSE "abort"
+       \/ /\ CronFailures /\ userPc' = "abort"
+    /\ UNCHANGED <<env, pc, created, job, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, claim, userOp, dbOwner>>
+
+(* projects.py:440-444,464; upkeep.py:487-489. DB commit is separate from    *)
+(* every native call; only the Space status is retained by this slice.     *)
+UserCommit ==
+    /\ userPc = "commit" /\ dbOwner = "user"
+    /\ space' = CASE userOp = "archive" -> "archived"
+                    [] userOp = "delete" -> "deleted"
+                    [] OTHER -> space
+    /\ userPc' = "done" /\ dbOwner' = "none"
+    /\ UNCHANGED <<env, pc, created, job, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, userBudget, claim, userOp>>
+
+(* upkeep.py:486,599-600,611; caller's db.write rolls back DB, NOT cron.     *)
+UserAbort ==
+    /\ userPc = "abort" /\ dbOwner = "user"
+    /\ userPc' = "done" /\ dbOwner' = "none"
+    /\ UNCHANGED <<env, pc, created, job, slotDue, reply, err, pauseFailed, removeFailed, result,
+                    warned, manualRan, execs, okExecs, space, userBudget, claim, userOp>>
+
+(* upkeep.py:550,559. Stuttering only after the request and claimed work end.*)
 Finished ==
-    /\ pc = "done"
+    /\ pc = "done" /\ claim = "none" /\ dbOwner = "none"
     /\ ~(created /\ job.exists /\ job.enabled /\ job.pending)
     /\ UNCHANGED vars
 
 Next ==
-  /\ env' = env
-  /\ \/ Create \/ Resume \/ Run \/ PostCheck \/ SkipCheck
-     \/ CleanupPause \/ CleanupRemove \/ ConsumePause \/ ConsumeBackground \/ ConsumeRemove
-     \/ ReturnOk \/ ReturnError
-     \/ ClockReachesSlot \/ SchedulerFire
-     \/ UserPause \/ UserRemove \/ UserArchive \/ UserDelete
-     \/ Finished
+    \/ Create \/ Resume \/ ResumeVerify
+    \/ Run \/ RunExecute \/ RunRelease \/ RunReply \/ RunVerify
+    \/ DBRecheck \/ RecheckList \/ SkipCheck \/ CleanupLinked
+    \/ NativePause \/ NativePauseVerify \/ PauseDone \/ CleanupList
+    \/ NativeRemove \/ NativeRemoveVerify \/ RemoveDone
+    \/ ReturnOk \/ ReturnError \/ ClockReachesSlot
+    \/ SchedulerClaim \/ SchedulerExecute \/ SchedulerRetire \/ BackgroundRelease
+    \/ UserStart \/ UserList \/ UserMutate \/ UserVerify \/ UserFinalList \/ UserCommit \/ UserAbort
+    \/ Finished
 
 Spec == Init /\ [][Next]_vars
 
@@ -271,18 +453,14 @@ TypeOK ==
     /\ execs \in 0..3 /\ okExecs \in 0..3 /\ userBudget \in 0..1
     /\ result \in {"pending", "ok", "err_refused", "err_verify_refused", "err_other"}
 
-(* A fresh refresh request executes upkeep at most once, unless its own reply warns that the     *)
-(* one-shot may run again.                                                                      *)
+(* Fresh invocation-owned once jobs only; linked recurring jobs are excluded.*)
 AtMostOnce == (created /\ ~warned) => execs <= 1
 
-(* A refresh reported as successful really ran: the manual run executed and did not fail.        *)
+(* ok means evidenced dispatch, not successful background completion.      *)
 NoSuccessForSkippedRun == result = "ok" => (manualRan /\ reply \in {"inline_ok", "background"})
 
-(* A refresh reported as refused ("Hermes cron did not complete the refresh execution") had no   *)
-(* successful execution on behalf of this request, unless its reply warns the one-shot may still *)
-(* be enabled (upkeep.py:540-549).                                                              *)
+(* Preserve the refusal properties. okExecs counts evidenced successful    *)
+(* completions only, not accepted background/unknown/forwarded replies.     *)
 NoFalseRefusal == (result = "err_refused" /\ ~warned) => okExecs = 0
-(* Finding F1, checked separately: a run that succeeded is not reported as refused when only the   *)
-(* job-list verification after it was refused.                                                  *)
 NoRefusalAfterSuccessfulRun == (result = "err_verify_refused" /\ ~warned) => okExecs = 0
 =============================================================================

@@ -6,9 +6,9 @@ must occur exactly once; if it does not, the code drifted and the mutant needs u
 """
 
 MUTANTS = {
-    # Refresh now: the historical defects (a)-(d), put back into upkeep.py.
     "refresh-a-paused-run-reported-ok": {
         "check": "refresh_one_shot", "expect": "NoSuccessForSkipped",
+        "signatures": ["NoSuccessForSkipped: start=fresh, run outcome=inline_ok, during run=nothing, post-run DB failure=False, no cron refusals.", "Executions: []"],
         "why": "(a) the born-paused one-shot is run without resuming it, and the skip is not refused",
         "edits": [("upkeep.py", '        if created:\n            _mutate("resume", jid)\n', "        pass\n"),
                   ("upkeep.py", '(job.get("executed") is False\n                                      or job.get("execution_skipped")\n'
@@ -30,34 +30,34 @@ MUTANTS = {
                    '            try:\n                _mutate("pause", jid, reason=f"Living Spaces refresh by {actor} failed")')]},
     "refresh-d-one-shot-due-at-create": {
         "check": "refresh_one_shot", "expect": "NoFalseRefusal",
-        "why": "(d) a born-paused one-shot created already due is retired by the scheduler and the success reported as refused",
+        "why": "due-slot analogue of (d): scheduler fires before the manual request; not dispatch-limit retirement mid-run",
         "edits": [("upkeep.py", 'ONE_SHOT_SLOT = "in 7d"', 'ONE_SHOT_SLOT = "in 1m"')]},
-    # Records.
     "records-stale-base-rev-accepted": {
-        "check": "records_integrity", "expect": "the model expects conflict",
+        "check": "records_integrity", "expect": "Conflict:",
+        "signatures": ["numeric stale base_rev=1 at current rev=2 returned ok, expected conflict"],
         "why": "lost update: a write with an older base_rev is accepted",
         "edits": [("records.py", '(row is not None and base_rev != row["rev"])',
                    '(row is not None and base_rev is not None and base_rev > row["rev"])')]},
     "records-source-overwrites-user-data": {
-        "check": "records_integrity", "expect": "differ from the model",
+        "check": "records_integrity", "expect": "UserOwned:",
         "why": "a source upsert writes into user-owned data",
         "edits": [("records.py", '"UPDATE records SET source=?,source_meta=?,rev=?', '"UPDATE records SET data=?,source_meta=?,rev=?')]},
-    "records-row-lookup-ignores-space": {
-        "check": "records_integrity", "expect": "the model expects",
-        "why": "a record lookup is not scoped to its Space",
-        "edits": [("records.py", '"SELECT * FROM records WHERE space=? AND collection=? AND id=?"',
-                   "\"SELECT * FROM records WHERE space<>'~'||? AND collection=? AND id=?\"")]},
+    "records-update-ignores-space": {
+        "check": "records_integrity", "expect": "Isolation:",
+        "why": "a user update writes matching records in other Spaces too",
+        "edits": [("records.py", '"UPDATE records SET data=?,rev=?,updated_at=?,updated_by=? WHERE space=? AND collection=? AND id=?"',
+                   "\"UPDATE records SET data=?,rev=?,updated_at=?,updated_by=? WHERE space<>'~'||? AND collection=? AND id=?\"")]},
     "records-rev-restarts-after-delete": {
-        "check": "records_integrity", "expect": "differ from the model",
+        "check": "records_integrity", "expect": "RevMonotonic:",
         "why": "a re-created record reuses revs from before its delete",
         "edits": [("records.py", '"SELECT coalesce(max(rev),0)+1 FROM changes WHERE space=? AND collection=? AND record_id=?"',
                    '"SELECT coalesce(max(rev),0)+1 FROM records WHERE space=? AND collection=? AND id=?"')]},
     "records-batch-partial-commit": {
-        "check": "records_integrity", "expect": "the model expects",
+        "check": "records_integrity", "expect": "BatchAtomic:",
+        "signatures": ["returned ok, the model expects conflict"],
         "why": "a batch with a failing operation commits the others",
         "edits": [("records.py", '            raise SpacesError(exc.code, exc.message, **{**exc.extra, "op_index": index}) from exc',
                    "            results.append(None)")]},
-    # Bridge authority.
     "bridge-session-not-bound-to-space": {
         "check": "bridge_authority", "expect": "Authority",
         "why": "a session opened for one Space is accepted for another",
@@ -76,7 +76,6 @@ MUTANTS = {
                   ("bridge.py", "        sessions.require(sid, session)\n        if capability:\n            grants.check(sid, capability)\n"
                                 '        return {"ok": True',
                    '        sessions.require(sid, session)\n        return {"ok": True')]},
-    # Delete.
     "delete-keeps-change-log": {
         "check": "delete_residue", "expect": "Gone",
         "why": "delete_space leaves the change log, which the next Space with the same name inherits",
@@ -87,20 +86,18 @@ MUTANTS = {
         "why": "delete_space leaves frame sessions bound to the reused id",
         "edits": [("projects.py", 'for table in ("changes", "recovery_points", "audit", "sessions", "runs", "logs"):',
                    'for table in ("changes", "recovery_points", "audit", "runs", "logs"):')]},
-    # Internet boundary.
     "net-plain-http-port-allowed": {
-        "check": "net_boundary", "expect": "HttpsOnly",
-        "why": "port 80 is accepted for the pinned TLS connection",
+        "check": "net_boundary", "expect": "PortAllowlist",
+        "why": "port 80 is passed to the transport factory",
         "edits": [("net.py", "    if port not in (443, 8443):", "    if port not in (443, 8443, 80):")]},
     "net-only-last-dns-answer-vetted": {
-        "check": "net_boundary", "expect": "NoPrivateConnect",
-        "why": "DNS rebinding: one answer is vetted while another is connected to",
+        "check": "net_boundary", "expect": "VettedIpArgument",
+        "why": "one DNS answer is vetted while another is passed to the transport factory",
         "edits": [("net.py", "    if any(not _public(ip) for ip in addresses):", "    if not _public(addresses[-1]):")]},
     "net-credentials-follow-redirect": {
         "check": "net_boundary", "expect": "CredentialsStay",
         "why": "Authorization and Cookie are kept on a redirect to another host",
         "edits": [("net.py", "                    if _target(url)[:2] != (host, port):", "                    if False:")]},
-    # Runtime inspection (only on trees that have inspection.py; first in candidate 8008dcc).
     "inspect-write-served": {
         "check": "inspection_readonly", "expect": "Refused", "requires": "inspection.py",
         "why": "data.put is not refused during inspection",
@@ -118,4 +115,62 @@ MUTANTS = {
         "why": "the adapter sorts descending orders the wrong way",
         "edits": [("inspection.py", 'keyed.sort(key=lambda pair: pair[0], reverse=bool(order and order.startswith("-")))',
                    'keyed.sort(key=lambda pair: pair[0], reverse=bool(order and not order.startswith("-")))')]},
+    "refresh-consumption-leaves-enabled-job": {
+        "check": "refresh_one_shot", "expect": "NoLeftoverOneShot",
+        "why": "the inline return leaves its one-shot enabled",
+        "edits": [("upkeep.py", '                result["one_shot"] = _consume_one_shot(jid, native, actor=actor)\n', "                pass\n")]},
+    "refresh-success-falsely-refused": {
+        "check": "refresh_one_shot", "expect": "NoFalseRefusal",
+        "why": "background execution is refused because its reply lacks a completion field",
+        "edits": [("upkeep.py", 'or job.get("execution_success") is False)', 'or job.get("execution_success") is not True)')]},
+    "refresh-each-request-runs-twice": {
+        "check": "refresh_concurrency", "expect": "OneRunAtATime",
+        "why": "each overlapping request dispatches twice instead of the known single dispatch per request",
+        "edits": [("upkeep.py", '        native = _run_now(sid, jid)\n        job = native.get("job")',
+                   '        native = _run_now(sid, jid)\n        native = _run_now(sid, jid)\n        job = native.get("job")')]},
+    "refresh-worker-crashes": {
+        "check": "refresh_concurrency", "expect": "ProbeCompleted",
+        "why": "thread exceptions must fail the probe rather than appear to fix F3",
+        "edits": [("runs.py", '    if trigger not in ("manual", "schedule", "chat"):',
+                   '    raise RuntimeError("broken refresh entry")\n    if trigger not in ("manual", "schedule", "chat"):')]},
+    "records-change-cursor-reversed": {
+        "check": "records_integrity", "expect": "Cursor:",
+        "why": "the changes cursor returns descending sequence numbers",
+        "edits": [("records.py", 'WHERE space=? AND seq>? ORDER BY seq LIMIT ?', 'WHERE space=? AND seq>? ORDER BY seq DESC LIMIT ?')]},
+    "bridge-refusal-writes-data": {
+        "check": "bridge_authority", "expect": "NoEffect",
+        "why": "a denied operation changes records before checking its grant",
+        "edits": [("bridge.py", '        if capability:\n            grants.check(sid, capability)\n        limits.object_json(args)',
+                   '        if capability:\n            with db.write() as conn:\n                conn.execute("UPDATE records SET data=\'{}\' WHERE space=?", (sid,))\n            grants.check(sid, capability)\n        limits.object_json(args)')]},
+    "bridge-authorized-operations-all-refused": {
+        "check": "bridge_authority", "expect": "Authority",
+        "why": "valid operations must succeed, not merely avoid authorization errors",
+        "edits": [("bridge.py", 'def _call(sid, session, op, args):',
+                   'def _call(sid, session, op, args):\n    raise SpacesError("invalid", "broken dispatcher")')]},
+    "delete-clears-other-spaces-history": {
+        "check": "delete_residue", "expect": "Untouched",
+        "why": "history cleanup loses the Space predicate",
+        "edits": [("projects.py", 'conn.execute(f"DELETE FROM {table} WHERE space=?", (sid,))',
+                   'conn.execute(f"DELETE FROM {table} WHERE space<>\'~\'||?", (sid,))')]},
+    "create-without-files-is-not-empty": {
+        "check": "delete_residue", "expect": "Fresh",
+        "why": "a recreated empty Space unexpectedly contains a record",
+        "edits": [("projects.py", '    result["warnings"] = warnings\n    return result',
+                   '    result["warnings"] = warnings\n    if files is None:\n        records.put(sid, "old", "ghost", {"stale": True}, actor="user")\n    return result')]},
+    "net-unresolved-address-passed": {
+        "check": "net_boundary", "expect": "ResolvedIpArgument",
+        "why": "the transport receives a different public IP than the validated resolver answer",
+        "edits": [("net.py", 'conn = _connection(host, port, ip, _remaining(deadline))',
+                   'conn = _connection(host, port, "9.9.9.9", _remaining(deadline))')]},
+    "inspect-commits-a-write": {
+        "check": "inspection_readonly", "expect": "ReadOnly", "requires": "inspection.py",
+        "why": "the adapter opens a separate writable connection and changes metadata while serving a read",
+        "edits": [("inspection.py", '        conn, sid = self.snap.conn, self.snap.sid',
+                   '        conn, sid = self.snap.conn, self.snap.sid\n        with sqlite3.connect(db.db_path()) as unsafe:\n            unsafe.execute("UPDATE spaces SET name=name || \'changed\' WHERE id=?", (sid,))')]},
+    "refresh-consume-refusal-is-not-F1": {
+        "check": "refresh_one_shot", "expect": "NoFalseRefusal",
+        "why": "a new consume-phase refusal must fail, not become a known _run_now finding",
+        "signatures": ["VIOLATION: 11 scenario(s) broke a property.", "NoFalseRefusal: start=fresh, run outcome=inline_ok", "Hermes cron remove refused: injected remove refusal #1"],
+        "edits": [("upkeep.py", '            return {"job_id": jid, "consumed": "paused", "cleanup": cleanup.to_dict()}',
+                   '            raise SpacesError(cleanup.code, cleanup.message, **{**cleanup.extra, "native": native})')]},
 }
