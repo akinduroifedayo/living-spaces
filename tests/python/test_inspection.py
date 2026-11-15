@@ -296,6 +296,15 @@ class BoundaryTests(InspectionCase):
         report = self.inspect(sid, 2)
         self.assertEqual((report["outcome"], report["readiness"]["reason"]), ("failed", "entry_missing"))
 
+    def test_reference_resolves_by_name_and_never_guesses(self):
+        sid = self.space("Desk", "<main>x</main>")
+        with patch.dict(os.environ, {inspection.BROWSER_ENV: ""}):
+            self.assertEqual(self.inspect("desk", 1)["space"], sid)
+            self.space("DESK", "<main>y</main>")
+            with self.assertRaises(SpacesError) as raised:
+                inspection.inspect("Desk", 1)
+        self.assertEqual(raised.exception.code, "ambiguous")
+
     def test_deleted_space_is_not_found(self):
         sid = self.space("Gone", "<main>x</main>")
         with patch.object(projects.upkeep, "on_delete", lambda conn, sid: False):

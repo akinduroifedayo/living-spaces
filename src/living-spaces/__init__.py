@@ -426,6 +426,7 @@ def spaces_inspect(core, args, owner):
     unknown = set(args) - {"space", "rev", "width", "height", "timeout_s", "text_limit"}
     if unknown:
         raise _invalid(core, f"Unknown arguments: {', '.join(sorted(unknown))}")
+    # The reference is resolved inside the read-only snapshot, never through the writable connection.
     return core.inspect(_text(core, args, "space"), _int(core, args, "rev"),
                               width=_int(core, args, "width", required=False),
                               height=_int(core, args, "height", required=False),

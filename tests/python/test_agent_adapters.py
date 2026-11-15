@@ -171,11 +171,17 @@ class ToolTests(AdapterCase):
         error = SpacesError("ambiguous", "Choose a Space", candidates=[{"id": "desk-1"}, {"id": "desk-2"}])
         self.core.resolve_space.side_effect = error
         for name, params in PARAMS.items():
-            if "space" not in params:
+            # spaces_inspect resolves inside its read-only snapshot (covered in test_inspection).
+            if "space" not in params or name == "spaces_inspect":
                 continue
             with self.subTest(tool=name):
                 self.assertEqual(self.tool(name)["error"], error.to_dict())
                 getattr(self.core, TARGETS[name]).assert_not_called()
+
+    def test_inspect_rejects_unknown_arguments_before_running(self):
+        reply = self.tool("spaces_inspect", {"space": SID, "rev": 2, "screenshot": True})
+        self.assertEqual(reply["error"]["code"], "invalid")
+        self.core.inspect.assert_not_called()
 
     def test_owner_context_and_active_profile(self):
         for context in ({"bot_name": "DemoBot"}, {"profile_name": "DemoBot"},
@@ -316,7 +322,7 @@ def tool_success(name):
         target = getattr(self.core, TARGETS[name])
         target.assert_called_once()
         if name in ("spaces_list", "spaces_read_file", "spaces_query", "spaces_write_records",
-                    "spaces_revisions", "spaces_refresh", "spaces_schedule_upkeep", "spaces_upkeep"):
+                    "spaces_revisions", "spaces_refresh", "spaces_schedule_upkeep", "spaces_upkeep", "spaces_inspect"):
             self.assertEqual(reply, {"ok": True, "result": target.return_value})
         elif name == "spaces_read_logs":
             self.assertEqual(reply, {"ok": True, "result": {
@@ -333,7 +339,7 @@ def tool_success(name):
             self.assertEqual(reply["result"]["rev"], 2 if name == "spaces_create" else 3)
             expected_warnings = ['Canvas bot actions are unavailable because native maintaining-session context was missing. Bind it from a native maintenance turn with spaces_bind_maintainer.'] if name == "spaces_create" else []
             self.assertEqual(reply["result"]["warnings"], expected_warnings)
-        if name not in ("spaces_list", "spaces_create"):
+        if name not in ("spaces_list", "spaces_create", "spaces_inspect"):
             self.core.resolve_space.assert_called_once_with(PARAMS[name]["space"])
             self.assertEqual(target.call_args.args[0], SID)
         if name == "spaces_query":
@@ -342,6 +348,9 @@ def tool_success(name):
             self.assertEqual(target.call_args.args[1], PARAMS[name]["ops"])
         if name == "spaces_refresh":
             self.assertEqual(target.call_args.kwargs["trigger"], "chat")
+        if name == "spaces_inspect":
+            self.assertEqual(target.call_args.args, (SID, 2))
+            self.assertEqual(target.call_args.kwargs, {"width": None, "height": None, "timeout_s": None, "text_limit": None})
         if name == "spaces_schedule_upkeep":
             self.assertEqual(target.call_args.kwargs, {"kind": "agent", "cadence": "0 7 * * *", "timezone": "America/Chicago",
                                                        "prompt": "Read new public papers each morning", "actor": "agent:Hermes"})
