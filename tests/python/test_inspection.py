@@ -1223,6 +1223,53 @@ class ReviewElevenRepairTests(InspectionCase):
         self.assertTrue(reply["ok"], reply)
 
 
+class ReviewTwelveRepairTests(InspectionCase):
+    """Frozen regressions for review-12 (Codex gpt-6-astra, REJECT at 81137f6). Each failed before its repair."""
+
+    finish = ReviewFiveRepairTests.finish
+    # Deeper than the JSON parser's own recursion limit (logs.redact catches that one internally and regex-falls-back).
+    DEEPER = '{"password":{"value":"demo-only-secret"},"padding":' + "[" * 1200 + "0" + "]" * 1200 + "}"
+
+    def test_z1_json_too_deep_to_parse_is_withheld_everywhere(self):
+        self.assertNotIn("demo-only-secret", inspection._redact(self.DEEPER))
+        self.assertNotIn("demo-only-secret", inspection._redact_cut(self.DEEPER, cut=False))
+        run = ReviewSixRepairTests.fake_run(self)  # type: ignore[arg-type]
+        run.record("console", "error", self.DEEPER)
+        self.assertNotIn("demo-only-secret", json.dumps(run.entries))
+
+    def test_z1_json_too_deep_to_parse_in_the_body_is_withheld_with_a_limitation(self):
+        run = type("R", (), {"text_limit": 4000, "entries": [], "counts": {"error": 0}, "dropped": 0,
+                             "network_blocked": 0, "network": [], "events": [], "host_notices": {}, "booted": True,
+                             "stable_since": None})()
+        adapter = type("A", (), {"lifecycle": "loaded", "guest_logs": {}, "refused": {}, "denied": {}, "served": {}})()
+        report = {"readiness": {}, "limitations": [], "outcome": "loaded",
+                  "text": {"text": self.DEEPER, "chars": len(self.DEEPER), "title": "", "title_chars": 0,
+                           "text_cut": False, "title_cut": False, "nodes": 1, "images": 0, "canvases": 0,
+                           "svgs": 0, "failure": False, "mutations": 0}}
+        inspection._finish(run, adapter, report)
+        self.assertNotIn("demo-only-secret", report["text"]["content"])
+        self.assertTrue(any(item.startswith("text_withheld") for item in report["limitations"]), report)
+
+    def test_z2_guest_text_that_looks_like_a_marker_does_not_break_the_report(self):
+        for text in ("[WITHHELD by the author]", "[WITHHELD: x]", "[WITHHELD: JSON cut short; but mine"):
+            with self.subTest(text=text):
+                out = self.finish(text)
+                self.assertEqual(out["content"], text)
+
+    def test_z2_control_a_generated_marker_still_adds_the_limitation(self):
+        run = type("R", (), {"text_limit": 100, "entries": [], "counts": {"error": 0}, "dropped": 0,
+                             "network_blocked": 0, "network": [], "events": [], "host_notices": {}, "booted": True,
+                             "stable_since": None})()
+        adapter = type("A", (), {"lifecycle": "loaded", "guest_logs": {}, "refused": {}, "denied": {}, "served": {}})()
+        text = json.dumps({"a": "w " * 300})
+        report = {"readiness": {}, "limitations": [], "outcome": "loaded",
+                  "text": {"text": text[:100 + inspection.TEXT_SLACK], "chars": len(text), "title": "",
+                           "title_chars": 0, "text_cut": True, "title_cut": False, "nodes": 1, "images": 0,
+                           "canvases": 0, "svgs": 0, "failure": False, "mutations": 0}}
+        inspection._finish(run, adapter, report)
+        self.assertTrue(any(item.startswith("text_withheld") for item in report["limitations"]), report)
+
+
 class BoundaryTests(InspectionCase):
     def test_unavailable_renderer_is_reported_not_faked(self):
         sid = self.space("Any", "<main>x</main>")

@@ -119,11 +119,28 @@ WITHHELD_CUT_JSON = "[WITHHELD: JSON cut short cannot be redacted safely; {} cha
 
 def _redact(text):
     """logs.redact, but never failing on guest-shaped input. JSON nested past the recursion limit is withheld:
-    a textual fallback would reveal credential objects that structural redaction removes."""
+    a textual fallback would reveal credential objects that structural redaction removes. Parser recursion is
+    checked here first, because logs.redact catches that one itself and silently falls back to regex."""
+    if text.lstrip()[:1] in ("{", "["):
+        try:
+            json.loads(text)
+        except RecursionError:
+            return WITHHELD_DEEP.format(len(text))
+        except ValueError:
+            pass
     try:
         return logs.redact(text)
-    except RecursionError:
+    except RecursionError:                          # parsed, but too deep for the recursive redaction
         return WITHHELD_DEEP.format(len(text))
+
+
+def _withheld_reason(clean, chars):
+    """The reason when `clean` is a marker this module generated for `chars` of input; None for guest text,
+    including guest text that merely starts with "[WITHHELD"."""
+    for template in (WITHHELD_DEEP, WITHHELD_CUT_JSON):
+        if clean == template.format(chars):
+            return template[len("[WITHHELD: "):template.index(";")]
+    return None
 
 
 # A credential assignment whose quoted value runs to the end of the text: the closing quote was cut off.
@@ -1095,10 +1112,10 @@ def _finish(run, adapter, report):
                           "truncated": bool(sample.get("text_cut")) or len(clean) > run.text_limit,
                           "title": _clip(_redact_cut(sample["title"],
                                                      cut=bool(sample.get("title_cut"))), 200)}
-        if clean.startswith("[WITHHELD"):
-            report["limitations"].append("text_withheld: the visible text could not be redacted safely (" +
-                                         clean[len("[WITHHELD: "):clean.index(";")] + "); raise text_limit to "
-                                         "return it whole, or read the Space's records instead")
+        reason = _withheld_reason(clean, len(text))
+        if reason:
+            report["limitations"].append(f"text_withheld: the visible text could not be redacted safely ({reason}); "
+                                         "raise text_limit to return it whole, or read the Space's records instead")
         if not text.strip() and not (sample["images"] or sample["canvases"] or sample["svgs"]):
             report["limitations"].append("blank_suspected: the Space rendered no text, images, canvas or SVG")
     else:
