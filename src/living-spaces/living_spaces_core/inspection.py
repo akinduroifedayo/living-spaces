@@ -49,6 +49,8 @@ SETTLE_MS = 1500                                         # unchanged DOM and bri
 QUIET_MS = 2000                                          # settle window when the guest cannot report lifecycle
 CLEANUP_S = 5
 MAX_CONCURRENT = 2
+MAX_MESSAGE = 8 * 1024 * 1024                            # one DevTools message; larger ends the inspection as error
+TEXT_SLACK = 256                                         # extra raw characters fetched so redaction can see a secret
 # Chromium does not know the shell's `webrtc 'block'` CSP directive and says so once per sandboxed document. It is
 # emitted for the packaged shell on every Space, so it is reported apart from the Space's own errors.
 HOST_NOTICES = ("Unrecognized Content-Security-Policy directive 'webrtc'.",)
@@ -104,8 +106,17 @@ def _bounded(value, name, bounds):
     return value
 
 
+def _redact(text):
+    """logs.redact, but never failing on guest-shaped input (deeply nested JSON recurses past the limit)."""
+    try:
+        return logs.redact(text)
+    except RecursionError:
+        text = logs._SECRETS.sub("[REDACTED]", text)
+        return logs._CREDENTIAL_ASSIGNMENT.sub(lambda match: match["prefix"] + '"[REDACTED]"', text)
+
+
 def _clip(text, size=ENTRY_CHARS):
-    text = logs.redact(str(text))
+    text = _redact(str(text))
     return text if len(text) <= size else text[:size] + f" [truncated; {len(text)} chars]"
 
 
@@ -181,6 +192,7 @@ class PassiveAdapter:
     def __init__(self, snapshot):
         self.snap = snapshot
         self.refused = {}
+        self.denied = {}
         self.served = {}
         self.lifecycle = None
         self.guest_logs = {"entries": 0, "dropped": 0, "unconfirmed": 0}
@@ -198,6 +210,7 @@ class PassiveAdapter:
             raise SpacesError("not_granted", "Operation is unavailable", capability=op if isinstance(op, str) else "unknown")
         capability, required, optional = bridge._OPS[op]
         if capability and capability not in self.snap.granted:
+            self.denied[op] = self.denied.get(op, 0) + 1
             raise SpacesError("not_granted", "Capability or requested scope is not granted", capability=capability)
         limits.object_json(args)
         limits.check(len(limits.dumps({"v": 1, "id": 0, "op": op, "args": args}).encode("utf-8")),
@@ -261,34 +274,45 @@ class _LaunchFailed(Exception):
     pass
 
 
+class _Crashed(Exception):
+    pass
+
+
 class Browser:
     """A throwaway Chromium driven over --remote-debugging-pipe. One instance per inspection."""
 
     def __init__(self, path, width, height, deadline):
         self.deadline = deadline
-        self.tmp = tempfile.mkdtemp(prefix="ls-inspect-")
         self.pid = None
+        self.tmp = None
         self.buf = b""
         self.next_id = 0
         self.responses = {}
         self.listeners = []
-        to_child, self.write_fd = os.pipe()
-        self.read_fd, from_child = os.pipe()
-        profile = os.path.join(self.tmp, "profile")
-        argv = [path, "--headless=new", "--remote-debugging-pipe", f"--user-data-dir={profile}",
-                "--no-first-run", "--no-default-browser-check", "--disable-extensions",
-                "--disable-component-extensions-with-background-pages", "--disable-background-networking",
-                "--disable-component-update", "--disable-sync", "--disable-default-apps",
-                "--disable-domain-reliability", "--disable-client-side-phishing-detection", "--no-pings",
-                "--mute-audio", "--use-mock-keychain", "--password-store=basic", "--deny-permission-prompts",
-                "--host-resolver-rules=MAP * ~NOTFOUND", "--proxy-server=127.0.0.1:9", "--proxy-bypass-list=<-loopback>",
-                "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
-                "--disable-features=MediaRouter,OptimizationHints,Translate,AutofillServerCommunication",
-                f"--window-size={width},{height}", "--hide-scrollbars", "about:blank"]
-        env = {"PATH": "/usr/bin:/bin", "HOME": self.tmp, "TMPDIR": self.tmp}
-        stderr = os.open(os.path.join(self.tmp, "stderr.log"), os.O_WRONLY | os.O_CREAT, 0o600)
-        devnull = os.open(os.devnull, os.O_RDWR)
+        self.max_message = 0
+        self.read_fd = self.write_fd = -1
+        held = []
         try:
+            self.tmp = tempfile.mkdtemp(prefix="ls-inspect-")
+            to_child, write_fd = os.pipe()
+            held += [to_child, write_fd]
+            read_fd, from_child = os.pipe()
+            held += [read_fd, from_child]
+            held.append(os.open(os.path.join(self.tmp, "stderr.log"), os.O_WRONLY | os.O_CREAT, 0o600))
+            held.append(os.open(os.devnull, os.O_RDWR))
+            stderr, devnull = held[4], held[5]
+            profile = os.path.join(self.tmp, "profile")
+            argv = [path, "--headless=new", "--remote-debugging-pipe", f"--user-data-dir={profile}",
+                    "--no-first-run", "--no-default-browser-check", "--disable-extensions",
+                    "--disable-component-extensions-with-background-pages", "--disable-background-networking",
+                    "--disable-component-update", "--disable-sync", "--disable-default-apps",
+                    "--disable-domain-reliability", "--disable-client-side-phishing-detection", "--no-pings",
+                    "--mute-audio", "--use-mock-keychain", "--password-store=basic", "--deny-permission-prompts",
+                    "--host-resolver-rules=MAP * ~NOTFOUND", "--proxy-server=127.0.0.1:9",
+                    "--proxy-bypass-list=<-loopback>", "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+                    "--disable-features=MediaRouter,OptimizationHints,Translate,AutofillServerCommunication",
+                    f"--window-size={width},{height}", "--hide-scrollbars", "about:blank"]
+            env = {"PATH": "/usr/bin:/bin", "HOME": self.tmp, "TMPDIR": self.tmp}
             # Park every source fd above the target range first, so no dup2 overwrites a source still needed.
             park = [(fd, 100 + index) for index, fd in enumerate((devnull, stderr, to_child, from_child))]
             actions = [(os.POSIX_SPAWN_DUP2, fd, high) for fd, high in park]
@@ -297,49 +321,90 @@ class Browser:
             actions += [(os.POSIX_SPAWN_CLOSE, high) for _, high in park]
             self.pid = os.posix_spawn(path, argv, env, setsid=True, file_actions=actions)
         except OSError as exc:
-            # Nothing was started: release our pipe ends and the profile directory before reporting.
-            for fd in (self.write_fd, self.read_fd):
-                os.close(fd)
-            self.write_fd = self.read_fd = -1
-            shutil.rmtree(self.tmp, ignore_errors=True)
+            # Nothing is running: release whatever was acquired, including the profile directory.
+            for fd in held:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+            if self.tmp:
+                shutil.rmtree(self.tmp, ignore_errors=True)
             raise _LaunchFailed(exc.strerror or type(exc).__name__) from exc
-        finally:
-            for fd in (to_child, from_child, stderr, devnull):
-                os.close(fd)
+        for fd in (to_child, from_child, stderr, devnull):
+            os.close(fd)
+        self._use_pipes(read_fd, write_fd)
 
-    def send(self, method, params=None, session=None):
-        self.next_id += 1
-        message = {"id": self.next_id, "method": method, "params": params or {}}
-        if session:
-            message["sessionId"] = session
-        data = json.dumps(message).encode() + b"\0"
+    def _use_pipes(self, read_fd, write_fd):
+        self.read_fd, self.write_fd = read_fd, write_fd
+        os.set_blocking(write_fd, False)     # writes must never outlive the deadline
+
+    def _read(self):
         try:
-            while data:
-                data = data[os.write(self.write_fd, data):]
+            chunk = os.read(self.read_fd, 1 << 20)
+        except BlockingIOError:
+            return
         except OSError as exc:
             raise _Closed("Browser exited") from exc
-        return self.next_id
-
-    def pump(self, until):
-        """Read and dispatch messages until `until` (monotonic) or one read cycle with data."""
-        wait = max(0.0, min(until, self.deadline) - time.monotonic())
-        ready, _, _ = select.select([self.read_fd], [], [], wait)
-        if not ready:
-            if time.monotonic() >= self.deadline:
-                raise _Timeout()
-            return
-        chunk = os.read(self.read_fd, 1 << 20)
         if not chunk:
             raise _Closed("Browser exited")
         self.buf += chunk
+        if len(self.buf) - (self.buf.rfind(b"\0") + 1) > MAX_MESSAGE:
+            raise _Closed("A DevTools message exceeded the inspection size cap")
+
+    def _dispatch(self):
         while b"\0" in self.buf:
             raw, self.buf = self.buf.split(b"\0", 1)
+            if len(raw) > MAX_MESSAGE:
+                raise _Closed("A DevTools message exceeded the inspection size cap")
+            self.max_message = max(self.max_message, len(raw))
             message = json.loads(raw)
             if "id" in message:
                 self.responses[message["id"]] = message
             else:
                 for listener in self.listeners:
                     listener(message)
+
+    def send(self, method, params=None, session=None):
+        """Write one message without blocking past the deadline. Incoming data is buffered, not dispatched, so
+        listeners never run (and never send) in the middle of a partly written message."""
+        self.next_id += 1
+        message = {"id": self.next_id, "method": method, "params": params or {}}
+        if session:
+            message["sessionId"] = session
+        data = memoryview(json.dumps(message).encode() + b"\0")
+        while data:
+            remaining = self.deadline - time.monotonic()
+            if remaining <= 0:
+                raise _Timeout()
+            try:
+                readable, writable, _ = select.select([self.read_fd], [self.write_fd], [], remaining)
+            except (OSError, ValueError) as exc:
+                raise _Closed("Browser exited") from exc
+            if readable:
+                self._read()
+            if writable:
+                try:
+                    data = data[os.write(self.write_fd, data):]
+                except BlockingIOError:
+                    pass
+                except OSError as exc:
+                    raise _Closed("Browser exited") from exc
+        return self.next_id
+
+    def pump(self, until):
+        """Dispatch buffered messages, or wait for more until `until` (monotonic) or the deadline."""
+        if b"\0" not in self.buf:
+            wait = max(0.0, min(until, self.deadline) - time.monotonic())
+            try:
+                ready, _, _ = select.select([self.read_fd], [], [], wait)
+            except (OSError, ValueError) as exc:
+                raise _Closed("Browser exited") from exc
+            if not ready:
+                if time.monotonic() >= self.deadline:
+                    raise _Timeout()
+                return
+            self._read()
+        self._dispatch()
 
     def call(self, method, params=None, session=None, timeout=None):
         id_ = self.send(method, params, session)
@@ -386,6 +451,9 @@ class Browser:
             except (ProcessLookupError, PermissionError):
                 pass
             self.pid = None if receipt["process_exited"] else self.pid
+        if not self.tmp:
+            receipt["temp_removed"] = True
+            return receipt
         for _ in range(10):
             shutil.rmtree(self.tmp, ignore_errors=True)
             if not os.path.exists(self.tmp):
@@ -419,6 +487,7 @@ class _Run:
         self.booted = False
         self.reloaded = False
         self.events = []
+        self.crashed = False
         browser.listeners.append(self.on_event)
 
     def record(self, source, level, text, url=None):
@@ -466,6 +535,8 @@ class _Run:
                 self.attach(params["sessionId"], info["targetId"])
             elif session is not None:
                 self.b.send("Runtime.runIfWaitingForDebugger", None, params["sessionId"])
+        elif method in ("Inspector.targetCrashed", "Target.targetCrashed"):
+            self.crashed = True
         elif method == "Page.frameAttached":
             self.frames.setdefault(params["frameId"], params.get("parentFrameId"))
         elif method == "Fetch.requestPaused":
@@ -532,16 +603,18 @@ class _Run:
         try:
             world = self.b.call("Page.createIsolatedWorld", {"frameId": frame, "worldName": "ls-inspect"}, session,
                                 timeout=2)
+            keep = self.text_limit + TEXT_SLACK
             result = self.b.call("Runtime.evaluate", {
                 "contextId": world["executionContextId"], "returnByValue": True, "timeout": 1500,
                 "expression": """(() => { const b = document.body; const t = b ? b.innerText : '';
-                  return { text: t, title: document.title, nodes: document.getElementsByTagName('*').length,
+                  return { text: t.slice(0, %d), chars: t.length, title: String(document.title).slice(0, 1000),""" % keep + """ nodes: document.getElementsByTagName('*').length,
                            images: document.images.length, canvases: document.getElementsByTagName('canvas').length,
                            svgs: document.getElementsByTagName('svg').length,
                            failure: !!document.querySelector('section[role=alert] h1') &&
                                     document.querySelector('section[role=alert] h1').textContent === 'This Space could not load' } })()"""},
                 session, timeout=2)
-            return result.get("result", {}).get("value")
+            value = result.get("result", {}).get("value")
+            return value if isinstance(value, dict) and "chars" in value else None
         except (_Timeout, RuntimeError):
             return None
 
@@ -555,6 +628,10 @@ class _Run:
                 self.booted = True
             elif kind == "reloaded":
                 self.reloaded = True
+            elif kind == "denied" and isinstance(event.get("op"), str):
+                # The sandbox host refuses ungranted operations itself, before they reach the adapter.
+                op = event["op"] if event["op"] in bridge._OPS else "unknown"
+                self.adapter.denied[op] = self.adapter.denied.get(op, 0) + 1
             if kind in ("error", "log-overflow", "reloaded"):
                 self.events.append({"kind": kind, **({"message": _clip(event["message"], 300)} if event.get("message") else {})})
         if replies:
@@ -590,7 +667,7 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit):
                            "started_at": started, "snapshot": snap.provenance()},
             "outcome": None, "readiness": {"shell_booted": False, "guest_lifecycle": None, "failure_panel": False,
                                            "settled": False, "lifecycle_source": "guest_reported"},
-            "errors": [], "counts": {}, "blocked": {}, "network": {"blocked": 0, "attempts": []},
+            "errors": [], "counts": {}, "blocked": {}, "denied": {}, "network": {"blocked": 0, "attempts": []},
             "text": None, "dom": None, "viewport": {"requested": [width, height]},
             "screenshot": None, "limitations": list(LIMITATIONS), "cleanup": None,
         }
@@ -627,7 +704,10 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit):
             _drive(run, snap, shell, runner, width, height, deadline, report)
         except _Timeout:
             report["outcome"] = "timed_out"
-        except (_Closed, RuntimeError) as exc:
+        except _Crashed as exc:
+            report["outcome"] = "error"
+            report["error"] = {"code": "renderer_crashed", "message": str(exc)}
+        except (_Closed, RuntimeError, ValueError) as exc:
             report["outcome"] = "error"
             report["error"] = {"code": "renderer_exited" if isinstance(exc, _Closed) else "renderer_protocol",
                                "message": _clip(exc, 300)}
@@ -635,10 +715,17 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit):
             report["outcome"] = "canceled"
             raise
         finally:
-            run_state = locals().get("run")
-            if run_state is not None:
-                _finish(run_state, adapter, report)
-            report["cleanup"] = browser.close()
+            try:
+                run_state = locals().get("run")
+                if run_state is not None:
+                    _finish(run_state, adapter, report)
+            except Exception:
+                # Never let report formatting skip cleanup, and never report success from a broken report.
+                report["outcome"] = "error"
+                report["error"] = {"code": "inspection_failed", "message": "The inspection report could not be assembled"}
+                report["text"] = report["dom"] = None
+            finally:
+                report["cleanup"] = browser.close()
             if not (report["cleanup"]["process_exited"] and report["cleanup"]["temp_removed"]):
                 report["limitations"].append("cleanup_incomplete: the inspection browser or its files may remain")
             report["inspection"]["duration_ms"] = round((time.monotonic() - clock) * 1000)
@@ -693,17 +780,21 @@ def _drive(run, snap, shell, runner, width, height, deadline, report):
             last_traffic = time.monotonic()
         sample = run.sample() if run.booted else None
         now = time.monotonic()
+        if run.crashed:
+            raise _Crashed("The Space's renderer crashed")
         if sample is not None:
             report["text"] = sample
-            key = (len(sample["text"]), sample["nodes"], sample["failure"])
+            key = (sample["chars"], sample["nodes"], sample["failure"])
             if key != last:
                 last, stable_since = key, now
+        elif run.booted:
+            last, stable_since = None, None          # only a current, successful observation can count as settled
         lifecycle = run.adapter.lifecycle or ("failed" if sample and sample["failure"] else None)
         quiet = stable_since is not None and now - stable_since >= SETTLE_MS / 1000 and now - last_traffic >= SETTLE_MS / 1000
         if lifecycle and quiet:
             report["readiness"]["settled"] = True
             report["outcome"] = ("failed" if lifecycle == "failed" else
-                                 "loaded_with_errors" if run.exceptions else "loaded")
+                                 "loaded_with_errors" if run.counts["error"] else "loaded")
             return
         if not lifecycle and run.withhold and stable_since is not None and now - stable_since >= QUIET_MS / 1000 \
                 and now - last_traffic >= QUIET_MS / 1000:
@@ -725,10 +816,12 @@ def _finish(run, adapter, report):
     sample = report.get("text")
     if isinstance(sample, dict) and "nodes" in sample:
         readiness["failure_panel"] = sample["failure"]
-        text = sample["text"]
+        text, chars = sample["text"], sample["chars"]
         report["dom"] = {key: sample[key] for key in ("nodes", "images", "canvases", "svgs")}
-        report["text"] = {"content": logs.redact(text[:run.text_limit]), "chars": len(text),
-                          "truncated": len(text) > run.text_limit, "title": _clip(sample["title"], 200)}
+        clean = _redact(text)                    # redact before clipping, so a clipped secret is still caught
+        report["text"] = {"content": clean[:run.text_limit], "chars": chars,
+                          "truncated": chars > run.text_limit or len(clean) > run.text_limit,
+                          "title": _clip(sample["title"], 200)}
         if not text.strip() and not (sample["images"] or sample["canvases"] or sample["svgs"]):
             report["limitations"].append("blank_suspected: the Space rendered no text, images, canvas or SVG")
     else:
@@ -738,6 +831,7 @@ def _finish(run, adapter, report):
     report["errors"] = run.entries
     report["counts"] = {**run.counts, "dropped": run.dropped, "guest_reported": adapter.guest_logs}
     report["blocked"] = dict(adapter.refused)
+    report["denied"] = dict(adapter.denied)
     report["served"] = dict(adapter.served)
     report["network"] = {"blocked": run.network_blocked, "attempts": run.network}
     if run.events:

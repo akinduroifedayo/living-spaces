@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -267,6 +268,154 @@ class PassivityTests(InspectionCase):
         with self.assertRaises(ProcessLookupError):
             os.killpg(seen["pid"], 0)
         self.assertEqual(inspection._slots._value, inspection.MAX_CONCURRENT)
+
+
+@needs_browser
+class ReviewRepairTests(InspectionCase):
+    """Frozen regressions for review-1 (Codex gpt-6-astra, REJECT at bcd437e). Each failed before its repair."""
+
+    def test_f1_a_failed_current_sample_never_counts_as_settled(self):
+        sid = self.space("Stale", "<main>stable</main>")
+        original, calls = inspection._Run.sample, []
+
+        def sample(run):
+            calls.append(1)
+            return original(run) if len(calls) == 1 else None    # one good sample, then sampling fails
+
+        with patch.object(inspection._Run, "sample", sample):
+            report = self.inspect(sid, timeout_s=4)
+        self.assertEqual(report["outcome"], "timed_out", report)
+        self.assertFalse(report["readiness"]["settled"])
+
+    def test_f1_a_crashed_guest_is_an_error_not_loaded(self):
+        sid = self.space("Crash", "<main>crash</main>")
+        original, calls = inspection._Run.sample, []
+
+        def sample(run):
+            calls.append(1)
+            value = original(run)
+            if len(calls) == 2:
+                run.on_event({"method": "Inspector.targetCrashed", "params": {},
+                              "sessionId": run.owner(run.guest_frame())})
+            return value
+
+        with patch.object(inspection._Run, "sample", sample):
+            report = self.inspect(sid, timeout_s=6)
+        self.assertEqual(report["outcome"], "error", report)
+        self.assertEqual(report["error"]["code"], "renderer_crashed")
+
+    def test_f2_report_formatting_failure_still_cleans_up(self):
+        sid = self.space("Nested", "<main>" + "[" * 600 + "0" + "]" * 600 + "</main>")
+        before = set(Path(tempfile.gettempdir()).glob("ls-inspect-*"))
+        report = self.inspect(sid)
+        self.assertEqual(report["outcome"], "loaded", report)
+        self.assertEqual(report["cleanup"], {"process_exited": True, "temp_removed": True})
+        self.assertEqual(set(Path(tempfile.gettempdir()).glob("ls-inspect-*")), before)
+
+    def test_f2_any_reporting_error_still_closes_the_browser(self):
+        sid = self.space("Boom", "<main>x</main>")
+        closed = []
+        original = inspection.Browser.close
+        with patch.object(inspection, "_finish", side_effect=ValueError("formatting broke")), \
+                patch.object(inspection.Browser, "close", lambda b: closed.append(original(b)) or closed[-1]):
+            report = self.inspect(sid)
+        self.assertEqual(closed, [{"process_exited": True, "temp_removed": True}])
+        self.assertEqual(report["outcome"], "error")
+        self.assertEqual(report["error"]["code"], "inspection_failed")
+
+    def test_f5_console_errors_are_loaded_with_errors(self):
+        sid = self.space("Noisy", '<main>x</main><script type="module">console.error("visible problem")</script>')
+        report = self.inspect(sid)
+        self.assertEqual(report["outcome"], "loaded_with_errors", report)
+
+    def test_f6_host_denials_are_reported(self):
+        sid = self.space("Denied", '<main id=m>x</main><script type="module">'
+                         'try { await space.put("notes", "n", {}) } catch (e) { document.getElementById("m").textContent = e.code }'
+                         '</script>')
+        grants.decide(sid, "data", "deny", actor="user")
+        report = self.inspect(sid)
+        self.assertEqual(report["denied"], {"data.put": 1}, report)
+        self.assertEqual(report["blocked"], {})
+
+    def test_f7_text_limit_holds_after_redaction(self):
+        sid = self.space("Secret", "<main>api_key=x and more text</main>")
+        report = self.inspect(sid, text_limit=9)
+        self.assertLessEqual(len(report["text"]["content"]), 9, report["text"])
+        self.assertTrue(report["text"]["truncated"])
+        self.assertNotIn("api_key=x", report["text"]["content"])
+
+    def test_f8_huge_text_is_clipped_in_the_browser(self):
+        sid = self.space("Huge", '<main id=m></main><script type="module">'
+                         'document.getElementById("m").textContent = "word ".repeat(4000000)</script>')
+        seen = {}
+        original = inspection.Browser.close
+
+        def close(browser):
+            seen["max"] = getattr(browser, "max_message", None)
+            return original(browser)
+
+        with patch.object(inspection.Browser, "close", close):
+            report = self.inspect(sid, text_limit=100, timeout_s=20)
+        self.assertEqual(report["text"]["chars"], 19999999, report.get("text"))   # innerText trims the last space
+        self.assertEqual(len(report["text"]["content"]), 100)
+        self.assertIsNotNone(seen["max"])
+        self.assertLess(seen["max"], 2 * 1024 * 1024)
+
+
+class ProtocolBoundTests(unittest.TestCase):
+    """Review-1 F3, F4 and the incoming-message cap, without a browser."""
+
+    def fake_browser(self, deadline):
+        browser = inspection.Browser.__new__(inspection.Browser)
+        browser.deadline, browser.buf, browser.next_id, browser.responses, browser.listeners = deadline, b"", 0, {}, []
+        browser.max_message, browser.pid, browser.tmp = 0, None, tempfile.mkdtemp(prefix="ls-inspect-test-")
+        self.addCleanup(shutil.rmtree, browser.tmp, True)
+        return browser
+
+    def test_f3_a_stalled_pipe_times_out_instead_of_hanging(self):
+        import time
+        browser = self.fake_browser(time.monotonic() + 0.3)
+        incoming_r, incoming_w = os.pipe()          # nothing ever arrives
+        outgoing_r, outgoing_w = os.pipe()          # nobody ever reads
+        for fd in (incoming_w, outgoing_r):
+            self.addCleanup(os.close, fd)
+        browser._use_pipes(incoming_r, outgoing_w)
+        started = time.monotonic()
+        with self.assertRaises(inspection._Timeout):
+            browser.send("Runtime.evaluate", {"expression": "x" * (4 * 1024 * 1024)})
+        self.assertLess(time.monotonic() - started, 2)
+        browser.close()
+
+    def test_incoming_message_cap(self):
+        import time
+        browser = self.fake_browser(time.monotonic() + 2)
+        incoming_r, incoming_w = os.pipe()
+        outgoing_r, outgoing_w = os.pipe()
+        self.addCleanup(os.close, outgoing_r)
+        browser._use_pipes(incoming_r, outgoing_w)
+        writer = threading.Thread(target=lambda: (os.write(incoming_w, b"y" * 4096), os.close(incoming_w)))
+        writer.start()
+        with patch.object(inspection, "MAX_MESSAGE", 1024), self.assertRaises(inspection._Closed):
+            for _ in range(10):
+                browser.pump(time.monotonic() + 1)
+        writer.join()
+        browser.close()
+
+    def test_f4_allocation_failure_releases_everything(self):
+        real_pipe, calls = os.pipe, []
+
+        def pipe():
+            calls.append(1)
+            if len(calls) == 2:
+                raise OSError(24, "Too many open files")
+            return real_pipe()
+
+        before_fds = set(os.listdir("/dev/fd"))
+        before_dirs = set(Path(tempfile.gettempdir()).glob("ls-inspect-*"))
+        with patch.object(inspection.os, "pipe", pipe), self.assertRaises(inspection._LaunchFailed):
+            inspection.Browser("/usr/bin/true", 1024, 768, 0)
+        self.assertEqual(set(os.listdir("/dev/fd")), before_fds)
+        self.assertEqual(set(Path(tempfile.gettempdir()).glob("ls-inspect-*")), before_dirs)
 
 
 class BoundaryTests(InspectionCase):
