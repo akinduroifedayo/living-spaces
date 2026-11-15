@@ -56,7 +56,8 @@ def identity(conn, sid):
     db.space(conn, sid)
     row = conn.execute("SELECT * FROM maintenance_spaces WHERE space=?", (sid,)).fetchone()
     if row is None:
-        raise SpacesError("blocked", "Space maintenance identity is unavailable", reason="maintenance_identity_unknown")
+        create_identity(conn, sid)
+        row = conn.execute("SELECT * FROM maintenance_spaces WHERE space=?", (sid,)).fetchone()
     return dict(row)
 
 
