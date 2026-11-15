@@ -130,9 +130,21 @@ _CUT_CREDENTIAL = re.compile(r'''(?<![\w])(?P<prefix>(?P<q>["']?)(?:''' + logs._
                              re.IGNORECASE | re.DOTALL)
 
 
-def _redact_cut(text):
-    """Redact, treating a quoted credential that runs to the end of the text as cut off and secret."""
-    return _redact(_CUT_CREDENTIAL.sub(lambda match: match["prefix"] + '"[REDACTED]"', text))
+# A quoted Bearer value that runs to the end of the text (logs.redact covers the closed form).
+_CUT_BEARER = re.compile(r'''\b(?P<prefix>Bearer\s+)(?P<open>["'])(?:\\.|(?!(?P=open))[^\\])*\\?\Z''',
+                         re.IGNORECASE | re.DOTALL)
+_PARTIAL_TOKEN = re.compile(r"\S+\Z")
+
+
+def _redact_cut(text, cut=True):
+    """Redact text that may have been cut short. When it was, the final unfinished token is dropped (an unquoted
+    or generic secret cut short no longer looks like one), and a quoted credential or Bearer value that runs to
+    the end is treated as secret. Closed values are left to logs.redact, as everywhere else."""
+    if cut:
+        text = _PARTIAL_TOKEN.sub("", text)
+        text = _CUT_CREDENTIAL.sub(lambda match: match["prefix"] + '"[REDACTED]"', text)
+        text = _CUT_BEARER.sub(lambda match: match["prefix"] + "[REDACTED]", text)
+    return _redact(text)
 
 
 def _clip(text, size=ENTRY_CHARS):
@@ -218,6 +230,10 @@ class PassiveAdapter:
         self.lifecycle = None
         self.guest_logs = {"entries": 0, "dropped": 0, "unconfirmed": 0}
 
+    def _check_deadline(self):
+        if self.deadline is not None and time.monotonic() >= self.deadline:
+            raise _Timeout()
+
     def call(self, op, args):
         try:
             return {"ok": True, "result": self._call(op, args)}
@@ -272,14 +288,18 @@ class PassiveAdapter:
             options.setdefault("limit", 500)
             options.setdefault("offset", 0)
             records._query_args(collection, options.get("where"), options.get("order"), options["limit"], options["offset"])
+            where = options.pop("where", None) or {}
             rows, size = [], 0
             for row in conn.execute("SELECT * FROM records WHERE space=? AND collection=? ORDER BY id", (sid, collection)):
                 size += sum(len(row[key] or "") for key in ("data", "source", "source_meta"))
                 if size > MAX_QUERY_BYTES:
                     raise SpacesError("limit", "Collection is too large to query during inspection")
-                if self.deadline is not None and len(rows) % 256 == 0 and time.monotonic() >= self.deadline:
-                    raise _Timeout()
-                rows.append(records._record(row))
+                self._check_deadline()
+                record = records._record(row)
+                # The same predicate records._select applies, evaluated here so the deadline is checked per record.
+                if all(records._field(record, field) == value for field, value in where.items()):
+                    rows.append(record)
+            self._check_deadline()
             page, total = records._select(rows, **options)
             return {"records": page, "total": total, "seq": self.snap.seq}
         records._ids(args["collection"], args["id"])                       # data.get
@@ -669,7 +689,7 @@ class _Run:
                     new MutationObserver(r => { s.n += r.length }).observe(document, { subtree: true, childList: true,
                       characterData: true, attributes: true }); return s })();
                   return { text: t.slice(0, %d), chars: t.length, mutations: m.n,
-                           title: String(document.title).slice(0, 1000),""" % keep + """ nodes: document.getElementsByTagName('*').length,
+                           title: String(document.title).slice(0, 1000), title_chars: String(document.title).length,""" % keep + """ nodes: document.getElementsByTagName('*').length,
                            images: document.images.length, canvases: document.getElementsByTagName('canvas').length,
                            svgs: document.getElementsByTagName('svg').length,
                            failure: !!document.querySelector('section[role=alert] h1') &&
@@ -914,10 +934,11 @@ def _finish(run, adapter, report):
         report["dom"] = {key: sample[key] for key in ("nodes", "images", "canvases", "svgs")}
         # The browser may have cut the text, so a quoted credential can lose its closing quote; redact before
         # clipping, so a clipped secret is still caught.
-        clean = _redact_cut(text)
+        clean = _redact_cut(text, cut=chars > len(text))
         report["text"] = {"content": clean[:run.text_limit], "chars": chars,
                           "truncated": chars > run.text_limit or len(clean) > run.text_limit,
-                          "title": _clip(_redact_cut(sample["title"]), 200)}
+                          "title": _clip(_redact_cut(sample["title"],
+                                                     cut=sample.get("title_chars", 0) > len(sample["title"])), 200)}
         if not text.strip() and not (sample["images"] or sample["canvases"] or sample["svgs"]):
             report["limitations"].append("blank_suspected: the Space rendered no text, images, canvas or SVG")
     else:
