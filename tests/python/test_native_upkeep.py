@@ -174,7 +174,15 @@ class NativeUpkeepTests(unittest.TestCase):
         self.assertTrue(result["dispatch"]["success"])
         self.assertEqual((native["name"], native["repeat"], native["no_agent"]), (f"living-spaces:{sid}:once", 1, False))
         self.assertEqual(native["prompt"], fx.upkeep.agent_prompt(sid, AGENT_PROMPT))
-        self.assertEqual(fx.cron.calls[-1], ("trigger", native["id"]))
+        self.assertEqual([call for call in fx.cron.calls if call[0] == "trigger"], [("trigger", native["id"])])
+        self.assertEqual([call for call in fx.cron.calls if call[1] == native["id"]],
+                         [("create", native["id"]), ("resume", native["id"]),
+                          ("trigger", native["id"]), ("pause", native["id"])])
+        self.assertIs(native["enabled"], False)
+        self.assertEqual(list(fx.cron.jobs), [native["id"]])
+        self.assertEqual(result["refresh_state"], "unresolved")
+        self.assertEqual(result["recovery"]["reason"], "refresh_outcome_unknown")
+        self.assertNotIn("one_shot", result)
         self.assertIsNone(fx.upkeep.get_upkeep(sid)["link"])
 
     def test_guest_bridge_refresh_with_agent_handler_is_blocked(self):
