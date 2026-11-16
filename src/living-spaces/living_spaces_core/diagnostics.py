@@ -11,7 +11,6 @@ REMOTE = re.compile(r"^(?:https?|wss?):|^//", re.I)
 SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.I)
 REGEX_CONTEXT = re.compile(r"^(?:return|throw|case|typeof|void|delete|yield|await|=>|[=(:,;!&|?{\[])$")
 WORD = re.compile(r"[\w$]")
-GLOBALS = {"window", "globalThis", "self"}
 CONSTRUCTORS = {"XMLHttpRequest", "WebSocket", "EventSource"}
 CONTROL = {"if", "while", "for", "with"}
 JS_TYPES = {"", "module", "application/ecmascript", "application/javascript", "application/x-ecmascript",
@@ -171,19 +170,33 @@ def _constant(token):
     return _string(token) or (token.text[:1] == "`" and len(token.text) > 1)
 
 
-def _owner(toks, i) -> str:
-    """bare `fetch(`; global `window.fetch(`, `window?.fetch(`; member `obj.fetch(` on a named object.
-
-    A receiver the scanner cannot name, like `(window).fetch(` or `get().fetch(`, counts as global.
+def _mediated(toks, i):
+    """True only when fetch is called on an object named `net`: `space.net.fetch(`, `space?.net?.fetch(`,
+    or a `net` alias of `space.net`. Every other receiver is diagnosed, because Q01 rounds 1-8 showed that
+    each attempt to infer that some other `fetch(` is not a browser network call opened a false negative.
     """
-    if i == 0 or toks[i - 1].text != ".":
-        return "bare"
-    j = i - 2
+    j = i - 1
+    if j < 0 or toks[j].text != ".":
+        return False
+    j -= 1
     if j >= 0 and toks[j].text == "?":
         j -= 1
-    if j < 0 or not WORD.match(toks[j].text[:1]) or toks[j].text in GLOBALS and (j < 1 or toks[j - 1].text != "."):
-        return "global"
-    return "member"
+    return j >= 0 and toks[j].text == "net"
+
+
+def _constant_at(toks, j):
+    """The constant string that forms the whole expression starting at token j, looking through
+    grouping parens; None when it is not constant (e.g. `'./' + name`)."""
+    opened = 0
+    while 0 <= j < len(toks) and toks[j].text == "(":
+        j, opened = j + 1, opened + 1
+    if not (0 <= j < len(toks) and _constant(toks[j])):
+        return None
+    k = j + 1
+    while opened and k < len(toks) and toks[k].text == ")":
+        k, opened = k + 1, opened - 1
+    end = toks[k].text if k < len(toks) else ";"
+    return toks[j] if opened == 0 and end in (")", ",", ";", "}", "]") else None
 
 
 def _js(source, position):
@@ -196,8 +209,9 @@ def _js(source, position):
         text, prev, nxt = token.text, get(i - 1), get(i + 1)
         if text in ("import", "export") and prev.text != ".":
             if text == "import" and nxt.text == "(":
-                if _string(get(i + 2)) and get(i + 3).text in (")", ","):
-                    refs.append(Ref(True, get(i + 2).text[1:-1], *where(get(i + 2)), dynamic=True))
+                spec = _constant_at(toks, i + 2)
+                if spec is not None:
+                    refs.append(Ref(True, spec.text[1:-1], *where(spec), dynamic=True))
                 continue
             if nxt.text == ".":
                 continue
@@ -209,18 +223,16 @@ def _js(source, position):
                 j += 1
             if spec is not None:
                 refs.append(Ref(True, spec.text[1:-1], *where(spec)))
-        elif text == "fetch" and nxt.text == "(" and prev.text != "function" and _owner(toks, i) != "member":
+        elif text == "fetch" and nxt.text == "(" and prev.text != "function" and not _mediated(toks, i):
             sinks.append(Sink("net.direct_call", "fetch()", *where(token)))
-        elif text in CONSTRUCTORS and _owner(toks, i) != "member":
+        elif text in CONSTRUCTORS:
             sinks.append(Sink("net.direct_call", text, *where(token)))
         elif text == "sendBeacon" and nxt.text == "(" and prev.text != "function":
             sinks.append(Sink("net.direct_call", "sendBeacon()", *where(token)))
         elif text in ("src", "href") and prev.text == "." and nxt.text == "=" and get(i + 2).text != "=":
-            j = i + 2
-            while get(j).text == "(":
-                j += 1
-            if _constant(get(j)) and REMOTE.match(get(j).text[1:-1]):
-                sinks.append(Sink("net.remote_resource", get(j).text[1:-1], *where(token)))
+            spec = _constant_at(toks, i + 2)
+            if spec is not None and REMOTE.match(spec.text[1:-1]):
+                sinks.append(Sink("net.remote_resource", spec.text[1:-1], *where(token)))
     return refs, sinks
 
 

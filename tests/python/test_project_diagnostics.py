@@ -51,6 +51,7 @@ class ProjectDiagnosticsTests(unittest.TestCase):
     def test_mediated_fetch_is_not_a_network_warning_on_create_and_edit(self):
         app = ("const response = await space.net.fetch('https://api.open-meteo.com/v1/forecast', {as: 'json'});\n"
                "const again = await window.space.net.fetch(url, {as: 'json'});\n"
+               "const third = await window.space?.net?.fetch(url);\n"
                "const net = window.space.net; await net.fetch(url);\n")
         created = self.create({"index.html": INDEX, "app.js": app})
         self.assertEqual(network(created), [], created["warnings"])
@@ -63,8 +64,7 @@ class ProjectDiagnosticsTests(unittest.TestCase):
                "/* new WebSocket('wss://example.org') */\n"
                "const label = `Data from https://example.org at ${new Date().getFullYear()}`;\n"
                "const pattern = /fetch\\(/;\n"
-               "const help = \"call fetch(url) in a standalone page\";\n"
-               "client.fetch(source);\n")
+               "const help = \"call fetch(url) in a standalone page\";\n")
         html = ('<!doctype html><main><a href="https://open-meteo.com/" target="_blank">Open-Meteo</a>'
                 '<p>See https://example.org for terms.</p><!-- <script src="https://cdn.example/x.js"></script> -->'
                 '</main><script type="module" src="./app.js"></script>')
@@ -150,6 +150,22 @@ class ProjectDiagnosticsTests(unittest.TestCase):
         mediated = self.create({"index.html": INDEX, "app.js": "await space?.net?.fetch(u);\n"}, name="Optional Mediated")
         self.assertEqual(network(mediated), [], mediated["warnings"])
 
+    def test_only_the_supported_space_net_spelling_is_exempt(self):
+        for name, app in {"classic this": None, "top": "top.fetch(u);\n", "parent": "parent.fetch(u);\n",
+                          "default view": "document.defaultView.fetch(u);\n",
+                          "member socket": "new window.WebSocket(u);\n"}.items():
+            with self.subTest(name):
+                files = ({"index.html": "<!doctype html><script>this.fetch(u);</script>"} if app is None
+                         else {"index.html": INDEX, "app.js": app})
+                created = self.create(files, name=name.title())
+                self.assertIn("net.direct_call", [d["code"] for d in network(created)], created["warnings"])
+
+    def test_constant_remote_dynamic_import_warns(self):
+        for name, spec in {"template": "`https://example.org/a.js`", "parens": "('https://example.org/a.js')"}.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": f"import({spec});\n"}, name=name.title())
+                self.assertEqual(codes(created, "app.js"), ["net.remote_import"], created["warnings"])
+
     def test_remote_href_through_parens_or_a_constant_template_warns(self):
         for name, value in {"parens": "('https://example.org/a.css')", "template": "`https://example.org/a.css`"}.items():
             with self.subTest(name):
@@ -177,9 +193,13 @@ class ProjectDiagnosticsTests(unittest.TestCase):
         remote = self.write(created["space"], {"index.html": "<!doctype html><script>import('https://cdn.example/x.js');</script>"})
         self.assertIn("net.remote_import", codes(remote, "index.html"), remote["warnings"])
 
-    def test_function_declarations_and_member_calls_named_fetch_are_not_calls(self):
-        for name, app in {"declaration": "function fetch(url) { return url; }\n",
-                          "member call": "const feed = makeFeed();\nfeed.fetch(1);\n"}.items():
+    def test_unsupported_receivers_named_fetch_warn_as_on_trunk(self):
+        # Accepted cost: only space.net.fetch is exempt. A helper object's fetch() warns, as trunk did.
+        created = self.create({"index.html": INDEX, "app.js": "client.fetch(source);\n"})
+        self.assertEqual(codes(created, "app.js"), ["net.direct_call"], created["warnings"])
+
+    def test_function_declarations_named_fetch_are_not_calls(self):
+        for name, app in {"declaration": "function fetch(url) { return url; }\n"}.items():
             with self.subTest(name):
                 created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
                 self.assertEqual(network(created), [], created["warnings"])
