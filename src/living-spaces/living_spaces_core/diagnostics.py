@@ -14,6 +14,10 @@ WORD = re.compile(r"[\w$]")
 GLOBALS = {"window", "globalThis", "self"}
 CONSTRUCTORS = {"XMLHttpRequest", "WebSocket", "EventSource"}
 CONTROL = {"if", "while", "for", "with"}
+JS_TYPES = {"", "module", "application/ecmascript", "application/javascript", "application/x-ecmascript",
+            "application/x-javascript", "text/ecmascript", "text/javascript", "text/javascript1.0",
+            "text/javascript1.1", "text/javascript1.2", "text/javascript1.3", "text/javascript1.4",
+            "text/javascript1.5", "text/jscript", "text/livescript", "text/x-ecmascript", "text/x-javascript"}
 LOADING_RELS = {"stylesheet", "icon", "preload", "modulepreload", "prefetch", "manifest", "apple-touch-icon"}
 SOURCE_ATTRS = {"script": "src", "img": "src", "source": "src", "audio": "src", "video": "src", "track": "src",
                 "iframe": "src", "embed": "src", "input": "src", "object": "data"}
@@ -45,6 +49,7 @@ class Ref(NamedTuple):
     spec: str
     line: int
     column: int
+    dynamic: bool = False
 
 
 class Sink(NamedTuple):
@@ -87,14 +92,16 @@ def tokens(source: str) -> list[Token]:
         out.append(Token(source[start:at], start))
 
     while at < len(source):
-        if frames and isinstance(frames[-1], int):
+        if frames and frames[-1][0] == "`":
             if source[at] == "\\":
                 at += 2
             elif source[at] == "`":
                 at += 1
-                out.append(Token("`", frames.pop()))
+                _, begin, interpolated = frames.pop()
+                out.append(Token("`" if interpolated else source[begin:at], begin))
             elif source.startswith("${", at):
                 at += 2
+                frames[-1][2] = True
                 frames.append([0])
             else:
                 at += 1
@@ -116,7 +123,7 @@ def tokens(source: str) -> list[Token]:
             quoted(char)
         elif char == "`":
             at += 1
-            frames.append(start)
+            frames.append(["`", start, False])
         elif char == "/" and (not out or control or REGEX_CONTEXT.match(out[-1].text)):
             at += 1
             in_class = False
@@ -159,11 +166,22 @@ def _string(token):
     return token.text[:1] in "\"'" and len(token.text) > 1
 
 
+def _constant(token):
+    """A string literal, or a template literal with no ${} interpolation."""
+    return _string(token) or (token.text[:1] == "`" and len(token.text) > 1)
+
+
 def _owner(toks, i) -> str:
-    """bare `fetch(`, global `window.fetch(`, or a member call on some other object."""
+    """bare `fetch(`; global `window.fetch(`, `window?.fetch(`; member `obj.fetch(` on a named object.
+
+    A receiver the scanner cannot name, like `(window).fetch(` or `get().fetch(`, counts as global.
+    """
     if i == 0 or toks[i - 1].text != ".":
         return "bare"
-    if i >= 2 and toks[i - 2].text in GLOBALS and (i < 3 or toks[i - 3].text != "."):
+    j = i - 2
+    if j >= 0 and toks[j].text == "?":
+        j -= 1
+    if j < 0 or not WORD.match(toks[j].text[:1]) or toks[j].text in GLOBALS and (j < 1 or toks[j - 1].text != "."):
         return "global"
     return "member"
 
@@ -179,7 +197,7 @@ def _js(source, position):
         if text in ("import", "export") and prev.text != ".":
             if text == "import" and nxt.text == "(":
                 if _string(get(i + 2)) and get(i + 3).text in (")", ","):
-                    refs.append(Ref(True, get(i + 2).text[1:-1], *where(get(i + 2))))
+                    refs.append(Ref(True, get(i + 2).text[1:-1], *where(get(i + 2)), dynamic=True))
                 continue
             if nxt.text == ".":
                 continue
@@ -197,9 +215,12 @@ def _js(source, position):
             sinks.append(Sink("net.direct_call", text, *where(token)))
         elif text == "sendBeacon" and nxt.text == "(" and prev.text != "function":
             sinks.append(Sink("net.direct_call", "sendBeacon()", *where(token)))
-        elif text in ("src", "href") and prev.text == "." and nxt.text == "=" and get(i + 2).text != "=" \
-                and _string(get(i + 2)) and REMOTE.match(get(i + 2).text[1:-1]):
-            sinks.append(Sink("net.remote_resource", get(i + 2).text[1:-1], *where(token)))
+        elif text in ("src", "href") and prev.text == "." and nxt.text == "=" and get(i + 2).text != "=":
+            j = i + 2
+            while get(j).text == "(":
+                j += 1
+            if _constant(get(j)) and REMOTE.match(get(j).text[1:-1]):
+                sinks.append(Sink("net.remote_resource", get(j).text[1:-1], *where(token)))
     return refs, sinks
 
 
@@ -266,8 +287,8 @@ class _Html(HTMLParser):
         if values.get("style"):
             refs, _ = _css(values["style"], lambda offset: (here[0], here[1] + 1))
             self.refs += refs
-        kind = values.get("type", "").strip().lower()
-        if tag == "script" and "src" not in values and kind in ("", "module", "text/javascript", "application/javascript"):
+        kind = values.get("type", "").split(";")[0].strip().lower()
+        if tag == "script" and "src" not in values and kind in JS_TYPES:
             self.script = ("module" if kind == "module" else "classic")
         elif tag == "style":
             self.script = "style"
@@ -280,7 +301,7 @@ class _Html(HTMLParser):
             return
         position = self.position(*self.getpos())
         refs, sinks = (_css if self.script == "style" else _js)(data, position)
-        self.refs += [ref for ref in refs if self.script != "classic"]
+        self.refs += [ref for ref in refs if self.script != "classic" or ref.dynamic]
         self.sinks += sinks
 
 

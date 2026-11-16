@@ -141,6 +141,42 @@ class ProjectDiagnosticsTests(unittest.TestCase):
         compared = self.create({"index.html": INDEX, "app.js": "if (location.href == 'https://example.org/') go();\n"}, name="Compare")
         self.assertEqual(network(compared), [], compared["warnings"])
 
+    def test_global_receivers_the_scanner_cannot_name_still_warn(self):
+        for name, app in {"optional chain": "window?.fetch(u);\n", "parenthesized": "(window).fetch(u);\n",
+                          "call result": "getWindow().fetch(u);\n", "parenthesized socket": "new (window).WebSocket(u);\n"}.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertIn("net.direct_call", [d["code"] for d in network(created)], created["warnings"])
+        mediated = self.create({"index.html": INDEX, "app.js": "await space?.net?.fetch(u);\n"}, name="Optional Mediated")
+        self.assertEqual(network(mediated), [], mediated["warnings"])
+
+    def test_remote_href_through_parens_or_a_constant_template_warns(self):
+        for name, value in {"parens": "('https://example.org/a.css')", "template": "`https://example.org/a.css`"}.items():
+            with self.subTest(name):
+                app = f"const link = document.createElement('link');\nlink.rel = 'stylesheet';\nlink.href = {value};\n"
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertIn(("net.remote_resource", 3), [(d["code"], d["line"]) for d in network(created)], created["warnings"])
+        interpolated = self.create({"index.html": INDEX, "app.js": "img.src = `${base}/a.png`;\n"}, name="Interpolated")
+        self.assertEqual(network(interpolated), [], interpolated["warnings"])
+
+    def test_legacy_javascript_types_are_scanned(self):
+        for kind in ("text/ecmascript", "application/ecmascript", "text/javascript1.5", "text/javascript; charset=utf-8"):
+            with self.subTest(kind):
+                html = f'<!doctype html><script type="{kind}">fetch(u);</script>'
+                created = self.create({"index.html": html}, name=kind.replace("/", " ").title())
+                self.assertEqual(codes(created, "index.html"), ["net.direct_call"], created["warnings"])
+        data = self.create({"index.html": '<!doctype html><script type="application/json">{"fetch(": 1}</script>'}, name="Json Data")
+        self.assertEqual(network(data), [], data["warnings"])
+
+    def test_classic_script_dynamic_import_is_validated_across_revisions(self):
+        html = "<!doctype html><script>import('./dep.js');</script>"
+        created = self.create({"index.html": html, "dep.js": "export default 1;\n"})
+        self.assertEqual(codes(created, "index.html"), [], created["warnings"])
+        removed = self.write(created["space"], {"dep.js": None})
+        self.assertIn("import.unresolved", codes(removed, "index.html"), removed["warnings"])
+        remote = self.write(created["space"], {"index.html": "<!doctype html><script>import('https://cdn.example/x.js');</script>"})
+        self.assertIn("net.remote_import", codes(remote, "index.html"), remote["warnings"])
+
     def test_function_declarations_and_member_calls_named_fetch_are_not_calls(self):
         for name, app in {"declaration": "function fetch(url) { return url; }\n",
                           "member call": "const feed = makeFeed();\nfeed.fetch(1);\n"}.items():
