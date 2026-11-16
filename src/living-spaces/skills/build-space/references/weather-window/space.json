@@ -6,5 +6,13 @@
   "imports": {},
   "accent": "teal",
   "icon": "globe",
-  "data": {"version": 1, "collections": {}, "migrations": []}
+  "data": {
+    "version": 1,
+    "collections": {
+      "forecasts": {
+        "description": "The last forecast loaded for each city, shown while live weather is unavailable"
+      }
+    },
+    "migrations": []
+  }
 }

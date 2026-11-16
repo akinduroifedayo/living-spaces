@@ -159,6 +159,8 @@ class ProjectDiagnosticsTests(unittest.TestCase):
         self.assertNotIn("response.json()", app)
         self.assertNotIn("meta.network", app)
         self.assertIn("not_granted", app)
+        self.assertIn("forecasts", json.loads(files["space.json"])["data"]["collections"])
+        self.assertIn("space.put('forecasts'", app)
         edited = self.edit(created["space"], "app.js", "{as:'json'}", "{as: 'json'}")
         self.assertEqual(edited["diagnostics"], [], edited["warnings"])
 

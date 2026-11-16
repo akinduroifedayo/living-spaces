@@ -13,12 +13,12 @@ const time = value => new Date(value.endsWith('Z') ? value : value+'Z');
 const hh = value => time(value).toLocaleTimeString('en-GB',{timeZone:'UTC',hour:'2-digit',minute:'2-digit'});
 const text = (id,value) => {$(id).textContent=value;};
 const node = (tag,attrs={},value) => {const n=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,v);if(value!==undefined)n.textContent=value;return n;};
-function render(data,city,sample=false){
+function render(data,city,sample=false,retrievedAt=null){
   if(!Number.isFinite(data.current?.temperature_2m) || !Array.isArray(data.hourly?.time)) throw new Error('Forecast data is incomplete.');
   const start=time(data.current.time).getTime();
   const values=data.hourly.time.map((t,i)=>({t,temp:data.hourly.temperature_2m?.[i],rain:data.hourly.precipitation_probability?.[i]})).filter(v=>time(v.t).getTime()>=start && Number.isFinite(v.temp)).slice(0,12);
   if(values.length!==12) throw new Error('Twelve hourly values are not available.');
-  last={data,city,sample,retrievedAt:last?.data === data ? last.retrievedAt : new Date().toLocaleTimeString('en-GB',{timeZone:'UTC'})};
+  last={data,city,sample,retrievedAt:retrievedAt || (last?.data === data ? last.retrievedAt : new Date().toISOString())};
   text('city',city.name);text('conditions',describe(data.current.weather_code));text('temperature',Math.round(data.current.temperature_2m));
   text('observed',(sample?'Synthetic sample · ':'Forecast valid · ')+hh(data.current.time)+' UTC');
   text('table-caption',`${city.name} · ${sample?'synthetic sample':'Open-Meteo forecast'} · ${data.current.time.slice(0,10)} · UTC`);
@@ -38,7 +38,14 @@ function render(data,city,sample=false){
   $('chart').replaceChildren(svg);
   $('provenance').replaceChildren();
   if(sample) text('provenance','Synthetic forecast sample · illustrative values, not current weather');
-  else {const a=document.createElement('a');a.href='https://open-meteo.com/';a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open-Meteo';$('provenance').append('Public forecast from ',a,' · retrieved '+last.retrievedAt+' UTC');}
+  else {const a=document.createElement('a');a.href='https://open-meteo.com/';a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open-Meteo';$('provenance').append('Public forecast from ',a,' · retrieved '+new Date(last.retrievedAt).toLocaleString('en-GB',{timeZone:'UTC',dateStyle:'medium',timeStyle:'short'})+' UTC');}
+}
+const saved = async key => { try { return await window.space.get('forecasts', key); } catch { return null; } };
+async function showSaved(key, city){
+  const record = await saved(key);
+  if(!record || last?.city === city && !last.sample) return false;
+  render(record.data.forecast, city, false, record.data.retrievedAt);
+  return true;
 }
 const timeout = ms => new Promise((_,reject)=>setTimeout(()=>reject(Object.assign(new Error('timeout'),{code:'timeout'})),ms));
 async function load(){
@@ -53,9 +60,12 @@ async function load(){
     if(id!==sequence)return;
     if(response.status<200 || response.status>=300)throw new Error('Forecast source returned '+response.status);
     render(response.json,city);text('status','Live public forecast loaded. No account or location permission used.');
+    const prior = await saved(selected);
+    window.space.put('forecasts', selected, {forecast: response.json, retrievedAt: last.retrievedAt}, {baseRev: prior?.rev ?? 0, merge: false}).catch(() => {});
   }catch(e){
     if(id!==sequence)return;
-    const kept = last?`Still showing ${last.sample?'the sample for ':''}${last.city.name}. `:'';
+    if(liveAvailable && await showSaved(selected, city) && id!==sequence)return;
+    const kept = last?`Still showing ${last.sample?'the sample for ':'the forecast saved for '}${last.city.name}. `:'';
     text('status', e.code==='not_granted' ? `Internet access is off for this Space. ${kept}Turn it on in Permissions to load live forecasts, or explore the labelled sample.`
       : e.unavailable ? e.message
       : `${city.name} couldn’t load. ${kept}The source or connection may be unavailable. Retry or explore the labelled sample.`);
