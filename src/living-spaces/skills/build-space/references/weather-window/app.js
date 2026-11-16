@@ -47,6 +47,14 @@ async function showSaved(id, key, city){
   render(record.data.forecast, city, false, record.data.retrievedAt);
   return true;
 }
+// Saves for one city run one at a time, in the order forecasts arrived, so the newest one is what stays.
+const saving = {};
+const save = (key, record) => {
+  saving[key] = (saving[key] || Promise.resolve()).then(async () => {
+    const prior = await saved(key);
+    await window.space.put('forecasts', key, record, {baseRev: prior?.rev ?? 0, merge: false});
+  }).catch(() => {});
+};
 const timeout = ms => new Promise((_,reject)=>setTimeout(()=>reject(Object.assign(new Error('timeout'),{code:'timeout'})),ms));
 async function load(){
   const id=++sequence,key=selected,city=cities[key];
@@ -60,9 +68,7 @@ async function load(){
     if(id!==sequence)return;
     if(response.status<200 || response.status>=300)throw new Error('Forecast source returned '+response.status);
     render(response.json,city);text('status','Live public forecast loaded. No account or location permission used.');
-    const record = {forecast: response.json, retrievedAt: last.retrievedAt};
-    const prior = await saved(key);
-    window.space.put('forecasts', key, record, {baseRev: prior?.rev ?? 0, merge: false}).catch(() => {});
+    save(key, {forecast: response.json, retrievedAt: last.retrievedAt});
   }catch(e){
     if(id!==sequence)return;
     if(liveAvailable) await showSaved(id, key, city);

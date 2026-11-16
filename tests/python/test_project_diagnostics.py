@@ -108,9 +108,29 @@ class ProjectDiagnosticsTests(unittest.TestCase):
                 created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
                 self.assertIn(("net.direct_call", 2), [(d["code"], d["line"]) for d in network(created)], created["warnings"])
 
+    def test_trunk_caught_loads_stay_caught(self):
+        for name, (app, code) in {
+            "fetch then a block (ASI)": ("fetch(url)\n{ const x = 1; }\n", "net.direct_call"),
+            "fetch then a block inside a function": ("function go() {\n  fetch(url)\n  { const x = 1; }\n}\n", "net.direct_call"),
+            "bound bare sendBeacon": ("const sendBeacon = navigator.sendBeacon.bind(navigator);\nsendBeacon('/log');\n", "net.direct_call"),
+            "stylesheet link href": ("const link = document.createElement('link');\nlink.rel = 'stylesheet';\nlink.href = 'https://example.org/a.css';\ndocument.head.append(link);\n", "net.remote_resource"),
+        }.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertIn(code, [d["code"] for d in network(created)], created["warnings"])
+
+    def test_anchor_links_and_comparisons_are_not_loads(self):
+        for name, app in {"anchor": "const a = document.createElement('a');\na.href = 'https://open-meteo.com/';\n",
+                          "comparison": "if (location.href == 'https://example.org/') go();\n"}.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertEqual(network(created), [], created["warnings"])
+
     def test_method_definitions_named_fetch_are_not_calls(self):
         for name, app in {"declaration": "function fetch(url) { return url; }\n",
                           "class method": "class Feed { fetch(url) { return url; } }\n",
+                          "class sendBeacon method": "class Log extends Base { sendBeacon(u) { return u; } }\n",
+                          "nested object method": "export default { api: { fetch(url) { return url; } } };\n",
                           "object method": "const feed = { fetch(url) { return url; } };\nfeed.fetch(1);\n"}.items():
             with self.subTest(name):
                 created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())

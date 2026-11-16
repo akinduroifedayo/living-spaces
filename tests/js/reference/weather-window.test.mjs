@@ -20,7 +20,7 @@ function boot() {
   w.setTimeout = () => 0;
   w.space = {
     net: { fetch: () => new Promise((resolve, reject) => fetches.push({ resolve, reject })) },
-    get: (collection, key) => new Promise(resolve => gets.push({ key, resolve })),
+    get: (collection, key) => new Promise(resolve => gets.push({ key, resolve, stored: records.get(key) ?? null })),
     put: async (collection, key, data, { baseRev }) => {
       const rev = records.get(key)?.rev ?? 0;
       if (rev !== baseRev) throw Object.assign(new Error('conflict'), { code: 'conflict' });
@@ -42,6 +42,19 @@ test('a slow save for one city is stored under that city, not the city selected 
   assert.equal(app.records.get('london').data.forecast.current.temperature_2m, 10);
   assert.equal(app.records.get('tokyo').data.forecast.current.temperature_2m, 20);
   assert.deepEqual(app.shown(), { city: 'Tokyo', temperature: '20' });
+  app.dom.window.close();
+});
+
+test('returning to a city while its save is pending keeps the newest forecast saved', async () => {
+  const app = boot();
+  app.fetches[0].resolve(ok(10)); await settle();
+  app.pick('tokyo');
+  app.pick('london');
+  app.fetches[2].resolve(ok(20)); await settle();
+  // Each read answers with the store as it was when the read was issued, as the records core does.
+  for (let i = 0; i < 4 && app.gets[i]; i++) { app.gets[i].resolve(app.gets[i].stored); await settle(); }
+  assert.deepEqual(app.shown(), { city: 'London', temperature: '20' });
+  assert.equal(app.records.get('london').data.forecast.current.temperature_2m, 20);
   app.dom.window.close();
 });
 

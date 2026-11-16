@@ -14,6 +14,7 @@ WORD = re.compile(r"[\w$]")
 GLOBALS = {"window", "globalThis", "self"}
 CONSTRUCTORS = {"XMLHttpRequest", "WebSocket", "EventSource"}
 CONTROL = {"if", "while", "for", "with"}
+OBJECT_BEFORE = {"=", "(", ",", "[", "?", "return", "||", "&&", "??", "...", "yield", "await", "default"}
 LOADING_RELS = {"stylesheet", "icon", "preload", "modulepreload", "prefetch", "manifest", "apple-touch-icon"}
 SOURCE_ATTRS = {"script": "src", "img": "src", "source": "src", "audio": "src", "video": "src", "track": "src",
                 "iframe": "src", "embed": "src", "input": "src", "object": "data"}
@@ -183,8 +184,26 @@ def _js(source, position):
     get = lambda i: toks[i] if 0 <= i < len(toks) else none
     where = lambda token: position(token.at)
     refs, sinks = [], []
+    braces, class_pending, tags = [], False, {}
+    method = lambda i: bool(braces) and braces[-1] in ("class", "object") and get(_closing(toks, i + 1) + 1).text == "{"
     for i, token in enumerate(toks):
         text, prev, nxt = token.text, get(i - 1), get(i + 1)
+        if text == "class" and prev.text != ".":
+            class_pending = True
+        elif text == "{":
+            top = braces[-1] if braces else "block"
+            kind = ("class" if class_pending else
+                    "object" if prev.text in OBJECT_BEFORE or (prev.text == ":" and top == "object") else "block")
+            braces.append(kind)
+            class_pending = False
+            continue
+        elif text == "}":
+            if braces:
+                braces.pop()
+            continue
+        if text == "createElement" and prev.text == "." and nxt.text == "(" and _string(get(i + 2)) \
+                and get(i - 2).text == "document" and get(i - 3).text == "=":
+            tags[get(i - 4).text] = get(i + 2).text[1:-1].lower()
         if text in ("import", "export") and prev.text != ".":
             if text == "import" and nxt.text == "(":
                 if _string(get(i + 2)) and get(i + 3).text in (")", ","):
@@ -200,18 +219,18 @@ def _js(source, position):
                 j += 1
             if spec is not None:
                 refs.append(Ref(True, spec.text[1:-1], *where(spec)))
-        elif text == "fetch" and nxt.text == "(":
-            owner = _owner(toks, i)
-            after = get(_closing(toks, i + 1) + 1)
-            if owner == "global" or (owner == "bare" and after.text != "{"):
+        elif text == "fetch" and nxt.text == "(" and prev.text not in ("function", "*"):
+            if _owner(toks, i) == "global" or (_owner(toks, i) == "bare" and not method(i)):
                 sinks.append(Sink("net.direct_call", "fetch()", *where(token)))
         elif text in CONSTRUCTORS and _owner(toks, i) != "member":
             sinks.append(Sink("net.direct_call", text, *where(token)))
-        elif text == "sendBeacon" and nxt.text == "(" and _owner(toks, i) == "member":
+        elif text == "sendBeacon" and nxt.text == "(" and prev.text not in ("function", "*") and not (_owner(toks, i) == "bare" and method(i)):
             sinks.append(Sink("net.direct_call", "sendBeacon()", *where(token)))
-        elif text == "src" and prev.text == "." and nxt.text == "=" and _string(get(i + 2)):
+        elif text in ("src", "href") and prev.text == "." and nxt.text == "=" and get(i + 3).text != "=" \
+                and _string(get(i + 2)):
             spec = get(i + 2).text[1:-1]
-            if REMOTE.match(spec):
+            anchor = text == "href" and get(i - 3).text != "." and tags.get(get(i - 2).text) in ("a", "area")
+            if REMOTE.match(spec) and not anchor:
                 sinks.append(Sink("net.remote_resource", spec, *where(token)))
     return refs, sinks
 
