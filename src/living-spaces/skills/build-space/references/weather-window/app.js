@@ -1,14 +1,14 @@
-// Public, credential-free forecast. No kit, framework, storage or permission UI.
+// Public, credential-free forecast through space.net.fetch. No kit, framework, storage or permission UI.
 const cities = {london:{name:'London',lat:51.5072,lon:-.1276},copenhagen:{name:'Copenhagen',lat:55.6761,lon:12.5683},tokyo:{name:'Tokyo',lat:35.6762,lon:139.6503}};
 const $ = id => document.getElementById(id);
 const describe = code => code === 0 ? 'Clear sky' : code <= 3 ? 'Partly cloudy' : code <= 48 ? 'Foggy' : code <= 67 ? 'Rain expected' : code <= 77 ? 'Snow expected' : code <= 82 ? 'Rain showers' : 'Wintry or stormy conditions';
-let selected='london', active=null, last=null, sequence=0;
-const liveAvailable = !window.space; // Standalone only until a qualified host API lands.
+let selected='london', last=null, sequence=0;
+const liveAvailable = typeof window.space?.net?.fetch === 'function';
 if (!liveAvailable) {
   $('sample').classList.add('weather-primary');
   $('refresh').classList.remove('weather-primary');
   $('refresh').disabled=true;
-  $('refresh').textContent=window.space?.meta?.network==='off' ? 'Internet is off' : 'Live unavailable';
+  $('refresh').textContent='Live unavailable';
 }
 const time = value => new Date(value.endsWith('Z') ? value : value+'Z');
 const hh = value => time(value).toLocaleTimeString('en-GB',{timeZone:'UTC',hour:'2-digit',minute:'2-digit'});
@@ -41,27 +41,33 @@ function render(data,city,sample=false){
   if(sample) text('provenance','Synthetic forecast sample · illustrative values, not current weather');
   else {const a=document.createElement('a');a.href='https://open-meteo.com/';a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open-Meteo';$('provenance').append('Public forecast from ',a,' · retrieved '+last.retrievedAt+' UTC');}
 }
+const timeout = ms => new Promise((_,reject)=>setTimeout(()=>reject(Object.assign(new Error('timeout'),{code:'timeout'})),ms));
 async function load(){
-  const id=++sequence,city=cities[selected];active?.abort();active=new AbortController();
-  const timer=setTimeout(()=>active?.abort(),12000);$('refresh').disabled=true;$('chart').setAttribute('aria-busy','true');
+  const id=++sequence,city=cities[selected];
+  $('refresh').disabled=true;$('chart').setAttribute('aria-busy','true');
   text('status',`Loading ${city.name} from Open-Meteo…${last?' Previous forecast stays visible.':''}`);
   try{
-    if(window.space?.meta?.network==='off') {const e=new Error('Internet is off for this Space. Local sample exploration is still available.');e.off=true;throw e;}
-    // A standalone browser can demonstrate the public source. A hosted Space
-    // must use the network API qualified by its host, not bypass its policy.
-    if(window.space) {const e=new Error('Live forecasts are not available in this runtime. Explore the labelled local sample.');e.unavailable=true;throw e;}
+    if(!liveAvailable) {const e=new Error('Live forecasts need the Space runtime. Explore the labelled local sample.');e.unavailable=true;throw e;}
     const u=new URL('https://api.open-meteo.com/v1/forecast');
     for(const [k,v] of Object.entries({latitude:city.lat,longitude:city.lon,current:'temperature_2m,weather_code',hourly:'temperature_2m,precipitation_probability',forecast_days:2,timezone:'GMT'}))u.searchParams.set(k,v);
-    const response=await fetch(u,{signal:active.signal,credentials:'omit',referrerPolicy:'no-referrer'});
-    if(!response.ok)throw new Error('Forecast source returned '+response.status);
-    const data=await response.json();if(id!==sequence)return;render(data,city);text('status','Live public forecast loaded. No account or location permission used.');
-  }catch(e){if(id!==sequence)return;text('status',e.off || e.unavailable ? e.message :`${city.name} couldn’t load. ${last?`Still showing ${last.sample?'the sample for ':''}${last.city.name}. `:''}The source or connection may be unavailable, or internet access may be off. Retry or explore the labelled sample.`);}
-  finally{clearTimeout(timer);if(id===sequence){$('refresh').disabled=!liveAvailable;$('chart').removeAttribute('aria-busy');}}
+    // The host performs the request: {status, url, headers, json}. HTTP errors resolve with their status.
+    const response=await Promise.race([window.space.net.fetch(u.href,{as:'json'}),timeout(12000)]);
+    if(id!==sequence)return;
+    if(response.status<200 || response.status>=300)throw new Error('Forecast source returned '+response.status);
+    render(response.json,city);text('status','Live public forecast loaded. No account or location permission used.');
+  }catch(e){
+    if(id!==sequence)return;
+    const kept = last?`Still showing ${last.sample?'the sample for ':''}${last.city.name}. `:'';
+    text('status', e.code==='not_granted' ? `Internet access is off for this Space. ${kept}Turn it on in Permissions to load live forecasts, or explore the labelled sample.`
+      : e.unavailable ? e.message
+      : `${city.name} couldn’t load. ${kept}The source or connection may be unavailable. Retry or explore the labelled sample.`);
+  }
+  finally{if(id===sequence){$('refresh').disabled=!liveAvailable;$('chart').removeAttribute('aria-busy');}}
 }
 for(const b of document.querySelectorAll('[data-city]'))b.onclick=()=>{selected=b.dataset.city;for(const c of document.querySelectorAll('[data-city]'))c.setAttribute('aria-pressed',String(c===b));load();};
 $('refresh').onclick=load;
 $('sample').onclick=()=>{
-  sequence++;active?.abort();$('refresh').disabled=!liveAvailable;$('chart').removeAttribute('aria-busy');
+  sequence++;$('refresh').disabled=!liveAvailable;$('chart').removeAttribute('aria-busy');
   const base=new Date();base.setUTCMinutes(0,0,0);const times=Array.from({length:24},(_,i)=>new Date(base.getTime()+i*3600000).toISOString());
   render({current:{time:times[0],temperature_2m:14,weather_code:2},hourly:{time:times,temperature_2m:[14,15,17,18,18,17,16,15,13,12,11,10,10,9,8,8,9,10,11,12,13,14,14,15],precipitation_probability:Array.from({length:24},(_,i)=>i<6?10:i<12?35:20)}},cities[selected],true);
   text('status','Synthetic sample. These values are illustrative, not current weather. '+(liveAvailable ? 'Load forecast to return to live data.' : 'Local exploration works without live access.'));

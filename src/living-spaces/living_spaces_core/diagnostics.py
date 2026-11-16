@@ -1,0 +1,345 @@
+"""Static diagnostics for a whole project revision.
+
+A warning means code sits where something loads or sends, never that a URL appears in text.
+The JavaScript tokenizer and import extraction follow the guest loader's rewriteImports
+(src/guest/loader.mjs), so the imports checked here are the ones the runtime rewrites.
+"""
+from __future__ import annotations
+
+import bisect
+import re
+from html.parser import HTMLParser
+from typing import Callable, Mapping, NamedTuple
+from urllib.parse import unquote, urljoin, urlsplit
+
+ROOT = "https://space.invalid/"
+REMOTE = re.compile(r"^(?:https?|wss?):|^//", re.I)
+SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.I)
+REGEX_CONTEXT = re.compile(r"^(?:return|throw|case|typeof|void|delete|yield|await|=>|[=(:,;!&|?{\[])$")
+WORD = re.compile(r"[\w$]")
+GLOBALS = {"window", "globalThis", "self"}
+CONSTRUCTORS = {"XMLHttpRequest", "WebSocket", "EventSource"}
+DECLARES = {"function", "const", "let", "var", "class"}
+LOADING_RELS = {"stylesheet", "icon", "preload", "modulepreload", "prefetch", "manifest", "apple-touch-icon"}
+SOURCE_ATTRS = {"script": "src", "img": "src", "source": "src", "audio": "src", "video": "src", "track": "src",
+                "iframe": "src", "embed": "src", "input": "src", "object": "data"}
+SVG_HREF = {"image", "use", "feimage"}
+CSS_COMMENT = re.compile(r"/\*.*?\*/", re.S)
+CSS_IMPORT = re.compile(r"""@import\s+(?:url\(\s*)?(['"]?)([^'")\s;]+)\1""", re.I)
+CSS_URL = re.compile(r"""url\(\s*(['"]?)([^'")]*?)\1\s*\)""", re.I)
+MESSAGES = {
+    "entry.missing": "Entry file {ref!r} is missing, so the Space cannot boot",
+    "import.alias_target_missing": "manifest import {ref!r} points to missing file {target}",
+    "import.unresolved": "import {ref!r} does not resolve to a project file ({target})",
+    "import.bare_unmapped": "bare import {ref!r} is not in the manifest imports; add it to libraries or vendor the file",
+    "asset.unresolved": "{ref!r} does not resolve to a project file ({target})",
+    "net.direct_call": "direct network access with {ref} is blocked in the frame; use space.net.fetch(url, {{as}}) for public HTTPS",
+    "net.remote_import": "remote import {ref!r} is blocked in the frame; vendor the file or add a bundled library",
+    "net.remote_resource": "remote resource {ref!r} is blocked in the frame; add it as a project file or fetch it with space.net.fetch(url, {{as: 'bytes'}})",
+    "library.file_unavailable": "Bundled file is not available yet: {ref}",
+}
+
+
+class Token(NamedTuple):
+    text: str
+    at: int
+
+
+class Ref(NamedTuple):
+    module: bool
+    spec: str
+    line: int
+    column: int
+
+
+class Sink(NamedTuple):
+    code: str
+    ref: str
+    line: int
+    column: int
+
+
+class Facts(NamedTuple):
+    refs: tuple[Ref, ...]
+    sinks: tuple[Sink, ...]
+
+
+def diagnostic(code, path=None, line=None, column=None, ref=None, target=None):
+    where = path if path is None or line is None else f"{path}:{line}:{column}"
+    text = MESSAGES[code].format(ref=ref, target=target)
+    return {"code": code, "path": path, "line": line, "column": column, "ref": ref, "target": target,
+            "message": f"{where}: {text}. [{code}]" if where else f"{text}. [{code}]"}
+
+
+def tokens(source: str) -> list[Token]:
+    out: list[Token] = []
+    at = 0
+
+    def quoted(quote):
+        nonlocal at
+        start = at
+        at += 1
+        while at < len(source):
+            if source[at] == "\\":
+                at += 2
+                continue
+            at += 1
+            if source[at - 1] == quote:
+                break
+        out.append(Token(source[start:at], start))
+
+    def scan(nested=False):
+        nonlocal at
+        depth = 0
+        while at < len(source):
+            start, char = at, source[at]
+            if char.isspace():
+                at += 1
+            elif source.startswith("//", at):
+                end = source.find("\n", at)
+                at = len(source) if end < 0 else end
+            elif source.startswith("/*", at):
+                end = source.find("*/", at + 2)
+                at = len(source) if end < 0 else end + 2
+            elif char in "\"'":
+                quoted(char)
+            elif char == "`":
+                at += 1
+                while at < len(source):
+                    if source[at] == "\\":
+                        at += 2
+                    elif source[at] == "`":
+                        at += 1
+                        break
+                    elif source.startswith("${", at):
+                        at += 2
+                        scan(True)
+                    else:
+                        at += 1
+            elif char == "/" and (not out or REGEX_CONTEXT.match(out[-1].text)):
+                at += 1
+                in_class = False
+                while at < len(source):
+                    if source[at] == "\\":
+                        at += 2
+                        continue
+                    at += 1
+                    if source[at - 1] == "[":
+                        in_class = True
+                    elif source[at - 1] == "]":
+                        in_class = False
+                    elif source[at - 1] == "/" and not in_class:
+                        break
+                while at < len(source) and source[at].isalpha():
+                    at += 1
+                out.append(Token(source[start:at], start))
+            elif nested and char == "}" and depth == 0:
+                at += 1
+                return
+            else:
+                depth += char == "{"
+                depth -= char == "}"
+                if source.startswith("=>", at):
+                    at += 2
+                elif WORD.match(char):
+                    while at < len(source) and WORD.match(source[at]):
+                        at += 1
+                else:
+                    at += 1
+                out.append(Token(source[start:at], start))
+
+    scan()
+    return out
+
+
+def _string(token):
+    return token.text[:1] in "\"'" and len(token.text) > 1
+
+
+def _closing(toks, i):
+    depth = 0
+    for j in range(i, len(toks)):
+        depth += toks[j].text == "("
+        depth -= toks[j].text == ")"
+        if depth == 0:
+            return j
+    return len(toks) - 1
+
+
+def _owner(toks, i):
+    """Return 'bare', 'global' or 'member' for the identifier at toks[i]."""
+    if i == 0 or toks[i - 1].text != ".":
+        return "bare"
+    if i >= 2 and toks[i - 2].text in GLOBALS and (i < 3 or toks[i - 3].text != "."):
+        return "global"
+    return "member"
+
+
+def _js(source, position):
+    toks = tokens(source)
+    none = Token("", -1)
+    get = lambda i: toks[i] if 0 <= i < len(toks) else none
+    where = lambda token: position(token.at)
+    refs, sinks = [], []
+    shadowed = any(t.text == "fetch" and get(i - 1).text in DECLARES for i, t in enumerate(toks))
+    for i, token in enumerate(toks):
+        text, prev, nxt = token.text, get(i - 1), get(i + 1)
+        if text in ("import", "export") and prev.text != ".":
+            if text == "import" and nxt.text == "(":
+                if _string(get(i + 2)) and get(i + 3).text in (")", ","):
+                    refs.append(Ref(True, get(i + 2).text[1:-1], *where(get(i + 2))))
+                continue
+            if nxt.text == ".":
+                continue
+            spec = nxt if text == "import" and _string(nxt) else None
+            j = i + 1
+            while spec is None and j < len(toks) and toks[j].text not in (";", "import", "export"):
+                if toks[j].text == "from" and _string(get(j + 1)):
+                    spec = toks[j + 1]
+                j += 1
+            if spec is not None:
+                refs.append(Ref(True, spec.text[1:-1], *where(spec)))
+        elif text == "fetch" and nxt.text == "(":
+            owner = _owner(toks, i)
+            after = get(_closing(toks, i + 1) + 1)
+            if owner == "global" or (owner == "bare" and not shadowed and after.text != "{"):
+                sinks.append(Sink("net.direct_call", "fetch()", *where(token)))
+        elif text in CONSTRUCTORS and _owner(toks, i) != "member":
+            sinks.append(Sink("net.direct_call", text, *where(token)))
+        elif text == "sendBeacon" and nxt.text == "(" and _owner(toks, i) == "member":
+            sinks.append(Sink("net.direct_call", "sendBeacon()", *where(token)))
+        elif text == "src" and prev.text == "." and nxt.text == "=" and _string(get(i + 2)):
+            spec = get(i + 2).text[1:-1]
+            if REMOTE.match(spec):
+                sinks.append(Sink("net.remote_resource", spec, *where(token)))
+    return refs, sinks
+
+
+def _css(source, position):
+    source = CSS_COMMENT.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), source)
+    refs, taken = [], []
+    for match in CSS_IMPORT.finditer(source):
+        refs.append(Ref(False, match.group(2), *position(match.start(2))))
+        taken.append(match.span())
+    for match in CSS_URL.finditer(source):
+        if not any(start <= match.start() < end for start, end in taken):
+            refs.append(Ref(False, match.group(2).strip(), *position(match.start(2))))
+    return refs, []
+
+
+class _Html(HTMLParser):
+    def __init__(self, lines):
+        super().__init__(convert_charrefs=False)
+        self.lines, self.refs, self.sinks, self.script = lines, [], [], None
+
+    def position(self, line, column):
+        start = self.lines[line - 1]
+        return lambda offset: _shift(self.lines, start + column, offset)
+
+    def handle_starttag(self, tag, attrs):
+        here = self.getpos()
+        values = {name: value or "" for name, value in attrs}
+        found = []
+        if tag in SOURCE_ATTRS and SOURCE_ATTRS[tag] in values:
+            found.append(values[SOURCE_ATTRS[tag]])
+        if tag in ("img", "source") and values.get("srcset"):
+            found += [part.split()[0] for part in values["srcset"].split(",") if part.split()]
+        if tag == "link" and set(values.get("rel", "").lower().split()) & LOADING_RELS and "href" in values:
+            found.append(values["href"])
+        if tag in SVG_HREF:
+            found += [values[name] for name in ("href", "xlink:href") if name in values]
+        self.refs += [Ref(False, spec, here[0], here[1] + 1) for spec in found]
+        if values.get("style"):
+            refs, _ = _css(values["style"], lambda offset: (here[0], here[1] + 1))
+            self.refs += refs
+        kind = values.get("type", "").strip().lower()
+        if tag == "script" and "src" not in values and kind in ("", "module", "text/javascript", "application/javascript"):
+            self.script = ("module" if kind == "module" else "classic")
+        elif tag == "style":
+            self.script = "style"
+
+    def handle_endtag(self, tag):
+        self.script = None
+
+    def handle_data(self, data):
+        if self.script is None:
+            return
+        position = self.position(*self.getpos())
+        refs, sinks = (_css if self.script == "style" else _js)(data, position)
+        self.refs += [ref for ref in refs if self.script != "classic"]
+        self.sinks += sinks
+
+
+def _line_starts(source):
+    return [0] + [m.end() for m in re.finditer("\n", source)]
+
+
+def _shift(starts, base, offset):
+    index = base + offset
+    line = bisect.bisect_right(starts, index)
+    return line, index - starts[line - 1] + 1
+
+
+def scan(path: str, source: str) -> Facts:
+    starts = _line_starts(source)
+    position = lambda offset: _shift(starts, 0, offset)
+    ext = path.rsplit(".", 1)[-1].lower()
+    if ext in ("js", "mjs"):
+        refs, sinks = _js(source, position)
+    elif ext == "css":
+        refs, sinks = _css(source, position)
+    elif ext in ("html", "htm"):
+        parser = _Html(starts)
+        parser.feed(source)
+        parser.close()
+        refs, sinks = parser.refs, parser.sinks
+    else:
+        refs, sinks = [], []
+    return Facts(tuple(refs), tuple(sinks))
+
+
+_FACTS: dict[tuple[str, str], Facts] = {}
+
+
+def _facts(path, sha, load):
+    key = (path.rsplit(".", 1)[-1].lower(), sha)
+    if key not in _FACTS:
+        if len(_FACTS) >= 512:
+            _FACTS.clear()
+        _FACTS[key] = scan(path, load(sha).decode("utf-8", errors="replace"))
+    return _FACTS[key]
+
+
+def resolve(base: str, spec: str) -> str:
+    return unquote(urlsplit(urljoin(ROOT + base, spec)).path).lstrip("/")
+
+
+def diagnose(manifest: Mapping, files: Mapping[str, str], load: Callable[[str], bytes]) -> list[dict]:
+    """Diagnose the complete revision: files maps every project path to its blob sha."""
+    imports = manifest.get("imports") or {}
+    found = []
+    if manifest["entry"] not in files:
+        found.append(diagnostic("entry.missing", "space.json", ref=manifest["entry"]))
+    for name, target in imports.items():
+        if target not in files:
+            found.append(diagnostic("import.alias_target_missing", "space.json", ref=name, target=target))
+    for path, sha in files.items():
+        if path.rsplit(".", 1)[-1].lower() not in ("js", "mjs", "css", "html", "htm"):
+            continue
+        facts = _facts(path, sha, load)
+        found += [diagnostic(s.code, path, s.line, s.column, s.ref) for s in facts.sinks]
+        for ref in facts.refs:
+            spec = ref.spec.strip()
+            where = (path, ref.line, ref.column, spec)
+            if REMOTE.match(spec):
+                found.append(diagnostic("net.remote_import" if ref.module else "net.remote_resource", *where))
+            elif not spec or spec.startswith("#") or SCHEME.match(spec):
+                continue
+            elif ref.module and not spec.startswith((".", "/")):
+                if spec not in imports:
+                    found.append(diagnostic("import.bare_unmapped", *where))
+            elif resolve(path, spec) not in files:
+                found.append(diagnostic("import.unresolved" if ref.module else "asset.unresolved", *where,
+                                        target=resolve(path, spec)))
+    return sorted(found, key=lambda d: (d["path"] != "space.json", d["path"] or "", d["line"] or 0,
+                                        d["column"] or 0, d["code"]))

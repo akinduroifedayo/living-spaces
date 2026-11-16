@@ -266,27 +266,19 @@ class ToolTests(AdapterCase):
         self.tool("spaces_read_file", {"space": SID, "path": "space.json"})
         self.core.read_file.assert_called_once_with(SID, "space.json")
 
-    def test_static_warnings_help_repair_the_project(self):
-        self.core.bundle.return_value = {"manifest": MANIFEST, "files": [
-            {"path": "index.html", "text": "<main>Library</main>"},
-            {"path": "app.js", "text": "import './missing.js'; fetch('https://example.org')"}]}
-        result = self.tool("spaces_create", {**PARAMS["spaces_create"], "files": {
-            "app.js": "import './missing.js'; fetch('https://example.org')"}})["result"]
-        self.assertTrue(any("missing.js" in warning for warning in result["warnings"]))
-        self.assertTrue(any("network access" in warning for warning in result["warnings"]))
-        self.core.bundle.return_value = {"manifest": MANIFEST, "files": [{"path": "app.js", "text": ""}]}
-        result = self.tool("spaces_create")["result"]
-        self.assertTrue(any("Entry file" in warning for warning in result["warnings"]))
-
-    def test_deleted_dependency_warns_on_unchanged_importer(self):
-        self.core.bundle.return_value = {"manifest": MANIFEST, "files": [
-            {"path": "index.html", "text": '<script type="module" src="./app.js"></script>'},
-            {"path": "app.js", "text": "import './views/library.js'"}]}
-        reply = self.tool("spaces_write_files", {"space": SID, "files": {"views/library.js": None},
-                                                 "summary": "Remove view", "base_rev": 2})
-        self.assertTrue(reply["ok"])
-        self.assertTrue(any("library.js" in warning for warning in reply["result"]["warnings"]))
-        self.core.bundle.assert_called_once_with(SID, rev=3)
+    def test_core_diagnostics_reach_every_write_result(self):
+        found = {"code": "import.unresolved", "path": "app.js", "line": 1, "column": 8, "ref": "./missing.js",
+                 "target": "missing.js", "message": "app.js:1:8: import './missing.js' does not resolve. [import.unresolved]"}
+        report = {"warnings": [found["message"]], "diagnostics": [found]}
+        self.core.create_space.return_value = {**DETAIL, **report}
+        self.core.write_files.return_value = {"rev": 3, **report}
+        self.core.edit_file.return_value = {"rev": 3, **report}
+        self.core.restore_revision.return_value = {"rev": 3, **report}
+        for name in ("spaces_create", "spaces_write_files", "spaces_edit_file", "spaces_restore"):
+            result = self.tool(name)["result"]
+            self.assertIn(found["message"], result["warnings"], name)
+            self.assertEqual(result["diagnostics"], [found], name)
+        self.core.bundle.assert_any_call(SID, rev=3)
 
     def test_invalid_arguments_are_json_errors(self):
         cases = [("spaces_get", {}), ("spaces_create", {**PARAMS["spaces_create"], "description": 4}),

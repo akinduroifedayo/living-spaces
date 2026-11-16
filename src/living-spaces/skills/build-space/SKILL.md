@@ -495,7 +495,10 @@ without replaying missed intervals.
 
 ## Check and repair
 
-After a create or code change, inspect `warnings` and fix them. Tell the user
+After a create or code change, inspect `warnings` and fix them. Each one names
+the file, line and a code in brackets; `diagnostics` holds the same items as
+objects. A URL in text is never a warning; a warning means code that loads or
+sends directly, or an import that does not resolve. Tell the user
 to open the Space. After it has mounted, call `spaces_read_logs` for runtime
 errors, import failures, and policy violations. Empty logs before mounting do
 not prove it works. Fix errors with `spaces_edit_file` and check again.
