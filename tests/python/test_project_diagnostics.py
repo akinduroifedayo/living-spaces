@@ -94,32 +94,24 @@ class ProjectDiagnosticsTests(unittest.TestCase):
         self.assertEqual(found, [("net.direct_call", n) for n in (1, 2, 3, 4, 5, 6, 7)], created["warnings"])
         self.assertTrue(all(w.startswith("app.js:") for w in created["warnings"] if "[net." in w), created["warnings"])
 
-    def test_a_nested_local_named_fetch_does_not_hide_a_global_call(self):
-        app = "function helper(){ const fetch = value => value; return fetch(1); }\nfetch('https://example.org/data');\n"
-        created = self.create({"index.html": INDEX, "app.js": app})
-        self.assertIn(("net.direct_call", 2), [(d["code"], d["line"]) for d in network(created)], created["warnings"])
-        declared = self.create({"index.html": INDEX, "app.js": "function fetch(url) { return url; }\n"}, name="Declared")
-        self.assertEqual(network(declared), [], declared["warnings"])
-
-    def test_only_a_module_scope_declaration_hides_fetch(self):
+    def test_a_local_binding_named_fetch_never_hides_a_bare_call(self):
         for name, app in {
-            "loop binding": "for (let fetch of []) { fetch(1); }\nfetch(url);\n",
-            "named function expression": "const helper = function fetch() {};\nfetch(url);\n",
-            "block const": "{ const fetch = x => x; }\nfetch(url);\n",
-            "async named function expression": "const helper = async function fetch() {};\nfetch(url);\n",
-            "arrow-returned named function": "const make = () => function fetch() {};\nfetch(url);\n",
-            "short-circuit named function": "ready && function fetch() {};\nfetch(url);\n",
-            "IIFE": "(function fetch() {})();\nfetch(url);\n",
-            "braceless loop": "for (let fetch of xs) use(fetch);\nfetch(url);\n",
-            "parameter": "function f(fetch) { return fetch(1); }\nfetch(url);\n",
+            "nested const": "function helper(){ const fetch = value => value; return fetch(1); }\nfetch(url);\n",
+            "loop binding": "for (let fetch of []) { use(fetch); }\nfetch(url);\n",
+            "named function expression": "const helper = async function fetch() {};\nfetch(url);\n",
+            "function in template": "`${function fetch(){}}`;\nfetch(url);\n",
+            "alias of the global": "var fetch = window.fetch.bind(window);\nfetch(url);\n",
+            "module const": "const fetch = u => u;\nfetch(url);\n",
+            "exported function": "export function fetch(u) { return u; }\nfetch(url);\n",
         }.items():
             with self.subTest(name):
                 created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
                 self.assertIn(("net.direct_call", 2), [(d["code"], d["line"]) for d in network(created)], created["warnings"])
-        for name, app in {"module const": "const fetch = u => u;\nfetch(url);\n",
-                          "exported function": "export function fetch(u) { return u; }\nfetch(url);\n",
-                          "async declaration": "async function fetch(u) { return u; }\nfetch(url);\n",
-                          "export default function": "export default function fetch(u) { return u; }\nfetch(url);\n"}.items():
+
+    def test_method_definitions_named_fetch_are_not_calls(self):
+        for name, app in {"declaration": "function fetch(url) { return url; }\n",
+                          "class method": "class Feed { fetch(url) { return url; } }\n",
+                          "object method": "const feed = { fetch(url) { return url; } };\nfeed.fetch(1);\n"}.items():
             with self.subTest(name):
                 created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
                 self.assertEqual(network(created), [], created["warnings"])

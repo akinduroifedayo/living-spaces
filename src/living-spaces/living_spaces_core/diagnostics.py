@@ -13,7 +13,6 @@ REGEX_CONTEXT = re.compile(r"^(?:return|throw|case|typeof|void|delete|yield|awai
 WORD = re.compile(r"[\w$]")
 GLOBALS = {"window", "globalThis", "self"}
 CONSTRUCTORS = {"XMLHttpRequest", "WebSocket", "EventSource"}
-DECLARES = {"function", "const", "let", "var", "class"}
 CONTROL = {"if", "while", "for", "with"}
 LOADING_RELS = {"stylesheet", "icon", "preload", "modulepreload", "prefetch", "manifest", "apple-touch-icon"}
 SOURCE_ATTRS = {"script": "src", "img": "src", "source": "src", "audio": "src", "video": "src", "track": "src",
@@ -184,20 +183,8 @@ def _js(source, position):
     get = lambda i: toks[i] if 0 <= i < len(toks) else none
     where = lambda token: position(token.at)
     refs, sinks = [], []
-    depth, paren, shadowed = 0, 0, False
     for i, token in enumerate(toks):
         text, prev, nxt = token.text, get(i - 1), get(i + 1)
-        if text == "{":
-            depth += 1
-        elif text == "}":
-            depth -= 1
-        elif text in ("(", ")"):
-            paren += 1 if text == "(" else -1
-        elif text == "fetch" and prev.text in DECLARES and depth == 0 and paren == 0:
-            j = i - 2
-            while get(j).text in ("async", "export", "default"):
-                j -= 1
-            shadowed = shadowed or j < 0 or get(j).text in (";", "}")
         if text in ("import", "export") and prev.text != ".":
             if text == "import" and nxt.text == "(":
                 if _string(get(i + 2)) and get(i + 3).text in (")", ","):
@@ -216,7 +203,7 @@ def _js(source, position):
         elif text == "fetch" and nxt.text == "(":
             owner = _owner(toks, i)
             after = get(_closing(toks, i + 1) + 1)
-            if owner == "global" or (owner == "bare" and not shadowed and after.text != "{"):
+            if owner == "global" or (owner == "bare" and after.text != "{"):
                 sinks.append(Sink("net.direct_call", "fetch()", *where(token)))
         elif text in CONSTRUCTORS and _owner(toks, i) != "member":
             sinks.append(Sink("net.direct_call", text, *where(token)))
