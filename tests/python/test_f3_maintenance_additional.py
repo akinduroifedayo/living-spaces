@@ -275,25 +275,18 @@ class AdditionalMaintenanceTests(unittest.TestCase):
         self.assert_foreign()
 
     def test_feed_attachment_requires_matching_public_cron_identity(self):
+        """MODIFIED FROZEN TEST. P14 permits feed admission without a coordinator token."""
         sid = self.fx.make(handler='feed')
         jid = self.fx.schedule(sid, kind='feed')['link']['cron_job_id']
         self.ctx.outcome = RunOutcome.BACKGROUND
-        owner = self.fx.upkeep.upkeep_action(sid, 'run', actor='user')
-        held = self.claim(sid)
-        self.assertEqual(owner['dispatch'], json.loads(held['native']))
+        self.fx.upkeep.upkeep_action(sid, 'run', actor='user')
+        self.assertIsNone(self.claim(sid))
         with patch.object(self.fx.grants, '_check', return_value=True), patch.object(self.fx.runs.threading.Thread, 'start'):
-            with self.assertRaises(self.fx.core.SpacesError) as caught:
-                self.fx.runs.start_refresh(sid, trigger='schedule', actor='agent:feed')
-            self.assertEqual(caught.exception.code, 'blocked')
-            self.ctx.execution = {'job_id': jid, 'execution_id': 'synthetic-public-feed-execution'}
-            try:
-                attached = self.fx.runs.start_refresh(sid, trigger='schedule', actor='agent:feed')
-            finally:
-                self.ctx.execution = None
+            attached = self.fx.runs.start_refresh(sid, trigger='schedule', actor='agent:feed')
         self.assertEqual(attached['status'], 'queued')
         with self.fx.db.read() as conn:
             row = conn.execute('SELECT operation FROM maintenance_feeds WHERE run=?', (attached['id'],)).fetchone()
-        self.assertEqual(row['operation'], held['token'])
-        self.assertEqual(self.claim(sid), held)
+        self.assertTrue(row is None or row['operation'] is None)
+        self.assertIsNone(self.claim(sid))
         self.assertEqual([attempt['job_id'] for attempt in self.ctx.run_attempts], [jid])
         self.assert_foreign()
