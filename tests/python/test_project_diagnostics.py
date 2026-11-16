@@ -106,12 +106,20 @@ class ProjectDiagnosticsTests(unittest.TestCase):
             "loop binding": "for (let fetch of []) { fetch(1); }\nfetch(url);\n",
             "named function expression": "const helper = function fetch() {};\nfetch(url);\n",
             "block const": "{ const fetch = x => x; }\nfetch(url);\n",
+            "async named function expression": "const helper = async function fetch() {};\nfetch(url);\n",
+            "arrow-returned named function": "const make = () => function fetch() {};\nfetch(url);\n",
+            "short-circuit named function": "ready && function fetch() {};\nfetch(url);\n",
+            "IIFE": "(function fetch() {})();\nfetch(url);\n",
+            "braceless loop": "for (let fetch of xs) use(fetch);\nfetch(url);\n",
+            "parameter": "function f(fetch) { return fetch(1); }\nfetch(url);\n",
         }.items():
             with self.subTest(name):
                 created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
                 self.assertIn(("net.direct_call", 2), [(d["code"], d["line"]) for d in network(created)], created["warnings"])
         for name, app in {"module const": "const fetch = u => u;\nfetch(url);\n",
-                          "exported function": "export function fetch(u) { return u; }\nfetch(url);\n"}.items():
+                          "exported function": "export function fetch(u) { return u; }\nfetch(url);\n",
+                          "async declaration": "async function fetch(u) { return u; }\nfetch(url);\n",
+                          "export default function": "export default function fetch(u) { return u; }\nfetch(url);\n"}.items():
             with self.subTest(name):
                 created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
                 self.assertEqual(network(created), [], created["warnings"])
@@ -128,6 +136,15 @@ class ProjectDiagnosticsTests(unittest.TestCase):
                'p { content: "/* not a comment */ url(https://x.example/y.png)"; }\n')
         created = self.create({"index.html": INDEX, "styles.css": css})
         self.assertEqual([(d["code"], d["line"]) for d in network(created)], [("net.remote_resource", 1), ("net.remote_resource", 2)], created["warnings"])
+
+    def test_repeated_comments_before_an_import_string_do_not_hide_it(self):
+        created = self.create({"index.html": INDEX, "styles.css": "@import " + "/**/ " * 20 + '"https://example.org/a.css";\n'})
+        self.assertEqual([d["code"] for d in network(created)], ["net.remote_resource"], created["warnings"])
+
+    def test_deep_templates_keep_token_text_small(self):
+        from living_spaces_core import diagnostics
+        source = "`a${" * 8000 + "1" + "}`" * 8000
+        self.assertLess(sum(len(t.text) for t in diagnostics.tokens(source)), 4 * len(source))
 
     def test_many_css_strings_scan_in_linear_time(self):
         import time

@@ -15,7 +15,6 @@ GLOBALS = {"window", "globalThis", "self"}
 CONSTRUCTORS = {"XMLHttpRequest", "WebSocket", "EventSource"}
 DECLARES = {"function", "const", "let", "var", "class"}
 CONTROL = {"if", "while", "for", "with"}
-EXPRESSION_START = {"=", "(", ",", ":", "?", "return", "&&", "||", "!", "["}
 LOADING_RELS = {"stylesheet", "icon", "preload", "modulepreload", "prefetch", "manifest", "apple-touch-icon"}
 SOURCE_ATTRS = {"script": "src", "img": "src", "source": "src", "audio": "src", "video": "src", "track": "src",
                 "iframe": "src", "embed": "src", "input": "src", "object": "data"}
@@ -94,8 +93,7 @@ def tokens(source: str) -> list[Token]:
                 at += 2
             elif source[at] == "`":
                 at += 1
-                begin = frames.pop()
-                out.append(Token(source[begin:at], begin))
+                out.append(Token("`", frames.pop()))
             elif source.startswith("${", at):
                 at += 2
                 frames.append([0])
@@ -186,20 +184,20 @@ def _js(source, position):
     get = lambda i: toks[i] if 0 <= i < len(toks) else none
     where = lambda token: position(token.at)
     refs, sinks = [], []
-    depth, paren, shadows = 0, 0, []
+    depth, paren, shadowed = 0, 0, False
     for i, token in enumerate(toks):
         text, prev, nxt = token.text, get(i - 1), get(i + 1)
         if text == "{":
             depth += 1
         elif text == "}":
             depth -= 1
-            while shadows and shadows[-1] > depth:
-                shadows.pop()
-        elif text in "()":
+        elif text in ("(", ")"):
             paren += 1 if text == "(" else -1
-        elif text == "fetch" and prev.text in DECLARES:
-            expression = prev.text == "function" and get(i - 2).text in EXPRESSION_START
-            shadows.append(depth + 1 if paren > 0 or expression else depth)
+        elif text == "fetch" and prev.text in DECLARES and depth == 0 and paren == 0:
+            j = i - 2
+            while get(j).text in ("async", "export", "default"):
+                j -= 1
+            shadowed = shadowed or j < 0 or get(j).text in (";", "}")
         if text in ("import", "export") and prev.text != ".":
             if text == "import" and nxt.text == "(":
                 if _string(get(i + 2)) and get(i + 3).text in (")", ","):
@@ -218,7 +216,7 @@ def _js(source, position):
         elif text == "fetch" and nxt.text == "(":
             owner = _owner(toks, i)
             after = get(_closing(toks, i + 1) + 1)
-            if owner == "global" or (owner == "bare" and not any(level <= depth for level in shadows) and after.text != "{"):
+            if owner == "global" or (owner == "bare" and not shadowed and after.text != "{"):
                 sinks.append(Sink("net.direct_call", "fetch()", *where(token)))
         elif text in CONSTRUCTORS and _owner(toks, i) != "member":
             sinks.append(Sink("net.direct_call", text, *where(token)))
@@ -239,10 +237,10 @@ def _inert_css(source):
     out, tail, at = [], "", 0
     for match in CSS_STRING.finditer(source):
         between, token = source[at:match.start()], match.group(0)
-        tail = (tail + re.sub(r"\s+", " ", between))[-32:]
+        tail = re.sub(r"\s+", " ", tail + between)[-32:]
         if token.startswith("/*"):
             out += [between, _blank(token)]
-            tail = (tail + " ")[-32:]
+            tail = re.sub(r"\s+", " ", tail + " ")[-32:]
         else:
             loads = CSS_LOADS.search(tail) is not None
             out += [between, token if loads else token[:1] + _blank(token[1:-1]) + token[-1:]]
