@@ -119,19 +119,31 @@ class ProjectDiagnosticsTests(unittest.TestCase):
                 created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
                 self.assertIn(code, [d["code"] for d in network(created)], created["warnings"])
 
-    def test_anchor_links_and_comparisons_are_not_loads(self):
-        for name, app in {"anchor": "const a = document.createElement('a');\na.href = 'https://open-meteo.com/';\n",
-                          "comparison": "if (location.href == 'https://example.org/') go();\n"}.items():
+    def test_calls_are_never_excused_by_guessing_the_surrounding_syntax(self):
+        for name, app in {
+            "after multiplication": "const n = 2 * fetch(u);\n",
+            "yield star": "function* g() { yield * fetch(u); }\n",
+            "beacon after multiplication": "const n = 2 * sendBeacon('/log');\n",
+            "after a property named class": "const o = {class: true};\nfunction go() {\n  fetch(u)\n  { const a = 1; }\n}\n",
+            "class field initializer": "class A { x = fetch(u); }\n",
+            "class static block": "class A { static { fetch(u); } }\n",
+            "arrow body": "const go = () => { fetch(u) };\n",
+        }.items():
             with self.subTest(name):
                 created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
-                self.assertEqual(network(created), [], created["warnings"])
+                self.assertIn("net.direct_call", [d["code"] for d in network(created)], created["warnings"])
 
-    def test_method_definitions_named_fetch_are_not_calls(self):
+    def test_remote_href_is_reported_whatever_element_holds_it(self):
+        app = ("let a = document.createElement('a');\na = document.querySelector('link');\n"
+               "a.rel = 'stylesheet';\na.href = 'https://example.org/a.css';\ndocument.head.append(a);\n")
+        created = self.create({"index.html": INDEX, "app.js": app})
+        self.assertIn(("net.remote_resource", 4), [(d["code"], d["line"]) for d in network(created)], created["warnings"])
+        compared = self.create({"index.html": INDEX, "app.js": "if (location.href == 'https://example.org/') go();\n"}, name="Compare")
+        self.assertEqual(network(compared), [], compared["warnings"])
+
+    def test_function_declarations_and_member_calls_named_fetch_are_not_calls(self):
         for name, app in {"declaration": "function fetch(url) { return url; }\n",
-                          "class method": "class Feed { fetch(url) { return url; } }\n",
-                          "class sendBeacon method": "class Log extends Base { sendBeacon(u) { return u; } }\n",
-                          "nested object method": "export default { api: { fetch(url) { return url; } } };\n",
-                          "object method": "const feed = { fetch(url) { return url; } };\nfeed.fetch(1);\n"}.items():
+                          "member call": "const feed = makeFeed();\nfeed.fetch(1);\n"}.items():
             with self.subTest(name):
                 created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
                 self.assertEqual(network(created), [], created["warnings"])

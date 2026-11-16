@@ -2,6 +2,7 @@ const cities = {london:{name:'London',lat:51.5072,lon:-.1276},copenhagen:{name:'
 const $ = id => document.getElementById(id);
 const describe = code => code === 0 ? 'Clear sky' : code <= 3 ? 'Partly cloudy' : code <= 48 ? 'Foggy' : code <= 67 ? 'Rain expected' : code <= 77 ? 'Snow expected' : code <= 82 ? 'Rain showers' : 'Wintry or stormy conditions';
 let selected='london', last=null, sequence=0;
+const sourceLink=$('provenance').querySelector('a').cloneNode(true);
 const liveAvailable = typeof window.space?.net?.fetch === 'function';
 if (!liveAvailable) {
   $('sample').classList.add('weather-primary');
@@ -38,7 +39,7 @@ function render(data,city,sample=false,retrievedAt=null){
   $('chart').replaceChildren(svg);
   $('provenance').replaceChildren();
   if(sample) text('provenance','Synthetic forecast sample · illustrative values, not current weather');
-  else {const a=document.createElement('a');a.href='https://open-meteo.com/';a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open-Meteo';$('provenance').append('Public forecast from ',a,' · retrieved '+new Date(last.retrievedAt).toLocaleString('en-GB',{timeZone:'UTC',dateStyle:'medium',timeStyle:'short'})+' UTC');}
+  else $('provenance').append('Public forecast from ',sourceLink.cloneNode(true),' · retrieved '+new Date(last.retrievedAt).toLocaleString('en-GB',{timeZone:'UTC',dateStyle:'medium',timeStyle:'short'})+' UTC');
 }
 const saved = async key => { try { return await window.space.get('forecasts', key); } catch { return null; } };
 async function showSaved(id, key, city){

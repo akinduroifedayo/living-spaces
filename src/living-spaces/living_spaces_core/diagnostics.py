@@ -3,7 +3,7 @@ from __future__ import annotations
 import bisect
 import re
 from html.parser import HTMLParser
-from typing import Callable, Literal, Mapping, NamedTuple
+from typing import Callable, Mapping, NamedTuple
 from urllib.parse import unquote, urljoin, urlsplit
 
 ROOT = "https://space.invalid/"
@@ -14,7 +14,6 @@ WORD = re.compile(r"[\w$]")
 GLOBALS = {"window", "globalThis", "self"}
 CONSTRUCTORS = {"XMLHttpRequest", "WebSocket", "EventSource"}
 CONTROL = {"if", "while", "for", "with"}
-OBJECT_BEFORE = {"=", "(", ",", "[", "?", "return", "||", "&&", "??", "...", "yield", "await", "default"}
 LOADING_RELS = {"stylesheet", "icon", "preload", "modulepreload", "prefetch", "manifest", "apple-touch-icon"}
 SOURCE_ATTRS = {"script": "src", "img": "src", "source": "src", "audio": "src", "video": "src", "track": "src",
                 "iframe": "src", "embed": "src", "input": "src", "object": "data"}
@@ -160,17 +159,8 @@ def _string(token):
     return token.text[:1] in "\"'" and len(token.text) > 1
 
 
-def _closing(toks, i):
-    depth = 0
-    for j in range(i, len(toks)):
-        depth += toks[j].text == "("
-        depth -= toks[j].text == ")"
-        if depth == 0:
-            return j
-    return len(toks) - 1
-
-
-def _owner(toks, i) -> Literal["bare", "global", "member"]:
+def _owner(toks, i) -> str:
+    """bare `fetch(`, global `window.fetch(`, or a member call on some other object."""
     if i == 0 or toks[i - 1].text != ".":
         return "bare"
     if i >= 2 and toks[i - 2].text in GLOBALS and (i < 3 or toks[i - 3].text != "."):
@@ -184,26 +174,8 @@ def _js(source, position):
     get = lambda i: toks[i] if 0 <= i < len(toks) else none
     where = lambda token: position(token.at)
     refs, sinks = [], []
-    braces, class_pending, tags = [], False, {}
-    method = lambda i: bool(braces) and braces[-1] in ("class", "object") and get(_closing(toks, i + 1) + 1).text == "{"
     for i, token in enumerate(toks):
         text, prev, nxt = token.text, get(i - 1), get(i + 1)
-        if text == "class" and prev.text != ".":
-            class_pending = True
-        elif text == "{":
-            top = braces[-1] if braces else "block"
-            kind = ("class" if class_pending else
-                    "object" if prev.text in OBJECT_BEFORE or (prev.text == ":" and top == "object") else "block")
-            braces.append(kind)
-            class_pending = False
-            continue
-        elif text == "}":
-            if braces:
-                braces.pop()
-            continue
-        if text == "createElement" and prev.text == "." and nxt.text == "(" and _string(get(i + 2)) \
-                and get(i - 2).text == "document" and get(i - 3).text == "=":
-            tags[get(i - 4).text] = get(i + 2).text[1:-1].lower()
         if text in ("import", "export") and prev.text != ".":
             if text == "import" and nxt.text == "(":
                 if _string(get(i + 2)) and get(i + 3).text in (")", ","):
@@ -219,19 +191,15 @@ def _js(source, position):
                 j += 1
             if spec is not None:
                 refs.append(Ref(True, spec.text[1:-1], *where(spec)))
-        elif text == "fetch" and nxt.text == "(" and prev.text not in ("function", "*"):
-            if _owner(toks, i) == "global" or (_owner(toks, i) == "bare" and not method(i)):
-                sinks.append(Sink("net.direct_call", "fetch()", *where(token)))
+        elif text == "fetch" and nxt.text == "(" and prev.text != "function" and _owner(toks, i) != "member":
+            sinks.append(Sink("net.direct_call", "fetch()", *where(token)))
         elif text in CONSTRUCTORS and _owner(toks, i) != "member":
             sinks.append(Sink("net.direct_call", text, *where(token)))
-        elif text == "sendBeacon" and nxt.text == "(" and prev.text not in ("function", "*") and not (_owner(toks, i) == "bare" and method(i)):
+        elif text == "sendBeacon" and nxt.text == "(" and prev.text != "function":
             sinks.append(Sink("net.direct_call", "sendBeacon()", *where(token)))
-        elif text in ("src", "href") and prev.text == "." and nxt.text == "=" and get(i + 3).text != "=" \
-                and _string(get(i + 2)):
-            spec = get(i + 2).text[1:-1]
-            anchor = text == "href" and get(i - 3).text != "." and tags.get(get(i - 2).text) in ("a", "area")
-            if REMOTE.match(spec) and not anchor:
-                sinks.append(Sink("net.remote_resource", spec, *where(token)))
+        elif text in ("src", "href") and prev.text == "." and nxt.text == "=" and get(i + 2).text != "=" \
+                and _string(get(i + 2)) and REMOTE.match(get(i + 2).text[1:-1]):
+            sinks.append(Sink("net.remote_resource", get(i + 2).text[1:-1], *where(token)))
     return refs, sinks
 
 
@@ -261,8 +229,11 @@ def _css(source, position):
     for match in CSS_IMPORT.finditer(source):
         refs.append(Ref(False, match.group(2), *position(match.start(2))))
         taken.append(match.span())
+    k = 0
     for match in CSS_URL.finditer(source):
-        if not any(start <= match.start() < end for start, end in taken):
+        while k < len(taken) and taken[k][1] <= match.start():
+            k += 1
+        if k == len(taken) or match.start() < taken[k][0]:
             refs.append(Ref(False, match.group(2).strip(), *position(match.start(2))))
     return refs, []
 
