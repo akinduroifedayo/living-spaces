@@ -103,7 +103,14 @@ def start_refresh(sid, *, trigger, actor, wait=False, session=None):
         if not reason:
             link = upkeep._link(conn, sid)
             held = maintenance.claim(conn, sid)
-            if (link and link["kind"] != "feed") or (held and held["created_one_shot"]):
+            if link and link["kind"] == "agent":
+                outstanding = conn.execute("SELECT cron_job_id FROM maintenance_operations "
+                                           "WHERE space=? AND phase!='retired'", (sid,)).fetchall()
+                if held or outstanding:
+                    maintenance._block([link["cron_job_id"]]
+                                       + ([held["cron_job_id"]] if held else [])
+                                       + [row["cron_job_id"] for row in outstanding])
+            elif (link and link["kind"] != "feed") or (held and held["created_one_shot"]):
                 maintenance._block(([link["cron_job_id"]] if link else [])
                                    + ([held["cron_job_id"]] if held else []))
         detail = {"reason": reason} if reason else {}
