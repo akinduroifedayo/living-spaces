@@ -482,7 +482,7 @@ def retire_resources(conn, sid, *, jid=None, all_resources=False):
     conn.execute("UPDATE maintenance_spaces SET link_generation=link_generation+1 WHERE space=?", (sid,))
 
 
-def admit_feed(conn, sid):
+def admit_feed(conn, sid, *, trigger=None):
     from . import upkeep
     state = identity(conn, sid)
     held = claim(conn, sid)
@@ -503,18 +503,61 @@ def admit_feed(conn, sid):
         if orphans:
             _block(orphans)
         return None
-    try:
-        execution = upkeep._context().current_cron_execution()
-    except Exception as exc:
-        raise SpacesError("blocked", "Cannot attach feed work without public cron identity",
-                          reason="cron_identity_unavailable") from exc
-    jid = execution.get("job_id") if isinstance(execution, dict) else None
+    if trigger != "schedule":
+        _block([row["cron_job_id"] for row in active] + ([held["cron_job_id"]] if held else []))
     link = upkeep._link(conn, sid)
+    ctx = None
+    try:
+        ctx = upkeep._context()
+    except SpacesError as exc:
+        if exc.extra.get("reason") != "cron_context_unavailable":
+            raise SpacesError("blocked", "Cannot attach feed work without public cron identity",
+                              reason="cron_identity_unavailable") from exc
+    if ctx is None:
+        jid = link["cron_job_id"] if link and link["kind"] == "feed" else None
+    else:
+        try:
+            execution = ctx.current_cron_execution()
+            jid = execution.get("job_id") if isinstance(execution, dict) else getattr(execution, "job_id", None)
+        except Exception as exc:
+            raise SpacesError("blocked", "Cannot attach feed work without public cron identity",
+                              reason="cron_identity_unavailable") from exc
     matches = [row for row in active if row["command"] == "run" and row["cron_job_id"] == jid]
     if (jid and link and link["kind"] == "feed" and link["cron_job_id"] == jid and len(matches) == 1
             and all(row["token"] == matches[0]["token"] for row in active)
-            and (held is None or (held["token"] == matches[0]["token"] and held["incarnation"] == state["incarnation"]))):
-        return matches[0]["token"]
+            and held is not None and held["token"] == matches[0]["token"]
+            and held["incarnation"] == state["incarnation"]
+            and held["link_generation"] == matches[0]["link_generation"] == state["link_generation"]):
+        work = dict(matches[0])
+        if ctx is None:
+            # A Run reply does not revoke its authorized feed work or prove native completion.
+            intents = conn.execute("SELECT phase,native,verification FROM maintenance_effects "
+                                   "WHERE operation=? AND action='run' AND cron_job_id=? AND id!=?",
+                                   (work["token"], jid, work["token"] + ':intent')).fetchall()
+            if (held["created_one_shot"] or held["command"] != "run" or work["error"] is not None
+                    or len(intents) != 1 or intents[0]["verification"] is not None):
+                _block([jid])
+            intent = intents[0]
+            if intent["phase"] == "possibly_sent":
+                if (held["phase"] != "pending" or work["phase"] != "possibly_sent"
+                        or intent["native"] is not None or held["native"] is not None or work["native"] is not None):
+                    _block([jid])
+            elif intent["phase"] == "observed":
+                try:
+                    native = json.loads(intent["native"])
+                    replies = [json.loads(value) for value in (held["native"], work["native"]) if value is not None]
+                except (TypeError, ValueError):
+                    return _block([jid])
+                job = native.get("job") if isinstance(native, dict) else None
+                if (not isinstance(native, dict) or native.get("success") is not True
+                        or not isinstance(job, dict) or job.get("job_id") != jid or job.get("no_agent") is not True
+                        or outcome(native, jid) not in ("background", "unresolved")
+                        or any(reply != native for reply in replies)):
+                    _block([jid])
+            else:
+                _block([jid])
+        fence(conn, work, work=True, archived=True)
+        return work["token"]
     _block([row["cron_job_id"] for row in active] + ([held["cron_job_id"]] if held else []))
 
 
