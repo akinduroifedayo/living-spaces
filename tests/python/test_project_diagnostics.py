@@ -101,6 +101,42 @@ class ProjectDiagnosticsTests(unittest.TestCase):
         declared = self.create({"index.html": INDEX, "app.js": "function fetch(url) { return url; }\n"}, name="Declared")
         self.assertEqual(network(declared), [], declared["warnings"])
 
+    def test_only_a_module_scope_declaration_hides_fetch(self):
+        for name, app in {
+            "loop binding": "for (let fetch of []) { fetch(1); }\nfetch(url);\n",
+            "named function expression": "const helper = function fetch() {};\nfetch(url);\n",
+            "block const": "{ const fetch = x => x; }\nfetch(url);\n",
+        }.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertIn(("net.direct_call", 2), [(d["code"], d["line"]) for d in network(created)], created["warnings"])
+        for name, app in {"module const": "const fetch = u => u;\nfetch(url);\n",
+                          "exported function": "export function fetch(u) { return u; }\nfetch(url);\n"}.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertEqual(network(created), [], created["warnings"])
+
+    def test_division_after_a_member_call_or_template_is_not_a_regex(self):
+        for name, first in {"member named if": "const n = obj.if(a) / 2;", "template": "const t = `2` / 2;"}.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": first + "\nfetch(url);\nimport './missing.js';\n"}, name=name.title())
+                self.assertEqual(sorted(codes(created, "app.js")), ["import.unresolved", "net.direct_call"], created["warnings"])
+
+    def test_a_comment_inside_css_import_does_not_hide_the_remote_load(self):
+        css = ('@import /* hey */ "https://example.org/a.css";\n'
+               'p { background: url(/* hey */"https://example.org/b.png"); }\n'
+               'p { content: "/* not a comment */ url(https://x.example/y.png)"; }\n')
+        created = self.create({"index.html": INDEX, "styles.css": css})
+        self.assertEqual([(d["code"], d["line"]) for d in network(created)], [("net.remote_resource", 1), ("net.remote_resource", 2)], created["warnings"])
+
+    def test_many_css_strings_scan_in_linear_time(self):
+        import time
+        from living_spaces_core import diagnostics
+        source = 'p{content:"x"}' * 16000
+        start = time.perf_counter()
+        diagnostics.scan("styles.css", source)
+        self.assertLess(time.perf_counter() - start, 1.0)
+
     def test_inline_event_handlers_are_code(self):
         html = '<!doctype html><button onclick="fetch(\'https://example.org/data\')">Load</button><a title="fetch(x)">t</a>'
         created = self.create({"index.html": html})
