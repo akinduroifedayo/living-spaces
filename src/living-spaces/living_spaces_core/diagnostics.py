@@ -1,15 +1,9 @@
-"""Static diagnostics for a whole project revision.
-
-A warning means code sits where something loads or sends, never that a URL appears in text.
-The JavaScript tokenizer and import extraction follow the guest loader's rewriteImports
-(src/guest/loader.mjs), so the imports checked here are the ones the runtime rewrites.
-"""
 from __future__ import annotations
 
 import bisect
 import re
 from html.parser import HTMLParser
-from typing import Callable, Mapping, NamedTuple
+from typing import Callable, Literal, Mapping, NamedTuple
 from urllib.parse import unquote, urljoin, urlsplit
 
 ROOT = "https://space.invalid/"
@@ -166,8 +160,7 @@ def _closing(toks, i):
     return len(toks) - 1
 
 
-def _owner(toks, i):
-    """Return 'bare', 'global' or 'member' for the identifier at toks[i]."""
+def _owner(toks, i) -> Literal["bare", "global", "member"]:
     if i == 0 or toks[i - 1].text != ".":
         return "bare"
     if i >= 2 and toks[i - 2].text in GLOBALS and (i < 3 or toks[i - 3].text != "."):
@@ -314,16 +307,15 @@ def resolve(base: str, spec: str) -> str:
     return unquote(urlsplit(urljoin(ROOT + base, spec)).path).lstrip("/")
 
 
-def diagnose(manifest: Mapping, files: Mapping[str, str], load: Callable[[str], bytes]) -> list[dict]:
-    """Diagnose the complete revision: files maps every project path to its blob sha."""
+def diagnose(manifest: Mapping, blob_shas: Mapping[str, str], load: Callable[[str], bytes]) -> list[dict]:
     imports = manifest.get("imports") or {}
     found = []
-    if manifest["entry"] not in files:
+    if manifest["entry"] not in blob_shas:
         found.append(diagnostic("entry.missing", "space.json", ref=manifest["entry"]))
     for name, target in imports.items():
-        if target not in files:
+        if target not in blob_shas:
             found.append(diagnostic("import.alias_target_missing", "space.json", ref=name, target=target))
-    for path, sha in files.items():
+    for path, sha in blob_shas.items():
         if path.rsplit(".", 1)[-1].lower() not in ("js", "mjs", "css", "html", "htm"):
             continue
         facts = _facts(path, sha, load)
@@ -338,7 +330,7 @@ def diagnose(manifest: Mapping, files: Mapping[str, str], load: Callable[[str], 
             elif ref.module and not spec.startswith((".", "/")):
                 if spec not in imports:
                     found.append(diagnostic("import.bare_unmapped", *where))
-            elif resolve(path, spec) not in files:
+            elif resolve(path, spec) not in blob_shas:
                 found.append(diagnostic("import.unresolved" if ref.module else "asset.unresolved", *where,
                                         target=resolve(path, spec)))
     return sorted(found, key=lambda d: (d["path"] != "space.json", d["path"] or "", d["line"] or 0,

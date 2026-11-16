@@ -1,4 +1,3 @@
-// Public, credential-free forecast through space.net.fetch. No kit, framework, storage or permission UI.
 const cities = {london:{name:'London',lat:51.5072,lon:-.1276},copenhagen:{name:'Copenhagen',lat:55.6761,lon:12.5683},tokyo:{name:'Tokyo',lat:35.6762,lon:139.6503}};
 const $ = id => document.getElementById(id);
 const describe = code => code === 0 ? 'Clear sky' : code <= 3 ? 'Partly cloudy' : code <= 48 ? 'Foggy' : code <= 67 ? 'Rain expected' : code <= 77 ? 'Snow expected' : code <= 82 ? 'Rain showers' : 'Wintry or stormy conditions';
@@ -50,7 +49,6 @@ async function load(){
     if(!liveAvailable) {const e=new Error('Live forecasts need the Space runtime. Explore the labelled local sample.');e.unavailable=true;throw e;}
     const u=new URL('https://api.open-meteo.com/v1/forecast');
     for(const [k,v] of Object.entries({latitude:city.lat,longitude:city.lon,current:'temperature_2m,weather_code',hourly:'temperature_2m,precipitation_probability',forecast_days:2,timezone:'GMT'}))u.searchParams.set(k,v);
-    // The host performs the request: {status, url, headers, json}. HTTP errors resolve with their status.
     const response=await Promise.race([window.space.net.fetch(u.href,{as:'json'}),timeout(12000)]);
     if(id!==sequence)return;
     if(response.status<200 || response.status>=300)throw new Error('Forecast source returned '+response.status);

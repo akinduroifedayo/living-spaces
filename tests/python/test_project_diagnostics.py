@@ -1,7 +1,8 @@
-"""Static project diagnostics through the public write tools and the packaged core."""
 import importlib.util
+import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -161,6 +162,41 @@ class ProjectDiagnosticsTests(unittest.TestCase):
         edited = self.edit(created["space"], "app.js", "{as:'json'}", "{as: 'json'}")
         self.assertEqual(edited["diagnostics"], [], edited["warnings"])
 
+
+PARITY_SOURCES = [
+    "import { h } from 'preact'; export { x } from '../x.js?v=1'; import './side.js#x';",
+    "const x = import('./detail.js'); const y = import('./' + name + '.js');",
+    "const text = \"import('./unchanged.js')\"; // import('./comment.js')\n/* import './block.js' */",
+    "const t = `result: ${await import(\"./view.mjs\")} and ${`nested ${import('./deep.js')}`}`;",
+    "const r = /from '.\\/regex.js'/; const d = a / b; import def, * as ns from \"./named.js\";",
+    "export * from './all.js'\nexport default 1\nobj.import('./member.js'); import.meta.url;",
+]
+
+
+class LoaderParityTests(unittest.TestCase):
+    def test_module_refs_match_the_imports_the_loader_rewrites(self):
+        script = ("import { projectResolver } from './src/guest/loader.mjs';"
+                  "const r = projectResolver(); const out = [];"
+                  "for (const s of JSON.parse(process.argv[1])) {"
+                  "  const seen = []; globalThis.__spaceImport = null;"
+                  "  const code = r.rewriteImports('views/main.js', s);"
+                  "  for (const m of code.matchAll(/\"https:\\/\\/space\\.invalid\\/([^\"]+)\"/g)) seen.push(m[1]);"
+                  "  const dynamic = (code.match(/__spaceImport/g) || []).length;"
+                  "  out.push({seen: seen.sort(), dynamic}); }"
+                  "console.log(JSON.stringify(out));")
+        run = subprocess.run(["node", "--input-type=module", "-e", script, json.dumps(PARITY_SOURCES)],
+                             cwd=ROOT, text=True, capture_output=True, check=True)
+        spec = importlib.util.spec_from_file_location("parity_diagnostics", PACKAGE / "living_spaces_core/diagnostics.py")
+        assert spec is not None and spec.loader is not None
+        diagnostics = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(diagnostics)
+        for source, loader in zip(PARITY_SOURCES, json.loads(run.stdout)):
+            refs = [ref.spec for ref in diagnostics.scan("views/main.js", source).refs if ref.spec.startswith((".", "/"))]
+            checked = {diagnostics.resolve("views/main.js", spec) for spec in refs}
+            literal_dynamic = {diagnostics.resolve("views/main.js", spec) for spec in refs
+                               if f"import('{spec}')" in source or f'import("{spec}")' in source}
+            self.assertEqual(checked - literal_dynamic, set(loader["seen"]), source)
+            self.assertLessEqual(len(literal_dynamic), loader["dynamic"], source)
 
 if __name__ == "__main__":
     unittest.main()
