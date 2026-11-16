@@ -1,5 +1,5 @@
 name: living-spaces
-version: 0.1.1
+version: 0.1.2
 description: "An open canvas for your bots that live in Hermes: persistent Spaces they build in chat and keep current with ordinary Hermes cron upkeep."
 author: Living Spaces contributors
 kind: standalone
