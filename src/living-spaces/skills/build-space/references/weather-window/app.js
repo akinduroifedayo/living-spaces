@@ -41,15 +41,15 @@ function render(data,city,sample=false,retrievedAt=null){
   else {const a=document.createElement('a');a.href='https://open-meteo.com/';a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open-Meteo';$('provenance').append('Public forecast from ',a,' · retrieved '+new Date(last.retrievedAt).toLocaleString('en-GB',{timeZone:'UTC',dateStyle:'medium',timeStyle:'short'})+' UTC');}
 }
 const saved = async key => { try { return await window.space.get('forecasts', key); } catch { return null; } };
-async function showSaved(key, city){
+async function showSaved(id, key, city){
   const record = await saved(key);
-  if(!record || last?.city === city && !last.sample) return false;
+  if(id!==sequence || !record || last?.city === city && !last.sample) return false;
   render(record.data.forecast, city, false, record.data.retrievedAt);
   return true;
 }
 const timeout = ms => new Promise((_,reject)=>setTimeout(()=>reject(Object.assign(new Error('timeout'),{code:'timeout'})),ms));
 async function load(){
-  const id=++sequence,city=cities[selected];
+  const id=++sequence,key=selected,city=cities[key];
   $('refresh').disabled=true;$('chart').setAttribute('aria-busy','true');
   text('status',`Loading ${city.name} from Open-Meteo…${last?' Previous forecast stays visible.':''}`);
   try{
@@ -60,11 +60,13 @@ async function load(){
     if(id!==sequence)return;
     if(response.status<200 || response.status>=300)throw new Error('Forecast source returned '+response.status);
     render(response.json,city);text('status','Live public forecast loaded. No account or location permission used.');
-    const prior = await saved(selected);
-    window.space.put('forecasts', selected, {forecast: response.json, retrievedAt: last.retrievedAt}, {baseRev: prior?.rev ?? 0, merge: false}).catch(() => {});
+    const record = {forecast: response.json, retrievedAt: last.retrievedAt};
+    const prior = await saved(key);
+    window.space.put('forecasts', key, record, {baseRev: prior?.rev ?? 0, merge: false}).catch(() => {});
   }catch(e){
     if(id!==sequence)return;
-    if(liveAvailable && await showSaved(selected, city) && id!==sequence)return;
+    if(liveAvailable) await showSaved(id, key, city);
+    if(id!==sequence)return;
     const kept = last?`Still showing ${last.sample?'the sample for ':'the forecast saved for '}${last.city.name}. `:'';
     text('status', e.code==='not_granted' ? `Internet access is off for this Space. ${kept}Turn it on in Permissions to load live forecasts, or explore the labelled sample.`
       : e.unavailable ? e.message

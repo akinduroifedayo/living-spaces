@@ -94,6 +94,29 @@ class ProjectDiagnosticsTests(unittest.TestCase):
         self.assertEqual(found, [("net.direct_call", n) for n in (1, 2, 3, 4, 5, 6, 7)], created["warnings"])
         self.assertTrue(all(w.startswith("app.js:") for w in created["warnings"] if "[net." in w), created["warnings"])
 
+    def test_a_nested_local_named_fetch_does_not_hide_a_global_call(self):
+        app = "function helper(){ const fetch = value => value; return fetch(1); }\nfetch('https://example.org/data');\n"
+        created = self.create({"index.html": INDEX, "app.js": app})
+        self.assertIn(("net.direct_call", 2), [(d["code"], d["line"]) for d in network(created)], created["warnings"])
+        declared = self.create({"index.html": INDEX, "app.js": "function fetch(url) { return url; }\n"}, name="Declared")
+        self.assertEqual(network(declared), [], declared["warnings"])
+
+    def test_inline_event_handlers_are_code(self):
+        html = '<!doctype html><button onclick="fetch(\'https://example.org/data\')">Load</button><a title="fetch(x)">t</a>'
+        created = self.create({"index.html": html})
+        self.assertEqual(codes(created, "index.html"), ["net.direct_call"], created["warnings"])
+
+    def test_css_strings_and_regex_after_control_parens_are_inert(self):
+        created = self.create({"index.html": INDEX, "app.js": "if (ready) /fetch(url)/.test(text);\nconst half = (a) / 2;\n",
+                               "styles.css": 'p::before { content: "url(https://example.org/logo.png)"; }\n'
+                                             "a::after { content: '@import \"https://x.example/a.css\"'; }"})
+        self.assertEqual(network(created), [], created["warnings"])
+
+    def test_deeply_nested_templates_do_not_crash_saves(self):
+        source = "const t = " + "`a${" * 1100 + "1" + "}`" * 1100 + ";\nfetch(u);\n"
+        created = self.create({"index.html": INDEX, "app.js": source})
+        self.assertEqual(codes(created, "app.js"), ["net.direct_call"], created["warnings"])
+
     def test_remote_imports_scripts_and_styles_warn(self):
         html = ('<!doctype html><link rel="stylesheet" href="https://cdn.example/a.css">'
                 '<script src="https://cdn.example/lib.js"></script><script type="module" src="./app.js"></script>')

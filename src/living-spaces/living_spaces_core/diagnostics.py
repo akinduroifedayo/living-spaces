@@ -14,11 +14,14 @@ WORD = re.compile(r"[\w$]")
 GLOBALS = {"window", "globalThis", "self"}
 CONSTRUCTORS = {"XMLHttpRequest", "WebSocket", "EventSource"}
 DECLARES = {"function", "const", "let", "var", "class"}
+CONTROL = {"if", "while", "for", "with"}
+TEMPLATE = object()
 LOADING_RELS = {"stylesheet", "icon", "preload", "modulepreload", "prefetch", "manifest", "apple-touch-icon"}
 SOURCE_ATTRS = {"script": "src", "img": "src", "source": "src", "audio": "src", "video": "src", "track": "src",
                 "iframe": "src", "embed": "src", "input": "src", "object": "data"}
 SVG_HREF = {"image", "use", "feimage"}
-CSS_COMMENT = re.compile(r"/\*.*?\*/", re.S)
+CSS_STRING = re.compile(r"""/\*.*?(?:\*/|$)|"(?:\\.|[^"\\])*"?|'(?:\\.|[^'\\])*'?""", re.S)
+CSS_LOADS = re.compile(r"(?:url\(\s*|@import\s+)$", re.I)
 CSS_IMPORT = re.compile(r"""@import\s+(?:url\(\s*)?(['"]?)([^'")\s;]+)\1""", re.I)
 CSS_URL = re.compile(r"""url\(\s*(['"]?)([^'")]*?)\1\s*\)""", re.I)
 MESSAGES = {
@@ -67,6 +70,9 @@ def diagnostic(code, path=None, line=None, column=None, ref=None, target=None):
 
 def tokens(source: str) -> list[Token]:
     out: list[Token] = []
+    frames: list = []
+    parens: list[str] = []
+    after_control = False
     at = 0
 
     def quoted(quote):
@@ -82,67 +88,72 @@ def tokens(source: str) -> list[Token]:
                 break
         out.append(Token(source[start:at], start))
 
-    def scan(nested=False):
-        nonlocal at
-        depth = 0
-        while at < len(source):
-            start, char = at, source[at]
-            if char.isspace():
+    while at < len(source):
+        if frames and frames[-1] is TEMPLATE:
+            if source[at] == "\\":
+                at += 2
+            elif source[at] == "`":
                 at += 1
-            elif source.startswith("//", at):
-                end = source.find("\n", at)
-                at = len(source) if end < 0 else end
-            elif source.startswith("/*", at):
-                end = source.find("*/", at + 2)
-                at = len(source) if end < 0 else end + 2
-            elif char in "\"'":
-                quoted(char)
-            elif char == "`":
-                at += 1
-                while at < len(source):
-                    if source[at] == "\\":
-                        at += 2
-                    elif source[at] == "`":
-                        at += 1
-                        break
-                    elif source.startswith("${", at):
-                        at += 2
-                        scan(True)
-                    else:
-                        at += 1
-            elif char == "/" and (not out or REGEX_CONTEXT.match(out[-1].text)):
-                at += 1
-                in_class = False
-                while at < len(source):
-                    if source[at] == "\\":
-                        at += 2
-                        continue
-                    at += 1
-                    if source[at - 1] == "[":
-                        in_class = True
-                    elif source[at - 1] == "]":
-                        in_class = False
-                    elif source[at - 1] == "/" and not in_class:
-                        break
-                while at < len(source) and source[at].isalpha():
-                    at += 1
-                out.append(Token(source[start:at], start))
-            elif nested and char == "}" and depth == 0:
-                at += 1
-                return
+                frames.pop()
+            elif source.startswith("${", at):
+                at += 2
+                frames.append([0])
             else:
-                depth += char == "{"
-                depth -= char == "}"
-                if source.startswith("=>", at):
+                at += 1
+            continue
+        start, char = at, source[at]
+        control, after_control = after_control, False
+        if char.isspace():
+            at += 1
+            after_control = control
+        elif source.startswith("//", at):
+            end = source.find("\n", at)
+            at = len(source) if end < 0 else end
+            after_control = control
+        elif source.startswith("/*", at):
+            end = source.find("*/", at + 2)
+            at = len(source) if end < 0 else end + 2
+            after_control = control
+        elif char in "\"'":
+            quoted(char)
+        elif char == "`":
+            at += 1
+            frames.append(TEMPLATE)
+        elif char == "/" and (not out or control or REGEX_CONTEXT.match(out[-1].text)):
+            at += 1
+            in_class = False
+            while at < len(source):
+                if source[at] == "\\":
                     at += 2
-                elif WORD.match(char):
-                    while at < len(source) and WORD.match(source[at]):
-                        at += 1
-                else:
+                    continue
+                at += 1
+                if source[at - 1] == "[":
+                    in_class = True
+                elif source[at - 1] == "]":
+                    in_class = False
+                elif source[at - 1] == "/" and not in_class:
+                    break
+            while at < len(source) and source[at].isalpha():
+                at += 1
+            out.append(Token(source[start:at], start))
+        elif char == "}" and frames and frames[-1][0] == 0:
+            at += 1
+            frames.pop()
+        else:
+            if frames:
+                frames[-1][0] += (char == "{") - (char == "}")
+            if char == "(":
+                parens.append(out[-1].text if out else "")
+            elif char == ")":
+                after_control = (parens.pop() if parens else "") in CONTROL
+            if source.startswith("=>", at):
+                at += 2
+            elif WORD.match(char):
+                while at < len(source) and WORD.match(source[at]):
                     at += 1
-                out.append(Token(source[start:at], start))
-
-    scan()
+            else:
+                at += 1
+            out.append(Token(source[start:at], start))
     return out
 
 
@@ -174,9 +185,17 @@ def _js(source, position):
     get = lambda i: toks[i] if 0 <= i < len(toks) else none
     where = lambda token: position(token.at)
     refs, sinks = [], []
-    shadowed = any(t.text == "fetch" and get(i - 1).text in DECLARES for i, t in enumerate(toks))
+    depth, shadows = 0, []
     for i, token in enumerate(toks):
         text, prev, nxt = token.text, get(i - 1), get(i + 1)
+        if text == "{":
+            depth += 1
+        elif text == "}":
+            depth -= 1
+            while shadows and shadows[-1] > depth:
+                shadows.pop()
+        elif text == "fetch" and prev.text in DECLARES:
+            shadows.append(depth)
         if text in ("import", "export") and prev.text != ".":
             if text == "import" and nxt.text == "(":
                 if _string(get(i + 2)) and get(i + 3).text in (")", ","):
@@ -195,7 +214,7 @@ def _js(source, position):
         elif text == "fetch" and nxt.text == "(":
             owner = _owner(toks, i)
             after = get(_closing(toks, i + 1) + 1)
-            if owner == "global" or (owner == "bare" and not shadowed and after.text != "{"):
+            if owner == "global" or (owner == "bare" and not shadows and after.text != "{"):
                 sinks.append(Sink("net.direct_call", "fetch()", *where(token)))
         elif text in CONSTRUCTORS and _owner(toks, i) != "member":
             sinks.append(Sink("net.direct_call", text, *where(token)))
@@ -208,8 +227,24 @@ def _js(source, position):
     return refs, sinks
 
 
+def _blank(text):
+    return re.sub(r"[^\n]", " ", text)
+
+
+def _inert_css(source):
+    out, at = [], 0
+    for match in CSS_STRING.finditer(source):
+        out.append(source[at:match.start()])
+        token = match.group(0)
+        if token.startswith("/*") or not CSS_LOADS.search(source, 0, match.start()):
+            token = token[:1] + _blank(token[1:-1]) + token[-1:] if not token.startswith("/*") else _blank(token)
+        out.append(token)
+        at = match.end()
+    return "".join(out) + source[at:]
+
+
 def _css(source, position):
-    source = CSS_COMMENT.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), source)
+    source = _inert_css(source)
     refs, taken = [], []
     for match in CSS_IMPORT.finditer(source):
         refs.append(Ref(False, match.group(2), *position(match.start(2))))
@@ -242,6 +277,9 @@ class _Html(HTMLParser):
         if tag in SVG_HREF:
             found += [values[name] for name in ("href", "xlink:href") if name in values]
         self.refs += [Ref(False, spec, here[0], here[1] + 1) for spec in found]
+        for name, value in values.items():
+            if name.startswith("on") and value:
+                self.sinks += [Sink(s.code, s.ref, here[0], here[1] + 1) for s in _js(value, lambda offset: (here[0], here[1] + 1))[1]]
         if values.get("style"):
             refs, _ = _css(values["style"], lambda offset: (here[0], here[1] + 1))
             self.refs += refs
