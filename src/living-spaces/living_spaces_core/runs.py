@@ -100,14 +100,8 @@ def start_refresh(sid, *, trigger, actor, wait=False, session=None):
         row = conn.execute("SELECT * FROM runs WHERE space=? AND status IN ('queued','running') ORDER BY queued_at LIMIT 1", (sid,)).fetchone()
         if row:
             return _run(row)
+        # Native ownership fences admission, not reuse of a terminal local result.
         attachment = maintenance.admit_feed(conn, sid, trigger=trigger) if not reason else None
-        if attachment is not None:
-            # Native ownership can outlast a terminal feed run. Do not repeat that local work.
-            attached = conn.execute("SELECT r.* FROM runs r JOIN maintenance_feeds f ON f.run=r.id "
-                                    "WHERE r.space=? AND f.operation=? ORDER BY r.queued_at,r.rowid LIMIT 1",
-                                    (sid, attachment)).fetchone()
-            if attached is not None:
-                return _run(attached)
         detail = {"reason": reason} if reason else {}
         conn.execute("INSERT INTO runs(id,space,trigger,handler,actor,status,queued_at,ended_at,changed,detail,heartbeat_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", (
             run_id, sid, trigger, handler, actor, "blocked" if reason else "queued", now, now if reason else None,

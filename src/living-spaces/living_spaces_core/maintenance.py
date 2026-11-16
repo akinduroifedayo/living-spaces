@@ -489,8 +489,7 @@ def admit_feed(conn, sid, *, trigger=None):
     active = conn.execute("SELECT * FROM maintenance_operations WHERE space=? AND incarnation=? "
                           "AND phase IN ('possibly_sent','background','unresolved')", (sid, state["incarnation"])).fetchall()
     if not active and held is None:
-        # Standalone feed shims have no PluginContext. They acquire only local
-        # feed ownership, never an attachment to a native operation.
+        # With no native owner, standalone shims acquire only local feed ownership.
         try:
             upkeep._context()
         except SpacesError as exc:
