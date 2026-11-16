@@ -353,7 +353,7 @@ def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
     else:
         mode = {"prompt": None, "script": _shim(sid).name, "no_agent": True}
     _scheduling_allowed()
-    with maintenance.control(sid, "schedule", actor=actor) as op, maintenance.transaction(op) as conn:
+    with maintenance.control(sid, "schedule", actor=actor, kind=kind) as op, maintenance.transaction(op) as conn:
         space = _space(conn, sid)
         if space["status"] == "archived":
             raise SpacesError("archived", "Unarchive the Space before scheduling upkeep")
@@ -530,6 +530,28 @@ def upkeep_action(sid, action, *, actor):
                 raise SpacesError("not_found", "No upkeep scheduled")
             if space["status"] == "archived":
                 raise SpacesError("archived", "Unarchive the Space before running upkeep")
+        if link["kind"] == "feed":
+            with db.write() as conn:
+                _space(conn, sid)
+                feed = maintenance._feed_control(conn, sid, "run")
+            if feed is not None:
+                with maintenance.scope(None):
+                    with maintenance.transaction(feed, feed_admission=True):
+                        pass
+                    native = _call("run", job_id=feed["cron_job_id"])
+                    with _after_run(native):
+                        try:
+                            with maintenance.transaction(feed):
+                                pass
+                        except SpacesError:
+                            raise
+                        except Exception as exc:
+                            raise SpacesError("blocked", f"Could not recheck the Space after native dispatch: {exc}",
+                                              reason="post_run_check_failed", native=native) from exc
+                        _jobs()
+                        result = get_upkeep(sid)
+                    result["dispatch"] = native
+                    return result
         dispatched = refresh_now(sid, {}, actor=actor, command="run", target=link["cron_job_id"])
         native = dispatched["dispatch"]
         with _after_run(native):
@@ -539,7 +561,7 @@ def upkeep_action(sid, action, *, actor):
             if key in dispatched:
                 result[key] = dispatched[key]
         return result
-    with maintenance.control(sid, action, actor=actor) as op, maintenance.transaction(op) as conn:
+    with maintenance.control(sid, action, actor=actor, kind="feed") as op, maintenance.transaction(op) as conn:
         link = _link(conn, sid)
         held = _refresh_claim(conn, sid)
         if action == "resume":
@@ -553,7 +575,7 @@ def upkeep_action(sid, action, *, actor):
                 # A durable uncertain create can have no returned ID. Explicit discovery plus
                 # verified absence is its operator-authorized abandonment boundary.
                 prior = conn.execute("SELECT 1 FROM maintenance_operations WHERE space=? AND incarnation=? "
-                                     "AND token!=? AND phase!='retired'", (sid, op["incarnation"], op["token"])).fetchone()
+                                     "AND token!=? AND phase!='retired'", (sid, op["incarnation"], op.get("token", ""))).fetchone()
                 if action != "remove" or (held is None and prior is None):
                     raise SpacesError("not_found", "No upkeep scheduled")
             args = {"reason": f"Paused from Living Spaces by {actor}"} if action == "pause" else {}

@@ -100,14 +100,18 @@ def start_refresh(sid, *, trigger, actor, wait=False, session=None):
         row = conn.execute("SELECT * FROM runs WHERE space=? AND status IN ('queued','running') ORDER BY queued_at LIMIT 1", (sid,)).fetchone()
         if row:
             return _run(row)
-        # Native ownership fences admission, not reuse of a terminal local result.
-        attachment = maintenance.admit_feed(conn, sid, trigger=trigger) if not reason else None
+        if not reason:
+            link = upkeep._link(conn, sid)
+            held = maintenance.claim(conn, sid)
+            if (link and link["kind"] != "feed") or (held and held["created_one_shot"]):
+                maintenance._block(([link["cron_job_id"]] if link else [])
+                                   + ([held["cron_job_id"]] if held else []))
         detail = {"reason": reason} if reason else {}
         conn.execute("INSERT INTO runs(id,space,trigger,handler,actor,status,queued_at,ended_at,changed,detail,heartbeat_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", (
             run_id, sid, trigger, handler, actor, "blocked" if reason else "queued", now, now if reason else None,
             json.dumps({"added": 0, "updated": 0, "unchanged": 0, "removed": 0}), json.dumps(detail), now,
         ))
-        maintenance.bind_feed(conn, sid, run_id, attachment)
+        maintenance.bind_feed(conn, sid, run_id, None)
     if not reason:
         if wait:
             _work(run_id, manifest_upkeep)

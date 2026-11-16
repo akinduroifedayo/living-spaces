@@ -105,7 +105,28 @@ def scope(op):
 
 
 @contextmanager
-def transaction(op):
+def transaction(op, *, feed_admission=False):
+    if "token" not in op:
+        with db.write() as conn:
+            db.space(conn, op["space"], writable=op["command"] in ("schedule", "run", "resume"))
+            state = identity(conn, op["space"])
+            if state["incarnation"] != op["incarnation"]:
+                raise SpacesError("not_found", "The original Space was deleted", reason="maintenance_incarnation_lost")
+            if state["link_generation"] != op["link_generation"]:
+                raise SpacesError("blocked", "The upkeep link changed", reason="refresh_claim_lost",
+                                  cron_job_id=op["cron_job_id"])
+            if op["command"] != "run" or feed_admission:
+                current = _feed_control(conn, op["space"], op["command"])
+                if current is None or current["cron_job_id"] != op["cron_job_id"]:
+                    raise SpacesError("blocked", "The upkeep is no longer feed-only", reason="refresh_claim_lost",
+                                      cron_job_id=op["cron_job_id"])
+            marker = _connection.set(conn)
+            try:
+                with scope(None):
+                    yield conn
+            finally:
+                _connection.reset(marker)
+        return
     with db.write() as conn:
         fence(conn, op)
         marker = _connection.set(conn)
@@ -183,7 +204,7 @@ def admit(conn, sid, command, *, actor, target=None, own=None):
 
 
 @contextmanager
-def control(sid, command, *, actor):
+def control(sid, command, *, actor, kind=None):
     with db.write() as conn:
         space = db.space(conn, sid)
         if command in ("schedule", "resume") and space["status"] == "archived":
@@ -192,13 +213,17 @@ def control(sid, command, *, actor):
         link = upkeep._link(conn, sid)
         if command == "resume" and not link:
             raise SpacesError("not_found", "No upkeep scheduled")
-        if command in ("schedule", "resume"):
-            admit(conn, sid, command, actor=actor, target=link["cron_job_id"] if link else None)
-        op = _insert_operation(conn, sid, command, actor, link["cron_job_id"] if link else None)
+        op = _feed_control(conn, sid, command) if kind == "feed" else None
+        if op is None:
+            if command in ("schedule", "resume"):
+                admit(conn, sid, command, actor=actor, target=link["cron_job_id"] if link else None)
+            op = _insert_operation(conn, sid, command, actor, link["cron_job_id"] if link else None)
     try:
-        with scope(op):
+        with scope(op if "token" in op else None):
             yield op
     except BaseException as exc:
+        if "token" not in op:
+            raise
         # A killed process leaves the committed envelope. A live error keeps any
         # receipts that rolled back with the lifecycle transaction.
         try:
@@ -482,82 +507,51 @@ def retire_resources(conn, sid, *, jid=None, all_resources=False):
     conn.execute("UPDATE maintenance_spaces SET link_generation=link_generation+1 WHERE space=?", (sid,))
 
 
-def admit_feed(conn, sid, *, trigger=None):
+def _feed_control(conn, sid, command):
+    """Select feed controls without reserving native execution ownership."""
     from . import upkeep
+
+    revision = conn.execute("SELECT r.manifest FROM revisions r JOIN spaces s ON s.id=r.space "
+                            "AND s.head_rev=r.rev WHERE s.id=?", (sid,)).fetchone()
+    if revision is None or (json.loads(revision["manifest"]).get("upkeep") or {}).get("handler") != "feed":
+        return None
+    link = upkeep._link(conn, sid)
+    if link and link["kind"] != "feed":
+        return None
     state = identity(conn, sid)
     held = claim(conn, sid)
-    active = conn.execute("SELECT * FROM maintenance_operations WHERE space=? AND incarnation=? "
-                          "AND phase IN ('possibly_sent','background','unresolved')", (sid, state["incarnation"])).fetchall()
-    if not active and held is None:
-        # With no native owner, standalone shims acquire only local feed ownership.
+    if held:
+        if (held["incarnation"] != state["incarnation"] or held["link_generation"] != state["link_generation"]
+                or held["created_one_shot"]
+                or held["command"] != "run" or not link or held["cron_job_id"] != link["cron_job_id"]):
+            return None
+        receipt = operation(conn, held["token"])
+        if receipt is None:
+            return None
         try:
-            upkeep._context()
-        except SpacesError as exc:
-            if exc.extra.get("reason") == "cron_context_unavailable":
-                return None
-            raise
-        link = upkeep._link(conn, sid)
-        orphans = [job["job_id"] for job in upkeep._owned_jobs(sid, link, upkeep._jobs()["jobs"])
-                   if not link or job["job_id"] != link["cron_job_id"]]
-        if orphans:
-            _block(orphans)
+            for value in (held["native"], receipt["native"]):
+                if value is not None:
+                    native = json.loads(value)
+                    job = native.get("job") if isinstance(native, dict) else None
+                    if not isinstance(job, dict) or job.get("job_id") != link["cron_job_id"] or job.get("no_agent") is not True:
+                        return None
+        except (TypeError, ValueError):
+            return None
+    active = conn.execute("SELECT token FROM maintenance_operations WHERE space=? AND incarnation=? AND phase!='retired'",
+                          (sid, state["incarnation"])).fetchall()
+    if any(row["token"] != (held["token"] if held else None) for row in active):
         return None
-    if trigger != "schedule":
-        _block([row["cron_job_id"] for row in active] + ([held["cron_job_id"]] if held else []))
-    link = upkeep._link(conn, sid)
-    ctx = None
-    try:
-        ctx = upkeep._context()
-    except SpacesError as exc:
-        if exc.extra.get("reason") != "cron_context_unavailable":
-            raise SpacesError("blocked", "Cannot attach feed work without public cron identity",
-                              reason="cron_identity_unavailable") from exc
-    if ctx is None:
-        jid = link["cron_job_id"] if link and link["kind"] == "feed" else None
-    else:
-        try:
-            execution = ctx.current_cron_execution()
-            jid = execution.get("job_id") if isinstance(execution, dict) else getattr(execution, "job_id", None)
-        except Exception as exc:
-            raise SpacesError("blocked", "Cannot attach feed work without public cron identity",
-                              reason="cron_identity_unavailable") from exc
-    matches = [row for row in active if row["command"] == "run" and row["cron_job_id"] == jid]
-    if (jid and link and link["kind"] == "feed" and link["cron_job_id"] == jid and len(matches) == 1
-            and all(row["token"] == matches[0]["token"] for row in active)
-            and held is not None and held["token"] == matches[0]["token"]
-            and held["incarnation"] == state["incarnation"]
-            and held["link_generation"] == matches[0]["link_generation"] == state["link_generation"]):
-        work = dict(matches[0])
-        if ctx is None:
-            # A Run reply does not revoke its authorized feed work or prove native completion.
-            intents = conn.execute("SELECT phase,native,verification FROM maintenance_effects "
-                                   "WHERE operation=? AND action='run' AND cron_job_id=? AND id!=?",
-                                   (work["token"], jid, work["token"] + ':intent')).fetchall()
-            if (held["created_one_shot"] or held["command"] != "run" or work["error"] is not None
-                    or len(intents) != 1 or intents[0]["verification"] is not None):
-                _block([jid])
-            intent = intents[0]
-            if intent["phase"] == "possibly_sent":
-                if (held["phase"] != "pending" or work["phase"] != "possibly_sent"
-                        or intent["native"] is not None or held["native"] is not None or work["native"] is not None):
-                    _block([jid])
-            elif intent["phase"] == "observed":
-                try:
-                    native = json.loads(intent["native"])
-                    replies = [json.loads(value) for value in (held["native"], work["native"]) if value is not None]
-                except (TypeError, ValueError):
-                    return _block([jid])
-                job = native.get("job") if isinstance(native, dict) else None
-                if (not isinstance(native, dict) or native.get("success") is not True
-                        or not isinstance(job, dict) or job.get("job_id") != jid or job.get("no_agent") is not True
-                        or outcome(native, jid) not in ("background", "unresolved")
-                        or any(reply != native for reply in replies)):
-                    _block([jid])
-            else:
-                _block([jid])
-        fence(conn, work, work=True, archived=True)
-        return work["token"]
-    _block([row["cron_job_id"] for row in active] + ([held["cron_job_id"]] if held else []))
+    jobs = upkeep._owned_jobs(sid, link, upkeep._jobs()["jobs"], claim=held)
+    if any(job.get("no_agent") is not True or job.get("name") == upkeep._once_name(sid) for job in jobs):
+        return None
+    if command in ("schedule", "run", "resume"):
+        rows = conn.execute("SELECT id FROM runs WHERE space=? AND status IN ('queued','running')", (sid,)).fetchall()
+        if rows:
+            _block([], feeds=[row["id"] for row in rows])
+        unlinked = [job["job_id"] for job in jobs if not link or job["job_id"] != link["cron_job_id"]]
+        if unlinked:
+            _block(unlinked)
+    return dict(state, command=command, cron_job_id=link["cron_job_id"] if link else None)
 
 
 def bind_feed(conn, sid, run_id, op):
