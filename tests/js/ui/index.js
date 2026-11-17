@@ -89,7 +89,7 @@ test('refresh reasons cover handler and archived restrictions only', () => {
   assert.equal(m.refreshReason(space({ manifest: { upkeep: {} } })), '')
 })
 test('restore confirmation makes retained history and records explicit', () => {
-  assert.equal(m.restoreCopy(space(), 5), "Restore revision 5? This brings back the Space's earlier code as a new revision 8. Revisions 6–7 stay in history. Your records, notes and statuses stay as they are now.")
+  assert.equal(m.restoreCopy(space(), 5), "Restore revision 5? This brings back the Space's earlier code as a new revision 8. Revisions 6–7 stay in history. Your records, notes and statuses stay as they are now. Migration undo and data downgrades are not supported.")
   assert.match(m.errorText({ error: { code: 'incompatible', message: 'Data versions differ' } }), /Incompatible revision.*unchanged/)
 })
 test('manifest identity falls back without injecting a style or icon', () => {

@@ -203,6 +203,11 @@ async def revisions(space_id: str):
     return await _run(space_id, lambda core: core.list_revisions(space_id))
 
 
+@router.get("/spaces/{space_id}/recovery-points")
+async def recovery_points(space_id: str):
+    return await _run(space_id, lambda core: core.records.list_recovery_points(space_id))
+
+
 @router.post("/spaces/{space_id}/revisions/{rev}/restore")
 async def restore(space_id: str, rev: int):
     def action(core):

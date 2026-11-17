@@ -1,10 +1,10 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState, Skeleton, host, useQuery } from '@hermes/plugin-sdk'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Action, Banner, CopyPrompt, DecisionDialog, Drawer, Icon, OwnerChip, SpaceTile, StatusPill, Freshness, DisabledReason, absolute } from './components.jsx'
 import { HistorySheet } from './history.jsx'
 import { PermissionsSheet } from './permissions.jsx'
 import { UpkeepSheet } from './upkeep.jsx'
-import { advanceCursor, diagnosticText, errorText, headerFacts, inFlight, refreshReason, runResult, spacePath, spaceStatus } from './model.mjs'
+import { advanceCursor, diagnosticText, errorText, guestFailure, headerFacts, inFlight, refreshReason, runResult, spacePath, spaceStatus, statusDimensions } from './model.mjs'
 import { createSpaceSession } from './session.mjs'
 import { mountSpace } from '../sandbox/index.js'
 
@@ -40,7 +40,7 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
   </Banner>
 }
 export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
-  const { connectionId, profile } = scope || { connectionId: host.state.connectionId.get(), profile: host.state.profile.get() }
+  const { connectionId, profile } = useMemo(() => scope || { connectionId: host.state.connectionId.get(), profile: host.state.profile.get() }, [scope, ctx, scopeKey, sid])
   const base = spacePath(sid)
   const detail = useQuery({ queryKey: ['living-spaces', scopeKey, sid, 'detail'], queryFn: () => ctx.rest(base), refetchInterval: 2000, notifyOnChangeProps: ['data', 'error', 'dataUpdatedAt'] })
   const space = detail.data
@@ -48,7 +48,8 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
   const [sheet, setSheet] = useState(null)
   const [confirmation, setConfirmation] = useState(null)
   const [reload, setReload] = useState(0)
-  const [crash, setCrash] = useState(null)
+  const [guest, setGuest] = useState({ status: 'unknown', diagnostic: null })
+  const crash = guest.diagnostic
   const [ignoredCrashRev, setIgnoredCrashRev] = useState(null)
   const [write, setWrite] = useState(null)
   const [announcement, setAnnouncement] = useState('')
@@ -96,24 +97,38 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
   useEffect(() => {
     if (building || archived || crash || remoteCrash || !content.current) return
     let disposed = false
-    let errors = 0
     cursor.current = 0
     setReady(false)
+    setGuest({ status: 'starting', diagnostic: null })
     setBotAction(null)
+    const current = () => !disposed && host.state.connectionId.get() === connectionId && host.state.profile.get() === profile
+    const fail = message => setGuest({ status: 'failed', diagnostic: diagnosticText(message || 'The guest could not be loaded.') })
     const backend = { connectionId, profile }
-    const session = createSpaceSession({ backend, host, onAction: event => !disposed && setBotAction(event), rest: openingSessionRest || ((path, options) => ctx.rest(path, options)), sid, container: content.current, mount: mountSpace,
-      onWrite: event => !disposed && setWrite(event),
+    const session = createSpaceSession({ backend, host, onAction: event => current() && setBotAction(event), rest: openingSessionRest || ((path, options) => ctx.rest(path, options)), sid, container: content.current,
+      mount: (container, options) => mountSpace(container, { ...options, call: async (op, args) => {
+        const reply = await options.call(op, args)
+        if (current() && op === 'log' && reply?.ok === true) {
+          if (args.lifecycle === 'failed') fail('The guest reported a load or runtime failure. Review this Space\'s diagnostic log for details.')
+          if (args.lifecycle === 'loaded') setGuest(value => value.status === 'failed' ? value : { status: 'loaded', diagnostic: null })
+        }
+        return reply
+      } }),
+      onWrite: event => current() && setWrite(event),
       onEvent: event => {
-        if (disposed) return
+        if (!current()) return
         if (event.kind === 'reloaded') setReload(n => n + 1)
         if (event.kind === 'booted') setReady(true)
         if (event.kind === 'denied') setAnnouncement('A Space request was denied. Review Permissions for access details.')
         if (event.kind === 'log-overflow') setAnnouncement('Some diagnostic entries were dropped because the log limit was reached.')
-        if (event.kind === 'error' && (event.fatal || event.phase === 'load' || /load|entry|boot/i.test(event.message || '') || ++errors >= 3)) setCrash(diagnosticText(`${event.message || event.error || 'Repeated runtime errors'}${event.location || event.filename ? `\nLocation: ${event.location || event.filename}` : ''}`))
+        if (guestFailure(event)) fail(`${event.message || event.error || 'The guest reported a fatal error'}${event.location || event.filename ? `\nLocation: ${event.location || event.filename}` : ''}`)
       }
     })
     controller.current = session
-    session.ready.then(() => { if (!disposed) setReady(true) }).catch(e => { if (!disposed) setCrash(diagnosticText(errorText(e))) })
+    session.ready.then(() => { if (current()) setReady(true) }).catch(e => {
+      if (disposed) return
+      if (current()) fail(errorText(e))
+      else setActionError(errorText(e))
+    })
     return () => {
       disposed = true
       setReady(false)
@@ -135,7 +150,10 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
     if (seenRun.current && seenRun.current !== runKey && !inFlight(lastRun.status)) setAnnouncement(lastRun.status === 'succeeded' ? `Refresh succeeded: ${runResult(lastRun)}` : `Refresh ${lastRun.status}: ${runResult(lastRun)}`)
     seenRun.current = runKey
   }, [runKey, ready])
-  useEffect(() => { if (crash && space?.head_rev) { setCrash(null) } }, [space?.head_rev])
+  useLayoutEffect(() => {
+    setGuest({ status: 'unknown', diagnostic: null })
+    setIgnoredCrashRev(null)
+  }, [connectionId, profile, scopeKey, sid, space?.head_rev])
 
   async function refresh() {
     if (refreshLock.current || refreshPending || status === 'updating' || inFlight(lastRun?.status) || refreshReason(space)) return
@@ -181,6 +199,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
     finally { actionLock.current = false }
   }
   if (!space) return <div className="ls-page">{detail.error ? <ErrorState title="This Space could not be opened" description={errorText(detail.error)}><Action onClick={() => detail.refetch()}>Try again</Action><Action onClick={() => host.navigate('/spaces')}>Spaces</Action></ErrorState> : <Skeleton style={{ height: 400 }} />}</div>
+  const dimensions = statusDimensions(space, { guest: remoteCrash ? 'failed' : guest.status, write })
   const upkeep = space.upkeep
   const busy = refreshPending || inFlight(lastRun?.status) || status === 'updating'
   const reason = refreshReason(space)
@@ -197,8 +216,8 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
   const openSheet = (kind, tab) => setSheet({ kind, tab, returnFocus: opener() })
   const openHistory = tab => openSheet('history', tab || 'runs')
   const askConfirmation = kind => { confirmationTrigger.current = opener(); setConfirmation(kind) }
-  const crashMessage = diagnosticText(crash || space.attention?.message || 'The Space hit repeated runtime errors.')
-  return <div ref={frame} className="ls-frame" data-header-mode={headerMode} data-testid="space-view"><header className="ls-framebar"><Action icon="chevron-left" onClick={() => host.navigate('/spaces')}>Spaces</Action><div className="ls-identity"><SpaceTile space={space} small /><div><div className="ls-name-row"><h1>{space.name}</h1><StatusPill status={status} /></div><div className="ls-frame-meta"><OwnerChip owner={space.owner} /><span> · <Freshness facts={headerFacts(space)} /></span></div></div></div>
+  const crashMessage = diagnosticText(crash || space.attention?.message || 'The guest reported a fatal error.')
+  return <div ref={frame} className="ls-frame" data-header-mode={headerMode} data-testid="space-view"><header className="ls-framebar"><Action icon="chevron-left" onClick={() => host.navigate('/spaces')}>Spaces</Action><div className="ls-identity"><SpaceTile space={space} small /><div><div className="ls-name-row"><h1>{space.name}</h1><span>Host <StatusPill status={dimensions.host === 'available' ? 'ready' : dimensions.host} /></span>{!['ready', dimensions.host].includes(status) && <StatusPill status={status} />}</div><div className="ls-frame-meta"><OwnerChip owner={space.owner} /><span> · <Freshness facts={headerFacts(space)} /></span></div></div></div>
     <div className="ls-frame-actions"><SaveStatus write={write} announcement={announcement} />
       {!building && <div className="ls-upkeep-action"><Action icon="watch" onClick={() => openSheet('upkeep')}>{!upkeep ? 'Upkeep: none' : upkeep.missing ? 'Upkeep: job missing' : upkeep.enabled === true ? 'Upkeep: on' : upkeep.enabled === false ? 'Upkeep: paused' : 'Upkeep'}</Action></div>}
       <span className="ls-wide-only"><Action onClick={() => openHistory()}>History</Action></span>
@@ -206,6 +225,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
       {!building && <><Action onClick={() => openSheet('permissions')}>Permissions</Action><DisabledReason reason={reason}><Action primary icon="refresh" aria-busy={busy} aria-disabled={!!reason || busy} title={reason || undefined} onClick={refresh}>{busy ? 'Refreshing…' : 'Refresh now'}</Action></DisabledReason></>}
       <DropdownMenu><DropdownMenuTrigger asChild><Action ref={overflow} className="ls-action ls-overflow" aria-label="More Space actions" icon="ellipsis" /></DropdownMenuTrigger><DropdownMenuContent align="end">{headerMode !== 'wide' && <DropdownMenuItem onSelect={() => openHistory()}>History</DropdownMenuItem>}{!building && <>{headerMode === 'narrow' && <DropdownMenuItem onSelect={() => openSheet('upkeep')}>Upkeep</DropdownMenuItem>}<DropdownMenuSeparator /><DropdownMenuItem onSelect={() => act('pin', { pinned: !space.pinned })}>{space.pinned ? 'Unpin Space' : 'Pin Space'}</DropdownMenuItem><DropdownMenuItem onSelect={() => archived ? act('unarchive') : askConfirmation('archive')}>{archived ? 'Restore Space' : 'Archive Space…'}</DropdownMenuItem>{archived && <DropdownMenuItem onSelect={() => askConfirmation('delete')}>Delete…</DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
     </div></header>
+    <p className="ls-secondary" role="status" aria-live="polite">Guest runtime: {dimensions.guest}. App readiness: {dimensions.appDomain}.</p>
     {botAction && <Banner kind={['failed', 'offline', 'unknown'].includes(botAction.status) ? 'failed' : undefined} title={`Bot request: ${botAction.status}`} actions={<>
       <Action onClick={() => controller.current?.checkAction()}>Check bot status</Action>
       {botAction.activationId && ['unknown', 'failed', 'offline'].includes(botAction.status) && <Action onClick={() => controller.current?.retryAction()}>Retry same request</Action>}
@@ -216,7 +236,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
     <WriteBanner write={write} setWrite={setWrite} onDismiss={() => controller.current?.dismissWrite(write.token)} onCompare={() => openSheet('compare')} onUpdated={() => { controller.current?.dismissWrite(write.token); setReload(n => n + 1) }} />
     {archived ? <Banner title="This Space is archived. Future upkeep is paused." actions={<><Action onClick={() => act('unarchive')}>Restore Space</Action><Action danger onClick={() => askConfirmation('delete')}>Delete…</Action></>}>Restore it to open the canvas, then resume upkeep separately. Already-running work may finish. Delete removes it and its data permanently.</Banner> : status === 'failed' ? <Banner kind="failed" title={`Refresh failed${space.freshness?.last_attempt_at != null ? ` at ${absolute(space.freshness.last_attempt_at)}` : ''}. ${space.freshness?.last_success_at != null ? `You're seeing data from ${absolute(space.freshness.last_success_at)}.` : 'No successful update yet.'}`} actions={<><Action onClick={() => openHistory()}>View run details</Action><Action onClick={refresh}>Try again</Action></>}>{lastRun?.error || space.attention?.message || 'The source did not respond.'} Your notes and statuses are unchanged. {space.freshness?.next_run_at ? `Next automatic try ${absolute(space.freshness.next_run_at)}.` : 'No automatic try is scheduled.'}</Banner> : status === 'blocked' ? <Banner kind="blocked" title={`Refresh is blocked: ${space.attention?.message || reason || 'Review Permissions'}`} actions={<Action onClick={() => openSheet('permissions')}>Review permissions</Action>}>The Space still opens and your data is safe. <CopyPrompt text={`${space.owner}, ${space.name} is blocked. Please review its last run and help me restore upkeep.`} /></Banner> : null}
     <section className="ls-content" aria-label="Space content"><div className={`ls-sandbox${status === 'failed' ? ' ls-stale' : ''}`}>
-      {building ? <div className="ls-building"><p role="status">{space.owner} is building the first version. This opens automatically when it's ready.</p><Skeleton style={{ height: 100 }} /><Skeleton style={{ height: 180 }} /></div> : status === 'crashed' ? <div className="ls-crash"><ErrorState title={`${space.name} stopped working`} description="The Space hit an error and was stopped. Your records are safe and weren't changed by the crash." /><pre className="ls-diagnostic">{`Revision ${space.head_rev}\n${crashMessage}\nLogged to this Space only. Common credential values redacted.`}</pre><div className="ls-actions"><Action primary onClick={() => { setCrash(null); setIgnoredCrashRev(space.head_rev); setReload(n => n + 1) }}>Reload Space</Action><Action onClick={() => openHistory('revisions')}>Restore revision…</Action></div><CopyPrompt text={`${space.owner}, ${space.name} crashed. Please read its error log and fix it.`} /><p className="ls-secondary">Repairs happen in chat. {space.owner} can read this error and apply a new revision.</p></div> : archived ? <div className="ls-building"><p>Restore Space to open its content. Your records and revisions are kept.</p></div> : <div ref={content} className="ls-mount" data-testid="space-host" />}
+      {building ? <div className="ls-building"><p role="status">{space.owner} is building the first version. This opens automatically when it's ready.</p><Skeleton style={{ height: 100 }} /><Skeleton style={{ height: 180 }} /></div> : status === 'crashed' ? <div className="ls-crash"><ErrorState title={`${space.name} stopped working`} description="The guest hit an error and was stopped. Already-written records remain; stopping the guest does not undo changes. Check the save status for any pending change." /><pre className="ls-diagnostic">{`Revision ${space.head_rev}\n${crashMessage}\nLogged to this Space only. Common credential values redacted.`}</pre><div className="ls-actions"><Action primary onClick={() => { setGuest({ status: 'unknown', diagnostic: null }); setIgnoredCrashRev(space.head_rev); setReload(n => n + 1) }}>Reload Space</Action><Action onClick={() => openHistory('revisions')}>Restore revision…</Action></div><CopyPrompt text={`${space.owner}, ${space.name} crashed. Please read its error log and fix it.`} /><p className="ls-secondary">Repairs happen in chat. {space.owner} can read this error and apply a new revision.</p></div> : archived ? <div className="ls-building"><p>Restore Space to open its content. Your records and revisions are kept.</p></div> : <div ref={content} className="ls-mount" data-testid="space-host" />}
     </div></section>
     {sheet?.kind === 'permissions' && <PermissionsSheet returnFocus={sheet.returnFocus} ctx={ctx} scopeKey={scopeKey} space={space} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
     {sheet?.kind === 'history' && <HistorySheet returnFocus={sheet.returnFocus} ctx={ctx} scopeKey={scopeKey} space={space} initialTab={sheet.tab} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}

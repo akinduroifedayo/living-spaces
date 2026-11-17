@@ -24,7 +24,7 @@ var ACCENTS = { blue: "#0053fd", green: "#55a583", amber: "#e0a06c", purple: "#9
 var accentColor = (accent) => Object.hasOwn(ACCENTS, accent) ? ACCENTS[accent] : ACCENTS.blue;
 var iconName = (icon) => typeof icon === "string" && /^[a-z][a-z0-9-]{0,63}$/.test(icon) ? icon : "layers";
 var PILLS = {
-  ready: { label: "Ready", icon: "check", border: "solid" },
+  ready: { label: "Available", icon: "check", border: "solid" },
   building: { label: "Building", icon: "tools", border: "dashed" },
   updating: { label: "Updating", icon: "refresh", border: "solid" },
   failed: { label: "Failed", icon: "error", border: "solid" },
@@ -50,6 +50,13 @@ function spaceStatus(space, frame = false) {
   if (space.attention?.kind) return space.attention.kind;
   if (["failed", "blocked"].includes(space.freshness?.last_attempt_status)) return space.freshness.last_attempt_status;
   return "ready";
+}
+function statusDimensions(space, { guest = "unknown", write = null, hostError = false } = {}) {
+  const host5 = hostError ? "unavailable" : space.status === "archived" ? "archived" : space.status === "building" || !space.head_rev ? "building" : "available";
+  return { host: host5, guest, save: write?.status || "idle", freshness: space.freshness, appDomain: "unknown" };
+}
+function guestFailure(event) {
+  return event.kind === "error" && (event.fatal === true || event.phase === "load");
 }
 function needsAttention(space) {
   return space.status !== "archived" && ["failed", "blocked", "crashed"].includes(spaceStatus(space, true));
@@ -127,9 +134,19 @@ var PROMPTS = [
   "Build Research Desk: an overview, a searchable library and a reading queue. Keep my notes and reading status.",
   "Build a weekly fitness planner with a progress chart. Refresh it every Monday."
 ];
+function dataVersionCompatibility(current, target) {
+  if (!Number.isInteger(current) || current <= 0 || !Number.isInteger(target) || target <= 0) return "unknown";
+  return current === target ? "compatible" : "incompatible";
+}
+function revisionCompatibility(space, revision) {
+  return dataVersionCompatibility(space.data_version, revision?.manifest?.data?.version);
+}
+function recoveryCompatibility(space, point) {
+  return dataVersionCompatibility(space.data_version, point.data_version);
+}
 function restoreCopy(space, rev) {
   const kept = space.head_rev > rev + 1 ? `Revisions ${rev + 1}\u2013${space.head_rev} stay in history.` : `Revision ${space.head_rev} stays in history.`;
-  return `Restore revision ${rev}? This brings back the Space's earlier code as a new revision ${space.head_rev + 1}. ${kept} Your records, notes and statuses stay as they are now.`;
+  return `Restore revision ${rev}? This brings back the Space's earlier code as a new revision ${space.head_rev + 1}. ${kept} Your records, notes and statuses stay as they are now. Migration undo and data downgrades are not supported.`;
 }
 function errorText(error) {
   let detail = error?.error || error?.body?.error || error;
@@ -427,7 +444,7 @@ function SpacesIndex({ ctx, scopeKey = null }) {
 
 // src/desktop/ui/space.jsx
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery5 } from "@hermes/plugin-sdk";
-import { useEffect as useEffect2, useLayoutEffect, useRef as useRef4, useState as useState6 } from "react";
+import { useEffect as useEffect2, useLayoutEffect, useMemo, useRef as useRef4, useState as useState6 } from "react";
 
 // src/desktop/ui/history.jsx
 import { Badge as Badge2, EmptyState as EmptyState2, ErrorState as ErrorState2, Skeleton as Skeleton2, Tabs, TabsList, TabsTrigger, useQuery as useQuery2 } from "@hermes/plugin-sdk";
@@ -455,19 +472,46 @@ function RunRow({ run }) {
   ] });
 }
 function RevisionRow({ revision, space, onRestore }) {
+  const compatibility = revisionCompatibility(space, revision);
   return /* @__PURE__ */ jsxs3("article", { className: "ls-row", children: [
     /* @__PURE__ */ jsxs3("div", { className: "ls-row-top", children: [
       /* @__PURE__ */ jsxs3("strong", { children: [
         "Revision ",
         revision.rev
       ] }),
-      revision.rev === space.head_rev ? /* @__PURE__ */ jsx3(Badge2, { variant: "outline", children: "Current" }) : /* @__PURE__ */ jsx3(Action, { onClick: () => onRestore(revision.rev), children: "Restore\u2026" })
+      revision.rev === space.head_rev ? /* @__PURE__ */ jsx3(Badge2, { variant: "outline", children: "Current" }) : compatibility !== "incompatible" && /* @__PURE__ */ jsx3(Action, { onClick: () => onRestore(revision.rev), children: "Restore\u2026" })
     ] }),
     /* @__PURE__ */ jsx3("p", { className: "ls-secondary", children: /* @__PURE__ */ jsx3(Time, { at: revision.created_at }) }),
     /* @__PURE__ */ jsxs3("p", { children: [
       revision.author,
       " \xB7 ",
       revision.summary
+    ] }),
+    /* @__PURE__ */ jsxs3("p", { className: "ls-secondary", children: [
+      "Compatibility: ",
+      compatibility === "incompatible" ? `incompatible. Current data version ${space.data_version}; target data version ${revision.manifest.data.version}. Cross-version code restore is not supported.` : compatibility === "compatible" ? `compatible with current data version ${space.data_version}.` : "unknown. The backend will check data versions before restoring code."
+    ] })
+  ] });
+}
+function RecoveryPointRow({ point, space }) {
+  const compatibility = recoveryCompatibility(space, point);
+  return /* @__PURE__ */ jsxs3("article", { className: "ls-row", "data-testid": `recovery-point-${point.id}`, children: [
+    /* @__PURE__ */ jsxs3("strong", { children: [
+      "Recovery point ",
+      point.id
+    ] }),
+    /* @__PURE__ */ jsx3("p", { children: point.reason }),
+    /* @__PURE__ */ jsxs3("p", { className: "ls-secondary", children: [
+      /* @__PURE__ */ jsx3(Time, { at: point.created_at }),
+      " \xB7 Code revision ",
+      point.head_rev
+    ] }),
+    /* @__PURE__ */ jsxs3("p", { children: [
+      "Compatibility: ",
+      compatibility,
+      ". ",
+      compatibility === "incompatible" ? `Current data version ${space.data_version}; point data version ${point.data_version}. Cross-version restore is not supported.` : compatibility === "compatible" ? `Same data version ${space.data_version}. Use code revision history below for code-only restore.` : "Data-version compatibility cannot be established.",
+      " Data restore is not supported here. Migration undo and data downgrades are not supported. Current records, notes and statuses stay as they are."
     ] })
   ] });
 }
@@ -477,7 +521,9 @@ function HistorySheet({ ctx, scopeKey = null, space, onClose, onChanged, initial
   const base = spacePath(space.id);
   const runs = useQuery2({ queryKey: ["living-spaces", scopeKey, space.id, "runs"], queryFn: () => ctx.rest(`${base}/runs`), refetchInterval: 2e3 });
   const revisions = useQuery2({ queryKey: ["living-spaces", scopeKey, space.id, "revisions"], queryFn: () => ctx.rest(`${base}/revisions`), refetchInterval: 2e3 });
+  const points = useQuery2({ queryKey: ["living-spaces", scopeKey, space.id, "recovery-points"], queryFn: () => ctx.rest(`${base}/recovery-points`), refetchInterval: 2e3 });
   const query = tab === "runs" ? runs : revisions;
+  const restoreCompatibility = revisionCompatibility(space, revisions.data?.find((row) => row.rev === restore));
   return /* @__PURE__ */ jsxs3(Fragment3, { children: [
     /* @__PURE__ */ jsxs3(Drawer, { title: "History & revisions", description: `History and code revisions for ${space.name}`, onClose, returnFocus, children: [
       /* @__PURE__ */ jsx3(Tabs, { value: tab, onValueChange: setTab, className: "ls-tabs", children: /* @__PURE__ */ jsxs3(TabsList, { "aria-label": "History & revisions", children: [
@@ -485,11 +531,18 @@ function HistorySheet({ ctx, scopeKey = null, space, onClose, onChanged, initial
         /* @__PURE__ */ jsx3(TabsTrigger, { id: "ls-revisions-tab", "aria-controls": "ls-revisions-panel", value: "revisions", children: "Revisions" })
       ] }) }),
       /* @__PURE__ */ jsxs3("div", { role: "tabpanel", tabIndex: 0, id: `ls-${tab === "runs" ? "runs" : "revisions"}-panel`, "aria-labelledby": `ls-${tab === "runs" ? "runs" : "revisions"}-tab`, children: [
-        tab === "revisions" && /* @__PURE__ */ jsx3("p", { className: "ls-secondary", children: "Restoring code does not rewind records. Your records, notes and statuses stay as they are now." }),
+        tab === "revisions" && /* @__PURE__ */ jsxs3(Fragment3, { children: [
+          /* @__PURE__ */ jsx3("p", { className: "ls-secondary", children: "Restoring code does not rewind records. Your records, notes and statuses stay as they are now. Migration undo and data downgrades are not supported." }),
+          /* @__PURE__ */ jsxs3("section", { "aria-label": "Recovery points", children: [
+            /* @__PURE__ */ jsx3("h3", { children: "Recovery points" }),
+            points.error ? /* @__PURE__ */ jsx3(ErrorState2, { title: "Recovery points could not be loaded", description: errorText(points.error), children: /* @__PURE__ */ jsx3(Action, { onClick: () => points.refetch(), children: "Try again" }) }) : points.isLoading ? /* @__PURE__ */ jsx3(Skeleton2, { style: { height: 80 } }) : !points.data?.length ? /* @__PURE__ */ jsx3("p", { className: "ls-secondary", children: "No recovery points recorded." }) : points.data.map((point) => /* @__PURE__ */ jsx3(RecoveryPointRow, { point, space }, point.id))
+          ] }),
+          /* @__PURE__ */ jsx3("h3", { children: "Code revisions" })
+        ] }),
         query.error ? /* @__PURE__ */ jsx3(ErrorState2, { title: "History could not be loaded", description: errorText(query.error), children: /* @__PURE__ */ jsx3(Action, { onClick: () => query.refetch(), children: "Try again" }) }) : query.isLoading ? /* @__PURE__ */ jsx3(Skeleton2, { style: { height: 180 } }) : !query.data?.length ? /* @__PURE__ */ jsx3(EmptyState2, { title: tab === "runs" ? "No refresh runs yet." : "No revisions yet." }) : query.data.map((row) => tab === "runs" ? /* @__PURE__ */ jsx3(RunRow, { run: row }, row.id) : /* @__PURE__ */ jsx3(RevisionRow, { revision: row, space, onRestore: setRestore }, row.rev))
       ] })
     ] }),
-    restore != null && /* @__PURE__ */ jsx3(DecisionDialog, { title: `Restore revision ${restore}?`, description: restoreCopy(space, restore), confirmLabel: "Restore as new revision", onClose: () => setRestore(null), onConfirm: async () => {
+    restore != null && restoreCompatibility !== "incompatible" && /* @__PURE__ */ jsx3(DecisionDialog, { danger: true, title: `Restore revision ${restore}?`, description: restoreCopy(space, restore), confirmLabel: "Restore as new revision", onClose: () => setRestore(null), onConfirm: async () => {
       await ctx.rest(`${base}/revisions/${restore}/restore`, { method: "POST" });
       await revisions.refetch();
       await onChanged();
@@ -1584,7 +1637,7 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
   );
 }
 function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
-  const { connectionId, profile } = scope || { connectionId: host2.state.connectionId.get(), profile: host2.state.profile.get() };
+  const { connectionId, profile } = useMemo(() => scope || { connectionId: host2.state.connectionId.get(), profile: host2.state.profile.get() }, [scope, ctx, scopeKey, sid]);
   const base = spacePath(sid);
   const detail = useQuery5({ queryKey: ["living-spaces", scopeKey, sid, "detail"], queryFn: () => ctx.rest(base), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "dataUpdatedAt"] });
   const space = detail.data;
@@ -1592,7 +1645,8 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const [sheet, setSheet] = useState6(null);
   const [confirmation, setConfirmation] = useState6(null);
   const [reload, setReload] = useState6(0);
-  const [crash, setCrash] = useState6(null);
+  const [guest, setGuest] = useState6({ status: "unknown", diagnostic: null });
+  const crash = guest.diagnostic;
   const [ignoredCrashRev, setIgnoredCrashRev] = useState6(null);
   const [write, setWrite] = useState6(null);
   const [announcement, setAnnouncement] = useState6("");
@@ -1641,35 +1695,46 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   useEffect2(() => {
     if (building || archived || crash || remoteCrash || !content.current) return;
     let disposed = false;
-    let errors = 0;
     cursor.current = 0;
     setReady(false);
+    setGuest({ status: "starting", diagnostic: null });
     setBotAction(null);
+    const current = () => !disposed && host2.state.connectionId.get() === connectionId && host2.state.profile.get() === profile;
+    const fail = (message) => setGuest({ status: "failed", diagnostic: diagnosticText(message || "The guest could not be loaded.") });
     const backend = { connectionId, profile };
     const session = createSpaceSession({
       backend,
       host: host2,
-      onAction: (event) => !disposed && setBotAction(event),
+      onAction: (event) => current() && setBotAction(event),
       rest: openingSessionRest || ((path, options) => ctx.rest(path, options)),
       sid,
       container: content.current,
-      mount: mountSpace,
-      onWrite: (event) => !disposed && setWrite(event),
+      mount: (container, options) => mountSpace(container, { ...options, call: async (op, args) => {
+        const reply = await options.call(op, args);
+        if (current() && op === "log" && reply?.ok === true) {
+          if (args.lifecycle === "failed") fail("The guest reported a load or runtime failure. Review this Space's diagnostic log for details.");
+          if (args.lifecycle === "loaded") setGuest((value) => value.status === "failed" ? value : { status: "loaded", diagnostic: null });
+        }
+        return reply;
+      } }),
+      onWrite: (event) => current() && setWrite(event),
       onEvent: (event) => {
-        if (disposed) return;
+        if (!current()) return;
         if (event.kind === "reloaded") setReload((n) => n + 1);
         if (event.kind === "booted") setReady(true);
         if (event.kind === "denied") setAnnouncement("A Space request was denied. Review Permissions for access details.");
         if (event.kind === "log-overflow") setAnnouncement("Some diagnostic entries were dropped because the log limit was reached.");
-        if (event.kind === "error" && (event.fatal || event.phase === "load" || /load|entry|boot/i.test(event.message || "") || ++errors >= 3)) setCrash(diagnosticText(`${event.message || event.error || "Repeated runtime errors"}${event.location || event.filename ? `
-Location: ${event.location || event.filename}` : ""}`));
+        if (guestFailure(event)) fail(`${event.message || event.error || "The guest reported a fatal error"}${event.location || event.filename ? `
+Location: ${event.location || event.filename}` : ""}`);
       }
     });
     controller.current = session;
     session.ready.then(() => {
-      if (!disposed) setReady(true);
+      if (current()) setReady(true);
     }).catch((e) => {
-      if (!disposed) setCrash(diagnosticText(errorText(e)));
+      if (disposed) return;
+      if (current()) fail(errorText(e));
+      else setActionError(errorText(e));
     });
     return () => {
       disposed = true;
@@ -1694,11 +1759,10 @@ Location: ${event.location || event.filename}` : ""}`));
     if (seenRun.current && seenRun.current !== runKey && !inFlight(lastRun.status)) setAnnouncement(lastRun.status === "succeeded" ? `Refresh succeeded: ${runResult(lastRun)}` : `Refresh ${lastRun.status}: ${runResult(lastRun)}`);
     seenRun.current = runKey;
   }, [runKey, ready]);
-  useEffect2(() => {
-    if (crash && space?.head_rev) {
-      setCrash(null);
-    }
-  }, [space?.head_rev]);
+  useLayoutEffect(() => {
+    setGuest({ status: "unknown", diagnostic: null });
+    setIgnoredCrashRev(null);
+  }, [connectionId, profile, scopeKey, sid, space?.head_rev]);
   async function refresh() {
     if (refreshLock.current || refreshPending || status === "updating" || inFlight(lastRun?.status) || refreshReason(space)) return;
     const request = { lifetime: refreshLifetime.current, controller: controller.current };
@@ -1764,6 +1828,7 @@ Location: ${event.location || event.filename}` : ""}`));
     /* @__PURE__ */ jsx6(Action, { onClick: () => detail.refetch(), children: "Try again" }),
     /* @__PURE__ */ jsx6(Action, { onClick: () => host2.navigate("/spaces"), children: "Spaces" })
   ] }) : /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 400 } }) });
+  const dimensions = statusDimensions(space, { guest: remoteCrash ? "failed" : guest.status, write });
   const upkeep = space.upkeep;
   const busy = refreshPending || inFlight(lastRun?.status) || status === "updating";
   const reason = refreshReason(space);
@@ -1783,7 +1848,7 @@ Location: ${event.location || event.filename}` : ""}`));
     confirmationTrigger.current = opener();
     setConfirmation(kind);
   };
-  const crashMessage = diagnosticText(crash || space.attention?.message || "The Space hit repeated runtime errors.");
+  const crashMessage = diagnosticText(crash || space.attention?.message || "The guest reported a fatal error.");
   return /* @__PURE__ */ jsxs6("div", { ref: frame, className: "ls-frame", "data-header-mode": headerMode, "data-testid": "space-view", children: [
     /* @__PURE__ */ jsxs6("header", { className: "ls-framebar", children: [
       /* @__PURE__ */ jsx6(Action, { icon: "chevron-left", onClick: () => host2.navigate("/spaces"), children: "Spaces" }),
@@ -1792,7 +1857,11 @@ Location: ${event.location || event.filename}` : ""}`));
         /* @__PURE__ */ jsxs6("div", { children: [
           /* @__PURE__ */ jsxs6("div", { className: "ls-name-row", children: [
             /* @__PURE__ */ jsx6("h1", { children: space.name }),
-            /* @__PURE__ */ jsx6(StatusPill, { status })
+            /* @__PURE__ */ jsxs6("span", { children: [
+              "Host ",
+              /* @__PURE__ */ jsx6(StatusPill, { status: dimensions.host === "available" ? "ready" : dimensions.host })
+            ] }),
+            !["ready", dimensions.host].includes(status) && /* @__PURE__ */ jsx6(StatusPill, { status })
           ] }),
           /* @__PURE__ */ jsxs6("div", { className: "ls-frame-meta", children: [
             /* @__PURE__ */ jsx6(OwnerChip, { owner: space.owner }),
@@ -1826,6 +1895,13 @@ Location: ${event.location || event.filename}` : ""}`));
           ] })
         ] })
       ] })
+    ] }),
+    /* @__PURE__ */ jsxs6("p", { className: "ls-secondary", role: "status", "aria-live": "polite", children: [
+      "Guest runtime: ",
+      dimensions.guest,
+      ". App readiness: ",
+      dimensions.appDomain,
+      "."
     ] }),
     botAction && /* @__PURE__ */ jsxs6(Banner, { kind: ["failed", "offline", "unknown"].includes(botAction.status) ? "failed" : void 0, title: `Bot request: ${botAction.status}`, actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
       /* @__PURE__ */ jsx6(Action, { onClick: () => controller.current?.checkAction(), children: "Check bot status" }),
@@ -1863,13 +1939,13 @@ Location: ${event.location || event.filename}` : ""}`));
       /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 100 } }),
       /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 180 } })
     ] }) : status === "crashed" ? /* @__PURE__ */ jsxs6("div", { className: "ls-crash", children: [
-      /* @__PURE__ */ jsx6(ErrorState5, { title: `${space.name} stopped working`, description: "The Space hit an error and was stopped. Your records are safe and weren't changed by the crash." }),
+      /* @__PURE__ */ jsx6(ErrorState5, { title: `${space.name} stopped working`, description: "The guest hit an error and was stopped. Already-written records remain; stopping the guest does not undo changes. Check the save status for any pending change." }),
       /* @__PURE__ */ jsx6("pre", { className: "ls-diagnostic", children: `Revision ${space.head_rev}
 ${crashMessage}
 Logged to this Space only. Common credential values redacted.` }),
       /* @__PURE__ */ jsxs6("div", { className: "ls-actions", children: [
         /* @__PURE__ */ jsx6(Action, { primary: true, onClick: () => {
-          setCrash(null);
+          setGuest({ status: "unknown", diagnostic: null });
           setIgnoredCrashRev(space.head_rev);
           setReload((n) => n + 1);
         }, children: "Reload Space" }),
@@ -1922,13 +1998,13 @@ var styles = `
 
 // src/desktop/ui/context.jsx
 import { host as host3, useValue } from "@hermes/plugin-sdk";
-import { useMemo } from "react";
+import { useMemo as useMemo2 } from "react";
 var currentScope = () => JSON.stringify([host3.state.connectionId.get(), host3.state.profile.get()]);
 function useScopedContext(ctx) {
   const connectionId = useValue(host3.state.connectionId);
   const profile = useValue(host3.state.profile);
   const scopeKey = JSON.stringify([connectionId, profile]);
-  return useMemo(() => ({
+  return useMemo2(() => ({
     ctx: { ...ctx, rest: scopedRest((path, options) => ctx.rest(path, options), currentScope, scopeKey) },
     scopeKey,
     scope: { connectionId, profile },

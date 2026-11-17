@@ -68,10 +68,11 @@ def _add_logs(conn, sid, session, entries, *, lifecycle=None, dropped=0, unconfi
         from .sessions import _require
         opened = _require(conn, sid, session)
         rev, attribution = opened["head_rev"], "session_opened"
-        conn.execute("""UPDATE sessions SET lifecycle=coalesce(lifecycle,?),
+        conn.execute("""UPDATE sessions SET lifecycle=CASE
+            WHEN lifecycle='failed' OR ?='failed' THEN 'failed' ELSE coalesce(lifecycle,?) END,
             log_errors=log_errors+?, log_warnings=log_warnings+?, log_dropped=max(log_dropped,?),
             log_unconfirmed=max(log_unconfirmed,?) WHERE id=?""",
-                     (lifecycle, sum(level == "error" for level, _ in clean),
+                     (lifecycle, lifecycle, sum(level == "error" for level, _ in clean),
                       sum(level == "warn" for level, _ in clean), dropped, unconfirmed, session))
     for level, message in clean:
         conn.execute("INSERT INTO logs(space,session,rev,at,level,msg,attribution) VALUES(?,?,?,?,?,?,?)",
