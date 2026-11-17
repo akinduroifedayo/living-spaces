@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optional font shelf | Living Spaces</title>
+  <link rel="stylesheet" href="../vendor/fonts/newsreader.css">
+  <link rel="stylesheet" href="../vendor/fonts/bricolage-grotesque.css">
+  <link rel="stylesheet" href="../vendor/fonts/jetbrains-mono.css">
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; color: #16253c; background: #f8fafc; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 72ch; margin-inline: auto; padding: clamp(1rem, 4vw, 3rem); }
+    h1, h2, p, pre { margin: 0; }
+    h1 { font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-size: clamp(2rem, 6vw, 3.5rem); line-height: 1.1; text-wrap: balance; }
+    h2 { font-size: 1.5rem; line-height: 1.25; margin-bottom: .75rem; }
+    p { line-height: 1.65; margin-top: 1rem; }
+    section { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #bbc6d4; scroll-margin-top: 1rem; }
+    nav { display: flex; flex-wrap: wrap; gap: .25rem 1rem; margin-top: 1.25rem; }
+    a { display: inline-flex; align-items: center; min-height: 44px; color: #174b88; text-underline-offset: .2em; }
+    a:hover { text-decoration-thickness: 2px; }
+    :focus-visible { outline: 3px solid #174b88; outline-offset: 4px; }
+    ::selection { color: #fff; background: #174b88; }
+    code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; margin-top: 1rem; padding: 1rem; background: #e8edf4; }
+    .reading { font-family: 'Newsreader', Georgia, serif; font-size: 1.375rem; line-height: 1.6; }
+    .heading { font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-size: clamp(1.75rem, 5vw, 2.75rem); line-height: 1.15; }
+    .technical, .technical code { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    .serif-fallback { font-family: Georgia, serif; }
+    .sans-fallback { font-family: system-ui, sans-serif; }
+    .mono-fallback, .mono-fallback code { font-family: ui-monospace, monospace; }
+    details { margin-top: 1.25rem; }
+    summary { cursor: pointer; min-height: 44px; padding-block: .65rem; }
+    .note { color: #394f6b; font-size: .9375rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Choose a voice for the work.</h1>
+      <p>This opt-in specimen pairs reading text, expressive headings and technical text with explicit system fallbacks. It uses no kit stylesheet or font loader.</p>
+      <nav aria-label="Font specimens">
+        <a href="#reading">Reading</a>
+        <a href="#heading">Headings</a>
+        <a href="#technical">Technical text</a>
+        <a href="#coverage">Coverage and fallback</a>
+      </nav>
+    </header>
+    <section id="reading" aria-labelledby="reading-title">
+      <h2 id="reading-title">Newsreader for reading</h2>
+      <p class="note">Select <code>font:newsreader</code>. Normal style, weights 400 and 700.</p>
+      <p class="reading">A useful reading desk leaves room for the words. <strong>The next paragraph belongs to the reader.</strong> Café, naïve, façade. Figures 0123456789 and punctuation keep their place.</p>
+      <details>
+        <summary>Compare the system serif fallback</summary>
+        <p class="reading serif-fallback">A useful reading desk leaves room for the words. <strong>The next paragraph belongs to the reader.</strong></p>
+      </details>
+    </section>
+    <section id="heading" aria-labelledby="heading-title">
+      <h2 id="heading-title">Bricolage Grotesque for headings</h2>
+      <p class="note">Select <code>font:bricolage-grotesque</code>. Normal style, weights 400 and 700.</p>
+      <p class="heading">Make room for <strong>a different idea.</strong></p>
+      <details>
+        <summary>Compare the system sans fallback</summary>
+        <p class="heading sans-fallback">Make room for <strong>a different idea.</strong></p>
+      </details>
+    </section>
+    <section id="technical" aria-labelledby="technical-title">
+      <h2 id="technical-title">JetBrains Mono for technical text</h2>
+      <p class="note">Select <code>font:jetbrains-mono</code>. Normal style, weights 400 and 700. This code is an illustrative sample, not an executed request.</p>
+      <pre class="technical"><code>const libraries = ['font:jetbrains-mono'];
+const status = <strong>'Ready for review'</strong>;
+// Distinguish 0O, 1Il and {}[]().</code></pre>
+      <details>
+        <summary>Compare the system monospace fallback</summary>
+        <pre class="mono-fallback"><code>const libraries = ['font:jetbrains-mono'];
+const status = <strong>'Ready for review'</strong>;
+// Distinguish 0O, 1Il and {}[]().</code></pre>
+      </details>
+    </section>
+    <section id="coverage" aria-labelledby="coverage-title">
+      <h2 id="coverage-title">Latin coverage, local files</h2>
+      <p>Only the upstream Latin subsets are bundled. Other scripts use the browser's available fallback fonts. Italic faces and other weights are not included. Missing font files also leave the system fallbacks in place.</p>
+      <p class="reading" lang="th">ภาษาไทยใช้แบบอักษรสำรองของระบบ</p>
+      <p class="note">The Thai sample depends on a platform font, not this shelf. The fallback comparisons above omit each bundled family explicitly. To test missing files, remove a font stylesheet or its WOFF2 files from a disposable copy. This specimen alone is not proof that a platform loaded the fonts.</p>
+      <p>Request all three library keys to copy this page's font files and licenses. In a Space, copy this page as <code>kit/font-shelf.html</code> and use that path as the manifest entry. For an entry at the project root, change the three stylesheet links to <code>vendor/fonts/&lt;family&gt;.css</code>. Default Spaces copy none of these optional files.</p>
+    </section>
+  </main>
+</body>
+</html>

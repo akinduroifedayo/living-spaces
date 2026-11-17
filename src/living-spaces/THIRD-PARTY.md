@@ -66,6 +66,69 @@ Selection key: `font:dm-sans`. Total copied size including notices: 33,389 bytes
 
 Only Latin, normal style, weights 400 and 700 are included. WOFF2 bytes are unchanged. The readable CSS combines the corresponding upstream Latin CSS declarations, removes WOFF fallback, and points to adjacent WOFF2 files. Loading this CSS defines font faces; it does not apply a font family to any element.
 
+## @fontsource/newsreader 5.3.0
+
+License: `OFL-1.1`. Official source: [@fontsource/newsreader 5.3.0 tarball](https://registry.npmjs.org/@fontsource/newsreader/-/newsreader-5.3.0.tgz).
+
+Integrity: `sha512-AFR6ZKY89GNL+9qBI2P2+66NhD5bhOj/v6fsLnFYLM4E0JnMB1yKb+Ro8cA64i1hwAWoBfTq5CHJGWH1toLDkw==`.
+
+Selection key: `font:newsreader`. Total copied size including its license: 51,489 bytes.
+
+| Bundled file | Bytes | Upstream input |
+| --- | ---: | --- |
+| `vendor/fonts/newsreader-latin-400-normal.woff2` | 22,480 | `files/newsreader-latin-400-normal.woff2` |
+| `vendor/fonts/newsreader-latin-700-normal.woff2` | 23,796 | `files/newsreader-latin-700-normal.woff2` |
+| `vendor/fonts/newsreader.css` | 693 | `latin-400.css + latin-700.css + unicode.json (adapted relative URLs)` |
+| `vendor/licenses/newsreader-LICENSE` | 4,520 | `LICENSE` |
+
+Copyright 2020 The Newsreader Project Authors. The full upstream attribution and OFL terms are retained in the license file. The family name is `Newsreader`. Its reading-text specimen uses `'Newsreader', Georgia, serif`.
+
+## @fontsource/bricolage-grotesque 5.3.0
+
+License: `OFL-1.1`. Official source: [@fontsource/bricolage-grotesque 5.3.0 tarball](https://registry.npmjs.org/@fontsource/bricolage-grotesque/-/bricolage-grotesque-5.3.0.tgz).
+
+Integrity: `sha512-MdOVb/5in11IfN/IQJOExMuu6AroCIQbirl0yX7NUvKk+h0HYIKfGaVAXRS/gCPil4aFxWhjZnOw28tUwv7tFw==`.
+
+Selection key: `font:bricolage-grotesque`. Total copied size including its license: 49,878 bytes.
+
+| Bundled file | Bytes | Upstream input |
+| --- | ---: | --- |
+| `vendor/fonts/bricolage-grotesque-latin-400-normal.woff2` | 22,364 | `files/bricolage-grotesque-latin-400-normal.woff2` |
+| `vendor/fonts/bricolage-grotesque-latin-700-normal.woff2` | 22,384 | `files/bricolage-grotesque-latin-700-normal.woff2` |
+| `vendor/fonts/bricolage-grotesque.css` | 729 | `latin-400.css + latin-700.css + unicode.json (adapted relative URLs)` |
+| `vendor/licenses/bricolage-grotesque-LICENSE` | 4,401 | `LICENSE` |
+
+Copyright 2022 The Bricolage Grotesque Project Authors. The full upstream attribution and OFL terms are retained in the license file. The family name is `Bricolage Grotesque`. Its heading specimen uses `'Bricolage Grotesque', system-ui, sans-serif`.
+
+## @fontsource/jetbrains-mono 5.3.0
+
+License: `OFL-1.1`. Official source: [@fontsource/jetbrains-mono 5.3.0 tarball](https://registry.npmjs.org/@fontsource/jetbrains-mono/-/jetbrains-mono-5.3.0.tgz).
+
+Integrity: `sha512-fqDfB5I9f1p1TV486aUgB9t8zP84P0O1FtQR5Ol9vjwPy+S+EIGlVYm1cvj2W5shcZMTg2nZFdVMoH5wFu8a1A==`.
+
+Selection key: `font:jetbrains-mono`. Total copied size including its license: 48,309 bytes.
+
+| Bundled file | Bytes | Upstream input |
+| --- | ---: | --- |
+| `vendor/fonts/jetbrains-mono-latin-400-normal.woff2` | 21,168 | `files/jetbrains-mono-latin-400-normal.woff2` |
+| `vendor/fonts/jetbrains-mono-latin-700-normal.woff2` | 21,908 | `files/jetbrains-mono-latin-700-normal.woff2` |
+| `vendor/fonts/jetbrains-mono.css` | 709 | `latin-400.css + latin-700.css + unicode.json (adapted relative URLs)` |
+| `vendor/licenses/jetbrains-mono-LICENSE` | 4,524 | `LICENSE` |
+
+Copyright 2020 The JetBrains Mono Project Authors. The full upstream attribution and OFL terms are retained in the license file. The family name is `JetBrains Mono`. Its technical-text specimen uses `'JetBrains Mono', ui-monospace, monospace`.
+
+### Selected font coverage and fallback
+
+These three groups contain unchanged static Latin WOFF2 files in normal style, at weights 400 and 700. No italic faces, variable axes or non-Latin subsets are bundled. Their CSS combines the upstream Latin declarations, removes the WOFF alternative, uses adjacent relative WOFF2 URLs and `font-display: swap`, and declares the upstream `unicode.json` Latin range:
+
+```text
+U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD
+```
+
+This range describes the selected subset, not a promise of a glyph at every code point. Unsupported glyphs use the app's fallback stack and the platform's available fonts. CSS defines the faces without applying them. Apps must request a library key, link its CSS and set a fallback stack. Missing font files also use the fallback stack. `kit/font-shelf.html` has reading, heading, code and forced system-fallback samples, including Thai text outside the selected subset. Platform loading, unsupported-script rendering and missing-file layout still require runtime verification.
+
+No new font is selected by default. The existing default kit CSS, modules and font payloads are unchanged. Full upstream license files travel with each requested family. The source version is the Fontsource package version, not the upstream font revision.
+
 ## Reproduce and verify
 
 Use the pinned extracted Lucide tarball and an existing esbuild 0.28.0 binary. This command does not run package scripts:
