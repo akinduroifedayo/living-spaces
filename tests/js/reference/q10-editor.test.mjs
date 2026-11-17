@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { setImmediate as tick } from 'node:timers/promises'
 import { h, render, options } from 'preact'
@@ -12,7 +12,8 @@ options.debounceRendering = callback => queueMicrotask(callback)
 const python = '/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python'
 function fixture(t) {
   assert.equal(typeof kit.createEditorStore, 'function', 'Q10 editor lifecycle helper is missing')
-  const dir = mkdtempSync(resolve('.run/swarm-03/q10/tmp/editor-'))
+  mkdirSync(resolve('.run'), { recursive: true })
+  const dir = mkdtempSync(resolve('.run/q10-editor-'))
   const env = { PATH: process.env.PATH, HOME: dir, TMPDIR: dir, HERMES_HOME: dir, LIVING_SPACES_DB: resolve(dir, 'db.sqlite') }
   const run = code => JSON.parse(execFileSync(python, ['-I', '-B', '-c', `import sys,json; sys.path.insert(0,${JSON.stringify(resolve('src/living-spaces'))}); from living_spaces_core import bridge,projects,records,sessions; ${code}`], {env, encoding: 'utf8'}))
   const opened = run("s=projects.create_space('Q10',owner='fixture',author='fixture',files={'index.html':'Q10'}); print(json.dumps({'sid':s['id'],'session':sessions.open_session(s['id'])['session']}))")
