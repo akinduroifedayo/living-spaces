@@ -89,7 +89,7 @@ test('refresh reasons cover handler and archived restrictions only', () => {
   assert.equal(m.refreshReason(space({ manifest: { upkeep: {} } })), '')
 })
 test('restore confirmation makes retained history and records explicit', () => {
-  assert.equal(m.restoreCopy(space(), 5), "Restore revision 5? This brings back the Space's earlier code as a new revision 8. Revisions 6–7 stay in history. Your records, notes and statuses stay as they are now.")
+  assert.equal(m.restoreCopy(space(), 5), "Restore revision 5? This brings back the Space's earlier code as a new revision 8. Revisions 6–7 stay in history. Your records, notes and statuses stay as they are now. Migration undo and data downgrades are not supported.")
   assert.match(m.errorText({ error: { code: 'incompatible', message: 'Data versions differ' } }), /Incompatible revision.*unchanged/)
 })
 test('manifest identity falls back without injecting a style or icon', () => {
@@ -125,7 +125,8 @@ test('mount opens a session first and binds every bridge call to that session an
   assert.deepEqual(f.requests.map(r => r.path), ['/spaces/research-desk/sessions', '/spaces/research-desk/bundle'])
   assert.equal(Object.hasOwn(f.bridge(), 'session'), false)
   await f.bridge().call('data.put', { collection: 'notes', data: { note: 'public demo' }, space: 'other' })
-  assert.deepEqual(f.requests[2], { path: '/spaces/research-desk/bridge', method: 'POST', body: { session: 'demo-session', op: 'data.put', args: { collection: 'notes', data: { note: 'public demo' }, space: 'other', id: f.requests[2].body.args.id, base_rev: 0 } } })
+  assert.match(f.requests[2].body.request_id, /^write_[0-9a-f]{32}$/)
+  assert.deepEqual(f.requests[2], { path: '/spaces/research-desk/bridge', method: 'POST', body: { session: 'demo-session', op: 'data.put', args: { collection: 'notes', data: { note: 'public demo' }, space: 'other', id: f.requests[2].body.args.id, base_rev: 0 }, request_id: f.requests[2].body.request_id } })
   assert.deepEqual(f.writes.map(w => w.status), ['saving', 'saved'])
   await f.session.destroy()
 })

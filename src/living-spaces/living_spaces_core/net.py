@@ -190,7 +190,7 @@ def _request_options(method, headers, body, as_):
     return method, clean, body
 
 
-def _fetch_public(url, *, authorize, max_bytes, method='GET', headers=None, body=None, detail=None):
+def _fetch_public(url, *, authorize, max_bytes, method='GET', headers=None, body=None, detail=None, proof=None):
     deadline = time.monotonic() + TIMEOUT
     if detail is None:
         detail = {'host': '', 'status': None, 'bytes': 0}
@@ -210,6 +210,8 @@ def _fetch_public(url, *, authorize, max_bytes, method='GET', headers=None, body
             try:
                 timer.start()
                 authorize(request_url)
+                if proof is not None:
+                    proof.state = 'possibly_sent'
                 conn.request(method, target, body=body, headers={
                     **headers, 'Host': authority, 'Accept-Encoding': 'identity', 'User-Agent': USER_AGENT,
                 })
@@ -274,8 +276,10 @@ def fetch(sid, url, method='GET', headers=None, body=None, as_='text', session=N
     try:
         authorize(url)
         method, headers, body = _request_options(method, headers, body, as_)
+        invocation = db.current_invocation()
+        proof = invocation.effect if invocation is not None and invocation.effect.owner == (sid, session, 'net.fetch') else None
         result, content = _fetch_public(url, authorize=authorize, max_bytes=RESPONSE_BYTES,
-                                       method=method, headers=headers, body=body, detail=detail)
+                                       method=method, headers=headers, body=body, detail=detail, proof=proof)
         mime = result['headers'].get('content-type', 'application/octet-stream').split(';', 1)[0].strip()
         if as_ == 'bytes':
             result.update(b64=base64.b64encode(content).decode('ascii'), mime=mime)

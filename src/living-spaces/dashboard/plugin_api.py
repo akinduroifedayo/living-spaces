@@ -36,7 +36,7 @@ class SpacesRoute(APIRoute):
             except RequestValidationError:
                 error = {"code": "invalid", "message": "Invalid request body or query parameters."}
                 bridge = request.url.path.endswith("/bridge")
-                return JSONResponse({"ok": False, "error": error} if bridge else {"error": error},
+                return JSONResponse({"ok": False, "error": error, "outcome": {"status": "rejected"}} if bridge else {"error": error},
                                     status_code=200 if bridge else 400)
 
         return route
@@ -48,7 +48,7 @@ router = APIRouter(route_class=SpacesRoute)
 async def _run(space_id, action, *, bridge=False):
     if space_id is not None and not SPACE_ID.fullmatch(space_id):
         error = {"code": "invalid", "message": "Invalid space_id."}
-        return JSONResponse({"ok": False, "error": error} if bridge else {"error": error},
+        return JSONResponse({"ok": False, "error": error, "outcome": {"status": "rejected"}} if bridge else {"error": error},
                             status_code=200 if bridge else 400)
 
     def invoke():
@@ -59,6 +59,7 @@ async def _run(space_id, action, *, bridge=False):
             payload = {"error": err.to_dict()}
             if bridge:
                 payload["ok"] = False
+                payload["outcome"] = {"status": "rejected"}
             return JSONResponse(payload, status_code=200 if bridge else err.http_status)
 
     return await run_in_threadpool(invoke)
@@ -134,6 +135,10 @@ async def bridge(space_id: str, body=Body(default=None)):
         session, op, args = body.get("session"), body.get("op"), body.get("args")
         if not isinstance(session, str) or not session or not isinstance(op, str) or not op or not isinstance(args, dict):
             _invalid(core, "Bridge requires session, op and object args.")
+        if "request_id" in body:
+            if not isinstance(body["request_id"], str):
+                _invalid(core, "request_id must be a bounded string.")
+            return core.dispatch(space_id, session, op, args, request_id=body["request_id"])
         return core.dispatch(space_id, session, op, args)
     return await _run(space_id, action, bridge=True)
 
@@ -150,7 +155,13 @@ async def runs(space_id: str, limit: int = Query(default=50, ge=1, le=500)):
 
 @router.post("/spaces/{space_id}/refresh")
 async def refresh(space_id: str):
-    return await _run(space_id, lambda core: core.start_refresh(space_id, trigger="manual", actor="user"))
+    def action(core):
+        reply = core.bridge.native_refresh(space_id, lambda: core.start_refresh(space_id, trigger="manual", actor="user"))
+        if reply.get("ok") is False:
+            status = 200 if reply["outcome"]["status"] == "unknown" else core.errors.CODES[reply["error"]["code"]]
+            return JSONResponse(reply, status_code=status)
+        return reply
+    return await _run(space_id, action)
 
 
 @router.get("/spaces/{space_id}/grants")
@@ -190,6 +201,11 @@ async def upkeep_update(space_id: str, body=Body(default=None)):
 @router.get("/spaces/{space_id}/revisions")
 async def revisions(space_id: str):
     return await _run(space_id, lambda core: core.list_revisions(space_id))
+
+
+@router.get("/spaces/{space_id}/recovery-points")
+async def recovery_points(space_id: str):
+    return await _run(space_id, lambda core: core.records.list_recovery_points(space_id))
 
 
 @router.post("/spaces/{space_id}/revisions/{rev}/restore")

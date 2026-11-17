@@ -90,11 +90,21 @@ def _check(conn, sid, capability, scope_need=None):
 
 
 def check(sid, capability, scope_need=None):
-    with db.write() as conn:
+    need = scope_need if scope_need is not None else {}
+    limits.object_json(need)
+    limits.text(capability, "capability")
+    with db.read() as conn:
         db.space(conn, sid)
-        allowed = _check(conn, sid, capability, scope_need)
-    if not allowed:
-        raise SpacesError("not_granted", "Capability or requested scope is not granted", capability=capability)
+        row = conn.execute("SELECT status,scope FROM grants WHERE space=? AND capability=?", (sid, capability)).fetchone()
+        allowed = row is not None and row["status"] == "granted" and _subset(need, json.loads(row["scope"]))
+    if allowed:
+        return
+    try:
+        with db.contention_limit(.1), db.write() as conn:
+            _check(conn, sid, capability, need)
+    except Exception:
+        pass
+    raise SpacesError("not_granted", "Capability or requested scope is not granted", capability=capability)
 
 
 def request(sid, capability, *, scope, purpose, actor):

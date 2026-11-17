@@ -36,8 +36,13 @@ for (const batch of [false, true]) {
   test(`F2 lost ${batch ? 'batch' : 'put'} response reuses create IDs and never overwrites a later edit`, async () => {
     const rows = new Map(), requests = []
     let lost = true
-    const f = fixture(({ args }) => {
-      requests.push(structuredClone(args))
+    const f = fixture(body => {
+      const { op: operation, args } = body
+      requests.push(structuredClone(body))
+      if (operation === 'outcome.get') {
+        assert.deepEqual(args, { request_id: requests[0].request_id })
+        return { ok: false, error: { code: 'ambiguous' }, outcome: { status: 'unknown' } }
+      }
       const ops = batch ? args.ops : [args]
       for (const op of ops) {
         const id = op.id ?? `server-${rows.size}`
@@ -54,19 +59,22 @@ for (const batch of [false, true]) {
       const args = batch ? { ops: [{ op: 'put', ...create }, { op: 'put', collection: 'notes', data: { text: 'second' } }] } : create
       await f.call(batch ? 'data.batch' : 'data.put', args)
       const retry = f.writes.at(-1).retry
-      const first = batch ? requests[0].ops : [requests[0]]
+      const first = batch ? requests[0].args.ops : [requests[0].args]
       for (const op of first) { assert.match(op.id, /^r_[0-9a-f]{12}$/); assert.equal(op.base_rev, 0) }
       assert.equal(new Set(first.map(op => op.id)).size, first.length)
       await retry()
-      assert.deepEqual(requests[1], requests[0])
+      assert.equal(requests[1].op, 'outcome.get')
+      assert.equal(requests.filter(request => request.op.startsWith('data.')).length, 1)
       assert.equal(rows.size, first.length)
-      assert.equal(f.writes.at(-1).status, 'conflict')
+      assert.equal(f.writes.at(-1).status, 'unknown')
       const current = rows.get(first[0].id)
       current.rev = 2; current.data.text = 'newer chat note'
       await retry()
       assert.equal(rows.size, first.length)
       assert.equal(current.data.text, 'newer chat note')
-      assert.equal(f.writes.at(-1).status, 'conflict')
+      assert.equal(f.writes.at(-1).status, 'unknown')
+      assert.equal(requests[2].op, 'outcome.get')
+      assert.equal(requests.filter(request => request.op.startsWith('data.')).length, 1)
       assert.equal(create.id, undefined)
     } finally { await f.session.destroy() }
   })
@@ -99,10 +107,14 @@ test('F2 retry keeps the first draft snapshot and preserves explicit record revi
     await f.call('data.put', args)
     args.data.text = 'later local edit'
     await f.writes.at(-1).retry()
-    const sent = f.calls.filter(c => c.path.endsWith('/bridge')).map(c => c.body.args)
-    assert.deepEqual(sent[1], sent[0])
-    assert.equal(sent[1].base_rev, 4)
-    assert.equal(sent[1].id, 'existing')
+    const sent = f.calls.filter(c => c.path.endsWith('/bridge')).map(c => c.body)
+    assert.equal(sent[1].op, 'outcome.get')
+    assert.deepEqual(sent[1].args, { request_id: sent[0].request_id })
+    assert.equal(sent.filter(request => request.op === 'data.put').length, 1)
+    assert.equal(sent[0].args.base_rev, 4)
+    assert.equal(sent[0].args.id, 'existing')
+    assert.equal(sent[0].args.data.text, 'original')
+    assert.deepEqual(f.writes.at(-1).args, sent[0].args)
   } finally { await f.session.destroy() }
 })
 

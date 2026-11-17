@@ -599,3 +599,75 @@ test('public cron metadata does not establish a catch-up execution guarantee', a
     assert.doesNotMatch(document.body.textContent, /it runs once when it wakes|Missed runs aren't replayed/)
   } finally { await cleanup() }
 })
+
+function q03RefreshContext(refresh) {
+  const calls = []
+  return { calls, rest: async (path, request) => {
+    calls.push({ path, request })
+    if (path.endsWith('/refresh')) return refresh()
+    if (path.endsWith('/sessions')) return { session: 'q03-session', head_rev: 2, grants: [] }
+    if (path.endsWith('/bundle')) return { rev: 2 }
+    return { closed: true }
+  } }
+}
+for (const thrown of [false, true]) {
+  test(`Q03 mounted Refresh preserves structured unknown ${thrown ? 'exception' : 'reply'}`, async () => {
+    setup(); data.detail = space()
+    const reply = { ok: false, error: { code: 'ambiguous', message: 'Unconfirmed synthetic refresh' }, outcome: { status: 'unknown' } }
+    const ctx = q03RefreshContext(() => {
+      if (thrown) throw Object.assign(new Error(reply.error.message), { body: reply })
+      return reply
+    })
+    try {
+      await render(SpaceView, { ctx, sid: 'demo-space' })
+      await click('Refresh now')
+      const status = document.querySelector('.ls-save[role="status"]')
+      assert.match(status.textContent, /Refresh outcome unknown/)
+      assert.doesNotMatch(status.textContent, /Refresh failed|Refresh succeeded|Refresh undefined/)
+      assert.equal(ctx.calls.filter(call => call.path.endsWith('/refresh')).length, 1)
+    } finally { await cleanup() }
+  })
+}
+for (const kind of ['success', 'rejected', 'busy']) {
+  test(`Q03 mounted Refresh retains factual ${kind} feedback`, async () => {
+    setup(); data.detail = space()
+    const ctx = q03RefreshContext(() => {
+      if (kind === 'success') return { id: 'q03-run', status: 'succeeded', changed: {} }
+      throw Object.assign(new Error(kind === 'busy' ? 'Store busy' : 'Permission denied'), {
+        body: { error: { code: kind === 'busy' ? 'blocked' : 'not_granted' }, outcome: { status: kind } }
+      })
+    })
+    try {
+      await render(SpaceView, { ctx, sid: 'demo-space' })
+      await click('Refresh now')
+      const status = document.querySelector('.ls-save').textContent
+      assert.match(status, kind === 'success' ? /Refresh succeeded/ : kind === 'busy' ? /Refresh busy/ : /Refresh failed/)
+      assert.doesNotMatch(status, /outcome unknown/)
+      assert.equal(ctx.calls.filter(call => call.path.endsWith('/refresh')).length, 1)
+    } finally { await cleanup() }
+  })
+}
+for (const mode of ['unchanged', 'replacement', 'revocation', 'closed']) {
+  test(`Q03 mounted pending Refresh binds delivery to ${mode} origin`, async () => {
+    setup(); data.detail = space()
+    const pending = Promise.withResolvers()
+    const ctx = q03RefreshContext(() => pending.promise)
+    let unmounted = false
+    try {
+      await render(SpaceView, { ctx, sid: 'demo-space' })
+      await click('Refresh now')
+      await click('Refreshing…')
+      assert.equal(ctx.calls.filter(call => call.path.endsWith('/refresh')).length, 1)
+      if (mode === 'replacement') await render(SpaceView, { ctx, sid: 'other-space' })
+      if (mode === 'revocation') {
+        data.detail = space({ grants: [{ capability: 'net', status: 'revoked' }] })
+        await render(SpaceView, { ctx, sid: 'demo-space' })
+      }
+      if (mode === 'closed') { await cleanup(); unmounted = true }
+      await act(async () => pending.resolve({ id: 'q03-old-run', status: 'succeeded', changed: {} }))
+      if (mode === 'unchanged') assert.match(document.querySelector('.ls-save').textContent, /Refresh succeeded/)
+      else assert.doesNotMatch(document.body.textContent, /Refresh succeeded|q03-old-run/)
+      assert.equal(ctx.calls.filter(call => call.path.endsWith('/refresh')).length, 1)
+    } finally { pending.resolve({ status: 'succeeded', changed: {} }); if (!unmounted) await cleanup() }
+  })
+}
