@@ -345,3 +345,308 @@ test('failed catch-up in SpaceView preserves last-good header timestamps and fai
     assert.match(document.body.textContent, /Missed intervals were not replayed/)
   } finally { await act(async () => view.unmount()) }
 })
+
+const q04Guest = state => {
+  assert.match(document.body.textContent, new RegExp(`(?:guest|application|runtime)[^.!?\\n]{0,60}\\b${state}\\b`, 'i'))
+}
+const q04DomainUnknown = () => {
+  assert.match(document.body.textContent, /(?:app(?:lication)?(?:[- ]domain)?|domain|readiness)[^.!?\n]{0,60}(?:unknown|not (?:known|reported|provided))/i)
+}
+const q04Log = (lifecycle, entries = []) => ({ entries, ...(lifecycle ? { lifecycle } : {}) })
+
+test('Q04 status dimensions keep host guest save freshness and app domain independent', () => {
+  assert.equal(typeof model.statusDimensions, 'function')
+  assert.equal(model.PILLS.ready.label, 'Available')
+  const freshness = Object.freeze({ last_success_at: 1700000000, last_attempt_status: 'failed', source_as_of: 1699999900 })
+  const space = Object.freeze({ ...demo(), freshness, attention: { kind: 'crashed' } })
+  assert.deepEqual(model.statusDimensions(space), { host: 'available', guest: 'unknown', save: 'idle', freshness, appDomain: 'unknown' })
+  for (const guest of ['unknown', 'starting', 'loaded', 'failed']) {
+    for (const save of ['saving', 'saved', 'failed', 'unknown', 'conflict']) {
+      assert.deepEqual(model.statusDimensions(space, { guest, write: { status: save } }),
+        { host: 'available', guest, save, freshness, appDomain: 'unknown' })
+    }
+  }
+  for (const [patch, options, host] of [
+    [{ status: 'building' }, {}, 'building'],
+    [{ head_rev: 0 }, {}, 'building'],
+    [{ status: 'archived' }, {}, 'archived'],
+    [{}, { hostError: true }, 'unavailable']
+  ]) {
+    assert.deepEqual(model.statusDimensions({ ...space, ...patch }, options),
+      { host, guest: 'unknown', save: 'idle', freshness, appDomain: 'unknown' })
+  }
+  assert.equal(model.statusDimensions({ ...demo(), freshness: null }).freshness, null)
+})
+
+for (const [name, message] of [
+  ['boot-load text', 'Handled boot entry load warning; retry succeeded'],
+  ['repeated ordinary errors', 'Handled validation error']
+]) {
+  test(`Q04 ${name} never stops a loaded guest`, async () => {
+    setup()
+    const calls = []
+    const props = spaceProps(body => { calls.push(body); return { ok: true, result: { stored: 0 } } })
+    try {
+      await render(SpaceView, props)
+      await act(async () => mounted.call('log', q04Log('loaded')))
+      const activeMount = mounted
+      const header = document.querySelector('.ls-frame-meta').textContent
+      await act(async () => activeMount.call('data.put', { collection: 'notes', data: { note: 'Kept' } }))
+      for (let repeat = 0; repeat < 4; repeat++) {
+        await act(async () => activeMount.onEvent({ kind: 'error', message, phase: 'runtime', fatal: true }))
+        assert.ok(document.querySelector('[data-testid="space-host"]'), `guest survives console error ${repeat + 1}`)
+        assert.doesNotMatch(document.body.textContent, /Demo stopped working|uncaught error/)
+      }
+      assert.equal(document.querySelector('.ls-frame-meta').textContent, header)
+      assert.match(document.querySelector('.ls-save').textContent, /Saved /)
+      assert.deepEqual(calls.map(call => call.op), ['log', 'data.put'])
+      q04Guest('loaded')
+      q04DomainUnknown()
+    } finally { await act(async () => view.unmount()) }
+  })
+}
+
+test('Q04 an uncaught guest fault after first paint raises runtime attention without stopping the app', async () => {
+  setup()
+  const calls = []
+  try {
+    await render(SpaceView, spaceProps(body => { calls.push(body); return { ok: true, result: { stored: 0 } } }))
+    const activeMount = mounted
+    await act(async () => activeMount.call('log', q04Log('loaded')))
+    await act(async () => activeMount.call('data.put', { collection: 'notes', data: { note: 'Kept' } }))
+    await act(async () => activeMount.onEvent({ kind: 'fault', count: 1 }))
+    assert.ok(document.querySelector('[data-testid="space-host"]'), 'the app stays mounted')
+    assert.match(document.body.textContent, /uncaught error/)
+    assert.doesNotMatch(document.body.textContent, /Demo stopped working/)
+    assert.match(document.body.textContent, /Available/)
+    assert.match(document.querySelector('.ls-save').textContent, /Saved /)
+    q04Guest('faulted')
+    q04DomainUnknown()
+    await act(async () => activeMount.call('log', q04Log('loaded')))
+    q04Guest('faulted')
+  } finally { await act(async () => view.unmount()) }
+})
+
+test('Q04 a later boot failure supersedes a runtime fault', async () => {
+  setup()
+  try {
+    await render(SpaceView, spaceProps(body => ({ ok: true, result: { stored: body.args.entries?.length || 0 } })))
+    const activeMount = mounted
+    await act(async () => activeMount.onEvent({ kind: 'fault', count: 1 }))
+    q04Guest('faulted')
+    await act(async () => activeMount.call('log', q04Log('failed', [{ level: 'error', msg: 'Evaluation refused' }])))
+    assert.match(document.body.textContent, /Demo stopped working/)
+    q04Guest('failed')
+    await act(async () => activeMount.onEvent({ kind: 'fault', count: 2 }))
+    q04Guest('failed')
+  } finally { await act(async () => view.unmount()) }
+})
+
+test('Q04 session creation and shell boot do not claim guest loaded or app readiness', async () => {
+  setup()
+  try {
+    await render(SpaceView, spaceProps())
+    assert.ok(mounted, 'session creation reached the mount seam')
+    assert.match(document.body.textContent, /Available/)
+    assert.doesNotMatch(document.body.textContent, /\bReady\b|(?:guest|application|runtime)[^.!?\n]{0,60}\bloaded\b/i)
+    q04Guest('(?:unknown|starting)')
+    await act(async () => mounted.onEvent({ kind: 'booted' }))
+    q04Guest('starting')
+    assert.doesNotMatch(document.body.textContent, /(?:guest|application|runtime)[^.!?\n]{0,60}\bloaded\b/i)
+    q04DomainUnknown()
+    await act(async () => mounted.call('log', q04Log('loaded')))
+    q04Guest('loaded')
+    q04DomainUnknown()
+    assert.doesNotMatch(document.body.textContent, /\bReady\b/i)
+  } finally { await act(async () => view.unmount()) }
+})
+
+test('Q04 mount lifecycle failed supersedes loaded and stays failed after loaded', async () => {
+  setup()
+  const calls = []
+  try {
+    await render(SpaceView, spaceProps(body => { calls.push(body); return { ok: true, result: { stored: body.args.entries?.length || 0 } } }))
+    const activeMount = mounted
+    await act(async () => activeMount.call('log', q04Log('loaded')))
+    assert.ok(document.querySelector('[data-testid="space-host"]'))
+    await act(async () => activeMount.call('log', q04Log('failed', [{ level: 'error', msg: 'Evaluation refused' }])))
+    assert.deepEqual(calls.map(call => call.args.lifecycle), ['loaded', 'failed'], 'real mount calls reached the bridge')
+    assert.match(document.body.textContent, /Demo stopped working/)
+    q04Guest('failed')
+    assert.match(document.body.textContent, /Available/)
+    await act(async () => activeMount.call('log', q04Log('loaded')))
+    q04Guest('failed')
+    assert.match(document.body.textContent, /Demo stopped working/)
+  } finally { await act(async () => view.unmount()) }
+})
+
+test('Q04 error log entries without lifecycle do not fail a loaded guest', async () => {
+  setup()
+  const calls = []
+  try {
+    await render(SpaceView, spaceProps(body => { calls.push(body); return { ok: true, result: { stored: body.args.entries.length } } }))
+    await act(async () => mounted.call('log', q04Log('loaded')))
+    const entries = Array.from({ length: 4 }, () => ({ level: 'error', msg: 'Handled boot load failure' }))
+    await act(async () => mounted.call('log', q04Log(null, entries)))
+    assert.deepEqual(calls.map(call => call.args), [q04Log('loaded'), { entries }])
+    assert.ok(document.querySelector('[data-testid="space-host"]'))
+    assert.doesNotMatch(document.body.textContent, /Demo stopped working/)
+    q04Guest('loaded')
+  } finally { await act(async () => view.unmount()) }
+})
+
+test('Q04 old mount events and lifecycle replies cannot change the replacement view', async () => {
+  setup()
+  let releaseOld
+  const props = spaceProps(body => body.op === 'log' && body.args.lifecycle === 'failed'
+    ? new Promise(resolve => { releaseOld = resolve }) : { ok: true, result: { stored: 0 } })
+  try {
+    await render(SpaceView, { ...props, scopeKey: 'old' })
+    const oldMount = mounted
+    let pending
+    await act(async () => { pending = oldMount.call('log', q04Log('failed')) })
+    assert.equal(typeof releaseOld, 'function', 'old request reached transport before replacement')
+    await render(SpaceView, { ...props, scopeKey: 'replacement' })
+    assert.notEqual(mounted, oldMount)
+    await act(async () => mounted.call('log', q04Log('loaded')))
+    await act(async () => {
+      oldMount.onEvent({ kind: 'fault', count: 1 })
+      oldMount.onEvent({ kind: 'booted' })
+      releaseOld({ ok: true, result: { stored: 0 } })
+      await pending
+      await oldMount.call('log', q04Log('failed'))
+    })
+    assert.ok(document.querySelector('[data-testid="space-host"]'))
+    assert.doesNotMatch(document.body.textContent, /Demo stopped working|uncaught error/)
+    q04Guest('loaded')
+    q04DomainUnknown()
+  } finally {
+    releaseOld?.({ ok: true, result: { stored: 0 } })
+    await act(async () => view.unmount())
+  }
+})
+
+test('Q04 loaded guest and failed save preserve authoritative failed-refresh freshness', async () => {
+  setup()
+  const props = spaceProps()
+  data.detail = { ...data.detail, freshness: { ...data.detail.freshness, last_attempt_status: 'failed', last_attempt_at: 1794312000 },
+    recent_runs: [{ id: 'q04-refresh', status: 'failed', error: 'Source unavailable' }] }
+  const freshness = structuredClone(data.detail.freshness)
+  try {
+    await render(SpaceView, props)
+    const header = document.querySelector('.ls-frame-meta').textContent
+    await act(async () => mounted.call('log', q04Log('loaded')))
+    await act(async () => mounted.onEvent(rejected('data.put')))
+    assert.match(document.querySelector('.ls-save').textContent, /Not saved/)
+    assert.match(document.body.textContent, /Refresh failed/)
+    assert.match(document.body.textContent, /Source unavailable/)
+    assert.equal(document.querySelector('.ls-frame-meta').textContent, header)
+    assert.deepEqual(data.detail.freshness, freshness)
+    assert.ok(document.querySelector('[data-testid="space-host"]'))
+    assert.match(document.body.textContent, /Available/)
+    q04Guest('loaded')
+    q04DomainUnknown()
+  } finally { await act(async () => view.unmount()) }
+})
+
+test('Q04 revision compatibility requires positive integer versions on both sides', () => {
+  assert.equal(typeof model.revisionCompatibility, 'function')
+  const revision = version => ({ manifest: { data: { version } } })
+  assert.equal(model.revisionCompatibility({ data_version: 3 }, revision(3)), 'compatible')
+  assert.equal(model.revisionCompatibility({ data_version: 3 }, revision(1)), 'incompatible')
+  assert.equal(model.revisionCompatibility({ data_version: 1 }, revision(3)), 'incompatible')
+  for (const version of [undefined, null, 0, -1, 1.5, '3', true, NaN, Infinity]) {
+    assert.equal(model.revisionCompatibility({ data_version: version }, revision(3)), 'unknown', `current ${String(version)}`)
+    assert.equal(model.revisionCompatibility({ data_version: 3 }, revision(version)), 'unknown', `target ${String(version)}`)
+  }
+  assert.equal(model.revisionCompatibility({}, {}), 'unknown')
+})
+
+test('Q04 incompatible revision displays both versions and offers no mutation', async () => {
+  setup()
+  data.revisions = [{ rev: 1, summary: 'Version one code', manifest: { data: { version: 1 } } }]
+  const calls = []
+  try {
+    await render(HistorySheet, { space: { ...demo(), data_version: 3 }, initialTab: 'revisions', onClose() {}, onChanged() {},
+      ctx: { rest: async (path, options) => { calls.push({ path, options }); return {} } } })
+    const row = document.querySelector('article.ls-row')
+    assert.ok(row)
+    const restore = [...row.querySelectorAll('button')].find(button => /Restore/.test(button.textContent))
+    if (restore) await act(async () => restore.click())
+    assert.equal(document.querySelector('[role="alertdialog"]'), null, 'known incompatible code cannot open a restore confirmation')
+    assert.deepEqual(calls, [])
+    assert.match(row.textContent, /incompatible/i)
+    assert.match(row.textContent, /current data version\s*3/i)
+    assert.match(row.textContent, /target data version\s*1/i)
+    assert.match(document.body.textContent, /(?:no|not supported|unsupported|cannot)[\s\S]{0,100}(?:cross.version|migration|restore)|(?:cross.version|migration)[\s\S]{0,100}(?:not supported|unsupported|cannot)/i)
+    assert.doesNotMatch(document.body.textContent, /Restore recovery point/i)
+  } finally { await act(async () => view.unmount()) }
+})
+
+test('Q04 compatible revision restore explains code-only and unsupported migration undo', async () => {
+  setup()
+  data.revisions = [{ rev: 1, summary: 'Earlier code', manifest: { data: { version: 3 } } }]
+  const calls = []
+  let changed = 0
+  try {
+    await render(HistorySheet, { space: { ...demo(), data_version: 3 }, initialTab: 'revisions', onClose() {}, onChanged() { changed++ },
+      ctx: { rest: async (path, options) => { calls.push({ path, method: options?.method }); return { rev: 3 } } } })
+    assert.match(document.querySelector('article.ls-row').textContent, /\bcompatible\b/i)
+    await click('Restore…')
+    assert.deepEqual(calls, [])
+    const dialog = document.querySelector('[role="alertdialog"]')
+    assert.ok(dialog)
+    assert.match(dialog.textContent, /earlier code.*new revision 3/i)
+    assert.match(dialog.textContent, /records, notes and statuses stay as they are now/i)
+    assert.match(document.body.textContent, /(?:migration|downgrade)[\s\S]{0,60}(?:not supported|unsupported|cannot|not undone)|(?:no|cannot|not supported)[\s\S]{0,60}(?:migration|downgrade)/i)
+    assert.doesNotMatch(document.body.textContent, /Restore recovery point/i)
+    await click('Restore as new revision')
+    assert.deepEqual(calls, [{ path: '/spaces/demo-space/revisions/1/restore', method: 'POST' }])
+    assert.equal(changed, 1)
+    assert.equal(data.refetches, 1)
+  } finally { await act(async () => view.unmount()) }
+})
+
+test('Q04 unknown revision compatibility stays explicit and backend refusal remains authoritative', async () => {
+  setup()
+  data.revisions = [{ rev: 1, summary: 'Manifest unavailable' }]
+  const calls = []
+  try {
+    await render(HistorySheet, { space: { ...demo(), data_version: 3 }, initialTab: 'revisions', onClose() {}, onChanged() {},
+      ctx: { rest: async path => { calls.push(path); throw { error: { code: 'incompatible', message: 'Data versions differ', from_version: 3, to_version: 1 } } } } })
+    assert.match(document.querySelector('article.ls-row').textContent, /(?:compatibility[^.!?\n]{0,40}unknown|unknown[^.!?\n]{0,40}compatibility)/i)
+    await click('Restore…')
+    await click('Restore as new revision')
+    assert.deepEqual(calls, ['/spaces/demo-space/revisions/1/restore'])
+    const alert = document.querySelector('[role="alert"]').textContent
+    assert.match(alert, /current data version 3/i)
+    assert.match(alert, /target data version 1/i)
+    assert.match(alert, /current code and records are unchanged/i)
+  } finally { await act(async () => view.unmount()) }
+})
+
+for (const [version, expected] of [[1, 'incompatible'], [2, 'compatible'], [null, 'unknown']]) {
+  test(`Q04 actual recovery point metadata is ${expected} without offering data undo`, async () => {
+    setup()
+    data.revisions = [{ rev: 2, summary: 'Current code', manifest: { data: { version: 2 } } }]
+    data['recovery-points'] = [{ id: 7, head_rev: 1, data_version: version, reason: 'Before migration', created_at: 1700000000 }]
+    const calls = []
+    try {
+      await render(HistorySheet, { space: { ...demo(), data_version: 2 }, initialTab: 'revisions', onClose() {}, onChanged() {},
+        ctx: { rest: async (...args) => { calls.push(args); return {} } } })
+      const point = document.querySelector('[data-testid="recovery-point-7"]')
+      assert.ok(point, 'Real recovery metadata needs its own row, not a renamed revision')
+      assert.match(point.textContent, new RegExp(`Compatibility: ${expected}\\b`, 'i'))
+      assert.match(point.textContent, /Before migration/)
+      assert.match(point.textContent, /code revision 1/i)
+      assert.match(point.textContent, /(?:no data restore|data restore is not supported)/i)
+      assert.equal(point.querySelectorAll('button').length, 0)
+      assert.deepEqual(calls, [])
+      if (expected === 'incompatible') {
+        assert.match(point.textContent, /current data version 2/i)
+        assert.match(point.textContent, /point data version 1/i)
+        assert.match(point.textContent, /cross-version restore is not supported/i)
+      }
+    } finally { await act(async () => view.unmount()) }
+  })
+}

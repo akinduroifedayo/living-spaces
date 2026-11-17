@@ -175,6 +175,35 @@ test('script failure reports failed with its existing loader message even after 
   assert.equal(report.args.dropped, 12)
 })
 
+test('uncaught errors after load report a cumulative fault count; handled console errors do not', async () => {
+  const script = { attributes: [{ name: 'type', value: 'module' }], type: 'module', textContent: 'export {}', remove() {} }
+  const f = loaderFixture([{ path: 'index.html', mime: 'text/html', text: '<main>Demo</main>' }], [script])
+  await tick()
+  f.document.body.children.at(-1).onload()
+  await tick()
+  f.timers[0].fn()
+  assert.equal(f.messages.at(-1).args.lifecycle, 'loaded')
+  assert.equal('faults' in f.messages.at(-1).args, false)
+  reply(f, f.messages.at(-1), { stored: 0 })
+  await tick()
+  vm.runInContext('console.error("handled validation error")', f.context)
+  f.timers[0].fn()
+  assert.equal('faults' in f.messages.at(-1).args, false, 'console.error alone is not a fault')
+  reply(f, f.messages.at(-1), { stored: 1 })
+  await tick()
+  f.events.get('error')({ error: new Error('render crashed'), message: 'render crashed', filename: 'app.js', lineno: 3 })
+  f.events.get('unhandledrejection')({ reason: 'lost promise' })
+  f.timers[0].fn()
+  const report = f.messages.at(-1)
+  assert.equal(report.args.faults, 2)
+  assert.equal(report.args.entries.length, 2)
+  reply(f, report, { stored: 2 })
+  await tick()
+  const sent = f.messages.length
+  f.timers[0].fn()
+  assert.equal(f.messages.length, sent, 'an acknowledged fault count is not resent')
+})
+
 test('throttled batches retain lifecycle and cumulative dropped counts until acknowledged', async () => {
   const f = loaderFixture()
   await tick()

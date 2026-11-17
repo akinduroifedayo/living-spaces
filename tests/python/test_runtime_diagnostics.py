@@ -72,7 +72,7 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         result = self.diagnostics(level="error", limit=1)
         self.assertEqual(result["entries"], [])
         self.assertEqual(result["summary"], {
-            "rev": 1, "opened": True, "sessions": 2, "loaded": 1, "failed": 1,
+            "rev": 1, "opened": True, "sessions": 2, "loaded": 0, "failed": 2,
             "unreported": 0, "errors": 1, "warnings": 1, "dropped": 11, "unconfirmed": 4,
         })
 

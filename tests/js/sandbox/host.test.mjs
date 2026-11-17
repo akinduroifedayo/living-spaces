@@ -452,14 +452,28 @@ test('host forwards lifecycle and loss metadata and explicitly acknowledges thro
   } finally { f.cleanup() }
 })
 
+test('host turns a rising guest fault count into one typed event and never forwards it', async () => {
+  const f = fixture(async (op, args) => ({ ok: true, result: { stored: args.entries.length } }))
+  try {
+    f.frame.peer.postMessage(request({ id: 95, op: 'log', args: { entries: [{ level: 'error', msg: 'boom' }], faults: 1 } }))
+    await until(() => f.replies.length === 1)
+    assert.deepEqual(f.calls, [['log', { entries: [{ level: 'error', msg: 'boom' }] }]])
+    assert.deepEqual(f.events.filter(e => e.kind === 'fault'), [{ kind: 'fault', count: 1 }])
+    await new Promise(resolve => setTimeout(resolve, 520))
+    f.frame.peer.postMessage(request({ id: 96, op: 'log', args: { entries: [], faults: 1 } }))
+    await until(() => f.replies.length === 2)
+    assert.equal(f.events.filter(e => e.kind === 'fault').length, 1, 'an unchanged count raises nothing new')
+  } finally { f.cleanup() }
+})
+
 test('host rejects invalid lifecycle and loss metadata before dispatch', async () => {
   const f = fixture()
   try {
     for (const [index, metadata] of [{ lifecycle: 'ready' }, { lifecycle: null }, { dropped: -1 },
-      { dropped: Number.MAX_SAFE_INTEGER + 1 }, { unconfirmed: true }].entries()) {
+      { dropped: Number.MAX_SAFE_INTEGER + 1 }, { unconfirmed: true }, { faults: -1 }, { faults: 'many' }].entries()) {
       f.frame.peer.postMessage(request({ id: 100 + index, op: 'log', args: { entries: [], ...metadata } }))
     }
-    await until(() => f.replies.length === 5)
+    await until(() => f.replies.length === 7)
     assert.equal(f.calls.length, 0)
     assert.ok(f.replies.every(reply => reply.error.code === 'invalid'))
   } finally { f.cleanup() }

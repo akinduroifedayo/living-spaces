@@ -2,6 +2,11 @@ import { spacePath } from './model.mjs'
 import { createBotActions, profileRoute } from './actions.mjs'
 
 const errorCode = error => [error?.error?.code, error?.body?.error?.code, error?.message, String(error)].filter(Boolean).join(' ')
+const freezeDraft = value => {
+  if (value && typeof value === 'object') { Object.values(value).forEach(freezeDraft); Object.freeze(value) }
+  return value
+}
+const requestId = () => 'write_' + Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
 
 export function createSpaceSession({ rest, backend, sid, container, mount, onEvent, host, onAction = () => {}, onWrite = () => {}, onCloseError = error => console.warn('Space session cleanup failed', error) }) {
   const base = spacePath(sid)
@@ -21,8 +26,9 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
   let nextWrite = 0
   let pendingWrites = 0
   const failures = new Map()
+  const attempts = new Map()
   const retries = new Map()
-  const publish = event => onWrite(failures.values().next().value || (pendingWrites ? { status: 'saving' } : event))
+  const publish = event => { if (!closed && active()) onWrite(failures.values().next().value || (pendingWrites ? { status: 'saving' } : event)) }
   const actions = host ? createBotActions({ host, backend: scope, isActive: () => !closed && active(),
     post: (operation, body) => scopedRequest(`${base}/actions/${operation}`, { method: 'POST', body: { ...body, session } }),
     onStatus: status => {
@@ -56,16 +62,57 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     })().catch(error => { closePromise = null; throw error })
     return closePromise
   }
+  const invalidSession = () => ({ ok: false, error: { code: 'session_invalid', message: 'This Space session is closed' } })
+  const send = async body => {
+    try {
+      return await scopedRequest(`${base}/bridge`, { method: 'POST', body })
+    } catch (error) {
+      const reply = error?.body || error
+      if (reply?.outcome?.status) return reply
+      return { ok: false, error: { code: 'unavailable', message: error.message || String(error) }, outcome: { status: 'unknown' } }
+    }
+  }
+  const finishWrite = (attempt, reply, lookup = false) => {
+    const certainty = reply?.outcome?.status
+    const saved = reply?.ok === true && (certainty == null || ['success', 'confirmed'].includes(certainty)) && (!lookup || ['success', 'confirmed'].includes(certainty))
+    const status = certainty === 'unknown' || (lookup && !saved) ? 'unknown' : saved ? 'saved' : certainty !== 'busy' && reply?.error?.code === 'conflict' ? 'conflict' : 'failed'
+    attempt.unknown = status === 'unknown'
+    if (saved) attempt.confirmed = reply
+    const retry = next => {
+      if (closed || !active()) return Promise.resolve(invalidSession())
+      if (retries.has(attempt.token)) return retries.get(attempt.token)
+      const current = attempts.get(attempt.token) || attempt
+      if (current.confirmed) return Promise.resolve(current.confirmed)
+      const promise = (current.unknown ? reconcile(current) : call(current.op, next || current.args, current.token))
+        .finally(() => retries.delete(attempt.token))
+      retries.set(attempt.token, promise)
+      return promise
+    }
+    const event = { status, token: attempt.token, op: attempt.op, args: attempt.args, reply, at: Date.now() / 1000, retry }
+    if (saved) failures.delete(attempt.token)
+    else failures.set(attempt.token, event)
+    publish(event)
+  }
+  const reconcile = async attempt => {
+    if (closed || !active()) return invalidSession()
+    pendingWrites++
+    const reply = await send({ session: attempt.session, op: 'outcome.get', args: { request_id: attempt.request_id } })
+    pendingWrites--
+    if (closed || !active()) return invalidSession()
+    finishWrite(attempt, reply, true)
+    return reply
+  }
   const call = async (op, args, retryToken) => {
-    if (closed || !active()) return { ok: false, error: { code: 'session_invalid', message: 'This Space session is closed' } }
+    if (closed || !active()) return invalidSession()
     if (op === 'bot.request') {
       if (!actions) return { ok: false, error: { code: 'blocked', message: 'Native bot actions are unavailable' } }
       const result = await actions.request(args)
-      if (closed || !active()) return { ok: false, error: { code: 'session_invalid', message: 'This Space session is closed' } }
+      if (closed || !active()) return invalidSession()
       return { ok: true, result }
     }
     const writing = ['data.put', 'data.delete', 'data.batch'].includes(op)
-    if (writing && retryToken == null) {
+    let attempt
+    if (writing) {
       args = structuredClone(args)
       const identify = put => {
         if (put.id == null) {
@@ -73,34 +120,17 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
           put.base_rev = 0
         }
       }
-      if (op === 'data.put') identify(args)
-      if (op === 'data.batch' && Array.isArray(args.ops)) args.ops.forEach(item => { if (item?.op === 'put') identify(item) })
+      if (retryToken == null && op === 'data.put') identify(args)
+      if (retryToken == null && op === 'data.batch' && Array.isArray(args.ops)) args.ops.forEach(item => { if (item?.op === 'put') identify(item) })
+      attempt = { token: retryToken ?? ++nextWrite, op, args: freezeDraft(args), session, request_id: requestId(), unknown: false }
+      attempts.set(attempt.token, attempt)
+      pendingWrites++
+      publish({ status: 'saving', op, args })
     }
-    const token = retryToken ?? ++nextWrite
-    if (writing) { pendingWrites++; publish({ status: 'saving', op, args }) }
-    let reply
-    let unknown = false
-    try {
-      reply = await scopedRequest(`${base}/bridge`, { method: 'POST', body: { session, op, args } })
-    } catch (error) {
-      unknown = true
-      reply = { ok: false, error: { code: 'unavailable', message: error.message || String(error) } }
-    }
-    if (closed || !active()) return { ok: false, error: { code: 'session_invalid', message: 'This Space session is closed' } }
-    if (writing) {
-      pendingWrites--
-      const retry = next => {
-        if (retries.has(token)) return retries.get(token)
-        const promise = call(op, next || args, token).finally(() => retries.delete(token))
-        retries.set(token, promise)
-        return promise
-      }
-      unknown ||= failures.get(token)?.status === 'unknown'
-      const event = { status: reply.ok ? 'saved' : reply.error?.code === 'conflict' ? 'conflict' : unknown ? 'unknown' : 'failed', token, op, args, reply, at: Date.now() / 1000, retry }
-      if (reply.ok) failures.delete(token)
-      else failures.set(token, event)
-      publish(event)
-    }
+    const reply = await send({ session, op, args, ...(attempt ? { request_id: attempt.request_id } : {}) })
+    if (writing) pendingWrites--
+    if (closed || !active()) return invalidSession()
+    if (attempt) finishWrite(attempt, reply)
     return reply
   }
   const ready = (async () => {
