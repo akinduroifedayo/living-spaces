@@ -10,6 +10,7 @@ provides_middleware: []
 provides_tools:
   - spaces_list
   - spaces_get
+  - spaces_retention
   - spaces_create
   - spaces_bind_maintainer
   - spaces_read_file

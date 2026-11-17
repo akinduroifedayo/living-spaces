@@ -205,6 +205,8 @@ def connect() -> sqlite3.Connection:
                 add_runtime_diagnostics(conn)
                 from . import maintenance
                 maintenance.initialize(conn)
+                from . import storage
+                storage.initialize(conn)
                 conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 conn.execute("COMMIT")
                 _initialized.add(key)

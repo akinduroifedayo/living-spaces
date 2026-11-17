@@ -1,6 +1,6 @@
 // src/desktop/plugin.src.js
 import { ROUTES_AREA, SIDEBAR_NAV_AREA, TRANSCRIPT_DIRECTIVE_AREA, ErrorState as ErrorState6, host as host4, useQuery as useQuery6 } from "@hermes/plugin-sdk";
-import { useEffect as useEffect3, useState as useState7 } from "react";
+import { useEffect as useEffect4, useState as useState7 } from "react";
 import { jsx as jsx7, jsxs as jsxs7 } from "react/jsx-runtime";
 
 // src/desktop/ui/index.jsx
@@ -441,11 +441,11 @@ function SpacesIndex({ ctx, scopeKey = null }) {
 
 // src/desktop/ui/space.jsx
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery5 } from "@hermes/plugin-sdk";
-import { useEffect as useEffect2, useLayoutEffect, useMemo, useRef as useRef4, useState as useState6 } from "react";
+import { useEffect as useEffect3, useLayoutEffect, useMemo, useRef as useRef5, useState as useState6 } from "react";
 
 // src/desktop/ui/history.jsx
 import { Badge as Badge2, EmptyState as EmptyState2, ErrorState as ErrorState2, Skeleton as Skeleton2, Tabs, TabsList, TabsTrigger, useQuery as useQuery2 } from "@hermes/plugin-sdk";
-import { useState as useState3 } from "react";
+import { useEffect, useRef as useRef2, useState as useState3 } from "react";
 import { Fragment as Fragment3, jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
 function RunRow({ run }) {
   const duration = run.ended_at != null && run.started_at != null ? `${Math.max(0, run.ended_at - run.started_at).toFixed(1)} s` : run.status === "queued" ? "Not started" : run.status === "running" ? "In progress" : "No duration reported";
@@ -523,6 +523,7 @@ function HistorySheet({ ctx, scopeKey = null, space, onClose, onChanged, initial
   const restoreCompatibility = revisionCompatibility(space, revisions.data?.find((row) => row.rev === restore));
   return /* @__PURE__ */ jsxs3(Fragment3, { children: [
     /* @__PURE__ */ jsxs3(Drawer, { title: "History & revisions", description: `History and code revisions for ${space.name}`, onClose, returnFocus, children: [
+      /* @__PURE__ */ jsx3(StorageSection, { ctx, space, onChanged }, `${scopeKey}:${space.id}`),
       /* @__PURE__ */ jsx3(Tabs, { value: tab, onValueChange: setTab, className: "ls-tabs", children: /* @__PURE__ */ jsxs3(TabsList, { "aria-label": "History & revisions", children: [
         /* @__PURE__ */ jsx3(TabsTrigger, { id: "ls-runs-tab", "aria-controls": "ls-runs-panel", value: "runs", children: "Run history" }),
         /* @__PURE__ */ jsx3(TabsTrigger, { id: "ls-revisions-tab", "aria-controls": "ls-revisions-panel", value: "revisions", children: "Revisions" })
@@ -546,10 +547,147 @@ function HistorySheet({ ctx, scopeKey = null, space, onClose, onChanged, initial
     } })
   ] });
 }
+function StorageNotice({ storage, onReview }) {
+  if (!storage?.warnings?.length) return null;
+  return /* @__PURE__ */ jsxs3("div", { role: "status", children: [
+    /* @__PURE__ */ jsx3("strong", { children: "Storage approaching a limit" }),
+    storage.warnings.map((row) => /* @__PURE__ */ jsxs3("p", { children: [
+      row.resource,
+      ": ",
+      row.used,
+      " / ",
+      row.limit
+    ] }, row.resource)),
+    onReview && /* @__PURE__ */ jsx3(Action, { onClick: onReview, children: "Review storage" })
+  ] });
+}
+function StorageSection({ ctx, space, onChanged }) {
+  const [categories, setCategories] = useState3(["revisions", "logs", "runs"]);
+  const [before, setBefore] = useState3(() => new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10));
+  const [proposal, setProposal] = useState3(null);
+  const [confirming, setConfirming] = useState3(false);
+  const [busy, setBusy] = useState3(false);
+  const [error, setError] = useState3("");
+  const [receipt, setReceipt] = useState3(null);
+  const lifetime = useRef2(null);
+  useEffect(() => {
+    const current = { active: true };
+    lifetime.current = current;
+    return () => {
+      current.active = false;
+    };
+  }, [ctx, space.id]);
+  const storage = space.storage;
+  if (!storage) return null;
+  const base = spacePath(space.id);
+  const reset = () => {
+    setProposal(null);
+    setReceipt(null);
+    setError("");
+  };
+  async function preview() {
+    if (busy) return;
+    const request = lifetime.current;
+    setBusy(true);
+    reset();
+    try {
+      const result = await ctx.rest(`${base}/retention/propose`, { method: "POST", body: { scope: { categories, before: (/* @__PURE__ */ new Date(`${before}T00:00:00Z`)).getTime() / 1e3 } } });
+      if (request?.active) setProposal(result);
+    } catch (failure2) {
+      if (request?.active) setError(errorText(failure2));
+    } finally {
+      if (request?.active) setBusy(false);
+    }
+  }
+  return /* @__PURE__ */ jsxs3("section", { "aria-label": "Storage", children: [
+    /* @__PURE__ */ jsx3("h3", { children: "Storage" }),
+    /* @__PURE__ */ jsx3(StorageNotice, { storage }),
+    /* @__PURE__ */ jsx3("ul", { children: Object.entries(storage.categories).map(([name, row]) => /* @__PURE__ */ jsxs3("li", { children: [
+      name,
+      ": ",
+      row.count,
+      " \xB7 ",
+      row.bytes,
+      " bytes",
+      row.fields != null && ` \xB7 ${row.fields} source fields`,
+      row.source_details != null && ` \xB7 ${row.source_details} source run details`
+    ] }, name)) }),
+    /* @__PURE__ */ jsxs3("p", { className: "ls-secondary", children: [
+      storage.bytes_basis,
+      " Native history is native-owned, excluded from these counts and never deleted here. No automatic cleanup is scheduled."
+    ] }),
+    /* @__PURE__ */ jsxs3("details", { children: [
+      /* @__PURE__ */ jsx3("summary", { children: "Propose cleanup" }),
+      /* @__PURE__ */ jsx3("p", { children: "Choose categories and a cutoff. Preview lists the exact items to remove and protected work. This does not delete anything." }),
+      /* @__PURE__ */ jsxs3("fieldset", { disabled: busy, children: [
+        /* @__PURE__ */ jsx3("legend", { children: "Categories to review" }),
+        ["revisions", "records", "logs", "runs"].map((name) => /* @__PURE__ */ jsxs3("label", { children: [
+          /* @__PURE__ */ jsx3("input", { type: "checkbox", checked: categories.includes(name), onChange: (event) => {
+            reset();
+            setCategories(event.target.checked ? [...categories, name] : categories.filter((value) => value !== name));
+          } }),
+          name,
+          " "
+        ] }, name)),
+        /* @__PURE__ */ jsxs3("label", { children: [
+          "Older than UTC date ",
+          /* @__PURE__ */ jsx3("input", { type: "date", value: before, onChange: (event) => {
+            reset();
+            setBefore(event.target.value);
+          } })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsx3(Action, { disabled: busy || !categories.length || !before, "aria-busy": busy, onClick: preview, children: "Preview cleanup" }),
+      error && /* @__PURE__ */ jsx3("p", { role: "alert", children: error }),
+      receipt && /* @__PURE__ */ jsxs3("p", { role: "status", children: [
+        "Cleanup completed for ",
+        receipt.proposal_id,
+        ". Audit receipt ",
+        receipt.audit_id,
+        "."
+      ] }),
+      proposal && /* @__PURE__ */ jsxs3("div", { children: [
+        /* @__PURE__ */ jsxs3("p", { children: [
+          "Proposal ",
+          /* @__PURE__ */ jsx3("code", { style: { overflowWrap: "anywhere" }, children: proposal.id })
+        ] }),
+        proposal.truncated.length > 0 && /* @__PURE__ */ jsxs3("p", { children: [
+          "Bounded batch. More items remain in ",
+          proposal.truncated.join(", "),
+          ". Review a new proposal after this batch."
+        ] }),
+        ["remove", "protected"].map((kind) => /* @__PURE__ */ jsxs3("div", { children: [
+          /* @__PURE__ */ jsx3("h4", { children: kind === "remove" ? "Would remove" : "Protected, kept" }),
+          Object.entries(proposal[kind]).map(([name, rows]) => /* @__PURE__ */ jsxs3("details", { children: [
+            /* @__PURE__ */ jsxs3("summary", { children: [
+              name,
+              ": ",
+              rows.length
+            ] }),
+            /* @__PURE__ */ jsx3("ul", { children: rows.map((row, index) => /* @__PURE__ */ jsxs3("li", { style: { overflowWrap: "anywhere" }, children: [
+              row.collection ? `${row.collection}/` : "",
+              row.id ?? row.rev ?? row.sha,
+              row.reason ? ` \xB7 ${row.reason}` : ""
+            ] }, index)) })
+          ] }, name))
+        ] }, kind)),
+        /* @__PURE__ */ jsx3(Action, { danger: true, disabled: !Object.values(proposal.remove).some((rows) => rows.length), onClick: () => setConfirming(true), children: "Review deletion\u2026" })
+      ] })
+    ] }),
+    confirming && proposal && /* @__PURE__ */ jsx3(DecisionDialog, { danger: true, title: "Execute retention proposal?", description: `Permanently delete only the listed items in ${space.name} for proposal ${proposal.id}. Protected work and native history stay. Any changed state requires a new preview.`, confirmLabel: /* @__PURE__ */ jsx3("span", { style: { overflowWrap: "anywhere", whiteSpace: "normal" }, children: `Delete ${proposal.id}` }), onClose: () => setConfirming(false), onConfirm: async () => {
+      const request = lifetime.current;
+      const result = await ctx.rest(`${base}/retention/execute`, { method: "POST", body: { scope: proposal.scope, proposal_id: proposal.id, confirm: proposal.confirmation } });
+      if (!request?.active) return;
+      setReceipt(result);
+      setProposal(null);
+      await onChanged();
+    } })
+  ] });
+}
 
 // src/desktop/ui/permissions.jsx
 import { ErrorState as ErrorState3, Skeleton as Skeleton3, useQuery as useQuery3 } from "@hermes/plugin-sdk";
-import { useRef as useRef2, useState as useState4 } from "react";
+import { useRef as useRef3, useState as useState4 } from "react";
 import { Fragment as Fragment4, jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
 var NET_DESCRIPTION = "This Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.";
 var NET_OFF_DESCRIPTION = "This Space can't load content from or send data to the internet through Internet access.";
@@ -682,7 +820,7 @@ function PermissionsSheet({ ctx, scopeKey = null, space, onClose, onChanged, ret
   const busy = !!pending;
   const [feedback, setFeedback] = useState4("");
   const [error, setError] = useState4("");
-  const lock = useRef2(false);
+  const lock = useRef3(false);
   async function decide(grant, decision) {
     if (decision === "revoke" && grant.capability !== "net") {
       setRevoke(grant);
@@ -737,7 +875,7 @@ function PermissionsSheet({ ctx, scopeKey = null, space, onClose, onChanged, ret
 
 // src/desktop/ui/upkeep.jsx
 import { ErrorState as ErrorState4, Skeleton as Skeleton4, useQuery as useQuery4 } from "@hermes/plugin-sdk";
-import { useEffect, useRef as useRef3, useState as useState5 } from "react";
+import { useEffect as useEffect2, useRef as useRef4, useState as useState5 } from "react";
 import { Fragment as Fragment5, jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
 function UpkeepCost({ job, expanded = false, unavailable }) {
   if (job?.uses_model === false) return /* @__PURE__ */ jsx5("p", { children: "Refreshes from public sources. No model calls." });
@@ -779,8 +917,8 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
   const [fullError, setFullError] = useState5(false);
   const [fullPrompt, setFullPrompt] = useState5(false);
   const [visible, setVisible] = useState5(() => typeof document === "undefined" || !document.hidden);
-  const lock = useRef3(false);
-  const feedbackNode = useRef3(null);
+  const lock = useRef4(false);
+  const feedbackNode = useRef4(null);
   const query = useQuery4({
     queryKey: ["living-spaces", scopeKey, space.id, "upkeep"],
     queryFn: () => ctx.rest(`${base}/upkeep`),
@@ -799,12 +937,12 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
   const unavailable = !!data?.error || !!query.error || !!link && !job && !data?.missing;
   const blocked = archived || unavailable || !!busy;
   const cleanupBlocked = !data || unavailable || !!busy || archived && !hasRecovery;
-  useEffect(() => {
+  useEffect2(() => {
     const update = () => setVisible(!document.hidden);
     document.addEventListener("visibilitychange", update);
     return () => document.removeEventListener("visibilitychange", update);
   }, []);
-  useEffect(() => {
+  useEffect2(() => {
     if (data || query.error) {
       setSlow(false);
       return;
@@ -812,12 +950,12 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
     const timer = setTimeout(() => setSlow(true), 8e3);
     return () => clearTimeout(timer);
   }, [!!data, !!query.error]);
-  useEffect(() => {
+  useEffect2(() => {
     if (!recentAction) return;
     const timer = setTimeout(() => setRecentAction(0), 6e4);
     return () => clearTimeout(timer);
   }, [recentAction]);
-  useEffect(() => {
+  useEffect2(() => {
     if (!feedback || busy) return;
     const timer = setTimeout(() => setFeedback(""), 8e3);
     return () => clearTimeout(timer);
@@ -1592,7 +1730,7 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
 // src/desktop/ui/space.jsx
 import { Fragment as Fragment6, jsx as jsx6, jsxs as jsxs6 } from "react/jsx-runtime";
 function useHeaderMode(hasSpace) {
-  const frame = useRef4(null);
+  const frame = useRef5(null);
   const [mode, setMode] = useState6("narrow");
   useLayoutEffect(() => {
     const element = frame.current;
@@ -1657,15 +1795,15 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const [botAction, setBotAction] = useState6(null);
   const [refreshPending, setRefreshPending] = useState6(false);
   const [ready, setReady] = useState6(false);
-  const refreshLock = useRef4(null);
-  const refreshLifetime = useRef4(null);
-  const actionLock = useRef4(false);
-  const content = useRef4(null);
-  const overflow = useRef4(null);
-  const confirmationTrigger = useRef4(null);
-  const controller = useRef4(null);
-  const cursor = useRef4(0);
-  const seenRun = useRef4(null);
+  const refreshLock = useRef5(null);
+  const refreshLifetime = useRef5(null);
+  const actionLock = useRef5(false);
+  const content = useRef5(null);
+  const overflow = useRef5(null);
+  const confirmationTrigger = useRef5(null);
+  const controller = useRef5(null);
+  const cursor = useRef5(0);
+  const seenRun = useRef5(null);
   const grantsKey = JSON.stringify(space?.grants || []);
   const hasData = space?.grants?.some((grant) => grant.capability === "data" && grant.status === "granted") === true;
   const building = !space || space.status === "building" || !space.head_rev;
@@ -1674,7 +1812,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const status = crash || remoteCrash ? "crashed" : space ? spaceStatus(ignoredCrashRev === space.head_rev ? { ...space, attention: null } : space, true) : "building";
   const lastRun = space?.recent_runs?.[0];
   const runKey = JSON.stringify(lastRun || null);
-  useEffect2(() => {
+  useEffect3(() => {
     let disposed = false;
     ctx.rest(`${base}/opened`, { method: "POST" }).catch((e) => {
       if (!disposed) setActionError(`Could not mark this Space as opened. ${errorText(e)}`);
@@ -1695,7 +1833,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
       }
     };
   }, [ctx, openingSessionRest, connectionId, profile, scopeKey, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
-  useEffect2(() => {
+  useEffect3(() => {
     if (building || archived || crash || remoteCrash || !content.current) return;
     let disposed = false;
     cursor.current = 0;
@@ -1747,7 +1885,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
     };
   }, [ctx, openingSessionRest, connectionId, profile, scopeKey, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
   const changes = useQuery5({ queryKey: ["living-spaces", scopeKey, sid, "changes", space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 });
-  useEffect2(() => {
+  useEffect3(() => {
     if (!hasData || !ready || !changes.data || !controller.current) return;
     const page = advanceCursor(cursor.current, changes.data);
     if (page.changes.length) {
@@ -1755,7 +1893,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
       cursor.current = page.seq;
     }
   }, [hasData, ready, changes.data, changes.dataUpdatedAt]);
-  useEffect2(() => {
+  useEffect3(() => {
     if (!lastRun) return;
     if (ready) controller.current?.postEvent("run.updated", lastRun);
     if (seenRun.current && seenRun.current !== runKey && !inFlight(lastRun.status)) setAnnouncement(lastRun.status === "succeeded" ? `Refresh succeeded: ${runResult(lastRun)}` : `Refresh ${lastRun.status}: ${runResult(lastRun)}`);
@@ -1905,6 +2043,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
       dimensions.appDomain,
       "."
     ] }),
+    /* @__PURE__ */ jsx6(StorageNotice, { storage: space.storage, onReview: () => openHistory() }),
     botAction && /* @__PURE__ */ jsxs6(Banner, { kind: ["failed", "offline", "unknown"].includes(botAction.status) ? "failed" : void 0, title: `Bot request: ${botAction.status}`, actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
       /* @__PURE__ */ jsx6(Action, { onClick: () => controller.current?.checkAction(), children: "Check bot status" }),
       botAction.activationId && ["unknown", "failed", "offline"].includes(botAction.status) && /* @__PURE__ */ jsx6(Action, { onClick: () => controller.current?.retryAction(), children: "Retry same request" })
@@ -2019,7 +2158,7 @@ function useScopedContext(ctx) {
 function SpacesPage({ ctx }) {
   const scoped = useScopedContext(ctx);
   const [hash, setHash] = useState7(() => typeof location === "undefined" ? "" : location.hash);
-  useEffect3(() => {
+  useEffect4(() => {
     const changed = () => setHash(location.hash);
     window.addEventListener("hashchange", changed);
     return () => window.removeEventListener("hashchange", changed);

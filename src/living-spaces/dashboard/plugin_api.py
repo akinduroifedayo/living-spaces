@@ -203,6 +203,22 @@ async def revisions(space_id: str):
     return await _run(space_id, lambda core: core.list_revisions(space_id, files=False))
 
 
+@router.post("/spaces/{space_id}/retention/propose")
+async def retention_propose(space_id: str, body=Body(default=None)):
+    def action(core):
+        _body(core, body, ("scope",), ("scope",))
+        return core.propose_retention(space_id, body["scope"])
+    return await _run(space_id, action)
+
+
+@router.post("/spaces/{space_id}/retention/execute")
+async def retention_execute(space_id: str, body=Body(default=None)):
+    def action(core):
+        _body(core, body, ("scope", "proposal_id", "confirm"), ("scope", "proposal_id", "confirm"))
+        return core.execute_retention(space_id, **body, actor="user")
+    return await _run(space_id, action)
+
+
 @router.get("/spaces/{space_id}/recovery-points")
 async def recovery_points(space_id: str):
     return await _run(space_id, lambda core: core.records.list_recovery_points(space_id))

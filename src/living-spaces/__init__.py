@@ -306,6 +306,15 @@ def spaces_get(core, args, owner):
     return detail
 
 
+def spaces_retention(core, args, owner):
+    sid = _space(core, args)
+    scope = _json_arg(core, args, "scope", dict)
+    if "proposal_id" not in args and "confirm" not in args:
+        return core.propose_retention(sid, scope)
+    return core.execute_retention(sid, scope=scope, proposal_id=_text(core, args, "proposal_id"),
+                                  confirm=_text(core, args, "confirm"), actor="user:" + owner)
+
+
 def spaces_create(core, args, owner, maintainer=None):
     name = _text(core, args, "name")
     description = args.get("description", "")
@@ -483,8 +492,19 @@ TOOLS = [
     (spaces_get, _schema(
         "spaces_get",
         "Get one Space: manifest, file list, grants, collections with record counts, recent refresh runs, freshness, "
-        "upkeep (the linked Hermes cron job, or null) and recent error count. Read this before changing a Space's code or data." + REF_NOTE,
+        "upkeep (the linked Hermes cron job, or null), recent error count, and storage usage with approaching-cap warnings. Read this before changing a Space's code or data." + REF_NOTE,
         {"space": SPACE_ARG}, ["space"])),
+    (spaces_retention, _schema(
+        "spaces_retention",
+        "Preview explicit retention without changing data. scope names categories (revisions, records, logs, runs) "
+        "and before (Unix seconds). Returns exact items, protected work, and bounded batch information. "
+        "Delete only after the user explicitly authorizes that proposal: pass its unchanged scope, proposal_id "
+        "and exact confirmation string. Changed state refuses a stale proposal. No automatic deletion; "
+        "native jobs/history are excluded.",
+        {"space": SPACE_ARG, "scope": {"type": "object", "properties": {
+            "categories": {"type": "array", "items": {"type": "string", "enum": ["revisions", "records", "logs", "runs"]}},
+            "before": {"type": "number"}}, "required": ["categories", "before"], "additionalProperties": False},
+         "proposal_id": {"type": "string"}, "confirm": {"type": "string"}}, ["space", "scope"])),
     (spaces_create, _schema(
         "spaces_create",
         "Create a new Space (a multi-file sandboxed app in the Spaces tab) from a complete set of files. Read the "
