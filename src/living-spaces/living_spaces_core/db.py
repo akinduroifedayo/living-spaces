@@ -53,6 +53,11 @@ CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY, space TEXT NOT NULL, cr
   closed_at REAL, head_rev INTEGER NOT NULL, lifecycle TEXT,
   log_errors INTEGER NOT NULL DEFAULT 0, log_warnings INTEGER NOT NULL DEFAULT 0,
   log_dropped INTEGER NOT NULL DEFAULT 0, log_unconfirmed INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS editor_drafts(space TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+  editor TEXT NOT NULL, schema INTEGER NOT NULL, collection TEXT NOT NULL, record_id TEXT NOT NULL,
+  data_version INTEGER NOT NULL, payload TEXT NOT NULL, bytes INTEGER NOT NULL,
+  updated_at REAL NOT NULL, expires_at REAL NOT NULL,
+  PRIMARY KEY(space,editor,schema,collection,record_id));
 CREATE TABLE IF NOT EXISTS bridge_receipts(space TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
   space_created_at REAL NOT NULL, session TEXT NOT NULL, request_id TEXT NOT NULL,
   operation TEXT NOT NULL, fingerprint TEXT NOT NULL, confirmation TEXT NOT NULL, created_at REAL NOT NULL,

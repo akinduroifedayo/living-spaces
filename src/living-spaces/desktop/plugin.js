@@ -1397,6 +1397,11 @@ var OP_GRANT = Object.freeze({
   "data.put": "data",
   "data.delete": "data",
   "data.batch": "data",
+  "draft.get": "data",
+  "draft.put": "data",
+  "draft.delete": "data",
+  "editor.save": "data",
+  "outcome.get": "data",
   "bot.request": null,
   "link.open": null,
   refresh: null,
@@ -1442,6 +1447,7 @@ function requestError(message) {
   if (message.v !== BRIDGE_VERSION) return { code: "invalid", message: "unsupported bridge version" };
   if (!Number.isSafeInteger(message.id)) return { code: "invalid", message: "id must be an integer" };
   if (typeof message.op !== "string") return { code: "invalid", message: "op must be a string" };
+  if (message.op === "editor.save" && (typeof message.request_id !== "string" || !/^[A-Za-z0-9_.:-]{1,128}$/.test(message.request_id))) return { code: "invalid", message: "Editor saves require a request_id" };
   if (!message.args || typeof message.args !== "object" || Array.isArray(message.args)) return { code: "invalid", message: "args must be an object" };
   try {
     const actual = new TextEncoder().encode(JSON.stringify(message)).byteLength;
@@ -1548,7 +1554,7 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
       for (const key of ["lifecycle", "dropped", "unconfirmed"]) if (m.args[key] !== void 0) args[key] = m.args[key];
     }
     try {
-      const result = await call(m.op, args);
+      const result = m.op === "editor.save" ? await call(m.op, args, void 0, m.request_id) : await call(m.op, args);
       const revoked = checkGrant(m.op, grants);
       if (revoked && result.ok) reject(revoked);
       else reply(result);
@@ -1622,6 +1628,7 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
   let closePromise = null;
   let nextWrite = 0;
   let pendingWrites = 0;
+  let editorWrite = null;
   const failures = /* @__PURE__ */ new Map();
   const attempts = /* @__PURE__ */ new Map();
   const retries = /* @__PURE__ */ new Map();
@@ -1731,8 +1738,9 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
       retries.set(attempt.token, promise);
       return promise;
     };
-    const event = { status, token: attempt.token, op: attempt.op, args: attempt.args, reply, at: Date.now() / 1e3, retry };
-    if (saved) failures.delete(attempt.token);
+    const event = { ...attempt.op === "editor.save" ? { editorManaged: true } : {}, status, token: attempt.token, op: attempt.op, args: attempt.args, reply, at: Date.now() / 1e3, retry };
+    editorWrite = event.editorManaged ? attempt : null;
+    if (saved || event.editorManaged) failures.delete(attempt.token);
     else failures.set(attempt.token, event);
     publish(event);
   };
@@ -1745,7 +1753,7 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     finishWrite(attempt, reply, true);
     return reply;
   };
-  const call = async (op, args, retryToken) => {
+  const call = async (op, args, retryToken, editorRequestId) => {
     if (closed || !active()) return invalidSession();
     if (op === "link.open") return openLink(args);
     if (op === "bot.request") {
@@ -1754,7 +1762,7 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
       if (closed || !active()) return invalidSession();
       return { ok: true, result };
     }
-    const writing = ["data.put", "data.delete", "data.batch"].includes(op);
+    const writing = ["data.put", "data.delete", "data.batch", "editor.save"].includes(op);
     let attempt;
     if (writing) {
       args = structuredClone(args);
@@ -1768,7 +1776,7 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
       if (retryToken == null && op === "data.batch" && Array.isArray(args.ops)) args.ops.forEach((item) => {
         if (item?.op === "put") identify(item);
       });
-      attempt = { token: retryToken ?? ++nextWrite, op, args: freezeDraft(args), session, request_id: requestId(), unknown: false };
+      attempt = { token: retryToken ?? ++nextWrite, op, args: freezeDraft(args), session, request_id: op === "editor.save" ? editorRequestId : requestId(), unknown: false };
       attempts.set(attempt.token, attempt);
       pendingWrites++;
       publish({ status: "saving", op, args });
@@ -1777,6 +1785,13 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     if (writing) pendingWrites--;
     if (closed || !active()) return invalidSession();
     if (attempt) finishWrite(attempt, reply);
+    else if (editorWrite && args.editor === editorWrite.args.editor && args.schema === editorWrite.args.schema && args.collection === editorWrite.args.collection && args.id === editorWrite.args.id) {
+      if (op === "outcome.get" && args.request_id === editorWrite.request_id) finishWrite(editorWrite, reply, true);
+      else if (op === "draft.delete" && reply.ok) {
+        editorWrite = null;
+        publish(null);
+      }
+    }
     return reply;
   };
   const ready = (async () => {
@@ -1864,6 +1879,7 @@ function SaveStatus({ write, announcement }) {
 }
 function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
   if (!write || !["failed", "unknown", "conflict"].includes(write.status)) return null;
+  if (write.editorManaged) return /* @__PURE__ */ jsx6(Banner, { kind: write.status === "conflict" ? "conflict" : "failed", title: write.status === "unknown" ? "Save outcome unknown" : write.status === "conflict" ? "Changes conflict" : "Not saved", children: "Your draft is preserved. Continue in the app editor to resolve this save." });
   const current = write.reply?.error?.current;
   const canKeep = write.op === "data.put" && current?.rev != null;
   return /* @__PURE__ */ jsx6(

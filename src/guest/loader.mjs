@@ -147,11 +147,11 @@ export function spaceLoader(resolver) {
       Object.assign(this, error)
     }
   }
-  const send = (op, args) => new Promise((resolve, reject) => {
+  const send = (op, args, requestId) => new Promise((resolve, reject) => {
     if (closed) return reject(new SpaceError({ code: 'session_invalid', message: 'Space session is closed' }))
     const id = ++seq
-    pending.set(id, { resolve, reject })
-    port.postMessage({ v: 1, id, op, args })
+    pending.set(id, { resolve, reject, op })
+    port.postMessage({ v: 1, id, op, args, ...(requestId ? { request_id: requestId } : {}) })
   })
   const responseBlob = reply => {
     if (closed) throw new SpaceError({ code: 'session_invalid', message: 'Space session is closed' })
@@ -232,6 +232,15 @@ export function spaceLoader(resolver) {
   }, 510)
   const api = {
     meta: null,
+    drafts: {
+      get: key => send('draft.get', key),
+      put: args => send('draft.put', args),
+      delete: key => send('draft.delete', key)
+    },
+    editor: {
+      save: ({ request_id, ...args }) => send('editor.save', args, request_id),
+      outcome: args => send('outcome.get', args)
+    },
     query: async (collection, options = {}) => (await send('data.query', { ...options, collection })).records,
     queryPage: (collection, options = {}) => send('data.query', { ...options, collection, page: true }),
     get: (collection, id) => send('data.get', { collection, id }),
@@ -418,7 +427,8 @@ export function spaceLoader(resolver) {
       const request = pending.get(message.id)
       if (!request) return
       pending.delete(message.id)
-      message.ok ? request.resolve(message.result) : request.reject(new SpaceError(message.error))
+      const confirmed = message.ok && (request.op !== 'editor.save' || !message.outcome || ['success', 'confirmed'].includes(message.outcome.status))
+      confirmed ? request.resolve(message.result) : request.reject(new SpaceError({ ...(request.op === 'editor.save' ? { message: 'Save outcome unknown' } : {}), ...message.error, ...(message.outcome ? { outcome: message.outcome } : {}) }))
     }
     boot(e.data.bundle, e.data.grants).then(() => {
       lifecycle = 'loaded'

@@ -8,6 +8,11 @@ export const OP_GRANT = Object.freeze({
   'data.put': 'data',
   'data.delete': 'data',
   'data.batch': 'data',
+  'draft.get': 'data',
+  'draft.put': 'data',
+  'draft.delete': 'data',
+  'editor.save': 'data',
+  'outcome.get': 'data',
   'bot.request': null,
   'link.open': null,
   refresh: null,
@@ -50,6 +55,7 @@ function requestError(message) {
   if (message.v !== BRIDGE_VERSION) return { code: 'invalid', message: 'unsupported bridge version' }
   if (!Number.isSafeInteger(message.id)) return { code: 'invalid', message: 'id must be an integer' }
   if (typeof message.op !== 'string') return { code: 'invalid', message: 'op must be a string' }
+  if (message.op === 'editor.save' && (typeof message.request_id !== 'string' || !/^[A-Za-z0-9_.:-]{1,128}$/.test(message.request_id))) return { code: 'invalid', message: 'Editor saves require a request_id' }
   if (!message.args || typeof message.args !== 'object' || Array.isArray(message.args)) return { code: 'invalid', message: 'args must be an object' }
   try {
     const actual = new TextEncoder().encode(JSON.stringify(message)).byteLength
@@ -162,7 +168,7 @@ export function mountSpace(container, { bundle, grants = [], call, onEvent = () 
       for (const key of ['lifecycle', 'dropped', 'unconfirmed']) if (m.args[key] !== undefined) args[key] = m.args[key]
     }
     try {
-      const result = await call(m.op, args)
+      const result = m.op === 'editor.save' ? await call(m.op, args, undefined, m.request_id) : await call(m.op, args)
       const revoked = checkGrant(m.op, grants)
       if (revoked && result.ok) reject(revoked)
       else reply(result)

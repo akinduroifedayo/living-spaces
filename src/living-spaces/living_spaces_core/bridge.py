@@ -3,7 +3,7 @@ import hashlib
 import json
 import re
 
-from . import db, grants, limits, logs, net, records, runs, sessions
+from . import db, drafts, grants, limits, logs, net, records, runs, sessions
 from .errors import SpacesError
 
 _OPS = {
@@ -14,14 +14,18 @@ _OPS = {
     "data.put": ("data", {"collection", "data"}, {"id", "base_rev", "merge"}),
     "data.delete": ("data", {"collection", "id"}, {"base_rev"}),
     "data.batch": ("data", {"ops"}, set()),
-    "outcome.get": (None, {"request_id"}, set()),
+    "draft.get": ("data", {"editor", "schema", "collection", "id"}, set()),
+    "draft.put": ("data", {"editor", "schema", "collection", "id", "draft"}, set()),
+    "draft.delete": ("data", {"editor", "schema", "collection", "id"}, set()),
+    "editor.save": ("data", {"editor", "schema", "collection", "id", "data", "base_rev"}, set()),
+    "outcome.get": (None, {"request_id"}, {"editor", "schema", "collection", "id"}),
     "bot.request": (None, {"activation_id", "text"}, {"records"}),
     "refresh": (None, set(), set()),
     "runs.list": (None, set(), {"limit"}),
     "freshness": (None, set(), set()),
     "log": ("logs", {"entries"}, {"lifecycle", "dropped", "unconfirmed"}),
 }
-_LOCAL_WRITES = {"data.put", "data.delete", "data.batch", "log"}
+_LOCAL_WRITES = {"data.put", "data.delete", "data.batch", "log", "editor.save"}
 
 
 def _request_id(value):
@@ -104,13 +108,19 @@ def _mutate(sid, session, op, args):
                         result = records._batch(conn, sid, args["ops"], actor="app")
                     else:
                         clean = args.copy()
+                        if op == "editor.save":
+                            drafts.key(clean.pop("editor"), clean.pop("schema"), clean["collection"], clean["id"])
                         clean["rid"] = clean.pop("id", None)
-                        handler = records._put if op == "data.put" else records._delete
+                        handler = records._put if op in ("data.put", "editor.save") else records._delete
                         result = handler(conn, sid, actor="app", **clean)
+                        if op == "editor.save":
+                            drafts._delete(conn, sid, args["editor"], args["schema"], args["collection"], args["id"])
                 if request_id is not None:
                     confirmation = result if op == "log" else {"changes": [dict(change) for change in conn.execute(
                         "SELECT seq,collection,record_id AS id,op,rev FROM changes WHERE space=? AND seq>? ORDER BY seq",
                         (sid, before))], "seq": records._seq(conn, sid)}
+                    if op == "editor.save":
+                        confirmation["editor"] = {name: args[name] for name in ("editor", "schema", "collection", "id")}
                     conn.execute("INSERT INTO bridge_receipts(space,space_created_at,session,request_id,operation,"
                                  "fingerprint,confirmation,created_at) VALUES(?,?,?,?,?,?,?,?)",
                                  (sid, row["created_at"], session, request_id, op, fingerprint,
@@ -149,6 +159,28 @@ def _refresh_outcome(result):
 
 
 def _call(sid, session, op, args):
+    if op.startswith("draft."):
+        return drafts.call(sid, session, op.split(".")[1], **args)
+    if op == "outcome.get" and len(args) > 1:
+        if set(args) != {"editor", "schema", "collection", "id", "request_id"}:
+            raise SpacesError("invalid", "Editor outcome lookup requires a complete editor key")
+        db.current_invocation().capability = "data"
+        grants.check(sid, "data")
+        identity = {name: args[name] for name in ("editor", "schema", "collection", "id")}
+        drafts.key(**identity)
+        _request_id(args["request_id"])
+        invocation = db.current_invocation()
+        with db.read() as conn:
+            sessions._require(conn, sid, session)
+            rows = conn.execute("SELECT confirmation FROM bridge_receipts WHERE space=? AND space_created_at=? "
+                                "AND request_id=? AND operation='editor.save'",
+                                (sid, invocation.space_created_at, args["request_id"])).fetchall()
+            for row in rows:
+                confirmation = json.loads(row["confirmation"])
+                if confirmation.get("editor") == identity:
+                    invocation.effect.state = "confirmed"
+                    return {"found": True, "confirmation": confirmation}
+        return None
     if op == "net.fetch":
         clean = args.copy()
         clean["as_"] = clean.pop("as", "text")
@@ -228,6 +260,8 @@ def dispatch(sid, session, op, args, request_id=None):
             clean = {key: value for key, value in args.items() if key != "space"}
             if required - clean.keys() or clean.keys() - required - optional:
                 raise SpacesError("invalid", "Missing or unknown operation arguments")
+            if op == "editor.save" and request_id is None:
+                raise SpacesError("invalid", "Editor saves require a request_id")
             result = _call(sid, session, op, clean)
             _authorize(invocation)
             if op == "outcome.get" and result is None:

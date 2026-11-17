@@ -30,6 +30,7 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
   let closePromise = null
   let nextWrite = 0
   let pendingWrites = 0
+  let editorWrite = null
   const failures = new Map()
   const attempts = new Map()
   const retries = new Map()
@@ -119,8 +120,9 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
       retries.set(attempt.token, promise)
       return promise
     }
-    const event = { status, token: attempt.token, op: attempt.op, args: attempt.args, reply, at: Date.now() / 1000, retry }
-    if (saved) failures.delete(attempt.token)
+    const event = { ...(attempt.op === 'editor.save' ? { editorManaged: true } : {}), status, token: attempt.token, op: attempt.op, args: attempt.args, reply, at: Date.now() / 1000, retry }
+    editorWrite = event.editorManaged ? attempt : null
+    if (saved || event.editorManaged) failures.delete(attempt.token)
     else failures.set(attempt.token, event)
     publish(event)
   }
@@ -133,7 +135,7 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     finishWrite(attempt, reply, true)
     return reply
   }
-  const call = async (op, args, retryToken) => {
+  const call = async (op, args, retryToken, editorRequestId) => {
     if (closed || !active()) return invalidSession()
     if (op === 'link.open') return openLink(args)
     if (op === 'bot.request') {
@@ -142,7 +144,7 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
       if (closed || !active()) return invalidSession()
       return { ok: true, result }
     }
-    const writing = ['data.put', 'data.delete', 'data.batch'].includes(op)
+    const writing = ['data.put', 'data.delete', 'data.batch', 'editor.save'].includes(op)
     let attempt
     if (writing) {
       args = structuredClone(args)
@@ -154,7 +156,7 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
       }
       if (retryToken == null && op === 'data.put') identify(args)
       if (retryToken == null && op === 'data.batch' && Array.isArray(args.ops)) args.ops.forEach(item => { if (item?.op === 'put') identify(item) })
-      attempt = { token: retryToken ?? ++nextWrite, op, args: freezeDraft(args), session, request_id: requestId(), unknown: false }
+      attempt = { token: retryToken ?? ++nextWrite, op, args: freezeDraft(args), session, request_id: op === 'editor.save' ? editorRequestId : requestId(), unknown: false }
       attempts.set(attempt.token, attempt)
       pendingWrites++
       publish({ status: 'saving', op, args })
@@ -163,6 +165,11 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     if (writing) pendingWrites--
     if (closed || !active()) return invalidSession()
     if (attempt) finishWrite(attempt, reply)
+    else if (editorWrite && args.editor === editorWrite.args.editor && args.schema === editorWrite.args.schema &&
+        args.collection === editorWrite.args.collection && args.id === editorWrite.args.id) {
+      if (op === 'outcome.get' && args.request_id === editorWrite.request_id) finishWrite(editorWrite, reply, true)
+      else if (op === 'draft.delete' && reply.ok) { editorWrite = null; publish(null) }
+    }
     return reply
   }
   const ready = (async () => {

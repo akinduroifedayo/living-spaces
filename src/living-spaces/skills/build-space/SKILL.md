@@ -122,8 +122,9 @@ Read only the applicable recipes, keeping this core contract loaded.
 
 - [Assets and shipped kit APIs](references/assets.md) for file descriptors,
   local libraries, asset resolution, and the exact kit export contracts.
-- [Forms and editors](references/forms.md) for input validation and duplicate
-  activation prevention. [Record edits](references/records.md) for conflict choices.
+- [Forms and editors](references/forms.md) for input validation, duplicate
+  activation prevention, and the `createEditorStore`/`useEditor` draft lifecycle
+  with bounded host-managed reopen recovery (see its storage rules in records.md). [Record edits](references/records.md) for conflict choices.
 - [Canvas design](references/design.md) for dashboards, trackers, games,
   documents, truthful charts, motion, optional kit CSS, and accessibility.
 - [Complete app examples](references/examples.md) for Research Desk,
