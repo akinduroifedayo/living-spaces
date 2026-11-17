@@ -11,7 +11,7 @@ function fixture({ activation = true, openResult = true } = {}) {
     notify: note => { notes.push(note); return note.id }
   }
   const os = {
-    openExternal: async url => { opened.push(url); return state.openResult ?? openResult },
+    openExternal: url => { opened.push(url); return state.pendingOpen ?? Promise.resolve(state.openResult ?? openResult) },
     writeClipboard: async text => { copied.push(text); return true }
   }
   let bridge
@@ -144,4 +144,24 @@ test('a Desktop without the native opener refuses with a typed error', async () 
   await session.ready
   const reply = await session.bridge.call('link.open', { url: 'https://example.com/' })
   assert.equal(reply.error.code, 'blocked')
+})
+
+test('an open failure that settles after the session closes or a newer link is shown publishes nothing', async () => {
+  for (const settleAfter of ['destroy', 'profile', 'newer']) {
+    const f = fixture()
+    await f.session.ready
+    let fail
+    f.state.pendingOpen = new Promise(resolve => { fail = () => resolve(false) })
+    await f.call('link.open', { url: 'https://example.com/old' })
+    f.notes[0].action.onClick()
+    await settle()
+    delete f.state.pendingOpen
+    if (settleAfter === 'destroy') await f.session.destroy()
+    if (settleAfter === 'profile') f.state.profile = 'other-profile'
+    if (settleAfter === 'newer') await f.call('link.open', { url: 'https://example.com/new' })
+    const before = f.notes.length
+    fail()
+    await settle()
+    assert.equal(f.notes.length, before, `${settleAfter}: a stale failure does not replace current state`)
+  }
 })

@@ -1205,10 +1205,20 @@ function linkTarget(value) {
   if (url.protocol !== "https:") return refuse("Only https links can be opened");
   if (url.username || url.password) return refuse("Links containing sign-in details are not opened");
   const host5 = url.hostname;
-  if (!host5.includes(".") || host5.startsWith("[") || /^[\d.]+$/.test(host5) || /(^|\.)(localhost|local|internal|home\.arpa)\.?$/i.test(host5)) {
+  const labels = host5.split(".");
+  if (labels.length < 2 || !labels.every(Boolean) || host5.startsWith("[") || /^[\d.]+$/.test(host5) || /(^|\.)(localhost|local|internal|home\.arpa)$/i.test(host5)) {
     return refuse("Only public website addresses can be opened");
   }
-  for (const key of url.searchParams.keys()) if (SECRET_PARAM.test(key)) return refuse("Links carrying access tokens or signatures are not opened");
+  const keys = [...url.searchParams.keys(), ...[...url.hash.matchAll(/(?:^#|[?&;/])([^=?&;/#]+)=/g)].map((match) => match[1])];
+  if (keys.some((key) => {
+    try {
+      return SECRET_PARAM.test(decodeURIComponent(key));
+    } catch {
+      return true;
+    }
+  })) {
+    return refuse("Links carrying access tokens or signatures are not opened");
+  }
   return { ok: true, url: url.href, host: host5 };
 }
 function requestError(message) {
@@ -1398,20 +1408,20 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     }
   }) : null;
   const linkNotice = `living-spaces:link:${sid}`;
-  let linkRequest = 0;
-  const confirmLink = async (request, url) => {
-    if (request !== linkRequest || closed || !active()) return;
-    linkRequest++;
-    const opened = await os.openExternal(url).catch(() => false);
-    if (opened === true) return;
+  let pendingLink = null;
+  const confirmLink = async (request) => {
+    if (request !== pendingLink || closed || !active()) return;
+    pendingLink = null;
+    const opened = await os.openExternal(request.url).catch(() => false);
+    if (opened === true || pendingLink || closed || !active()) return;
     host5.notify({
       id: linkNotice,
       kind: "error",
       title: "Your browser could not open this link",
-      message: url,
+      message: request.url,
       detail: "Nothing was opened. Copy the link to open it yourself.",
       action: { label: "Copy link", onClick: () => {
-        os.writeClipboard?.(url)?.catch?.(() => {
+        if (!closed && active()) os.writeClipboard?.(request.url)?.catch?.(() => {
         });
       } }
     });
@@ -1425,7 +1435,7 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
       host5.notify({ id: linkNotice, kind: "warning", title: "Link not opened", message: target.reason });
       return { ok: false, error: { code: "invalid", message: target.reason } };
     }
-    const request = ++linkRequest;
+    const request = pendingLink = { url: target.url };
     host5.notify({
       id: linkNotice,
       kind: "info",
@@ -1434,7 +1444,7 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
       detail: "This Space asked to open the link above outside Hermes.",
       durationMs: 15e3,
       action: { label: "Open link", onClick: () => {
-        confirmLink(request, target.url);
+        confirmLink(request);
       } }
     });
     return { ok: true, result: { status: "confirming", url: target.url, host: target.host } };

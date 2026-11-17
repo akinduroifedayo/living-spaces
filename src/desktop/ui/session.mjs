@@ -37,14 +37,15 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     }
   }) : null
   const linkNotice = `living-spaces:link:${sid}`
-  let linkRequest = 0
-  const confirmLink = async (request, url) => {
-    if (request !== linkRequest || closed || !active()) return
-    linkRequest++
-    const opened = await os.openExternal(url).catch(() => false)
-    if (opened === true) return
-    host.notify({ id: linkNotice, kind: 'error', title: 'Your browser could not open this link', message: url,
-      detail: 'Nothing was opened. Copy the link to open it yourself.', action: { label: 'Copy link', onClick: () => { os.writeClipboard?.(url)?.catch?.(() => {}) } } })
+  let pendingLink = null
+  const confirmLink = async request => {
+    if (request !== pendingLink || closed || !active()) return
+    pendingLink = null
+    const opened = await os.openExternal(request.url).catch(() => false)
+    if (opened === true || pendingLink || closed || !active()) return
+    host.notify({ id: linkNotice, kind: 'error', title: 'Your browser could not open this link', message: request.url,
+      detail: 'Nothing was opened. Copy the link to open it yourself.',
+      action: { label: 'Copy link', onClick: () => { if (!closed && active()) os.writeClipboard?.(request.url)?.catch?.(() => {}) } } })
   }
   const openLink = args => {
     if (!userActivation()) return { ok: false, error: { code: 'blocked', message: 'Links open only from a click in the Space. Nothing was opened.' } }
@@ -55,10 +56,10 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
       host.notify({ id: linkNotice, kind: 'warning', title: 'Link not opened', message: target.reason })
       return { ok: false, error: { code: 'invalid', message: target.reason } }
     }
-    const request = ++linkRequest
+    const request = pendingLink = { url: target.url }
     host.notify({ id: linkNotice, kind: 'info', title: `Open ${target.host} in your browser?`, message: target.url,
       detail: 'This Space asked to open the link above outside Hermes.', durationMs: 15000,
-      action: { label: 'Open link', onClick: () => { confirmLink(request, target.url) } } })
+      action: { label: 'Open link', onClick: () => { confirmLink(request) } } })
     return { ok: true, result: { status: 'confirming', url: target.url, host: target.host } }
   }
   const close = () => {

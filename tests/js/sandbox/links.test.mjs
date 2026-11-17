@@ -8,6 +8,7 @@ import { linkTarget, mountSpace, checkGrant } from '../../../src/desktop/sandbox
 test('a public https source link is accepted and normalized for display', () => {
   assert.deepEqual(linkTarget('https://example.com/papers/42?page=2#fig-1'), { ok: true, url: 'https://example.com/papers/42?page=2#fig-1', host: 'example.com' })
   assert.deepEqual(linkTarget('https://EXAMPLE.org'), { ok: true, url: 'https://example.org/', host: 'example.org' })
+  assert.equal(linkTarget('https://example.com/#section-token-docs').ok, true, 'an ordinary fragment is not a secret')
 })
 
 for (const [name, url] of [
@@ -35,6 +36,10 @@ for (const [name, url] of [
   ['whitespace', 'https://example.com/a b'],
   ['control character', 'https://example.com/\u0000'],
   ['too long', `https://example.com/${'a'.repeat(2048)}`],
+  ['token fragment', 'https://example.com/#access_token=fixture'],
+  ['id token fragment after route', 'https://example.com/#/cb?id_token=fixture&state=1'],
+  ['empty host label', 'https://foo..com/'],
+  ['trailing dot host', 'https://example.com./'],
   ['non-string', 42],
   ['missing', undefined]
 ]) test(`unsafe destination is refused: ${name}`, () => {

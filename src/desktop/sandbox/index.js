@@ -28,10 +28,15 @@ export function linkTarget(value) {
   if (url.protocol !== 'https:') return refuse('Only https links can be opened')
   if (url.username || url.password) return refuse('Links containing sign-in details are not opened')
   const host = url.hostname
-  if (!host.includes('.') || host.startsWith('[') || /^[\d.]+$/.test(host) || /(^|\.)(localhost|local|internal|home\.arpa)\.?$/i.test(host)) {
+  const labels = host.split('.')
+  if (labels.length < 2 || !labels.every(Boolean) || host.startsWith('[') || /^[\d.]+$/.test(host) || /(^|\.)(localhost|local|internal|home\.arpa)$/i.test(host)) {
     return refuse('Only public website addresses can be opened')
   }
-  for (const key of url.searchParams.keys()) if (SECRET_PARAM.test(key)) return refuse('Links carrying access tokens or signatures are not opened')
+  // OAuth implicit flows put tokens in the fragment, so fragment parameters count too.
+  const keys = [...url.searchParams.keys(), ...[...url.hash.matchAll(/(?:^#|[?&;/])([^=?&;/#]+)=/g)].map(match => match[1])]
+  if (keys.some(key => { try { return SECRET_PARAM.test(decodeURIComponent(key)) } catch { return true } })) {
+    return refuse('Links carrying access tokens or signatures are not opened')
+  }
   return { ok: true, url: url.href, host }
 }
 
