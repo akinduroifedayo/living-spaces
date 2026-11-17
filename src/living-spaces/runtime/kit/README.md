@@ -160,6 +160,9 @@ revision:
   blocked in this revision. Planned open-network and file-by-reference support
   are not qualified capabilities here. Inspect the actual tool schema before
   using a file-reference descriptor; the existing binary fallback is `{b64,mime}`.
+- Collections larger than one page use `space.queryPage(collection, {limit, cursor})`,
+  which returns `{records, has_more, next_cursor}`. A `cursor_expired` error means
+  the data changed: restart from the first page rather than showing a partial list.
 - No storage API, parent-frame access or arbitrary bot tool call is added by this
   kit. Saved content belongs in records; a selected tile can be ordinary UI state.
 
