@@ -73,7 +73,8 @@ test('unordered readings are sorted so a gap is never bridged (int-review-10)', 
 test('the notice file covers code embedded inside bundled packages (int-review-10)', () => {
   const notice = readFileSync('src/living-spaces/runtime/vendor/licenses/plot-LICENSE', 'utf8')
   for (const text of ['Copyright (c) 2013 jStat', 'Copyright 2018 Vladimir Agafonkin',
-    'Copyright 2002 Cynthia Brewer', 'TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION'])
+    'Copyright 2002 Cynthia Brewer', 'TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION',
+    'APPENDIX: How to apply the Apache License to your work'])
     assert.ok(notice.includes(text), text)
 })
 

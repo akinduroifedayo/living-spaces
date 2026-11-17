@@ -287,8 +287,8 @@
       "license": "ISC"
     },
     "vendor/licenses/plot-LICENSE": {
-      "sha256": "ad5cc9dd8f4336b4a4d8091162cf8fb676101598b1140fe25bf014e7e290622c",
-      "bytes": 58267,
+      "sha256": "e3da7e92636c4d3969e310c622b6a1aefed3949029eed608ea40a8e500882811",
+      "bytes": 59452,
       "source": "LICENSE",
       "package": "@observablehq/plot",
       "version": "0.6.19",
