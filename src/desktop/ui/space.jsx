@@ -56,7 +56,8 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
   const [botAction, setBotAction] = useState(null)
   const [refreshPending, setRefreshPending] = useState(false)
   const [ready, setReady] = useState(false)
-  const refreshLock = useRef(false)
+  const refreshLock = useRef(null)
+  const refreshLifetime = useRef(null)
   const actionLock = useRef(false)
   const content = useRef(null)
   const overflow = useRef(null)
@@ -78,6 +79,19 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
     ctx.rest(`${base}/opened`, { method: 'POST' }).catch(e => { if (!disposed) setActionError(`Could not mark this Space as opened. ${errorText(e)}`) })
     return () => { disposed = true }
   }, [ctx, base])
+
+  useLayoutEffect(() => {
+    const lifetime = { active: true }
+    refreshLifetime.current = lifetime
+    return () => {
+      lifetime.active = false
+      if (refreshLock.current?.lifetime === lifetime) {
+        refreshLock.current = null
+        setRefreshPending(false)
+        setAnnouncement('')
+      }
+    }
+  }, [ctx, openingSessionRest, connectionId, profile, scopeKey, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload])
 
   useEffect(() => {
     if (building || archived || crash || remoteCrash || !content.current) return
@@ -107,7 +121,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
       session.destroy().catch(e => host.notifyError(e, 'A Space session could not be closed after retries.'))
       if (controller.current === session) controller.current = null
     }
-  }, [ctx, openingSessionRest, connectionId, profile, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload])
+  }, [ctx, openingSessionRest, connectionId, profile, scopeKey, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload])
 
   const changes = useQuery({ queryKey: ['living-spaces', scopeKey, sid, 'changes', space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 })
   useEffect(() => {
@@ -125,18 +139,38 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
 
   async function refresh() {
     if (refreshLock.current || refreshPending || status === 'updating' || inFlight(lastRun?.status) || refreshReason(space)) return
-    refreshLock.current = true
+    const request = { lifetime: refreshLifetime.current, controller: controller.current }
+    const current = () => request.lifetime?.active && refreshLifetime.current === request.lifetime && controller.current === request.controller
+      && host.state.connectionId.get() === connectionId && host.state.profile.get() === profile
+    if (!current()) return
+    refreshLock.current = request
     setRefreshPending(true); setActionError(''); setAnnouncement('Refreshing…')
     try {
-      const run = await ctx.rest(`${base}/refresh`, { method: 'POST' })
-      if (run?.kind === 'cron') setAnnouncement('Refresh started in Hermes')
-      else {
-        controller.current?.postEvent('run.updated', run)
-        if (!inFlight(run.status)) setAnnouncement(`Refresh ${run.status}: ${runResult(run)}`)
+      let reply
+      try { reply = await ctx.rest(`${base}/refresh`, { method: 'POST' }) }
+      catch (error) {
+        reply = error?.body || error
+        if (!reply?.outcome?.status) reply = { outcome: { status: 'unknown' } }
       }
-      await detail.refetch()
-    } catch (e) { setActionError(errorText(e)); setAnnouncement('Refresh failed') }
-    finally { refreshLock.current = false; setRefreshPending(false) }
+      if (!current()) return
+      const certainty = reply?.outcome?.status
+      if (certainty === 'unknown') { setAnnouncement('Refresh outcome unknown'); return }
+      if (certainty === 'busy' || certainty === 'rejected') {
+        setActionError(errorText(reply.error || reply))
+        setAnnouncement(certainty === 'busy' ? 'Refresh busy' : 'Refresh failed')
+        return
+      }
+      const run = reply?.result || reply
+      if (reply?.ok === false || (!run?.id && run?.kind !== 'cron')) { setAnnouncement('Refresh outcome unknown'); return }
+      if (run.kind === 'cron') setAnnouncement('Refresh started in Hermes')
+      else {
+        request.controller?.postEvent('run.updated', run)
+        if (!inFlight(run.status) && run.status) setAnnouncement(`Refresh ${run.status}: ${runResult(run)}`)
+      }
+      await detail.refetch().catch(error => { if (current()) setActionError(errorText(error)) })
+    } finally {
+      if (refreshLock.current === request) { refreshLock.current = null; setRefreshPending(false) }
+    }
   }
   async function act(path, body) {
     if (actionLock.current) return
