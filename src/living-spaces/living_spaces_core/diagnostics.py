@@ -168,7 +168,6 @@ def _string(token):
 
 
 def _interpolated(token):
-    """A template literal with ${}; its text is the backtick, the static head and `${`."""
     return token.text[:1] == "`" and token.text.endswith("${") and len(token.text) > 2
 
 
@@ -178,7 +177,6 @@ def _constant(token):
 
 
 def _head(token):
-    """The static leading text of a string or template, as the browser sees it before URL parsing trims it."""
     return (token.text[1:-2] if _interpolated(token) else token.text[1:-1]).strip()
 
 
