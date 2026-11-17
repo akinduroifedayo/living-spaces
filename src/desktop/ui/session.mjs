@@ -37,12 +37,10 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     }
   }) : null
   const linkNotice = `living-spaces:link:${sid}`
-  // One notice slot per Space: only the notice currently shown may act, and only while this session is live.
-  let shownNotice = null
+  let linkGeneration = null
   const showNotice = (input, label, run) => {
-    const notice = {}
-    shownNotice = notice
-    const action = run && { label, onClick: () => { if (shownNotice === notice && !closed && active()) run() } }
+    const generation = linkGeneration = {}
+    const action = run && { label, onClick: () => { if (linkGeneration === generation && !closed && active()) run() } }
     host.notify({ id: linkNotice, ...input, action })
   }
   const openLink = args => {
@@ -56,10 +54,9 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     }
     showNotice({ kind: 'info', title: `Open ${target.host} in your browser?`, message: target.url,
       detail: 'This Space asked to open the link above outside Hermes.', durationMs: 15000 }, 'Open link', async () => {
-      // The handoff itself holds the slot, so any newer notice or handoff makes this outcome obsolete.
-      const handoff = shownNotice = {}
+      const handoff = linkGeneration = {}
       const opened = await os.openExternal(target.url).catch(() => false)
-      if (opened === true || shownNotice !== handoff || closed || !active()) return
+      if (opened === true || linkGeneration !== handoff || closed || !active()) return
       showNotice({ kind: 'error', title: 'Your browser could not open this link', message: target.url,
         detail: 'Nothing was opened. Copy the link to open it yourself.' }, 'Copy link', () => { os.writeClipboard?.(target.url)?.catch?.(() => {}) })
     })

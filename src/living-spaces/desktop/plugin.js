@@ -1408,12 +1408,11 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     }
   }) : null;
   const linkNotice = `living-spaces:link:${sid}`;
-  let shownNotice = null;
+  let linkGeneration = null;
   const showNotice = (input, label, run) => {
-    const notice = {};
-    shownNotice = notice;
+    const generation = linkGeneration = {};
     const action = run && { label, onClick: () => {
-      if (shownNotice === notice && !closed && active()) run();
+      if (linkGeneration === generation && !closed && active()) run();
     } };
     host5.notify({ id: linkNotice, ...input, action });
   };
@@ -1433,9 +1432,9 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
       detail: "This Space asked to open the link above outside Hermes.",
       durationMs: 15e3
     }, "Open link", async () => {
-      const handoff = shownNotice = {};
+      const handoff = linkGeneration = {};
       const opened = await os.openExternal(target.url).catch(() => false);
-      if (opened === true || shownNotice !== handoff || closed || !active()) return;
+      if (opened === true || linkGeneration !== handoff || closed || !active()) return;
       showNotice({
         kind: "error",
         title: "Your browser could not open this link",

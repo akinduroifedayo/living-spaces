@@ -120,7 +120,6 @@ export function spaceLoader(resolver) {
       return
     }
     if (/^\s*javascript:/i.test(href) || anchor.hasAttribute('download')) return
-    // Navigating would unload the Space, so the host decides whether the destination opens outside it.
     event.preventDefault()
     if (!event.isTrusted || !port) return
     send('link.open', { url: href }).catch(error => pushLog('warn', [`Link not opened: ${error.message}`]))
