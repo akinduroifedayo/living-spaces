@@ -32,6 +32,7 @@ function SaveStatus({ write, announcement }) {
 }
 function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
   if (!write || !['failed', 'unknown', 'conflict'].includes(write.status)) return null
+  if (write.editorManaged) return <Banner kind={write.status === 'conflict' ? 'conflict' : 'failed'} title={write.status === 'unknown' ? 'Save outcome unknown' : write.status === 'conflict' ? 'Changes conflict' : 'Not saved'}>Your draft is preserved. Continue in the app editor to resolve this save.</Banner>
   const current = write.reply?.error?.current
   const canKeep = write.op === 'data.put' && current?.rev != null
   return <Banner kind={write.status === 'conflict' ? 'conflict' : 'failed'} title={write.status === 'conflict' ? 'Conflict — this record changed elsewhere' : write.status === 'unknown' ? 'Save outcome unknown — the change may have been stored' : 'Not saved — this change was rejected'}

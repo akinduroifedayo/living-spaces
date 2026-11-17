@@ -317,6 +317,16 @@ Preact lifecycle usage, exact options, keyboard behavior, nesting, and limits.
 These helpers require no kit stylesheet. Keep native buttons, dialog, details,
 and summary semantics, and supply names and visible focus in the chosen design.
 
+## Complete editor lifecycle
+
+Use `createEditorStore` and `useEditor` for draft retention above route and filter
+unmount, host-managed reopen recovery, validation, and explicit conflict choices.
+Read [forms](references/forms.md) and [records](references/records.md) before
+using the helper. Recovery is bounded and separate from saved records. Show its
+`recoveryMessage`, especially when only in-memory retention is available.
+Older examples retain their existing low-level save behavior and do not acquire
+durable draft recovery automatically.
+
 ## JavaScript-controlled forms
 
 The accepted frame has `sandbox="allow-scripts"` and CSP `form-action 'none'`.
