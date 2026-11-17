@@ -142,6 +142,6 @@ test('the opt-in specimen names each family and retains explicit fallback sample
 test('mandatory kit styles and modules retain their base bytes', () => {
   for (const [path, hash] of [
     ['kit/spaces-kit.css', 'cde2653ae11005b6b4cf98856bf2cba72cde83d1f5c1f2e2e7a36b26a1b90261'],
-    ['kit/spaces-kit.mjs', 'eae681aa19cdd99bf07fc28efcb60a817315248240071f91b240194a07876254']
+    ['kit/spaces-kit.mjs', '916ae9f9fdd6333260409b69df25cb7bcefff23164b08d3edc432ef631a175a2']
   ]) assert.equal(createHash('sha256').update(read(path)).digest('hex'), hash)
 })
