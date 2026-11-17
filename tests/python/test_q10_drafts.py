@@ -178,3 +178,30 @@ class Q10DraftTests(CoreCase):
             conn.close()
         self.assertEqual(self.counts(), before)
         self.assertEqual(self.call('draft.get', self.key)['result']['draft'], self.draft)
+
+    def test_one_space_cannot_evict_another_spaces_drafts(self):
+        # int-opus-01 Q10 P2: count and byte caps are per Space, matching the Space-scoped namespace.
+        from living_spaces_core import drafts
+        other = self.create('Other')['id']
+        other_session = sessions.open_session(other)['session']
+        reply = self.call('draft.put', {**self.key, 'draft': self.draft}, sid=other, session=other_session)
+        self.assertTrue(reply['ok'], reply)
+        for n in range(drafts.MAX_COUNT + 5):
+            self.store(id=f'r{n:03}')
+        kept = self.call('draft.get', self.key, sid=other, session=other_session)
+        self.assertEqual(kept['result']['draft'], self.draft)
+        with db.read() as conn:
+            own = conn.execute('SELECT count(*) FROM editor_drafts WHERE space=?', (self.sid,)).fetchone()[0]
+        self.assertLessEqual(own, drafts.MAX_COUNT)
+
+    def test_profile_backstop_refuses_instead_of_evicting(self):
+        from living_spaces_core import drafts
+        other = self.create('Other')['id']
+        other_session = sessions.open_session(other)['session']
+        self.assertTrue(self.call('draft.put', {**self.key, 'draft': self.draft}, sid=other, session=other_session)['ok'])
+        with patch.object(drafts, 'PROFILE_MAX_BYTES', 1):
+            reply = self.call('draft.put', {**self.key, 'id': 'late', 'draft': self.draft})
+        self.assertFalse(reply['ok'], reply)
+        self.assertEqual(reply['error']['code'], 'limit')
+        self.assertIsNone(self.call('draft.get', {**self.key, 'id': 'late'})['result']['draft'])
+        self.assertEqual(self.call('draft.get', self.key, sid=other, session=other_session)['result']['draft'], self.draft)

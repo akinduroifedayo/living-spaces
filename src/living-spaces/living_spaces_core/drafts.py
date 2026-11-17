@@ -8,6 +8,9 @@ MAX_COUNT = 100
 MAX_BYTES = 1024 * 1024
 MAX_ENTRY_BYTES = 64 * 1024
 TTL_SECONDS = 7 * 24 * 60 * 60
+# Count and byte caps apply per Space, so one Space can never evict another Space's recovery drafts.
+# The profile backstop refuses a new draft instead of evicting anywhere.
+PROFILE_MAX_BYTES = 16 * MAX_BYTES
 
 
 def key(editor, schema, collection, id):
@@ -22,10 +25,10 @@ def _delete(conn, sid, editor, schema, collection, id):
                  (sid, *key(editor, schema, collection, id)))
 
 
-def _prune(conn):
+def _prune(conn, sid):
     conn.execute('DELETE FROM editor_drafts WHERE expires_at<=?', (db.now(),))
-    rows = conn.execute('SELECT space,editor,schema,collection,record_id,bytes FROM editor_drafts '
-                        'ORDER BY updated_at,space,editor,schema,collection,record_id').fetchall()
+    rows = conn.execute('SELECT space,editor,schema,collection,record_id,bytes FROM editor_drafts WHERE space=? '
+                        'ORDER BY updated_at,editor,schema,collection,record_id', (sid,)).fetchall()
     count, size = len(rows), sum(row['bytes'] for row in rows)
     for row in rows:
         if count <= MAX_COUNT and size <= MAX_BYTES:
@@ -43,7 +46,7 @@ def call(sid, session, operation, *, editor, schema, collection, id, draft=None)
         space = db.space(conn, sid, writable=True)
         if not grants._check(conn, sid, 'data'):
             raise SpacesError('not_granted', 'Data access is off', capability='data')
-        _prune(conn)
+        _prune(conn, sid)
         conn.execute('DELETE FROM editor_drafts WHERE space=? AND data_version<>?', (sid, space['data_version']))
         if operation == 'put':
             at = db.now()
@@ -51,7 +54,11 @@ def call(sid, session, operation, *, editor, schema, collection, id, draft=None)
                          '(space,editor,schema,collection,record_id,data_version,payload,bytes,updated_at,expires_at) '
                          'VALUES(?,?,?,?,?,?,?,?,?,?)',
                          (sid, *identity, space['data_version'], encoded, len(encoded.encode('utf-8')), at, at + TTL_SECONDS))
-            _prune(conn)
+            _prune(conn, sid)
+            total = conn.execute('SELECT coalesce(sum(bytes),0) FROM editor_drafts').fetchone()[0]
+            if total > PROFILE_MAX_BYTES:
+                raise SpacesError('limit', 'Draft storage for this profile is full; the draft was not saved',
+                                  limit=PROFILE_MAX_BYTES)
         elif operation == 'delete':
             _delete(conn, sid, *identity)
         row = conn.execute('SELECT payload FROM editor_drafts WHERE space=? AND editor=? AND schema=? '
