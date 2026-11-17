@@ -369,6 +369,8 @@ user overrides. Never erase a source record because it disappeared from a feed.
 
 ```js
 const records = await space.query('papers', {limit: 500}); // Record[], not {records}
+// Collections larger than one page: space.queryPage('papers', {limit: 200, cursor}) returns {records, has_more, next_cursor}.
+// On SpaceError code 'cursor_expired' the data changed; restart from the first page instead of showing a partial list.
 const current = await space.get('papers', recordId);
 const saved = await space.put('papers', current.id,
   {notes: draftNotes, status: 'reading'}, {baseRev: current.rev});
