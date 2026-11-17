@@ -5,6 +5,8 @@ import re
 import sqlite3
 
 from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -291,14 +293,65 @@ def _owned_jobs(sid, link, jobs, *, claim=None):
     return [job for job in jobs if job["job_id"] in (linked_id, claimed_id) or job.get("name") in names]
 
 
-def _read(sid):
+@dataclass
+class _Projection:
+    """One public read's native job listing. Only summary() consults it; authority paths always list fresh."""
+    relevant: bool
+    listed: dict | None = None
+    error: SpacesError | None = None
+
+    def listing(self):
+        if self.listed is None and self.error is None:
+            try:
+                self.listed = _jobs()
+            except SpacesError as exc:
+                self.error = exc
+        if self.error is not None:
+            raise self.error
+        return self.listed
+
+
+_PROJECTION: ContextVar[_Projection | None] = ContextVar("living_spaces_upkeep_projection", default=None)
+
+
+def _relevant(sids):
+    """Whether any Space has native state worth a cron list: a link, a retained claim or an unsettled operation."""
+    if sids is None:
+        return True
+    sids = list(sids)
+    if not sids:
+        return False
+    marks = ",".join("?" * len(sids))
+    with db.read() as conn:
+        return conn.execute(
+            f"SELECT 1 FROM upkeep_links WHERE space IN ({marks}) UNION ALL "
+            f"SELECT 1 FROM refresh_claims WHERE space IN ({marks}) UNION ALL "
+            f"SELECT 1 FROM maintenance_operations WHERE space IN ({marks}) AND phase!='retired' LIMIT 1",
+            (*sids, *sids, *sids)).fetchone() is not None
+
+
+@contextmanager
+def read_projection(sids=None):
+    """Share one native listing across the summaries of one public read.
+
+    `sids` names every Space the read will summarize; when none has relevant native state, no list runs and
+    summaries are None. `None` means a single-Space read that always lists, so detail keeps orphan discovery.
+    """
+    token = _PROJECTION.set(_Projection(_relevant(sids)))
+    try:
+        yield
+    finally:
+        _PROJECTION.reset(token)
+
+
+def _read(sid, projection=None):
     with db.read() as conn:
         _space(conn, sid)
         link = _link(conn, sid)
     result = {"link": link, "job": None, "executions": [], "one_shots": [], "orphan_jobs": [], "missing": False,
               "error": None, "unavailable": dict(UNAVAILABLE)}
     try:
-        listed = _jobs()
+        listed = projection.listing() if projection is not None else _jobs()
     except SpacesError as exc:
         result["error"] = exc.message
         return result
@@ -321,7 +374,13 @@ def get_upkeep(sid):
 
 
 def summary(sid):
-    state = _read(sid)
+    projection = _PROJECTION.get()
+    if projection is None:
+        state = _read(sid)
+    elif not projection.relevant:
+        return None
+    else:
+        state = _read(sid, projection)
     if state["link"] is None:
         return ({"cron_job_id": None, "kind": None, "enabled": None, "state": "recovery",
                  "next_run_at": None, "missing": False, "orphan_jobs": state["orphan_jobs"]}

@@ -281,19 +281,32 @@ def list_spaces(include_archived=True):
         raise SpacesError("invalid", "include_archived must be a boolean")
     with db.read() as conn:
         rows = [dict(row) for row in conn.execute("SELECT * FROM spaces WHERE (? OR status!='archived') ORDER BY pinned DESC,updated_at DESC,id", (include_archived,))]
-    return [_summary(row) for row in rows]
+    with upkeep.read_projection([row["id"] for row in rows]):
+        return [_summary(row) for row in rows]
+
+
+def _head_manifest(conn, sid):
+    """The head revision's manifest, without decoding its file map."""
+    space = db.space(conn, sid)
+    if space["head_rev"] == 0:
+        return _manifest({}, space["name"], space["description"])
+    row = conn.execute("SELECT manifest FROM revisions WHERE space=? AND rev=?", (sid, space["head_rev"])).fetchone()
+    if row is None:
+        raise SpacesError("not_found", "Revision not found")
+    return json.loads(row["manifest"])
 
 
 def get_space(sid):
     with db.read() as conn:
         space = dict(db.space(conn, sid))
-        manifest = _revision(conn, sid)["manifest"]
+        manifest = _head_manifest(conn, sid)
         collections = {row["collection"]: row["n"] for row in conn.execute("SELECT collection,count(*) AS n FROM records WHERE space=? GROUP BY collection", (sid,))}
         for collection in manifest.get("data", {}).get("collections", {}):
             collections.setdefault(collection, 0)
         grant_rows = [grants._grant(row) for row in conn.execute("SELECT * FROM grants WHERE space=? ORDER BY capability", (sid,))]
         errors = conn.execute("SELECT count(*) FROM logs WHERE space=? AND level='error' AND at>=?", (sid, db.now() - 86400)).fetchone()[0]
-    result = _summary(space)
+    with upkeep.read_projection():
+        result = _summary(space)
     result.update(manifest=manifest, grants=grant_rows, recent_runs=runs.list_runs(sid, limit=10),
                   data_version=space["data_version"], collections=collections, error_count_24h=errors)
     return result
@@ -402,10 +415,16 @@ def edit_file(sid, path, *, old, new, author, summary, base_rev=None):
     return info
 
 
-def list_revisions(sid):
+def list_revisions(sid, *, files=True):
+    if type(files) is not bool:
+        raise SpacesError("invalid", "files must be a boolean")
     with db.read() as conn:
         db.space(conn, sid)
-        return [_revision(conn, sid, row[0]) for row in conn.execute("SELECT rev FROM revisions WHERE space=? ORDER BY rev DESC", (sid,))]
+        if files:
+            return [_revision(conn, sid, row[0]) for row in conn.execute("SELECT rev FROM revisions WHERE space=? ORDER BY rev DESC", (sid,))]
+        rows = conn.execute("SELECT space,rev,parent_rev,kind,restored_from,manifest,author,summary,created_at "
+                            "FROM revisions WHERE space=? ORDER BY rev DESC", (sid,))
+        return [dict(row, manifest=json.loads(row["manifest"])) for row in rows]
 
 
 def restore_revision(sid, rev, *, author):
@@ -430,7 +449,9 @@ def bundle(sid, rev=None):
         files = [{"path": path, "mime": mimetypes.guess_type(path)[0] or "application/octet-stream",
                   **_content(conn.execute("SELECT content FROM blobs WHERE sha=?", (sha,)).fetchone()[0])}
                  for path, sha in sorted(revision["files"].items())]
-    return {"space": _summary(space), "rev": revision["rev"], "manifest": revision["manifest"], "files": files}
+    with upkeep.read_projection():
+        summary = _summary(space)
+    return {"space": summary, "rev": revision["rev"], "manifest": revision["manifest"], "files": files}
 
 
 def set_status(sid, status, *, actor):

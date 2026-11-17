@@ -384,5 +384,162 @@ class NativeUpkeepTests(unittest.TestCase):
                 conn.execute("INSERT INTO upkeep_links VALUES(?, 'b', 'shell', 0, 'user')", (sid,))
 
 
+class PolledReadDispatchTests(unittest.TestCase):
+    """Q02: count public cron listings per public read; mutations keep listing fresh."""
+
+    def setUp(self):
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        self.fx = CustomizationFixture(self.stack)
+
+    def lists(self):
+        return sum(1 for name, args in self.fx.ctx.calls if args.get("action") == "list")
+
+    def counted(self, read):
+        before = self.lists()
+        result = read()
+        return result, self.lists() - before
+
+    def make(self, name):
+        fx = self.fx
+        return fx.projects.create_space(name, owner="Review", author="agent:review",
+                                        files={"index.html": "<h1>Demo</h1>"},
+                                        manifest={"upkeep": {"handler": "agent", "prompt": AGENT_PROMPT}})["id"]
+
+    def test_mixed_index_lists_native_jobs_once_and_shows_current_jobs(self):
+        fx = self.fx
+        linked, other = self.make("Linked Space"), self.make("Plain Space")
+        jid = fx.schedule(linked)["link"]["cron_job_id"]
+        fx.cron.jobs[jid].update(enabled=False, state="paused")
+        spaces, calls = self.counted(fx.projects.list_spaces)
+        self.assertEqual(calls, 1)
+        shown = {space["id"]: space for space in spaces}
+        self.assertEqual((shown[linked]["upkeep"]["enabled"], shown[linked]["upkeep"]["state"]), (False, "paused"))
+        self.assertEqual(shown[linked]["freshness"]["next_run_at"], 1804809600.0)
+        self.assertIsNone(shown[other]["upkeep"])
+        client = fx.client()
+        response, calls = self.counted(lambda: client.get("/spaces"))
+        self.assertEqual((response.status_code, calls), (200, 1))
+        _, calls = self.counted(lambda: client.get("/status"))
+        self.assertEqual(calls, 1)
+
+    def test_unlinked_only_index_performs_no_cron_list(self):
+        fx = self.fx
+        sids = [self.make("First Space"), self.make("Second Space")]
+        spaces, calls = self.counted(fx.projects.list_spaces)
+        self.assertEqual(calls, 0)
+        self.assertEqual(sorted(space["id"] for space in spaces), sorted(sids))
+        self.assertTrue(all(space["upkeep"] is None and space["freshness"]["next_run_at"] is None for space in spaces))
+        client = fx.client()
+        for path in ("/spaces", "/status"):
+            response, calls = self.counted(lambda: client.get(path))
+            self.assertEqual((path, response.status_code, calls), (path, 200, 0))
+
+    def test_unlinked_space_with_retained_refresh_claim_still_lists_once(self):
+        fx = self.fx
+        sid = self.make("Claimed Space")
+        self.make("Plain Space")
+        result = fx.runs.start_refresh(sid, trigger="chat", actor="agent:review")
+        self.assertEqual(result["refresh_state"], "unresolved")
+        with fx.db.read() as conn:
+            self.assertIsNotNone(conn.execute("SELECT 1 FROM refresh_claims WHERE space=?", (sid,)).fetchone())
+        _, calls = self.counted(fx.projects.list_spaces)
+        self.assertEqual(calls, 1)
+
+    def test_index_discovers_name_only_orphans_whenever_it_lists(self):
+        fx = self.fx
+        linked, orphaned = self.make("Linked Space"), self.make("Orphaned Space")
+        fx.schedule(linked)
+        orphan = fx.cron.create_job(name=f"living-spaces:{orphaned}", schedule="0 * * * *", prompt="x")
+        spaces, calls = self.counted(fx.projects.list_spaces)
+        self.assertEqual(calls, 1)
+        shown = next(space for space in spaces if space["id"] == orphaned)["upkeep"]
+        self.assertEqual((shown["state"], [job["id"] for job in shown["orphan_jobs"]]), ("recovery", [orphan["id"]]))
+
+    def test_each_poll_lists_independently_and_sees_native_changes(self):
+        fx = self.fx
+        sid = self.make("Linked Space")
+        jid = fx.schedule(sid)["link"]["cron_job_id"]
+        first, calls = self.counted(fx.projects.list_spaces)
+        self.assertEqual((calls, first[0]["upkeep"]["enabled"]), (1, True))
+        fx.cron.jobs[jid].update(enabled=False, state="paused")
+        second, calls = self.counted(fx.projects.list_spaces)
+        self.assertEqual((calls, second[0]["upkeep"]["enabled"]), (1, False))
+
+    def test_failed_listing_is_attempted_once_per_index_and_keeps_the_link(self):
+        fx = self.fx
+        first, second = self.make("First Space"), self.make("Second Space")
+        jobs = {sid: fx.schedule(sid)["link"]["cron_job_id"] for sid in (first, second)}
+        original = fx.ctx.dispatch_tool
+
+        def failing(name, args):
+            if args.get("action") == "list":
+                fx.ctx.calls.append((name, dict(args)))
+                raise RuntimeError("gateway offline")
+            return original(name, args)
+
+        with patch.object(fx.ctx, "dispatch_tool", failing):
+            spaces, calls = self.counted(fx.projects.list_spaces)
+        self.assertEqual(calls, 1)
+        for space in spaces:
+            self.assertEqual(space["upkeep"], {"cron_job_id": jobs[space["id"]], "kind": "agent", "enabled": None,
+                                               "state": None, "next_run_at": None, "missing": False})
+
+    def test_mutation_after_a_read_uses_fresh_native_authority(self):
+        fx = self.fx
+        sid = self.make("Linked Space")
+        jid = fx.schedule(sid)["link"]["cron_job_id"]
+        self.assertEqual(fx.projects.list_spaces()[0]["upkeep"]["enabled"], True)
+        late = fx.cron.create_job(name=f"living-spaces:{sid}", schedule="0 * * * *", prompt="x")
+        _, calls = self.counted(lambda: fx.upkeep.upkeep_action(sid, "pause", actor="user"))
+        self.assertGreaterEqual(calls, 2)
+        self.assertIs(fx.cron.jobs[jid]["enabled"], False)
+        self.assertIs(fx.cron.jobs[late["id"]]["enabled"], False)
+        fx.cron.jobs.pop(jid)
+        shown = fx.upkeep.get_upkeep(sid)
+        self.assertTrue(shown["missing"])
+        self.assertEqual(fx.projects.get_space(sid)["upkeep"]["missing"], True)
+
+    def test_mutation_inside_an_open_read_scope_ignores_the_snapshot(self):
+        fx = self.fx
+        sid = self.make("Linked Space")
+        jid = fx.schedule(sid)["link"]["cron_job_id"]
+        with fx.upkeep.read_projection([sid]):
+            self.assertIs(fx.upkeep.summary(sid)["enabled"], True)
+            late = fx.cron.create_job(name=f"living-spaces:{sid}", schedule="0 * * * *", prompt="x")
+            _, calls = self.counted(lambda: fx.upkeep.upkeep_action(sid, "pause", actor="user"))
+            self.assertGreaterEqual(calls, 2)
+            self.assertEqual([job["id"] for job in fx.upkeep.get_upkeep(sid)["orphan_jobs"]], [late["id"]])
+        self.assertIs(fx.cron.jobs[jid]["enabled"], False)
+        self.assertIs(fx.cron.jobs[late["id"]]["enabled"], False)
+
+    def test_detail_and_bundle_list_once_and_keep_recovery(self):
+        fx = self.fx
+        linked, orphaned = self.make("Linked Space"), self.make("Orphaned Space")
+        fx.schedule(linked)
+        orphan = fx.cron.create_job(name=f"living-spaces:{orphaned}", schedule="0 * * * *", prompt="x")
+        detail, calls = self.counted(lambda: fx.projects.get_space(linked))
+        self.assertEqual((calls, detail["upkeep"]["enabled"]), (1, True))
+        bundle, calls = self.counted(lambda: fx.projects.bundle(linked))
+        self.assertEqual(calls, 1)
+        self.assertEqual([item["path"] for item in bundle["files"]], ["index.html"])
+        recovered, calls = self.counted(lambda: fx.projects.get_space(orphaned))
+        self.assertEqual(calls, 1)
+        self.assertEqual(recovered["upkeep"]["state"], "recovery")
+        self.assertEqual([job["id"] for job in recovered["upkeep"]["orphan_jobs"]], [orphan["id"]])
+        self.assertEqual(fx.upkeep.get_upkeep(orphaned)["orphan_jobs"][0]["id"], orphan["id"])
+
+    def test_revision_history_route_omits_file_maps(self):
+        fx = self.fx
+        sid = self.make("History Space")
+        fx.projects.write_files(sid, files={"app.js": "export {}"}, author="agent:review", summary="Second")
+        rows = fx.client().get(f"/spaces/{sid}/revisions").json()
+        self.assertEqual([row["rev"] for row in rows], [2, 1])
+        for row in rows:
+            self.assertNotIn("files", row)
+            self.assertEqual({"rev", "author", "summary", "created_at", "manifest"} - set(row), set())
+        self.assertEqual(sorted(fx.projects.list_revisions(sid)[0]["files"]), ["app.js", "index.html"])
+
+
 if __name__ == "__main__":
     unittest.main()
