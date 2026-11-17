@@ -1,6 +1,7 @@
 """Content-addressed projects and immutable code history, separate from records."""
 import base64
 import hashlib
+from collections import Counter
 import json
 import mimetypes
 import re
@@ -357,6 +358,18 @@ def read_files(sid, paths):
     return {"space": sid, "rev": revision["rev"], "results": results}
 
 
+def _introduced(found, baseline):
+    identity = lambda d: (d["code"], d["path"], d.get("ref"), d.get("target"))
+    remaining = Counter(identity(d) for d in baseline)
+    introduced = []
+    for d in found:
+        if remaining[identity(d)]:
+            remaining[identity(d)] -= 1
+        else:
+            introduced.append(d)
+    return introduced
+
+
 def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=(), *, validate=False):
     space = db.space(conn, sid, writable=True)
     if base_rev is not None:
@@ -377,8 +390,13 @@ def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=()
     try:
         stored = _store_files(conn, old["files"], changed)
         report = _diagnose(conn, manifest, stored, found) if validate else None
-        if report and report["diagnostics"]:
-            raise SpacesError("invalid", "Batch candidate failed project validation", **report)
+        if report:
+            # A batch is rejected only for diagnostics it introduces. Warnings already present at the base head
+            # are reported, not blocking; identity ignores line/column because edits shift positions.
+            introduced = _introduced(report["diagnostics"], _diagnose(conn, old["manifest"], old["files"])["diagnostics"])
+            if introduced:
+                raise SpacesError("invalid", "Batch candidate failed project validation",
+                                  diagnostics=introduced, warnings=[d["message"] for d in introduced])
         if version > space["data_version"]:
             migrations.apply(conn, sid, space["data_version"], version, manifest["data"].get("migrations", []), actor=author)
         info = _save_revision(conn, space, manifest, stored, kind="edit" if space["head_rev"] else "create", author=author, summary=summary)

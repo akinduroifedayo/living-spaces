@@ -63,6 +63,16 @@ class BatchEditTests(CoreCase):
         self.reject([{'path': 'index.html', 'old': 'Public demo', 'new': 'After'},
                      {'path': 'image.png', 'old': 'PNG', 'new': 'bad'}])
 
+    def test_preexisting_warning_does_not_block_or_misattribute_a_batch(self):
+        # int-opus-01 Q11 P2: only diagnostics the batch introduces are blocking.
+        self.write({'legacy.js': 'import "./gone.js";'})
+        result = self.edit([{'path': 'index.html', 'old': 'Public demo', 'new': 'After'}])
+        self.assertEqual(result['rev'], projects.get_space(self.sid)['head_rev'])
+        self.assertTrue(any(d['path'] == 'legacy.js' for d in result['diagnostics']), result['diagnostics'])
+        error = self.reject([{'path': 'index.html', 'old': 'After', 'new': 'Again'},
+                             {'path': 'index.html', 'old': 'Again', 'new': '<img src="missing.png">'}])
+        self.assertEqual({d['path'] for d in error['diagnostics']}, {'index.html'})
+
     def test_invalid_import_and_asset_reject_final_candidate(self):
         for replacement in ('<script type="module">import "./missing.js";</script>',
                             '<img src="missing.png">'):
