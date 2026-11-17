@@ -378,21 +378,6 @@ test('Q04 status dimensions keep host guest save freshness and app domain indepe
   assert.equal(model.statusDimensions({ ...demo(), freshness: null }).freshness, null)
 })
 
-test('Q04 guestFailure accepts only typed fatal or load errors', () => {
-  assert.equal(typeof model.guestFailure, 'function')
-  for (const event of [
-    { kind: 'error', fatal: true }, { kind: 'error', phase: 'load' }
-  ]) assert.equal(model.guestFailure(event), true, JSON.stringify(event))
-  for (const event of [
-    { kind: 'error', message: 'boot entry load failed' },
-    { kind: 'error', fatal: 'true' }, { kind: 'error', fatal: 1 },
-    { kind: 'error', phase: 'runtime' }, { kind: 'log', fatal: true },
-    { kind: 'booted', phase: 'load' }, { kind: 'loaded' }
-  ]) {
-    for (let repeat = 0; repeat < 5; repeat++) assert.equal(model.guestFailure(event), false, JSON.stringify(event))
-  }
-})
-
 for (const [name, message] of [
   ['boot-load text', 'Handled boot entry load warning; retry succeeded'],
   ['repeated ordinary errors', 'Handled validation error']
@@ -408,9 +393,9 @@ for (const [name, message] of [
       const header = document.querySelector('.ls-frame-meta').textContent
       await act(async () => activeMount.call('data.put', { collection: 'notes', data: { note: 'Kept' } }))
       for (let repeat = 0; repeat < 4; repeat++) {
-        await act(async () => activeMount.onEvent({ kind: 'error', message, phase: 'runtime', fatal: false }))
+        await act(async () => activeMount.onEvent({ kind: 'error', message, phase: 'runtime', fatal: true }))
         assert.ok(document.querySelector('[data-testid="space-host"]'), `guest survives console error ${repeat + 1}`)
-        assert.doesNotMatch(document.body.textContent, /Demo stopped working/)
+        assert.doesNotMatch(document.body.textContent, /Demo stopped working|uncaught error/)
       }
       assert.equal(document.querySelector('.ls-frame-meta').textContent, header)
       assert.match(document.querySelector('.ls-save').textContent, /Saved /)
@@ -421,24 +406,41 @@ for (const [name, message] of [
   })
 }
 
-for (const [name, event] of [
-  ['typed fatal', { kind: 'error', fatal: true, message: 'Runtime failed password=q04-private-token' }],
-  ['typed load failure', { kind: 'error', phase: 'load', message: 'Module evaluation failed password=q04-private-token' }]
-]) {
-  test(`Q04 ${name} stops the guest without marking the host unavailable`, async () => {
-    setup()
-    try {
-      await render(SpaceView, spaceProps())
-      await act(async () => mounted.onEvent(event))
-      assert.match(document.body.textContent, /Demo stopped working/)
-      assert.equal(document.querySelector('[data-testid="space-host"]'), null)
-      assert.match(document.body.textContent, /Available/)
-      assert.doesNotMatch(document.body.textContent, /q04-private-token/)
-      q04Guest('failed')
-      q04DomainUnknown()
-    } finally { await act(async () => view.unmount()) }
-  })
-}
+test('Q04 an uncaught guest fault after first paint raises runtime attention without stopping the app', async () => {
+  setup()
+  const calls = []
+  try {
+    await render(SpaceView, spaceProps(body => { calls.push(body); return { ok: true, result: { stored: 0 } } }))
+    const activeMount = mounted
+    await act(async () => activeMount.call('log', q04Log('loaded')))
+    await act(async () => activeMount.call('data.put', { collection: 'notes', data: { note: 'Kept' } }))
+    await act(async () => activeMount.onEvent({ kind: 'fault', count: 1 }))
+    assert.ok(document.querySelector('[data-testid="space-host"]'), 'the app stays mounted')
+    assert.match(document.body.textContent, /uncaught error/)
+    assert.doesNotMatch(document.body.textContent, /Demo stopped working/)
+    assert.match(document.body.textContent, /Available/)
+    assert.match(document.querySelector('.ls-save').textContent, /Saved /)
+    q04Guest('faulted')
+    q04DomainUnknown()
+    await act(async () => activeMount.call('log', q04Log('loaded')))
+    q04Guest('faulted')
+  } finally { await act(async () => view.unmount()) }
+})
+
+test('Q04 a later boot failure supersedes a runtime fault', async () => {
+  setup()
+  try {
+    await render(SpaceView, spaceProps(body => ({ ok: true, result: { stored: body.args.entries?.length || 0 } })))
+    const activeMount = mounted
+    await act(async () => activeMount.onEvent({ kind: 'fault', count: 1 }))
+    q04Guest('faulted')
+    await act(async () => activeMount.call('log', q04Log('failed', [{ level: 'error', msg: 'Evaluation refused' }])))
+    assert.match(document.body.textContent, /Demo stopped working/)
+    q04Guest('failed')
+    await act(async () => activeMount.onEvent({ kind: 'fault', count: 2 }))
+    q04Guest('failed')
+  } finally { await act(async () => view.unmount()) }
+})
 
 test('Q04 session creation and shell boot do not claim guest loaded or app readiness', async () => {
   setup()
@@ -508,14 +510,14 @@ test('Q04 old mount events and lifecycle replies cannot change the replacement v
     assert.notEqual(mounted, oldMount)
     await act(async () => mounted.call('log', q04Log('loaded')))
     await act(async () => {
-      oldMount.onEvent({ kind: 'error', fatal: true, message: 'Old view failure' })
+      oldMount.onEvent({ kind: 'fault', count: 1 })
       oldMount.onEvent({ kind: 'booted' })
       releaseOld({ ok: true, result: { stored: 0 } })
       await pending
       await oldMount.call('log', q04Log('failed'))
     })
     assert.ok(document.querySelector('[data-testid="space-host"]'))
-    assert.doesNotMatch(document.body.textContent, /Demo stopped working|Old view failure/)
+    assert.doesNotMatch(document.body.textContent, /Demo stopped working|uncaught error/)
     q04Guest('loaded')
     q04DomainUnknown()
   } finally {

@@ -55,9 +55,6 @@ function statusDimensions(space, { guest = "unknown", write = null, hostError = 
   const host5 = hostError ? "unavailable" : space.status === "archived" ? "archived" : space.status === "building" || !space.head_rev ? "building" : "available";
   return { host: host5, guest, save: write?.status || "idle", freshness: space.freshness, appDomain: "unknown" };
 }
-function guestFailure(event) {
-  return event.kind === "error" && (event.fatal === true || event.phase === "load");
-}
 function needsAttention(space) {
   return space.status !== "archived" && ["failed", "blocked", "crashed"].includes(spaceStatus(space, true));
 }
@@ -1480,6 +1477,7 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
   let state = "created";
   let lastLog = -Infinity;
   let overflowReported = false;
+  let faults = 0;
   const overflow = () => {
     if (overflowReported) return;
     overflowReported = true;
@@ -1527,7 +1525,7 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
     if (denied) return reject(denied);
     let args = m.args;
     if (m.op === "log") {
-      if (args.lifecycle !== void 0 && !["loaded", "failed"].includes(args.lifecycle) || ["dropped", "unconfirmed"].some((key) => args[key] !== void 0 && (!Number.isSafeInteger(args[key]) || args[key] < 0))) {
+      if (args.lifecycle !== void 0 && !["loaded", "failed"].includes(args.lifecycle) || ["dropped", "unconfirmed", "faults"].some((key) => args[key] !== void 0 && (!Number.isSafeInteger(args[key]) || args[key] < 0))) {
         return reject({ code: "invalid", message: "Invalid log metadata" });
       }
       if (!Array.isArray(args.entries) || Array.from(args.entries).some((entry) => !entry || typeof entry.level !== "string" || typeof entry.msg !== "string")) {
@@ -1542,6 +1540,10 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
         overflow();
         reply({ ok: true, result: { stored: 0, throttled: true } });
         return;
+      }
+      if (args.faults > faults) {
+        faults = args.faults;
+        onEvent({ kind: "fault", count: faults });
       }
       lastLog = now;
       args = { entries: args.entries };
@@ -1713,7 +1715,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
         const reply = await options.call(op, args);
         if (current() && op === "log" && reply?.ok === true) {
           if (args.lifecycle === "failed") fail("The guest reported a load or runtime failure. Review this Space's diagnostic log for details.");
-          if (args.lifecycle === "loaded") setGuest((value) => value.status === "failed" ? value : { status: "loaded", diagnostic: null });
+          if (args.lifecycle === "loaded") setGuest((value) => ["failed", "faulted"].includes(value.status) ? value : { status: "loaded", diagnostic: null });
         }
         return reply;
       } }),
@@ -1724,8 +1726,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
         if (event.kind === "booted") setReady(true);
         if (event.kind === "denied") setAnnouncement("A Space request was denied. Review Permissions for access details.");
         if (event.kind === "log-overflow") setAnnouncement("Some diagnostic entries were dropped because the log limit was reached.");
-        if (guestFailure(event)) fail(`${event.message || event.error || "The guest reported a fatal error"}${event.location || event.filename ? `
-Location: ${event.location || event.filename}` : ""}`);
+        if (event.kind === "fault") setGuest((value) => value.status === "failed" ? value : { status: "faulted", diagnostic: null });
       }
     });
     controller.current = session;
@@ -1910,6 +1911,7 @@ Location: ${event.location || event.filename}` : ""}`);
       /* @__PURE__ */ jsx6("span", { role: "status", "aria-live": "polite", children: botAction.message }),
       botAction.answer && /* @__PURE__ */ jsx6("p", { children: botAction.answer })
     ] }),
+    guest.status === "faulted" && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "This Space hit an uncaught error", children: /* @__PURE__ */ jsx6("span", { role: "status", children: "It is still open and may keep working. Saved records are unaffected. Review this Space's diagnostic log for details." }) }),
     actionError && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: actionError }),
     detail.error && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "Space status could not be refreshed. You're seeing the last loaded state.", actions: /* @__PURE__ */ jsx6(Action, { onClick: () => detail.refetch(), children: "Try again" }), children: errorText(detail.error) }),
     changes.error && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "Live record updates are delayed. Your displayed data may be out of date.", actions: /* @__PURE__ */ jsx6(Action, { onClick: () => changes.refetch(), children: "Retry live updates" }), children: errorText(changes.error) }),

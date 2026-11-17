@@ -123,6 +123,8 @@ export function spaceLoader(resolver) {
   const listeners = { change: new Set(), run: new Set(), bot: new Set() }
   const logQueue = []
   let dropped = 0
+  let faults = 0
+  let reportedFaults = 0
   let unconfirmed = 0
   let lifecycle = null
   let reportedLifecycle = null
@@ -186,12 +188,12 @@ export function spaceLoader(resolver) {
       original(...parts)
     }
   }
-  window.addEventListener('error', e => pushLog('error', [e.error || `${e.message} @${e.filename}:${e.lineno}`]))
-  window.addEventListener('unhandledrejection', e => pushLog('error', ['unhandled rejection:', e.reason]))
+  window.addEventListener('error', e => { faults++; pushLog('error', [e.error || `${e.message} @${e.filename}:${e.lineno}`]) })
+  window.addEventListener('unhandledrejection', e => { faults++; pushLog('error', ['unhandled rejection:', e.reason]) })
   document.addEventListener('securitypolicyviolation', e => pushLog('warn', [`blocked by sandbox policy: ${e.effectiveDirective} ${e.blockedURI}`]))
   const logTimer = setInterval(() => {
     if (!port || closed || logInFlight || logsDenied) return
-    if (!logQueue.length && dropped === reportedDropped && unconfirmed === reportedUnconfirmed && lifecycle === reportedLifecycle) return
+    if (!logQueue.length && dropped === reportedDropped && unconfirmed === reportedUnconfirmed && faults === reportedFaults && lifecycle === reportedLifecycle) return
     const entries = logQueue.splice(0)
     const overflow = dropped > reportedDropped
     if (overflow) {
@@ -201,6 +203,7 @@ export function spaceLoader(resolver) {
     const originals = entries.length - Number(overflow)
     const args = { entries, dropped, unconfirmed }
     if (lifecycle !== reportedLifecycle) args.lifecycle = lifecycle
+    if (faults !== reportedFaults) args.faults = faults
     logInFlight = true
     send('log', args).then(result => {
       if (result.throttled || (result.stored === 0 && entries.length)) {
@@ -211,6 +214,7 @@ export function spaceLoader(resolver) {
       reportedDropped = args.dropped
       reportedUnconfirmed = args.unconfirmed
       if (args.lifecycle) reportedLifecycle = args.lifecycle
+      if (args.faults !== undefined) reportedFaults = args.faults
     }).catch(error => {
       // The host refused Diagnostics for this session; retrying cannot succeed.
       if (error?.code === 'not_granted') { logsDenied = true; logQueue.length = 0; return }
