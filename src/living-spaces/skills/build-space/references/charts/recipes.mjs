@@ -89,7 +89,9 @@ export function heatmap(cells, {x, y, value, unit, label = value, width = 640, d
 
 // A measure over time. A missing value breaks the line instead of being interpolated.
 export function timeSeries(points, {date, value, unit, label = value, width = 640, document: doc = globalThis.document}) {
+  // Sort by time so a missing reading always falls between its neighbours and breaks the line there.
   const dated = points.filter(point => point[date] instanceof Date && !Number.isNaN(+point[date]))
+    .sort((a, b) => a[date] - b[date])
   const eligible = dated.filter(point => finite(point[value]))
   if (!eligible.length) return empty(doc, `No ${label} recorded yet.`)
   const gaps = dated.length - eligible.length

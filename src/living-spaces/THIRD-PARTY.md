@@ -153,12 +153,12 @@ License: `ISC`. Official source: [@observablehq/plot 0.6.19 tarball](https://reg
 
 Integrity: `sha512-8Tg8+doIBDKTG6gL9Px7Tws+Tuni+bwjhaJufAKR3V8HFi2dtGQf57fH0UKwOrMYgjmEdX2PP1E4LIi7gyhgYw==`.
 
-Selection key: `plot`. Total copied size including notices: 432,548 bytes (budget: 1 MiB).
+Selection key: `plot`. Total copied size including notices: 445,421 bytes (budget: 1 MiB).
 
 | Bundled file | Bytes | Upstream input |
 | --- | ---: | --- |
 | `vendor/plot.mjs` | 387,154 | `dist/plot.js + d3 7.9.2 ESM modules (bundled and minified with esbuild)` |
-| `vendor/licenses/plot-LICENSE` | 45,394 | `LICENSE` of every bundled package |
+| `vendor/licenses/plot-LICENSE` | 58,267 | `LICENSE` of every bundled package, plus embedded jStat (MIT), quickselect (ISC) and ColorBrewer (Apache-2.0) notices |
 
 Built with the repository's existing esbuild 0.28.0 as one minified browser ESM file with no external imports. Every tarball was fetched directly from registry.npmjs.org and its SHA-512 checked against registry metadata before use. No package manager, install script, package.json, lockfile or node_modules was added to the repository. `vendor/licenses/plot-LICENSE` holds the full license text of each of the 38 packages compiled into the file (ISC 34, MIT 2, BSD-3-Clause 1, Unlicense 1). d3-dsv's command-line dependencies (rw, commander, iconv-lite, safer-buffer) are in the npm closure but are not bundled.
 

@@ -57,6 +57,22 @@ test('time series breaks the line at a missing reading instead of interpolating'
   assert.ok(axisLabels(node).some(text => text.includes('Temperature (°C)')))
 })
 
+test('unordered readings are sorted so a gap is never bridged (int-review-10)', () => {
+  const d = day => new Date(Date.UTC(2026, 0, day))
+  const points = [{t: d(1), v: 2}, {t: d(3), v: 5}, {t: d(2), v: null}, {t: d(4), v: 3}]
+  const {node, summary} = recipes.timeSeries(points, {date: 't', value: 'v', unit: '°C', label: 'Temperature', document: doc()})
+  assert.match(summary, /2026-01-01 \(2 °C\) to 2026-01-04 \(3 °C\)/)
+  const path = node.querySelector('g[aria-label="line"] path').getAttribute('d')
+  assert.equal((path.match(/M/g) || []).length, 2, 'Jan 1 is not joined to Jan 3 across the missing Jan 2')
+})
+
+test('the notice file covers code embedded inside bundled packages (int-review-10)', () => {
+  const notice = readFileSync('src/living-spaces/runtime/vendor/licenses/plot-LICENSE', 'utf8')
+  for (const text of ['Copyright (c) 2013 jStat', 'Copyright 2018 Vladimir Agafonkin',
+    'Copyright 2002 Cynthia Brewer', 'TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION'])
+    assert.ok(notice.includes(text), text)
+})
+
 test('distribution counts only finite values and reports what was excluded', () => {
   const {node, summary} = recipes.distribution([1, 2, 2, 3, NaN, null, 10], {unit: 'min', label: 'Commute', document: doc()})
   assert.match(summary, /^5 Commute values from 1 min to 10 min, median 2 min; 2 missing values not shown\.$/)
