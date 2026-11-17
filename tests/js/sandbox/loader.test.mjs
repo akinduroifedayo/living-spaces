@@ -237,3 +237,44 @@ test('a transient log failure still retries', async () => {
   assert.equal(f.messages.length, 2)
   assert.equal(f.messages[1].op, 'log')
 })
+
+function anchorClick(f, href, extra = {}) {
+  let prevented = false
+  const anchor = { target: extra.target || '', getAttribute: name => name === 'href' ? href : null, hasAttribute: name => name === 'download' && !!extra.download }
+  const event = { isTrusted: extra.isTrusted ?? true, target: { closest: () => anchor }, button: extra.button ?? 0, defaultPrevented: !!extra.defaultPrevented, preventDefault() { prevented = true; this.defaultPrevented = true } }
+  f.events.get('click')(event)
+  return prevented
+}
+test('activating an external source link keeps the Space in place and asks the host to open it', () => {
+  const f = loaderFixture()
+  for (const href of ['https://example.com/source', 'http://example.com/', 'file:///etc/hosts', 'data:text/plain,demo', 'relative/page.html']) {
+    assert.equal(anchorClick(f, href), true, `${href} never navigates the Space`)
+  }
+  assert.equal(anchorClick(f, 'https://example.com/new-tab', { target: '_blank' }), true)
+  assert.deepEqual(f.messages.map(m => [m.op, m.args]), [
+    ['link.open', { url: 'https://example.com/source' }], ['link.open', { url: 'http://example.com/' }],
+    ['link.open', { url: 'file:///etc/hosts' }], ['link.open', { url: 'data:text/plain,demo' }],
+    ['link.open', { url: 'relative/page.html' }], ['link.open', { url: 'https://example.com/new-tab' }]
+  ])
+})
+test('fragment, script, download and app-handled links keep their existing behaviour', () => {
+  const f = loaderFixture()
+  f.context.window.location = { hash: '' }
+  assert.equal(anchorClick(f, '#/library'), true)
+  assert.equal(f.context.window.location.hash, '/library')
+  assert.equal(anchorClick(f, 'javascript:void(0)'), false)
+  assert.equal(anchorClick(f, 'https://example.com/file.csv', { download: true }), false)
+  assert.equal(anchorClick(f, 'https://example.com/', { defaultPrevented: true }), false)
+  assert.equal(anchorClick(f, 'https://example.com/', { button: 1 }), false)
+  assert.equal(anchorClick(f, 'https://example.com/scripted', { isTrusted: false }), true, 'a scripted click neither navigates nor asks the host')
+  assert.deepEqual(f.messages.map(m => m.op), [])
+})
+test('a refused link is recorded in Space diagnostics instead of an unhandled rejection', async () => {
+  const f = loaderFixture()
+  anchorClick(f, 'file:///etc/hosts')
+  f.port.onmessage({ data: { v: 1, id: f.messages[0].id, ok: false, error: { code: 'invalid', message: 'Only https links can be opened' } } })
+  await tick()
+  f.timers[0].fn()
+  const log = f.messages.find(m => m.op === 'log')
+  assert.ok(log.args.entries.some(entry => entry.level === 'warn' && /Link not opened: Only https links can be opened/.test(entry.msg)))
+})

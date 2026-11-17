@@ -1225,207 +1225,6 @@ function createBotActions({ host: host5, backend, post, onStatus, isActive, user
   };
 }
 
-// src/desktop/ui/session.mjs
-var errorCode = (error) => [error?.error?.code, error?.body?.error?.code, error?.message, String(error)].filter(Boolean).join(" ");
-var freezeDraft = (value) => {
-  if (value && typeof value === "object") {
-    Object.values(value).forEach(freezeDraft);
-    Object.freeze(value);
-  }
-  return value;
-};
-var requestId = () => "write_" + Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, "0")).join("");
-function createSpaceSession({ rest, backend, sid, container, mount, onEvent, host: host5, onAction = () => {
-}, onWrite = () => {
-}, onCloseError = (error) => console.warn("Space session cleanup failed", error) }) {
-  const base = spacePath(sid);
-  const scope = backend ? Object.freeze({ connectionId: backend.connectionId, profile: backend.profile }) : null;
-  const active = () => !scope || host5?.state?.connectionId?.get() === scope.connectionId && host5?.state?.profile?.get() === scope.profile;
-  const requireActive = () => {
-    if (!active()) throw new Error("The active backend changed. Reopen this Space.");
-  };
-  const scopedRequest = async (path, options) => {
-    requireActive();
-    const value = await rest(path, options);
-    requireActive();
-    return value;
-  };
-  let closed = false;
-  let session = null;
-  let mounted = null;
-  let closePromise = null;
-  let nextWrite = 0;
-  let pendingWrites = 0;
-  const failures = /* @__PURE__ */ new Map();
-  const attempts = /* @__PURE__ */ new Map();
-  const retries = /* @__PURE__ */ new Map();
-  const publish = (event) => {
-    if (!closed && active()) onWrite(failures.values().next().value || (pendingWrites ? { status: "saving" } : event));
-  };
-  const actions = host5 ? createBotActions({
-    host: host5,
-    backend: scope,
-    isActive: () => !closed && active(),
-    post: (operation, body) => scopedRequest(`${base}/actions/${operation}`, { method: "POST", body: { ...body, session } }),
-    onStatus: (status) => {
-      if (closed) return;
-      onAction(status);
-      mounted?.postEvent?.("bot.status", status);
-    }
-  }) : null;
-  const close = () => {
-    if (!session) return Promise.resolve();
-    closePromise ??= (async () => {
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          if (active()) return await rest(`${base}/sessions/${encodeURIComponent(session)}`, { method: "DELETE", timeoutMs: 5e3 });
-          const route = await profileRoute(host5, scope);
-          const identity = await host5.requestProfile(route, "runtime.describe", {}, 5e3);
-          if (!identity?.capabilities?.includes("plugin-rpc-v1")) {
-            throw Object.assign(new Error("The owning gateway does not advertise plugin-rpc-v1, so this Space session stays open until the Space is archived or deleted"), { final: true });
-          }
-          const result = await host5.requestProfile(route, "plugin.living-spaces.close_session", { space_id: sid, session }, 5e3);
-          if (result?.closed !== true) throw new Error(result?.error?.message || "Space session cleanup was not confirmed");
-          return result;
-        } catch (error) {
-          if (/session_invalid/.test(errorCode(error))) return { closed: true };
-          onCloseError(error);
-          if (attempt === 3 || error.final) throw error;
-          await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
-        }
-      }
-    })().catch((error) => {
-      closePromise = null;
-      throw error;
-    });
-    return closePromise;
-  };
-  const invalidSession = () => ({ ok: false, error: { code: "session_invalid", message: "This Space session is closed" } });
-  const send = async (body) => {
-    try {
-      return await scopedRequest(`${base}/bridge`, { method: "POST", body });
-    } catch (error) {
-      const reply = error?.body || error;
-      if (reply?.outcome?.status) return reply;
-      return { ok: false, error: { code: "unavailable", message: error.message || String(error) }, outcome: { status: "unknown" } };
-    }
-  };
-  const finishWrite = (attempt, reply, lookup = false) => {
-    const certainty = reply?.outcome?.status;
-    const saved = reply?.ok === true && (certainty == null || ["success", "confirmed"].includes(certainty)) && (!lookup || ["success", "confirmed"].includes(certainty));
-    const status = certainty === "unknown" || lookup && !saved ? "unknown" : saved ? "saved" : certainty !== "busy" && reply?.error?.code === "conflict" ? "conflict" : "failed";
-    attempt.unknown = status === "unknown";
-    if (saved) attempt.confirmed = reply;
-    const retry = (next) => {
-      if (closed || !active()) return Promise.resolve(invalidSession());
-      if (retries.has(attempt.token)) return retries.get(attempt.token);
-      const current = attempts.get(attempt.token) || attempt;
-      if (current.confirmed) return Promise.resolve(current.confirmed);
-      const promise = (current.unknown ? reconcile(current) : call(current.op, next || current.args, current.token)).finally(() => retries.delete(attempt.token));
-      retries.set(attempt.token, promise);
-      return promise;
-    };
-    const event = { status, token: attempt.token, op: attempt.op, args: attempt.args, reply, at: Date.now() / 1e3, retry };
-    if (saved) failures.delete(attempt.token);
-    else failures.set(attempt.token, event);
-    publish(event);
-  };
-  const reconcile = async (attempt) => {
-    if (closed || !active()) return invalidSession();
-    pendingWrites++;
-    const reply = await send({ session: attempt.session, op: "outcome.get", args: { request_id: attempt.request_id } });
-    pendingWrites--;
-    if (closed || !active()) return invalidSession();
-    finishWrite(attempt, reply, true);
-    return reply;
-  };
-  const call = async (op, args, retryToken) => {
-    if (closed || !active()) return invalidSession();
-    if (op === "bot.request") {
-      if (!actions) return { ok: false, error: { code: "blocked", message: "Native bot actions are unavailable" } };
-      const result = await actions.request(args);
-      if (closed || !active()) return invalidSession();
-      return { ok: true, result };
-    }
-    const writing = ["data.put", "data.delete", "data.batch"].includes(op);
-    let attempt;
-    if (writing) {
-      args = structuredClone(args);
-      const identify = (put) => {
-        if (put.id == null) {
-          put.id = "r_" + Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => byte.toString(16).padStart(2, "0")).join("");
-          put.base_rev = 0;
-        }
-      };
-      if (retryToken == null && op === "data.put") identify(args);
-      if (retryToken == null && op === "data.batch" && Array.isArray(args.ops)) args.ops.forEach((item) => {
-        if (item?.op === "put") identify(item);
-      });
-      attempt = { token: retryToken ?? ++nextWrite, op, args: freezeDraft(args), session, request_id: requestId(), unknown: false };
-      attempts.set(attempt.token, attempt);
-      pendingWrites++;
-      publish({ status: "saving", op, args });
-    }
-    const reply = await send({ session, op, args, ...attempt ? { request_id: attempt.request_id } : {} });
-    if (writing) pendingWrites--;
-    if (closed || !active()) return invalidSession();
-    if (attempt) finishWrite(attempt, reply);
-    return reply;
-  };
-  const ready = (async () => {
-    requireActive();
-    const opened = await rest(`${base}/sessions`, { method: "POST" });
-    session = opened.session;
-    if (closed || !active()) {
-      closed = true;
-      return close();
-    }
-    try {
-      const bundle = await scopedRequest(`${base}/bundle`);
-      if (closed) return close();
-      if (bundle.rev !== opened.head_rev) throw new Error("The Space changed while opening. Reload Space to open the current revision.");
-      mounted = mount(container, { bundle, grants: opened.grants, call, onEvent: (event) => {
-        if (closed || !active()) return;
-        if (event.kind === "write-rejected" && ["data.put", "data.delete", "data.batch"].includes(event.op)) {
-          const failure2 = { status: "failed", token: ++nextWrite, op: event.op, reply: { ok: false, error: event.error } };
-          failures.set(failure2.token, failure2);
-          publish(failure2);
-        }
-        onEvent(event);
-      } });
-      actions?.restore();
-    } catch (error) {
-      closed = true;
-      await close().catch(() => {
-      });
-      throw error;
-    }
-  })();
-  return {
-    ready,
-    checkAction() {
-      return actions?.check();
-    },
-    retryAction() {
-      return actions?.retry();
-    },
-    dismissWrite(token) {
-      failures.delete(token);
-      publish(null);
-    },
-    postEvent(event, payload) {
-      if (!closed && active()) mounted?.postEvent?.(event, payload);
-    },
-    destroy() {
-      closed = true;
-      actions?.destroy();
-      mounted?.destroy();
-      mounted = null;
-      return close();
-    }
-  };
-}
-
 // src/desktop/sandbox/index.js
 var BRIDGE_VERSION = 1;
 var OP_GRANT = Object.freeze({
@@ -1437,11 +1236,44 @@ var OP_GRANT = Object.freeze({
   "data.delete": "data",
   "data.batch": "data",
   "bot.request": null,
+  "link.open": null,
   refresh: null,
   "runs.list": null,
   log: "logs"
 });
 var MAX_REQUEST_SIZE = 1024 * 1024;
+var MAX_LINK_LENGTH = 2048;
+var SECRET_PARAM = /^(access_token|id_token|refresh_token|token|api[-_]?key|apikey|secret|client_secret|password|passwd|pwd|auth|authorization|sessionid|sig|signature|x-amz-signature|x-amz-credential|x-amz-security-token|x-goog-signature|x-goog-credential)$/i;
+function linkTarget(value) {
+  const refuse = (reason) => ({ ok: false, reason });
+  if (typeof value !== "string" || !value) return refuse("The link has no destination");
+  if (value.length > MAX_LINK_LENGTH) return refuse(`Links longer than ${MAX_LINK_LENGTH} characters are not opened`);
+  if (/[\s\x00-\x1f\x7f]/.test(value)) return refuse("The link contains spaces or control characters");
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return refuse("The link is not a complete web address");
+  }
+  if (url.protocol !== "https:") return refuse("Only https links can be opened");
+  if (url.username || url.password) return refuse("Links containing sign-in details are not opened");
+  const host5 = url.hostname;
+  const labels = host5.split(".");
+  if (labels.length < 2 || !labels.every(Boolean) || host5.startsWith("[") || /^[\d.]+$/.test(host5) || /(^|\.)(localhost|local|internal|home\.arpa)$/i.test(host5)) {
+    return refuse("Only public website addresses can be opened");
+  }
+  const keys = [...url.searchParams.keys(), ...[...url.hash.matchAll(/(?:^#|[?&;/])([^=?&;/#]+)=/g)].map((match) => match[1])];
+  if (keys.some((key) => {
+    try {
+      return SECRET_PARAM.test(decodeURIComponent(key));
+    } catch {
+      return true;
+    }
+  })) {
+    return refuse("Links carrying access tokens or signatures are not opened");
+  }
+  return { ok: true, url: url.href, host: host5 };
+}
 function requestError(message) {
   if (!message || typeof message !== "object" || Array.isArray(message)) return { code: "invalid", message: "request must be an object" };
   if (message.v !== BRIDGE_VERSION) return { code: "invalid", message: "unsupported bridge version" };
@@ -1582,6 +1414,253 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
     destroy() {
       stop();
       frame.remove();
+    }
+  };
+}
+
+// src/desktop/ui/session.mjs
+var errorCode = (error) => [error?.error?.code, error?.body?.error?.code, error?.message, String(error)].filter(Boolean).join(" ");
+var freezeDraft = (value) => {
+  if (value && typeof value === "object") {
+    Object.values(value).forEach(freezeDraft);
+    Object.freeze(value);
+  }
+  return value;
+};
+var requestId = () => "write_" + Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, "0")).join("");
+var desktopOs = null;
+function bindDesktopOs(os) {
+  desktopOs = os ?? null;
+}
+var hasActivation = () => globalThis.navigator?.userActivation?.isActive === true;
+function createSpaceSession({ rest, backend, sid, container, mount, onEvent, host: host5, os = desktopOs, userActivation = hasActivation, onAction = () => {
+}, onWrite = () => {
+}, onCloseError = (error) => console.warn("Space session cleanup failed", error) }) {
+  const base = spacePath(sid);
+  const scope = backend ? Object.freeze({ connectionId: backend.connectionId, profile: backend.profile }) : null;
+  const active = () => !scope || host5?.state?.connectionId?.get() === scope.connectionId && host5?.state?.profile?.get() === scope.profile;
+  const requireActive = () => {
+    if (!active()) throw new Error("The active backend changed. Reopen this Space.");
+  };
+  const scopedRequest = async (path, options) => {
+    requireActive();
+    const value = await rest(path, options);
+    requireActive();
+    return value;
+  };
+  let closed = false;
+  let session = null;
+  let mounted = null;
+  let closePromise = null;
+  let nextWrite = 0;
+  let pendingWrites = 0;
+  const failures = /* @__PURE__ */ new Map();
+  const attempts = /* @__PURE__ */ new Map();
+  const retries = /* @__PURE__ */ new Map();
+  const publish = (event) => {
+    if (!closed && active()) onWrite(failures.values().next().value || (pendingWrites ? { status: "saving" } : event));
+  };
+  const actions = host5 ? createBotActions({
+    host: host5,
+    backend: scope,
+    isActive: () => !closed && active(),
+    post: (operation, body) => scopedRequest(`${base}/actions/${operation}`, { method: "POST", body: { ...body, session } }),
+    onStatus: (status) => {
+      if (closed) return;
+      onAction(status);
+      mounted?.postEvent?.("bot.status", status);
+    }
+  }) : null;
+  const linkNotice = `living-spaces:link:${sid}`;
+  let linkGeneration = null;
+  const showNotice = (input, label, run) => {
+    const generation = linkGeneration = {};
+    const action = run && { label, onClick: () => {
+      if (linkGeneration === generation && !closed && active()) run();
+    } };
+    host5.notify({ id: linkNotice, ...input, action });
+  };
+  const openLink = (args) => {
+    if (!userActivation()) return { ok: false, error: { code: "blocked", message: "Links open only from a click in the Space. Nothing was opened." } };
+    if (!args || Object.keys(args).length !== 1 || typeof args.url !== "string") return { ok: false, error: { code: "invalid", message: "A link request needs exactly one url" } };
+    if (typeof os?.openExternal !== "function" || typeof host5?.notify !== "function") return { ok: false, error: { code: "blocked", message: "This Desktop cannot open links from a Space" } };
+    const target = linkTarget(args.url);
+    if (!target.ok) {
+      showNotice({ kind: "warning", title: "Link not opened", message: target.reason });
+      return { ok: false, error: { code: "invalid", message: target.reason } };
+    }
+    showNotice({
+      kind: "info",
+      title: `Open ${target.host} in your browser?`,
+      message: target.url,
+      detail: "This Space asked to open the link above outside Hermes.",
+      durationMs: 15e3
+    }, "Open link", async () => {
+      const handoff = linkGeneration = {};
+      const opened = await os.openExternal(target.url).catch(() => false);
+      if (opened === true || linkGeneration !== handoff || closed || !active()) return;
+      showNotice({
+        kind: "error",
+        title: "Your browser could not open this link",
+        message: target.url,
+        detail: "Nothing was opened. Copy the link to open it yourself."
+      }, "Copy link", () => {
+        os.writeClipboard?.(target.url)?.catch?.(() => {
+        });
+      });
+    });
+    return { ok: true, result: { status: "confirming", url: target.url, host: target.host } };
+  };
+  const close = () => {
+    if (!session) return Promise.resolve();
+    closePromise ??= (async () => {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          if (active()) return await rest(`${base}/sessions/${encodeURIComponent(session)}`, { method: "DELETE", timeoutMs: 5e3 });
+          const route = await profileRoute(host5, scope);
+          const identity = await host5.requestProfile(route, "runtime.describe", {}, 5e3);
+          if (!identity?.capabilities?.includes("plugin-rpc-v1")) {
+            throw Object.assign(new Error("The owning gateway does not advertise plugin-rpc-v1, so this Space session stays open until the Space is archived or deleted"), { final: true });
+          }
+          const result = await host5.requestProfile(route, "plugin.living-spaces.close_session", { space_id: sid, session }, 5e3);
+          if (result?.closed !== true) throw new Error(result?.error?.message || "Space session cleanup was not confirmed");
+          return result;
+        } catch (error) {
+          if (/session_invalid/.test(errorCode(error))) return { closed: true };
+          onCloseError(error);
+          if (attempt === 3 || error.final) throw error;
+          await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+        }
+      }
+    })().catch((error) => {
+      closePromise = null;
+      throw error;
+    });
+    return closePromise;
+  };
+  const invalidSession = () => ({ ok: false, error: { code: "session_invalid", message: "This Space session is closed" } });
+  const send = async (body) => {
+    try {
+      return await scopedRequest(`${base}/bridge`, { method: "POST", body });
+    } catch (error) {
+      const reply = error?.body || error;
+      if (reply?.outcome?.status) return reply;
+      return { ok: false, error: { code: "unavailable", message: error.message || String(error) }, outcome: { status: "unknown" } };
+    }
+  };
+  const finishWrite = (attempt, reply, lookup = false) => {
+    const certainty = reply?.outcome?.status;
+    const saved = reply?.ok === true && (certainty == null || ["success", "confirmed"].includes(certainty)) && (!lookup || ["success", "confirmed"].includes(certainty));
+    const status = certainty === "unknown" || lookup && !saved ? "unknown" : saved ? "saved" : certainty !== "busy" && reply?.error?.code === "conflict" ? "conflict" : "failed";
+    attempt.unknown = status === "unknown";
+    if (saved) attempt.confirmed = reply;
+    const retry = (next) => {
+      if (closed || !active()) return Promise.resolve(invalidSession());
+      if (retries.has(attempt.token)) return retries.get(attempt.token);
+      const current = attempts.get(attempt.token) || attempt;
+      if (current.confirmed) return Promise.resolve(current.confirmed);
+      const promise = (current.unknown ? reconcile(current) : call(current.op, next || current.args, current.token)).finally(() => retries.delete(attempt.token));
+      retries.set(attempt.token, promise);
+      return promise;
+    };
+    const event = { status, token: attempt.token, op: attempt.op, args: attempt.args, reply, at: Date.now() / 1e3, retry };
+    if (saved) failures.delete(attempt.token);
+    else failures.set(attempt.token, event);
+    publish(event);
+  };
+  const reconcile = async (attempt) => {
+    if (closed || !active()) return invalidSession();
+    pendingWrites++;
+    const reply = await send({ session: attempt.session, op: "outcome.get", args: { request_id: attempt.request_id } });
+    pendingWrites--;
+    if (closed || !active()) return invalidSession();
+    finishWrite(attempt, reply, true);
+    return reply;
+  };
+  const call = async (op, args, retryToken) => {
+    if (closed || !active()) return invalidSession();
+    if (op === "link.open") return openLink(args);
+    if (op === "bot.request") {
+      if (!actions) return { ok: false, error: { code: "blocked", message: "Native bot actions are unavailable" } };
+      const result = await actions.request(args);
+      if (closed || !active()) return invalidSession();
+      return { ok: true, result };
+    }
+    const writing = ["data.put", "data.delete", "data.batch"].includes(op);
+    let attempt;
+    if (writing) {
+      args = structuredClone(args);
+      const identify = (put) => {
+        if (put.id == null) {
+          put.id = "r_" + Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => byte.toString(16).padStart(2, "0")).join("");
+          put.base_rev = 0;
+        }
+      };
+      if (retryToken == null && op === "data.put") identify(args);
+      if (retryToken == null && op === "data.batch" && Array.isArray(args.ops)) args.ops.forEach((item) => {
+        if (item?.op === "put") identify(item);
+      });
+      attempt = { token: retryToken ?? ++nextWrite, op, args: freezeDraft(args), session, request_id: requestId(), unknown: false };
+      attempts.set(attempt.token, attempt);
+      pendingWrites++;
+      publish({ status: "saving", op, args });
+    }
+    const reply = await send({ session, op, args, ...attempt ? { request_id: attempt.request_id } : {} });
+    if (writing) pendingWrites--;
+    if (closed || !active()) return invalidSession();
+    if (attempt) finishWrite(attempt, reply);
+    return reply;
+  };
+  const ready = (async () => {
+    requireActive();
+    const opened = await rest(`${base}/sessions`, { method: "POST" });
+    session = opened.session;
+    if (closed || !active()) {
+      closed = true;
+      return close();
+    }
+    try {
+      const bundle = await scopedRequest(`${base}/bundle`);
+      if (closed) return close();
+      if (bundle.rev !== opened.head_rev) throw new Error("The Space changed while opening. Reload Space to open the current revision.");
+      mounted = mount(container, { bundle, grants: opened.grants, call, onEvent: (event) => {
+        if (closed || !active()) return;
+        if (event.kind === "write-rejected" && ["data.put", "data.delete", "data.batch"].includes(event.op)) {
+          const failure2 = { status: "failed", token: ++nextWrite, op: event.op, reply: { ok: false, error: event.error } };
+          failures.set(failure2.token, failure2);
+          publish(failure2);
+        }
+        onEvent(event);
+      } });
+      actions?.restore();
+    } catch (error) {
+      closed = true;
+      await close().catch(() => {
+      });
+      throw error;
+    }
+  })();
+  return {
+    ready,
+    checkAction() {
+      return actions?.check();
+    },
+    retryAction() {
+      return actions?.retry();
+    },
+    dismissWrite(token) {
+      failures.delete(token);
+      publish(null);
+    },
+    postEvent(event, payload) {
+      if (!closed && active()) mounted?.postEvent?.(event, payload);
+    },
+    destroy() {
+      closed = true;
+      actions?.destroy();
+      mounted?.destroy();
+      mounted = null;
+      return close();
     }
   };
 }
@@ -2038,6 +2117,7 @@ var plugin_src_default = {
   id: "living-spaces",
   name: "Spaces",
   register(ctx) {
+    bindDesktopOs(ctx.os);
     ctx.registerMany([
       { id: "page", area: ROUTES_AREA, data: { path: "/spaces" }, render: () => jsx7(SpacesPage, { ctx }) },
       { id: "nav", area: SIDEBAR_NAV_AREA, order: 60, data: { path: "/spaces", label: "Spaces", codicon: "layers" } },

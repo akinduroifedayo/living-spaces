@@ -9,11 +9,36 @@ export const OP_GRANT = Object.freeze({
   'data.delete': 'data',
   'data.batch': 'data',
   'bot.request': null,
+  'link.open': null,
   refresh: null,
   'runs.list': null,
   log: 'logs'
 })
 export const MAX_REQUEST_SIZE = 1024 * 1024
+export const MAX_LINK_LENGTH = 2048
+const SECRET_PARAM = /^(access_token|id_token|refresh_token|token|api[-_]?key|apikey|secret|client_secret|password|passwd|pwd|auth|authorization|sessionid|sig|signature|x-amz-signature|x-amz-credential|x-amz-security-token|x-goog-signature|x-goog-credential)$/i
+
+export function linkTarget(value) {
+  const refuse = reason => ({ ok: false, reason })
+  if (typeof value !== 'string' || !value) return refuse('The link has no destination')
+  if (value.length > MAX_LINK_LENGTH) return refuse(`Links longer than ${MAX_LINK_LENGTH} characters are not opened`)
+  if (/[\s\x00-\x1f\x7f]/.test(value)) return refuse('The link contains spaces or control characters')
+  let url
+  try { url = new URL(value) } catch { return refuse('The link is not a complete web address') }
+  if (url.protocol !== 'https:') return refuse('Only https links can be opened')
+  if (url.username || url.password) return refuse('Links containing sign-in details are not opened')
+  const host = url.hostname
+  const labels = host.split('.')
+  if (labels.length < 2 || !labels.every(Boolean) || host.startsWith('[') || /^[\d.]+$/.test(host) || /(^|\.)(localhost|local|internal|home\.arpa)$/i.test(host)) {
+    return refuse('Only public website addresses can be opened')
+  }
+  // OAuth implicit flows put tokens in the fragment, so fragment parameters count too.
+  const keys = [...url.searchParams.keys(), ...[...url.hash.matchAll(/(?:^#|[?&;/])([^=?&;/#]+)=/g)].map(match => match[1])]
+  if (keys.some(key => { try { return SECRET_PARAM.test(decodeURIComponent(key)) } catch { return true } })) {
+    return refuse('Links carrying access tokens or signatures are not opened')
+  }
+  return { ok: true, url: url.href, host }
+}
 
 export function validateRequest(message) {
   return requestError(message)?.message ?? null

@@ -7,6 +7,7 @@ import { Action, OwnerChip, SpaceTile, StatusPill } from './ui/components.jsx'
 import { isSpaceId, routeSpace, spacePath, spaceRoute, spaceStatus } from './ui/model.mjs'
 import { styles } from './ui/styles.js'
 import { useScopedContext } from './ui/context.jsx'
+import { bindDesktopOs } from './ui/session.mjs'
 
 export function SpacesPage({ ctx }) {
   const scoped = useScopedContext(ctx)
@@ -30,6 +31,7 @@ export function renderDirective(ctx, attrs) { return isSpaceId(attrs?.id) ? jsx(
 export default {
   id: 'living-spaces', name: 'Spaces',
   register(ctx) {
+    bindDesktopOs(ctx.os)
     ctx.registerMany([
       { id: 'page', area: ROUTES_AREA, data: { path: '/spaces' }, render: () => jsx(SpacesPage, { ctx }) },
       { id: 'nav', area: SIDEBAR_NAV_AREA, order: 60, data: { path: '/spaces', label: 'Spaces', codicon: 'layers' } },

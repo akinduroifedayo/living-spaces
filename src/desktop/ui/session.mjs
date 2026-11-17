@@ -1,5 +1,6 @@
 import { spacePath } from './model.mjs'
 import { createBotActions, profileRoute } from './actions.mjs'
+import { linkTarget } from '../sandbox/index.js'
 
 const errorCode = error => [error?.error?.code, error?.body?.error?.code, error?.message, String(error)].filter(Boolean).join(' ')
 const freezeDraft = value => {
@@ -8,7 +9,11 @@ const freezeDraft = value => {
 }
 const requestId = () => 'write_' + Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
 
-export function createSpaceSession({ rest, backend, sid, container, mount, onEvent, host, onAction = () => {}, onWrite = () => {}, onCloseError = error => console.warn('Space session cleanup failed', error) }) {
+let desktopOs = null
+export function bindDesktopOs(os) { desktopOs = os ?? null }
+const hasActivation = () => globalThis.navigator?.userActivation?.isActive === true
+
+export function createSpaceSession({ rest, backend, sid, container, mount, onEvent, host, os = desktopOs, userActivation = hasActivation, onAction = () => {}, onWrite = () => {}, onCloseError = error => console.warn('Space session cleanup failed', error) }) {
   const base = spacePath(sid)
   const scope = backend ? Object.freeze({ connectionId: backend.connectionId, profile: backend.profile }) : null
   const active = () => !scope || (host?.state?.connectionId?.get() === scope.connectionId && host?.state?.profile?.get() === scope.profile)
@@ -37,6 +42,32 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
       mounted?.postEvent?.('bot.status', status)
     }
   }) : null
+  const linkNotice = `living-spaces:link:${sid}`
+  let linkGeneration = null
+  const showNotice = (input, label, run) => {
+    const generation = linkGeneration = {}
+    const action = run && { label, onClick: () => { if (linkGeneration === generation && !closed && active()) run() } }
+    host.notify({ id: linkNotice, ...input, action })
+  }
+  const openLink = args => {
+    if (!userActivation()) return { ok: false, error: { code: 'blocked', message: 'Links open only from a click in the Space. Nothing was opened.' } }
+    if (!args || Object.keys(args).length !== 1 || typeof args.url !== 'string') return { ok: false, error: { code: 'invalid', message: 'A link request needs exactly one url' } }
+    if (typeof os?.openExternal !== 'function' || typeof host?.notify !== 'function') return { ok: false, error: { code: 'blocked', message: 'This Desktop cannot open links from a Space' } }
+    const target = linkTarget(args.url)
+    if (!target.ok) {
+      showNotice({ kind: 'warning', title: 'Link not opened', message: target.reason })
+      return { ok: false, error: { code: 'invalid', message: target.reason } }
+    }
+    showNotice({ kind: 'info', title: `Open ${target.host} in your browser?`, message: target.url,
+      detail: 'This Space asked to open the link above outside Hermes.', durationMs: 15000 }, 'Open link', async () => {
+      const handoff = linkGeneration = {}
+      const opened = await os.openExternal(target.url).catch(() => false)
+      if (opened === true || linkGeneration !== handoff || closed || !active()) return
+      showNotice({ kind: 'error', title: 'Your browser could not open this link', message: target.url,
+        detail: 'Nothing was opened. Copy the link to open it yourself.' }, 'Copy link', () => { os.writeClipboard?.(target.url)?.catch?.(() => {}) })
+    })
+    return { ok: true, result: { status: 'confirming', url: target.url, host: target.host } }
+  }
   const close = () => {
     if (!session) return Promise.resolve()
     closePromise ??= (async () => {
@@ -104,6 +135,7 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
   }
   const call = async (op, args, retryToken) => {
     if (closed || !active()) return invalidSession()
+    if (op === 'link.open') return openLink(args)
     if (op === 'bot.request') {
       if (!actions) return { ok: false, error: { code: 'blocked', message: 'Native bot actions are unavailable' } }
       const result = await actions.request(args)
