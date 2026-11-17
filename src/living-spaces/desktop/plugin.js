@@ -792,7 +792,9 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
   const link = data?.link;
   const job = data?.job;
   const orphans = data?.orphan_jobs || [];
-  const hasRecovery = orphans.length > 0 || !!data?.one_shots?.length;
+  const uncertain = !!data?.recovery;
+  const aid = data?.recovery_aid?.settings;
+  const hasRecovery = uncertain || orphans.length > 0 || !!data?.one_shots?.length;
   const ownedJobs = (state) => [state?.job, ...state?.orphan_jobs || [], ...state?.one_shots || []].filter(Boolean);
   const archived = space.status === "archived";
   const running = isRunning(data);
@@ -824,8 +826,8 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
   }, [feedback, busy]);
   async function act(action) {
     if (lock.current) return;
-    if ((["pause", "remove"].includes(action) ? cleanupBlocked : blocked) || action === "run" && running) {
-      if (action === "remove") throw new Error("Upkeep is unavailable. Reload the native state before removing it.");
+    if ((["pause", "remove", "recover"].includes(action) ? cleanupBlocked : blocked || uncertain) || action === "run" && running) {
+      if (["remove", "recover"].includes(action)) throw new Error("Upkeep is unavailable. Reload the native state before removing it.");
       return;
     }
     lock.current = true;
@@ -835,7 +837,7 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
     setFeedback(action === "run" ? "Starting\u2026" : "Working\u2026");
     setRecentAction(Date.now());
     try {
-      const response = await ctx.rest(`${base}/upkeep`, { method: "POST", body: { action } });
+      const response = await ctx.rest(`${base}/upkeep`, { method: "POST", body: { action, ...action === "recover" ? { confirm: space.id } : {} } });
       if (action === "run" && response?.dispatch?.job?.execution_success === false) throw new Error(response.dispatch.job.execution_error || "Hermes reports that this execution failed.");
       refreshRequested = true;
       const [current] = await Promise.all([query.refetch(), onChanged?.()]);
@@ -843,14 +845,14 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
       if (!current?.data || response?.error) throw new Error("Hermes has not confirmed the requested state.");
       const currentJobs = ownedJobs(current.data);
       const returnedJobs = ownedJobs(response);
-      if (action === "pause" && (currentJobs.some((target) => target.enabled !== false) || returnedJobs.some((target) => target.enabled !== false) || [...ownedJobs(data), ...returnedJobs].some((target) => !currentJobs.some((job2) => job2.id === target.id && job2.enabled === false))) || action === "resume" && current.data.job?.enabled !== true || action === "remove" && (current.data.link || response?.link || currentJobs.length || returnedJobs.length)) throw new Error("Hermes has not confirmed the requested state.");
+      if (action === "pause" && (currentJobs.some((target) => target.enabled !== false) || returnedJobs.some((target) => target.enabled !== false) || [...ownedJobs(data), ...returnedJobs].some((target) => !currentJobs.some((job2) => job2.id === target.id && job2.enabled === false))) || action === "resume" && current.data.job?.enabled !== true || ["remove", "recover"].includes(action) && (current.data.link || response?.link || currentJobs.length || returnedJobs.length) || action === "recover" && (current.data.recovery || response?.recovery)) throw new Error("Hermes has not confirmed the requested state.");
       const next = toSeconds(current?.data?.job?.next_run_at);
-      setFeedback(action === "run" ? "Run requested. Execution and delivery are not confirmed by this request; review the last-result metadata below." : action === "pause" ? "Paused. Future runs stop until you resume. Already-running work may finish." : action === "resume" ? `Resumed.${next != null ? ` Next run ${absolute(next)}.` : ""}` : `Upkeep removed. ${space.name} is unchanged.`);
+      setFeedback(action === "recover" ? "Recovery verified. Native upkeep jobs are absent. No run was replayed. Use the settings aid for a separate scheduling request." : action === "pause" && current.data.recovery ? "Native jobs are paused. The earlier action remains uncertain. Confirm recovery to clear the barrier." : action === "run" ? "Run requested. Execution and delivery are not confirmed by this request; review the last-result metadata below." : action === "pause" ? "Paused. Future runs stop until you resume. Already-running work may finish." : action === "resume" ? `Resumed.${next != null ? ` Next run ${absolute(next)}.` : ""}` : `Upkeep removed. ${space.name} is unchanged.`);
     } catch (e) {
       setFeedback("");
       setError(`${action === "run" ? "Couldn't start the run." : action === "pause" ? "Couldn't pause upkeep." : action === "resume" ? "Couldn't resume upkeep." : "Couldn't remove upkeep."} ${errorText(e)} Review the current native state before trying again.`);
       if (!refreshRequested) await query.refetch();
-      if (action === "remove") throw e;
+      if (["remove", "recover"].includes(action)) throw e;
     } finally {
       lock.current = false;
       setBusy(null);
@@ -872,12 +874,37 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
     query.error && /* @__PURE__ */ jsx5(Banner, { title: `Showing the last loaded state${query.dataUpdatedAt ? ` from ${relative(query.dataUpdatedAt / 1e3)}` : ""}.`, actions: /* @__PURE__ */ jsx5(Action, { onClick: () => query.refetch(), children: "Try again" }), children: errorText(query.error) }),
     data.error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: "Hermes cron is unavailable", children: errorText(data.error) }),
     data.warning && /* @__PURE__ */ jsx5(Banner, { kind: "blocked", title: "Hermes cron notice", children: data.warning }),
+    aid && /* @__PURE__ */ jsxs5("section", { className: "ls-section", "aria-label": "Recovery settings aid", children: [
+      /* @__PURE__ */ jsx5("h3", { children: "Recovery settings aid" }),
+      /* @__PURE__ */ jsx5("p", { children: "Last requested settings only. These do not describe the current native schedule or enabled state. Hermes cron remains authoritative." }),
+      /* @__PURE__ */ jsx5("dl", { className: "ls-facts", children: ["kind", "cadence", "timezone", "prompt"].map((key) => /* @__PURE__ */ jsxs5("div", { children: [
+        /* @__PURE__ */ jsx5("dt", { children: key }),
+        /* @__PURE__ */ jsx5("dd", { children: aid[key] ?? "None" })
+      ] }, key)) }),
+      /* @__PURE__ */ jsx5(CopyPrompt, { text: `${space.owner}, review these last requested upkeep settings for ${space.name} and confirm before scheduling again: ${JSON.stringify(aid)}`, label: "Copy recovery settings" })
+    ] }),
     archived && /* @__PURE__ */ jsxs5("p", { children: [
       "Run and Resume are unavailable while this Space is archived. ",
       hasRecovery && "Use Pause or Remove to clean up recovery jobs. ",
       "Already-running work may finish."
     ] }),
-    !link ? hasRecovery ? /* @__PURE__ */ jsx5(Banner, { kind: "blocked", title: "No primary upkeep link", children: "Space-owned jobs below may still run. Pause or remove them before scheduling upkeep again." }) : /* @__PURE__ */ jsxs5(Fragment5, { children: [
+    uncertain ? /* @__PURE__ */ jsxs5(Banner, { kind: "blocked", title: "Upkeep outcome unknown", children: [
+      /* @__PURE__ */ jsx5("p", { children: data.recovery.cause }),
+      /* @__PURE__ */ jsxs5("p", { children: [
+        "Uncertain action: ",
+        data.recovery.operations.map((op) => op.action).join(", ")
+      ] }),
+      /* @__PURE__ */ jsx5("p", { children: data.recovery.options }),
+      /* @__PURE__ */ jsx5("p", { children: data.recovery.evidence }),
+      job && /* @__PURE__ */ jsxs5("p", { children: [
+        "Native inventory currently shows job ",
+        /* @__PURE__ */ jsx5("code", { children: job.id }),
+        ", ",
+        job.enabled === true ? "enabled" : job.enabled === false ? "disabled" : "enabled state unknown",
+        ". This does not confirm the earlier effect."
+      ] }),
+      /* @__PURE__ */ jsx5(Action, { primary: true, "aria-disabled": cleanupBlocked, onClick: () => !cleanupBlocked && setConfirm("recover"), children: "Recover upkeep" })
+    ] }) : !link ? hasRecovery ? /* @__PURE__ */ jsx5(Banner, { kind: "blocked", title: "No primary upkeep link", children: "Space-owned jobs below may still run. Pause or remove them before scheduling upkeep again." }) : /* @__PURE__ */ jsxs5(Fragment5, { children: [
       /* @__PURE__ */ jsx5("h3", { children: "No upkeep yet" }),
       /* @__PURE__ */ jsxs5("p", { children: [
         "This Space isn't updated automatically. Ask ",
@@ -952,14 +979,14 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
       /* @__PURE__ */ jsx5("div", { ref: feedbackNode, tabIndex: -1, role: "status", "aria-live": "polite", className: "ls-upkeep-feedback", children: feedback }),
       error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: error }),
       job?.uses_model === true && job.prompt && !data?.unavailable?.prompt && /* @__PURE__ */ jsx5("div", { className: "ls-section", children: /* @__PURE__ */ jsx5(Action, { "aria-expanded": fullPrompt, "aria-controls": "ls-upkeep-prompt", onClick: () => setFullPrompt(!fullPrompt), children: fullPrompt ? "Show less" : "Show full prompt" }) }),
-      job?.last_error && ["failed", "error"].includes(job.last_status) && /* @__PURE__ */ jsxs5(Banner, { kind: "failed", title: `Last run failed${lastAt != null ? ` ${absolute(lastAt)}` : ""}`, actions: /* @__PURE__ */ jsxs5(Fragment5, { children: [
+      !uncertain && job?.last_error && ["failed", "error"].includes(job.last_status) && /* @__PURE__ */ jsxs5(Banner, { kind: "failed", title: `Last run failed${lastAt != null ? ` ${absolute(lastAt)}` : ""}`, actions: /* @__PURE__ */ jsxs5(Fragment5, { children: [
         /* @__PURE__ */ jsx5(Action, { "aria-disabled": blocked || running, onClick: () => act("run"), children: "Run now" }),
         !data?.unavailable?.executions && /* @__PURE__ */ jsx5(Action, { onClick: () => document.getElementById("ls-upkeep-executions")?.focus(), children: "View history" })
       ] }), children: [
         /* @__PURE__ */ jsx5("p", { id: "ls-upkeep-error", className: fullError ? "" : "ls-clamp-three", children: job.last_error }),
         /* @__PURE__ */ jsx5(Action, { "aria-expanded": fullError, "aria-controls": "ls-upkeep-error", onClick: () => setFullError(!fullError), children: fullError ? "Show less" : "Show more" })
       ] }),
-      link && /* @__PURE__ */ jsxs5("section", { className: "ls-section", id: "ls-upkeep-executions", tabIndex: -1, children: [
+      link && !uncertain && /* @__PURE__ */ jsxs5("section", { className: "ls-section", id: "ls-upkeep-executions", tabIndex: -1, children: [
         /* @__PURE__ */ jsx5("h3", { className: "ls-section-title", children: "Executions" }),
         /* @__PURE__ */ jsx5(Executions, { executions: data.executions, unavailable: data.unavailable?.executions }),
         data.unavailable?.dispatch && /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: data.unavailable.dispatch })
@@ -970,7 +997,7 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
         /* @__PURE__ */ jsx5(Executions, { executions: data.one_shots.flatMap((shot) => shot.executions || []), unavailable: data.unavailable?.executions })
       ] })
     ] }),
-    confirm && /* @__PURE__ */ jsx5(DecisionDialog, { danger: true, successFocus: feedbackNode, title: `Remove upkeep for ${space.name}?`, description: "This deletes this Space's linked job, unlinked upkeep jobs and Refresh now jobs. Future runs stop, but already-running work may finish. The Space and its data are kept.", cancelLabel: "Keep upkeep", confirmLabel: "Remove", onClose: () => setConfirm(false), onConfirm: () => act("remove") })
+    confirm && /* @__PURE__ */ jsx5(DecisionDialog, { danger: true, successFocus: feedbackNode, title: `${confirm === "recover" ? "Recover" : "Remove"} upkeep for ${space.name}?`, description: `This checks native state and deletes this Space's linked job, unlinked upkeep jobs and Refresh now jobs. Future runs stop, but already-running work may finish. The Space and its data are kept. ${confirm === "recover" ? "No run will be replayed. Settings remain an aid for a separate scheduling request." : ""}`, cancelLabel: "Keep upkeep", confirmLabel: confirm === "recover" ? "Confirm recovery" : "Remove", onClose: () => setConfirm(false), onConfirm: () => act(confirm === "recover" ? "recover" : "remove") })
   ] });
 }
 

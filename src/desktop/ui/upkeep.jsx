@@ -40,7 +40,9 @@ export function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, r
   const link = data?.link
   const job = data?.job
   const orphans = data?.orphan_jobs || []
-  const hasRecovery = orphans.length > 0 || !!data?.one_shots?.length
+  const uncertain = !!data?.recovery
+  const aid = data?.recovery_aid?.settings
+  const hasRecovery = uncertain || orphans.length > 0 || !!data?.one_shots?.length
   const ownedJobs = state => [state?.job, ...(state?.orphan_jobs || []), ...(state?.one_shots || [])].filter(Boolean)
   const archived = space.status === 'archived'
   const running = isRunning(data)
@@ -69,15 +71,15 @@ export function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, r
   }, [feedback, busy])
   async function act(action) {
     if (lock.current) return
-    if ((['pause', 'remove'].includes(action) ? cleanupBlocked : blocked) || (action === 'run' && running)) {
-      if (action === 'remove') throw new Error('Upkeep is unavailable. Reload the native state before removing it.')
+    if ((['pause', 'remove', 'recover'].includes(action) ? cleanupBlocked : blocked || uncertain) || (action === 'run' && running)) {
+      if (['remove', 'recover'].includes(action)) throw new Error('Upkeep is unavailable. Reload the native state before removing it.')
       return
     }
     lock.current = true
     let refreshRequested = false
     setBusy(action); setError(''); setFeedback(action === 'run' ? 'Starting…' : 'Working…'); setRecentAction(Date.now())
     try {
-      const response = await ctx.rest(`${base}/upkeep`, { method: 'POST', body: { action } })
+      const response = await ctx.rest(`${base}/upkeep`, { method: 'POST', body: { action, ...(action === 'recover' ? { confirm: space.id } : {}) } })
       if (action === 'run' && response?.dispatch?.job?.execution_success === false) throw new Error(response.dispatch.job.execution_error || 'Hermes reports that this execution failed.')
       refreshRequested = true
       const [current] = await Promise.all([query.refetch(), onChanged?.()])
@@ -89,14 +91,15 @@ export function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, r
           || returnedJobs.some(target => target.enabled !== false)
           || [...ownedJobs(data), ...returnedJobs].some(target => !currentJobs.some(job => job.id === target.id && job.enabled === false))))
           || (action === 'resume' && current.data.job?.enabled !== true)
-          || (action === 'remove' && (current.data.link || response?.link || currentJobs.length || returnedJobs.length))) throw new Error('Hermes has not confirmed the requested state.')
+          || (['remove', 'recover'].includes(action) && (current.data.link || response?.link || currentJobs.length || returnedJobs.length))
+          || (action === 'recover' && (current.data.recovery || response?.recovery))) throw new Error('Hermes has not confirmed the requested state.')
       const next = toSeconds(current?.data?.job?.next_run_at)
-      setFeedback(action === 'run' ? 'Run requested. Execution and delivery are not confirmed by this request; review the last-result metadata below.' : action === 'pause' ? 'Paused. Future runs stop until you resume. Already-running work may finish.' : action === 'resume' ? `Resumed.${next != null ? ` Next run ${absolute(next)}.` : ''}` : `Upkeep removed. ${space.name} is unchanged.`)
+      setFeedback(action === 'recover' ? 'Recovery verified. Native upkeep jobs are absent. No run was replayed. Use the settings aid for a separate scheduling request.' : action === 'pause' && current.data.recovery ? 'Native jobs are paused. The earlier action remains uncertain. Confirm recovery to clear the barrier.' : action === 'run' ? 'Run requested. Execution and delivery are not confirmed by this request; review the last-result metadata below.' : action === 'pause' ? 'Paused. Future runs stop until you resume. Already-running work may finish.' : action === 'resume' ? `Resumed.${next != null ? ` Next run ${absolute(next)}.` : ''}` : `Upkeep removed. ${space.name} is unchanged.`)
     } catch (e) {
       setFeedback('')
       setError(`${action === 'run' ? "Couldn't start the run." : action === 'pause' ? "Couldn't pause upkeep." : action === 'resume' ? "Couldn't resume upkeep." : "Couldn't remove upkeep."} ${errorText(e)} Review the current native state before trying again.`)
       if (!refreshRequested) await query.refetch()
-      if (action === 'remove') throw e
+      if (['remove', 'recover'].includes(action)) throw e
     } finally { lock.current = false; setBusy(null) }
   }
   const removeButton = <Action danger aria-disabled={cleanupBlocked} onClick={() => !cleanupBlocked && setConfirm(true)}>{data?.missing && !hasRecovery ? 'Remove link' : 'Remove'}</Action>
@@ -110,8 +113,9 @@ export function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, r
     {query.error && <Banner title={`Showing the last loaded state${query.dataUpdatedAt ? ` from ${relative(query.dataUpdatedAt / 1000)}` : ''}.`} actions={<Action onClick={() => query.refetch()}>Try again</Action>}>{errorText(query.error)}</Banner>}
     {data.error && <Banner kind="failed" title="Hermes cron is unavailable">{errorText(data.error)}</Banner>}
     {data.warning && <Banner kind="blocked" title="Hermes cron notice">{data.warning}</Banner>}
+    {aid && <section className="ls-section" aria-label="Recovery settings aid"><h3>Recovery settings aid</h3><p>Last requested settings only. These do not describe the current native schedule or enabled state. Hermes cron remains authoritative.</p><dl className="ls-facts">{['kind', 'cadence', 'timezone', 'prompt'].map(key => <div key={key}><dt>{key}</dt><dd>{aid[key] ?? 'None'}</dd></div>)}</dl><CopyPrompt text={`${space.owner}, review these last requested upkeep settings for ${space.name} and confirm before scheduling again: ${JSON.stringify(aid)}`} label="Copy recovery settings" /></section>}
     {archived && <p>Run and Resume are unavailable while this Space is archived. {hasRecovery && 'Use Pause or Remove to clean up recovery jobs. '}Already-running work may finish.</p>}
-    {!link ? hasRecovery ? <Banner kind="blocked" title="No primary upkeep link">Space-owned jobs below may still run. Pause or remove them before scheduling upkeep again.</Banner> : <><h3>No upkeep yet</h3><p>This Space isn't updated automatically. Ask {space.owner} in chat to set up upkeep as a Hermes cron job.</p>{ask}</> : data.missing ? <>
+    {uncertain ? <Banner kind="blocked" title="Upkeep outcome unknown"><p>{data.recovery.cause}</p><p>Uncertain action: {data.recovery.operations.map(op => op.action).join(', ')}</p><p>{data.recovery.options}</p><p>{data.recovery.evidence}</p>{job && <p>Native inventory currently shows job <code>{job.id}</code>, {job.enabled === true ? 'enabled' : job.enabled === false ? 'disabled' : 'enabled state unknown'}. This does not confirm the earlier effect.</p>}<Action primary aria-disabled={cleanupBlocked} onClick={() => !cleanupBlocked && setConfirm('recover')}>Recover upkeep</Action></Banner> : !link ? hasRecovery ? <Banner kind="blocked" title="No primary upkeep link">Space-owned jobs below may still run. Pause or remove them before scheduling upkeep again.</Banner> : <><h3>No upkeep yet</h3><p>This Space isn't updated automatically. Ask {space.owner} in chat to set up upkeep as a Hermes cron job.</p>{ask}</> : data.missing ? <>
       <StatusPill status="blocked" label="Job missing" /><Banner kind="blocked" title="Hermes no longer has this job" actions={removeButton}>{hasRecovery ? 'Other Space-owned jobs below may still run. Pause or remove them before scheduling upkeep again.' : `Nothing will run. Ask ${space.owner} in chat to schedule upkeep again.`}</Banner>{!hasRecovery && ask}
     </> : job ? <>
       <StatusPill status={running ? 'running' : !job.enabled ? 'paused' : data.gateway_running === false ? 'blocked' : 'ready'} label={running ? 'Running now' : !job.enabled ? 'Paused' : data.gateway_running === false ? 'Scheduler offline' : 'Active'} />
@@ -137,8 +141,8 @@ export function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, r
     <div ref={feedbackNode} tabIndex={-1} role="status" aria-live="polite" className="ls-upkeep-feedback">{feedback}</div>
     {error && <Banner kind="failed" title={error} />}
     {job?.uses_model === true && job.prompt && !data?.unavailable?.prompt && <div className="ls-section"><Action aria-expanded={fullPrompt} aria-controls="ls-upkeep-prompt" onClick={() => setFullPrompt(!fullPrompt)}>{fullPrompt ? 'Show less' : 'Show full prompt'}</Action></div>}
-    {job?.last_error && ['failed', 'error'].includes(job.last_status) && <Banner kind="failed" title={`Last run failed${lastAt != null ? ` ${absolute(lastAt)}` : ''}`} actions={<><Action aria-disabled={blocked || running} onClick={() => act('run')}>Run now</Action>{!data?.unavailable?.executions && <Action onClick={() => document.getElementById('ls-upkeep-executions')?.focus()}>View history</Action>}</>}><p id="ls-upkeep-error" className={fullError ? '' : 'ls-clamp-three'}>{job.last_error}</p><Action aria-expanded={fullError} aria-controls="ls-upkeep-error" onClick={() => setFullError(!fullError)}>{fullError ? 'Show less' : 'Show more'}</Action></Banner>}
-    {link && <section className="ls-section" id="ls-upkeep-executions" tabIndex={-1}><h3 className="ls-section-title">Executions</h3><Executions executions={data.executions} unavailable={data.unavailable?.executions} />{data.unavailable?.dispatch && <p className="ls-secondary">{data.unavailable.dispatch}</p>}</section>}
+    {!uncertain && job?.last_error && ['failed', 'error'].includes(job.last_status) && <Banner kind="failed" title={`Last run failed${lastAt != null ? ` ${absolute(lastAt)}` : ''}`} actions={<><Action aria-disabled={blocked || running} onClick={() => act('run')}>Run now</Action>{!data?.unavailable?.executions && <Action onClick={() => document.getElementById('ls-upkeep-executions')?.focus()}>View history</Action>}</>}><p id="ls-upkeep-error" className={fullError ? '' : 'ls-clamp-three'}>{job.last_error}</p><Action aria-expanded={fullError} aria-controls="ls-upkeep-error" onClick={() => setFullError(!fullError)}>{fullError ? 'Show less' : 'Show more'}</Action></Banner>}
+    {link && !uncertain && <section className="ls-section" id="ls-upkeep-executions" tabIndex={-1}><h3 className="ls-section-title">Executions</h3><Executions executions={data.executions} unavailable={data.unavailable?.executions} />{data.unavailable?.dispatch && <p className="ls-secondary">{data.unavailable.dispatch}</p>}</section>}
     {!!data?.one_shots?.length && <section className="ls-section" data-testid="one-shots"><h3 className="ls-section-title">{data.unavailable?.executions ? 'Refresh now jobs' : 'Refresh now runs'}</h3><p className="ls-secondary">One-time Hermes jobs requested with Refresh now. Each uses model calls. A saved job is not proof that it ran.</p><Executions executions={data.one_shots.flatMap(shot => shot.executions || [])} unavailable={data.unavailable?.executions} /></section>}
-  </Drawer>{confirm && <DecisionDialog danger successFocus={feedbackNode} title={`Remove upkeep for ${space.name}?`} description="This deletes this Space's linked job, unlinked upkeep jobs and Refresh now jobs. Future runs stop, but already-running work may finish. The Space and its data are kept." cancelLabel="Keep upkeep" confirmLabel="Remove" onClose={() => setConfirm(false)} onConfirm={() => act('remove')} />}</>
+  </Drawer>{confirm && <DecisionDialog danger successFocus={feedbackNode} title={`${confirm === 'recover' ? 'Recover' : 'Remove'} upkeep for ${space.name}?`} description={`This checks native state and deletes this Space's linked job, unlinked upkeep jobs and Refresh now jobs. Future runs stop, but already-running work may finish. The Space and its data are kept. ${confirm === 'recover' ? 'No run will be replayed. Settings remain an aid for a separate scheduling request.' : ''}`} cancelLabel="Keep upkeep" confirmLabel={confirm === 'recover' ? 'Confirm recovery' : 'Remove'} onClose={() => setConfirm(false)} onConfirm={() => act(confirm === 'recover' ? 'recover' : 'remove')} />}</>
 }
