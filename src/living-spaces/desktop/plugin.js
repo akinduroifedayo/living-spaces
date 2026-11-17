@@ -1118,7 +1118,7 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
       error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: error }),
       job?.uses_model === true && job.prompt && !data?.unavailable?.prompt && /* @__PURE__ */ jsx5("div", { className: "ls-section", children: /* @__PURE__ */ jsx5(Action, { "aria-expanded": fullPrompt, "aria-controls": "ls-upkeep-prompt", onClick: () => setFullPrompt(!fullPrompt), children: fullPrompt ? "Show less" : "Show full prompt" }) }),
       job?.last_error && ["failed", "error"].includes(job.last_status) && /* @__PURE__ */ jsxs5(Banner, { kind: "failed", title: `Last run failed${lastAt != null ? ` ${absolute(lastAt)}` : ""}`, actions: /* @__PURE__ */ jsxs5(Fragment5, { children: [
-        /* @__PURE__ */ jsx5(Action, { "aria-disabled": blocked || running, onClick: () => act("run"), children: "Run now" }),
+        !uncertain && /* @__PURE__ */ jsx5(Action, { "aria-disabled": blocked || running, onClick: () => act("run"), children: "Run now" }),
         !data?.unavailable?.executions && /* @__PURE__ */ jsx5(Action, { onClick: () => document.getElementById("ls-upkeep-executions")?.focus(), children: "View history" })
       ] }), children: [
         /* @__PURE__ */ jsx5("p", { id: "ls-upkeep-error", className: fullError ? "" : "ls-clamp-three", children: job.last_error }),

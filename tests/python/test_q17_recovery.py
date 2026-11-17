@@ -57,7 +57,13 @@ class Q17RecoveryTests(unittest.TestCase):
         self.fx.ctx.run_reply = {'success': True, 'job': dict(self.fx.ctx.format_job(self.fx.cron.get_job(jid)),
                                                               executed=True, execution_success=True)}
         self.fx.upkeep.upkeep_action(self.sid, 'run', actor='user')
-        self.assertIsNone(self.fx.upkeep.get_upkeep(self.sid)['recovery'])
+        settled = self.fx.upkeep.get_upkeep(self.sid)
+        self.assertIsNone(settled['recovery'])
+        self.assertNotIn('in_flight', settled)
+        with self.fx.db.read() as conn:
+            self.assertIsNone(conn.execute('SELECT 1 FROM refresh_claims WHERE space=?', (self.sid,)).fetchone())
+            phases = [row[0] for row in conn.execute("SELECT phase FROM maintenance_operations WHERE space=? AND command='run'", (self.sid,))]
+        self.assertTrue(phases and set(phases) == {'retired'}, phases)
         self.assertEqual([a for a, _ in self.fx.cron.calls].count('remove'), 0)
 
     def test_lost_run_reply_still_raises_the_unknown_barrier(self):

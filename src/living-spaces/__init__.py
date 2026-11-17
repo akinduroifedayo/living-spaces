@@ -519,7 +519,8 @@ TOOLS = [
         "Apply 1-100 ordered exact text replacements to one in-memory candidate against required base_rev. "
         "Later edits see earlier replacements, including space.json. Every old must match exactly once. "
         "Validate the entire final project with existing diagnostics, then publish exactly one revision or none. "
-        "Any diagnostic rejects the batch with code invalid. Stale head returns conflict. Errors name the "
+        "A diagnostic the batch introduces rejects it with code invalid; diagnostics already present at base_rev "
+        "are reported, not blocking. Stale head returns conflict. Errors name the "
         "zero-based edit_index and path; binary edits, invalid assets/imports or manifest/migration failures "
         "leave head and history unchanged. Use spaces_write_files for whole files, additions or deletions. "
         "No model call or automatic inspection." + REF_NOTE + WRITE_NOTE,

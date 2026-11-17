@@ -73,6 +73,11 @@ class BatchEditTests(CoreCase):
                              {'path': 'index.html', 'old': 'Again', 'new': '<img src="missing.png">'}])
         self.assertEqual({d['path'] for d in error['diagnostics']}, {'index.html'})
 
+    def test_same_file_failure_names_the_edit_that_introduced_it(self):
+        error = self.reject([{'path': 'index.html', 'old': 'Public demo', 'new': '<img src="missing.png"> Public demo'},
+                             {'path': 'index.html', 'old': 'Public demo', 'new': 'Later text'}], index=0)
+        self.assertTrue(error['diagnostics'])
+
     def test_invalid_import_and_asset_reject_final_candidate(self):
         for replacement in ('<script type="module">import "./missing.js";</script>',
                             '<img src="missing.png">'):

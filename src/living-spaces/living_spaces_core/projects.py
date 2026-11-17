@@ -459,7 +459,7 @@ def edit_files(sid, *, edits, base_rev, author, summary):
     limits.check(len(edits), EDIT_FILES_MAX, "project edits")
     limits.text(author, "author")
     limits.text(summary, "summary", nonempty=False)
-    index, path, indexes = 0, None, {}
+    index, path, indexes, news = 0, None, {}, {}
     with db.write() as conn:
         try:
             path = edits[0].get("path") if isinstance(edits[0], dict) else None
@@ -497,6 +497,7 @@ def edit_files(sid, *, edits, base_rev, author, summary):
                     raise SpacesError("invalid", "Replacement must be valid UTF-8") from exc
                 limits.check(len(raw), limits.FILE_BYTES, "file bytes")
                 candidate[path], indexes[path] = raw, index
+                news.setdefault(path, []).append((index, new))
             # Attribute manifest parsing, normalization and migration failures to its last edit.
             if "space.json" in indexes:
                 index, path = indexes["space.json"], "space.json"
@@ -510,7 +511,9 @@ def edit_files(sid, *, edits, base_rev, author, summary):
                 affected = diagnostic["path"]
                 if affected in indexes or diagnostic.get("target") in indexes:
                     path = affected if affected in indexes else diagnostic["target"]
-                    index = indexes[path]
+                    # Name the last edit to that file whose replacement introduced the reference, else its last edit.
+                    ref = diagnostic.get("ref")
+                    index = next((i for i, text in reversed(news.get(path, [])) if ref and ref in text), indexes[path])
                     break
             raise SpacesError(exc.code, exc.message, **{**exc.extra, "edit_index": index, "path": path}) from exc
 

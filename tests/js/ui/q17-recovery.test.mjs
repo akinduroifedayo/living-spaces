@@ -121,4 +121,5 @@ test('Q17 uncertain state keeps the evidence that can reconcile it visible', asy
   await render()
   assert.ok(document.getElementById('ls-upkeep-executions'), 'Executions section hidden while uncertain')
   assert.match(document.body.textContent, /Provider timeout during the earlier run/)
+  assert.equal(buttons('Run now').length, 0, 'An inert Run now must not be offered while uncertain')
 })

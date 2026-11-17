@@ -97,7 +97,7 @@ A file over budget returns `limit`; later smaller files can still fit.
 of `{path,old,new}`. Use the read's `rev` as `base_rev`. Repeated paths see earlier
 candidate edits. Every `old` must occur exactly once, including whitespace.
 The whole final candidate passes existing project diagnostics before publication.
-Any diagnostic rejects the batch. It publishes exactly one revision or none.
+A diagnostic the batch introduces rejects it; warnings already present at base_rev are reported, not blocking. It publishes exactly one revision or none.
 A stale head, ambiguous match, binary edit, invalid asset/import, or failed
 manifest/migration validation leaves head and history unchanged. Errors identify
 the zero-based `edit_index` and `path`. Re-read before a deliberate retry.
