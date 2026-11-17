@@ -328,8 +328,6 @@ def spaces_edit_file(core, args, owner):
 
 
 def spaces_query(core, args, owner):
-    if set(args) - {"space", "collection", "where", "order", "limit", "offset", "page", "cursor"}:
-        raise _invalid(core, "Unknown query arguments")
     sid = _space(core, args)
     where = _json_arg(core, args, "where", dict, required=False)
     page = args.get("page", False)

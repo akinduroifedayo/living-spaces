@@ -137,6 +137,11 @@ delete_space(sid, *, actor, confirm: str)  # confirm must equal sid; removes the
 touch_opened(sid); set_pinned(sid, bool)
 # records.py
 query(sid, collection, *, where: dict|None=None, order: str|None=None, limit=500, offset=0) -> {"records":[Record],"total","seq"}
+query(sid, collection, *, where=None, order=None, limit=500, page=True, cursor: dict|None=None) -> {"records","total","seq","has_more","next_cursor"}
+  Opt-in paging. Order is the existing comparator with the record id as the final tie key; nulls sort first ascending and last descending.
+  next_cursor is null on the last page. A cursor is bound to the Space incarnation, its data seq, the offset and a fingerprint of where/order/limit.
+  If any record in the Space changed since the first page, or the query options differ, the next call fails with cursor_expired.
+  Restart from the first page. A cursor never silently skips or repeats records, and it is not a credential: access is still checked per call.
 get(sid, collection, rid) -> Record
 put(sid, collection, rid|None, data: dict, *, actor, base_rev: int|None, merge=True) -> Record
        # base_rev None = create-only when rid is new, else conflict; 0 = must not exist; merge=True shallow-merges data
@@ -216,6 +221,7 @@ Host → frame event: `{v:1, type:"event", event:"data.changed", payload:{seq, c
 |---|---|---|---|
 | `meta` | none | `{}` | `{space:{id,name,rev}, grants:[capability…], limits}` |
 | `data.query` | data | `{collection, where?, order?, limit?, offset?}` | `{records, total, seq}` |
+| `data.query` (paged) | data | `{collection, where?, order?, limit?, page: true, cursor?}` | `{records, total, seq, has_more, next_cursor}`; `cursor_expired` when the Space changed |
 | `data.get` | data | `{collection, id}` | Record |
 | `data.put` | data | `{collection, id?, data, base_rev?, merge?}` | Record (`conflict` carries `current`) |
 | `data.delete` | data | `{collection, id, base_rev?}` | `{deleted:true}` |
@@ -232,6 +238,7 @@ Live updates: while a Space is open the host polls `GET /spaces/{sid}/changes?si
 ```js
 space.meta  // {space:{id,name,rev}, grants}
 await space.query(collection, {where, order, limit})   // -> Record[]
+await space.queryPage(collection, {where, order, limit, cursor})   // -> {records, total, seq, has_more, next_cursor}; throws SpaceError code cursor_expired
 await space.get(collection, id)        await space.put(collection, id|null, data, {baseRev})  // throws SpaceError(code)
 await space.delete(collection, id, {baseRev})          await space.batch(ops)
 await space.refresh()                  await space.runs()
@@ -264,7 +271,7 @@ Errors use HTTP 4xx with `{"error":{"code","message",...}}` (404 not_found, 400 
 
 ## 9. Agent tools (toolset `living_spaces`, emoji 🪴). Every handler returns a JSON string `{"ok":true,"result":...}` or `{"ok":false,"error":{...}}`
 
-`spaces_list` · `spaces_get(space)` · `spaces_create(name, description, files, manifest?, libraries?)` · `spaces_read_file(space, path)` · `spaces_write_files(space, files, summary, base_rev?)` · `spaces_edit_file(space, path, old, new, summary)` · `spaces_query(space, collection, where?, limit?)` · `spaces_write_records(space, ops)` (batch of put/delete with base_rev) · `spaces_read_logs(space, level?)` · `spaces_inspect(space, rev, width?, height?, timeout_s?, text_limit?)` (optional, read-only runtime check) · `spaces_revisions(space)` · `spaces_restore(space, rev)` · `spaces_refresh(space)` (Refresh now) · `spaces_schedule_upkeep(space, kind: agent|feed, cadence, timezone, prompt?)` · `spaces_upkeep(space, action: status|pause|resume|run|remove)`.
+`spaces_list` · `spaces_get(space)` · `spaces_create(name, description, files, manifest?, libraries?)` · `spaces_read_file(space, path)` · `spaces_write_files(space, files, summary, base_rev?)` · `spaces_edit_file(space, path, old, new, summary)` · `spaces_query(space, collection, where?, order?, limit?, offset?, page?, cursor?)` · `spaces_write_records(space, ops)` (batch of put/delete with base_rev) · `spaces_read_logs(space, level?)` · `spaces_inspect(space, rev, width?, height?, timeout_s?, text_limit?)` (optional, read-only runtime check) · `spaces_revisions(space)` · `spaces_restore(space, rev)` · `spaces_refresh(space)` (Refresh now) · `spaces_schedule_upkeep(space, kind: agent|feed, cadence, timezone, prompt?)` · `spaces_upkeep(space, action: status|pause|resume|run|remove)`.
 - `spaces_schedule_upkeep` creates an ordinary Hermes cron job now. The user asking is the consent. Agent jobs use model calls, and the agent must say so to the user. It replaces any existing upkeep job. `prompt` is required for `agent`. `spaces_get` and `spaces_list` expose `upkeep`.
 - `space` accepts an id or an exact name. Ambiguous or unknown refs fail with `ambiguous`/`not_found` and the candidates, never a guess (R1-03).
 - `spaces_create` and `spaces_write_files` return `{space, rev, open: {directive: "::living-space{id=\"<sid>\"}", route: "/spaces?space=<sid>"}, grants_pending:[...], warnings:[...], diagnostics:[...]}`; `spaces_edit_file` and `spaces_restore` return the same `warnings` and `diagnostics`. Core computes them over the whole resulting revision (`living_spaces_core/diagnostics.py`), so an unchanged importer broken by an edited dependency is reported. Each diagnostic is `{code, path, line, column, ref, target, message}`, and `warnings` is the list of messages. Codes: `entry.missing`, `import.unresolved`, `import.bare_unmapped`, `import.alias_target_missing`, `asset.unresolved`, `net.direct_call` (browser `fetch`, XHR, WebSocket, EventSource, `sendBeacon`), `net.remote_import`, `net.remote_resource` (remote `src`, loading `href`, CSS `url()`/`@import`), `library.file_unavailable`. `space.net.fetch` and URL text in strings, comments, links and SVG namespaces are not warnings.
