@@ -115,7 +115,7 @@ Every record write bumps `records.rev` and appends one `changes` row in the same
 
 ## 4. Public core API (`living_spaces_core`, all return JSON-safe dicts/lists; raise `SpacesError(code, message, **extra)`)
 
-Error codes: `not_found`, `invalid`, `conflict` (extra: `current` record), `not_granted` (extra: `capability`), `limit` (extra: `limit`, `actual`), `session_invalid`, `archived`, `blocked` (extra: `reason`), `ambiguous` (extra: `candidates`), `incompatible` (extra: `from_version`, `to_version`).
+Error codes: `not_found`, `invalid`, `conflict` (extra: `current` record), `not_granted` (extra: `capability`), `limit` (extra: `limit`, `actual`), `session_invalid`, `archived`, `blocked` (extra: `reason`), `ambiguous` (extra: `candidates`), `incompatible` (extra: `from_version`, `to_version`), `cursor_expired` (409: a paged query's cursor no longer matches the data; discard prior pages and restart).
 
 ```python
 # projects.py

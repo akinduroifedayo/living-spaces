@@ -119,6 +119,20 @@ class Q13OverlayTests(Q13Case):
         adapter.close()
         self.assertEqual((table_dump(self.db), self.bytes()), (before, hashes))
 
+    def test_q13_overlay_cannot_look_up_real_write_receipts(self):
+        # int-opus-01 Q13 P3, not reproduced: receipts are session-scoped and the overlay opens a fresh session.
+        # This guards the privacy property: a journey cannot look up the person's real write receipts.
+        sid = self.space('Receipts-private', '<main>x</main>')
+        session = sessions.open_session(sid)['session']
+        grants.decide(sid, 'data', 'grant')
+        live = bridge.dispatch(sid, session, 'data.put', {'collection': 'notes', 'id': 'a', 'data': {'n': 1}, 'base_rev': 0},
+                               'live-1')
+        self.assertTrue(live['ok'], live)
+        adapter = self.overlay(sid)
+        found = adapter.call('outcome.get', {'request_id': 'live-1'})
+        self.assertEqual(found['outcome']['status'], 'unknown', found)
+        self.assertNotIn('confirmation', found.get('result') or {})
+
     def test_q13_overlay_works_on_a_profile_without_the_draft_table(self):
         sid = self.space('Legacy', '<main>x</main>')
         with db.write() as conn:
