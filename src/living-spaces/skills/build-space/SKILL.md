@@ -307,6 +307,16 @@ own visual language without kit CSS. [Showcase sources](../../runtime/kit/showca
 are further technique references, not proof of chat generation or qualification;
 consult their verification receipts before claiming live behaviour.
 
+## Optional accessible controls
+
+Use `bindDialog`, `bindDrawer`, `bindTabs`, `bindDisclosure`, and `bindMenu`
+from `spaces-kit` when the app needs these interactions. They bind author-owned
+native markup and return `destroy()` for component cleanup. Appearance stays
+in the app. Read [accessible controls](references/accessible-controls.md) for
+Preact lifecycle usage, exact options, keyboard behavior, nesting, and limits.
+These helpers require no kit stylesheet. Keep native buttons, dialog, details,
+and summary semantics, and supply names and visible focus in the chosen design.
+
 ## JavaScript-controlled forms
 
 The accepted frame has `sandbox="allow-scripts"` and CSP `form-action 'none'`.

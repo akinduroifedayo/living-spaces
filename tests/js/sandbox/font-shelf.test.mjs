@@ -139,9 +139,14 @@ test('the opt-in specimen names each family and retains explicit fallback sample
   assert.doesNotMatch(html, /<script|https?:\/\/|@import/i)
 })
 
-test('mandatory kit styles and modules retain their base bytes', () => {
+test('mandatory kit styles and the pre-Q09 module prefix retain their base bytes', () => {
   for (const [path, hash] of [
     ['kit/spaces-kit.css', 'cde2653ae11005b6b4cf98856bf2cba72cde83d1f5c1f2e2e7a36b26a1b90261'],
     ['kit/spaces-kit.mjs', '8c359509756a9a86572e901af2cdeca50143ba9b8ddecd505ef48475c24356bc']
-  ]) assert.equal(createHash('sha256').update(read(path)).digest('hex'), hash)
+  ]) {
+    const bytes = read(path)
+    // Q09 appends controls; every pre-existing module byte remains pinned.
+    const base = path.endsWith('.mjs') ? bytes.subarray(0, 10478) : bytes
+    assert.equal(createHash('sha256').update(base).digest('hex'), hash)
+  }
 })
