@@ -132,6 +132,7 @@ Read only the applicable recipes, keeping this core contract loaded.
   files before copying it. Label synthetic data explicitly.
 - [Project evolution](references/project-evolution.md) for code and data migrations.
 - [Upkeep](references/upkeep.md) for feed and agent refresh and native schedules.
+- [Visual inspection](references/inspection.md) for `spaces_inspect` geometry and PNG evidence.
 
 ## Verify and finish
 
@@ -142,8 +143,10 @@ does not resolve. After the Space mounts,
 read `spaces_read_logs` for runtime errors. Empty logs before mounting prove
 nothing. Inspection is an explicit agent action. `spaces_inspect` checks a saved
 revision in a disposable local browser with read-only data. It refuses writes,
-network, refresh, and bot requests. It returns text and errors, no screenshots.
-Loaded does not establish correctness or visual quality. Writes never trigger
+network, refresh, and bot requests. By default it returns text and errors and no
+pixels. Pass explicit `width`, `height` and `visual` for measured geometry and
+optional inline PNGs; see the inspection recipe for the exact shape and limits.
+Loaded and measured geometry do not establish correctness or visual quality. Writes never trigger
 a model call, inspection, or paid critique automatically.
 
 Exercise the primary action, save and reopen, conflicts, offline and error states.
