@@ -10,7 +10,7 @@ real mountSpace, the same code Desktop uses. Nothing it does reaches production 
 - The browser is driven over the DevTools pipe (no port), with a temporary profile, a minimal environment, every
   network request failed at the DevTools layer, a dead proxy and an unresolvable host map as backstops.
 
-The report states what was observed. It never claims a screenshot: no pixels are captured.
+The default report captures no pixels. Explicit visual requests add bounded inline PNGs and geometry.
 """
 from __future__ import annotations
 
@@ -112,6 +112,53 @@ def _bounded(value, name, bounds):
     if not low <= value <= high:
         raise SpacesError("invalid", f"{name} must be between {low} and {high}")
     return value
+
+
+# Visual output stays inline. The shared PNG cap leaves room for base64 and diagnostics under 2 MiB.
+VISUAL_BYTES = 1024 * 1024
+VISUAL_OUTPUT_BYTES = 2 * 1024 * 1024
+VISUAL_ROUTE_S = 10
+
+
+def _visual_options(value, width, height):
+    if value is None:
+        return None
+    if not isinstance(value, dict) or value.keys() - {"screenshot", "max_bytes", "routes"}:
+        raise SpacesError("invalid", "visual must be an object with screenshot, max_bytes or routes")
+    if width is None or height is None:
+        raise SpacesError("invalid", "visual requires explicit width and height")
+    screenshot = value.get("screenshot", False)
+    if not isinstance(screenshot, bool):
+        raise SpacesError("invalid", "visual.screenshot must be a boolean")
+    budget = value.get("max_bytes", VISUAL_BYTES)
+    if not _is_int(budget) or not 1 <= budget <= VISUAL_BYTES:
+        raise SpacesError("invalid", f"visual.max_bytes must be between 1 and {VISUAL_BYTES}")
+    routes = value.get("routes", [{"hash": ""}])
+    if not isinstance(routes, list) or not 1 <= len(routes) <= 4:
+        raise SpacesError("invalid", "visual.routes must contain 1 to 4 hash routes")
+    normalized = []
+    for route in routes:
+        if not isinstance(route, dict) or route.keys() - {"hash", "landmarks"}:
+            raise SpacesError("invalid", "A visual route must have hash and optional landmarks")
+        fragment = route.get("hash")
+        if not isinstance(fragment, str) or (fragment != "" and not re.fullmatch(
+                r"#[A-Za-z0-9/_?=&.%~-]{1,200}", fragment)):
+            raise SpacesError("invalid", "A route must be empty or a bounded ASCII #fragment")
+        landmarks = route.get("landmarks", {})
+        if not isinstance(landmarks, dict) or len(landmarks) > 20 or (fragment and not landmarks):
+            raise SpacesError("invalid", "A nonempty route needs landmarks; at most 20 are allowed")
+        for name, selector in landmarks.items():
+            if (not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name)
+                    or not isinstance(selector, str) or not 1 <= len(selector) <= 256):
+                raise SpacesError("invalid", "Landmarks need bounded names and CSS selectors of 1 to 256 characters")
+        normalized.append({"hash": fragment, "landmarks": dict(landmarks)})
+    return {"screenshot": screenshot, "max_bytes": budget, "routes": normalized}
+
+
+class _VisualFailed(Exception):
+    def __init__(self, code):
+        super().__init__(code)
+        self.code = code
 
 
 WITHHELD_DEEP = "[WITHHELD: JSON nested too deeply to redact safely; {} chars]"
@@ -731,6 +778,7 @@ class _Run:
         self.contexts = {}        # (sessionId, executionContextId) -> frameId
         self.stable_since = None  # when the current unchanged observation began (None: changing or unobserved)
         self.last_traffic = None
+        self.visual = False
         browser.listeners.append(self.on_event)
 
     def record(self, source, level, text, url=None):
@@ -768,6 +816,9 @@ class _Run:
                                ("Target.setAutoAttach", {"autoAttach": True, "waitForDebuggerOnStart": True,
                                                          "flatten": True})):
             self.b.send(method, params, session)
+        if self.visual:
+            self.b.send("Emulation.setEmulatedMedia", {
+                "features": [{"name": "prefers-reduced-motion", "value": "reduce"}]}, session)
         self.b.send("Runtime.runIfWaitingForDebugger", None, session)
 
     def on_event(self, message):
@@ -888,6 +939,46 @@ class _Run:
             self.worlds.pop(frame, None)      # the context may be gone; a fresh world restarts the counter
             return None
 
+    def geometry(self, route, width, height):
+        frame = self.guest_frame()
+        if not frame or frame not in self.worlds:
+            raise _VisualFailed("canvas_unavailable")
+        result = self.b.call("Runtime.evaluate", {
+            "contextId": self.worlds[frame], "returnByValue": True, "timeout": 1500,
+            "expression": """(() => {
+              const wanted = JSON.parse(%s);
+              if (location.hash !== wanted.hash) return {error: 'route_mismatch'};
+              const landmarks = Object.create(null);
+              for (const [name, selector] of Object.entries(wanted.landmarks)) {
+                let el;
+                try { el = document.querySelector(selector) } catch { return {error: 'selector_invalid'} }
+                if (!el) return {error: 'route_missing'};
+                const r = el.getBoundingClientRect();
+                landmarks[name] = {x:r.x, y:r.y, width:r.width, height:r.height,
+                  outside_viewport: r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight};
+              }
+              const d = document.documentElement, b = document.body;
+              const sw = Math.max(d.scrollWidth, b?.scrollWidth || 0);
+              const sh = Math.max(d.scrollHeight, b?.scrollHeight || 0);
+              return {canvas:{width:innerWidth, height:innerHeight}, landmarks,
+                overflow:{horizontal:sw > innerWidth, vertical:sh > innerHeight, scroll_width:sw, scroll_height:sh},
+                motion:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduce' : 'no-preference'};
+            })()""" % json.dumps(json.dumps(route))}, self.owner(frame), timeout=2)
+        value = result.get("result", {}).get("value")
+        if not isinstance(value, dict):
+            raise _VisualFailed("geometry_unavailable")
+        if value.get("error"):
+            raise _VisualFailed(value["error"])
+        if value.get("canvas") != {"width": width, "height": height}:
+            raise _VisualFailed("canvas_dimensions")
+        outer = self.b.call("Runtime.evaluate", {"returnByValue": True,
+            "expression": "({viewport:[innerWidth,innerHeight],window:[outerWidth,outerHeight],device_scale:devicePixelRatio})"},
+            self.page).get("result", {}).get("value")
+        if not isinstance(outer, dict) or outer.get("viewport") != [width, height]:
+            raise _VisualFailed("canvas_dimensions")
+        value["outer"] = outer
+        return value
+
     def serve(self, drained):
         """Answer queued bridge requests within the deadline and the reply limits, sending replies in batches."""
         batch, size, answered = [], 0, False
@@ -945,8 +1036,9 @@ class _Run:
                                          "returnByValue": True}, self.page, timeout=5)
 
 
-def inspect(ref, rev, *, width=None, height=None, timeout_s=None, text_limit=None):
+def inspect(ref, rev, *, width=None, height=None, timeout_s=None, text_limit=None, visual=None):
     limits.text(ref, "space")
+    visual = _visual_options(visual, width, height)
     width = _bounded(width, "width", WIDTH)
     height = _bounded(height, "height", HEIGHT)
     timeout_s = _bounded(timeout_s, "timeout_s", TIMEOUT_S)
@@ -954,12 +1046,12 @@ def inspect(ref, rev, *, width=None, height=None, timeout_s=None, text_limit=Non
     if not _slots.acquire(blocking=False):
         raise SpacesError("blocked", f"At most {MAX_CONCURRENT} inspections run at once; try again shortly")
     try:
-        return _inspect(ref, rev, width, height, timeout_s, text_limit)
+        return _inspect(ref, rev, width, height, timeout_s, text_limit, visual)
     finally:
         _slots.release()
 
 
-def _inspect(ref, rev, width, height, timeout_s, text_limit):
+def _inspect(ref, rev, width, height, timeout_s, text_limit, visual=None):
     started = time.time()
     clock = time.monotonic()
     conn = _open_snapshot()
@@ -975,6 +1067,14 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit):
             "text": None, "dom": None, "viewport": {"requested": [width, height]},
             "screenshot": None, "limitations": list(LIMITATIONS), "cleanup": None,
         }
+        if visual is not None:
+            report["visual"] = {"status": "incomplete", "evidence": "read-only", "motion": "reduce",
+                                "mutations_allowed": [], "artifact_paths": [],
+                                "retention": "inline-only; no retained artifacts",
+                                "routes": [{"route": route["hash"], "status": "incomplete", "screenshot": None}
+                                           for route in visual["routes"]],
+                                "limits": {"artifact_bytes": visual["max_bytes"], "output_bytes": VISUAL_OUTPUT_BYTES,
+                                           "route_s": VISUAL_ROUTE_S, "total_s": timeout_s}}
         if not snap.files or snap.manifest.get("entry") not in {f["path"] for f in snap.files}:
             report["outcome"] = "failed"
             report["readiness"]["reason"] = "entry_missing"
@@ -1007,7 +1107,57 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit):
             return report
         try:
             run = _Run(browser, adapter, text_limit, withhold)
-            _drive(run, snap, shell, runner, width, height, deadline, report)
+            if visual is None:
+                _drive(run, snap, shell, runner, width, height, deadline, report)
+            else:
+                used = 0
+                for index, route in enumerate(visual["routes"]):
+                    browser.deadline = min(deadline, time.monotonic() + VISUAL_ROUTE_S)
+                    adapter.deadline = browser.deadline
+                    if index:
+                        browser.call("Target.closeTarget", {"targetId": run.page_target})
+                        adapter.lifecycle = None
+                        browser.listeners.remove(run.on_event)
+                        run = _Run(browser, adapter, text_limit, withhold)
+                    item = report["visual"]["routes"][index]
+                    report["readiness"]["settled"] = False
+                    report["text"] = None
+                    _drive(run, snap, shell, runner, width, height, browser.deadline, report, route)
+                    item["outcome"] = report["outcome"]
+                    item["errors"] = list(run.entries)
+                    if run.limited or adapter.limited:
+                        raise _VisualFailed("inspection_limit")
+                    if report["outcome"] not in ("loaded", "loaded_with_errors", "rendered_unconfirmed"):
+                        raise _VisualFailed("route_failed")
+                    item["geometry"] = run.geometry(route, width, height)
+                    if visual["screenshot"]:
+                        png = browser.call("Page.captureScreenshot", {
+                            "format": "png", "fromSurface": True, "captureBeyondViewport": False,
+                            "clip": {"x": 0, "y": 0, "width": width, "height": height, "scale": 1}}, run.page)["data"]
+                        # Check encoded size before allocating decoded bytes. Then apply the exact shared cap.
+                        if len(png) > 4 * ((visual["max_bytes"] - used + 2) // 3):
+                            raise _VisualFailed("artifact_limit")
+                        raw = base64.b64decode(png, validate=True)
+                        used += len(raw)
+                        if used > visual["max_bytes"]:
+                            raise _VisualFailed("artifact_limit")
+                        if (raw[:8] != b"\x89PNG\r\n\x1a\n" or len(raw) < 24
+                                or (int.from_bytes(raw[16:20], "big"), int.from_bytes(raw[20:24], "big")) != (width, height)):
+                            raise _VisualFailed("capture_dimensions")
+                        item["screenshot"] = {"mime": "image/png", "b64": png, "bytes": len(raw),
+                                              "width": width, "height": height, "space": snap.sid, "rev": snap.rev,
+                                              "inspection_id": report["inspection"]["id"]}
+                    if run.reloaded or run.crashed or time.monotonic() >= browser.deadline:
+                        if time.monotonic() >= browser.deadline:
+                            raise _Timeout()
+                        raise _VisualFailed("space_navigated" if run.reloaded else "renderer_crashed")
+                    item["status"] = "complete"
+                report["visual"]["status"] = "complete"
+                if any(item["outcome"] == "loaded_with_errors" for item in report["visual"]["routes"]):
+                    report["outcome"] = "loaded_with_errors"
+        except _VisualFailed as exc:
+            report["outcome"] = "failed"
+            report["error"] = {"code": exc.code, "message": "Visual inspection did not complete"}
         except _Timeout:
             report["outcome"] = "timed_out"
         except _Crashed as exc:
@@ -1047,9 +1197,11 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit):
         return report
     finally:
         conn.close()
+        if visual is not None and "report" in locals():
+            _finish_visual(report, visual)
 
 
-def _drive(run, snap, shell, runner, width, height, deadline, report):
+def _drive(run, snap, shell, runner, width, height, deadline, report, route=None):
     b = run.b
     version = b.call("Browser.getVersion")
     report["inspection"]["renderer"] = {"product": version.get("product"), "protocol": version.get("protocolVersion")}
@@ -1058,9 +1210,12 @@ def _drive(run, snap, shell, runner, width, height, deadline, report):
     run.page_target = target
     session = b.call("Target.attachToTarget", {"targetId": target, "flatten": True})["sessionId"]
     run.page = session
+    run.visual = route is not None
     run.attach(session, target)
     b.call("Emulation.setDeviceMetricsOverride", {"width": width, "height": height, "deviceScaleFactor": 1,
                                                   "mobile": False}, session)
+    if route is not None:
+        b.call("Emulation.setEmulatedMedia", {"features": [{"name": "prefers-reduced-motion", "value": "reduce"}]}, session)
     b.call("Fetch.enable", {"patterns": [{"urlPattern": "*"}]}, session)
     b.call("Page.enable", None, session)
     navigation = b.call("Page.navigate", {"url": HOST_URL}, session)
@@ -1077,6 +1232,7 @@ def _drive(run, snap, shell, runner, width, height, deadline, report):
     if mounted.get("exceptionDetails"):
         raise _Closed("The sandbox host could not mount this Space")
     stable_since, last, last_traffic = None, None, time.monotonic()
+    routed = route is None or not route["hash"]
     while True:
         drained = b.call("Runtime.evaluate", {"expression": "__lsInspect.next(200)", "awaitPromise": True,
                                               "returnByValue": True}, session, timeout=5)
@@ -1089,6 +1245,14 @@ def _drive(run, snap, shell, runner, width, height, deadline, report):
         now = time.monotonic()
         if run.crashed:
             raise _Crashed("The Space's renderer crashed")
+        if sample is not None and not routed and (run.adapter.lifecycle == "loaded" or run.withhold):
+            frame = run.guest_frame()
+            b.call("Runtime.evaluate", {"expression": f"location.hash = {json.dumps(route['hash'])}",
+                                        "contextId": run.worlds[frame], "returnByValue": True, "timeout": 1500},
+                   run.owner(frame), timeout=2)
+            routed = True
+            last, stable_since, last_traffic = None, None, time.monotonic()
+            continue
         if sample is not None:
             report["text"] = sample
             key = (sample["chars"], sample["nodes"], sample["failure"], sample["mutations"])
@@ -1106,12 +1270,12 @@ def _drive(run, snap, shell, runner, width, height, deadline, report):
         if now >= deadline:
             raise _Timeout()
         quiet = stable_since is not None and now - stable_since >= SETTLE_MS / 1000 and now - last_traffic >= SETTLE_MS / 1000
-        if lifecycle and quiet:
+        if lifecycle and quiet and (routed or lifecycle == "failed"):
             report["readiness"]["settled"] = True
             report["outcome"] = ("failed" if lifecycle == "failed" else
                                  "loaded_with_errors" if run.counts["error"] else "loaded")
             return
-        if not lifecycle and run.withhold and stable_since is not None and now - stable_since >= QUIET_MS / 1000 \
+        if routed and not lifecycle and run.withhold and stable_since is not None and now - stable_since >= QUIET_MS / 1000 \
                 and now - last_traffic >= QUIET_MS / 1000:
             report["readiness"]["settled"] = True
             report["outcome"] = "rendered_unconfirmed"
@@ -1166,3 +1330,37 @@ def _finish(run, adapter, report):
         report["sandbox_events"] = run.events[:MAX_ENTRIES]
     if run.host_notices:
         report["host_notices"] = [{"text": text, "count": count} for text, count in run.host_notices.items()]
+
+
+def _finish_visual(report, options):
+    visual = report["visual"]
+    cleanup = report.get("cleanup")
+    code = None
+    if report["outcome"] == "timed_out":
+        code = "route_timeout"
+    elif report["outcome"] not in ("loaded", "loaded_with_errors", "rendered_unconfirmed"):
+        code = ((report.get("error") or report.get("unavailable") or {}).get("code")
+                or report["readiness"].get("reason", "route_failed"))
+    elif visual["status"] != "complete":
+        code = "route_failed"
+    elif report.get("limited"):
+        code = "inspection_limit"
+    elif cleanup and not all(cleanup.values()):
+        code = "cleanup_incomplete"
+    elif len(json.dumps(report).encode("utf-8")) > VISUAL_OUTPUT_BYTES:
+        code = "output_limit"
+    if code:
+        visual["status"] = "incomplete" if code == "route_timeout" else "failed"
+        visual["error"] = {"code": code, "message": "Visual evidence is incomplete; no images returned"}
+        first = True
+        for route in visual["routes"]:
+            route["screenshot"] = None
+            if route["status"] != "complete":
+                error = visual["error"] if first else {"code": "route_not_run", "message": "An earlier route failed"}
+                route.update(status=visual["status"] if first else "incomplete", error=error)
+                first = False
+        if report["outcome"] in ("loaded", "loaded_with_errors", "rendered_unconfirmed"):
+            report["outcome"] = "failed"
+    elif options["screenshot"]:
+        report["limitations"] = [item for item in report["limitations"] if not item.startswith("no_pixels_captured:")]
+        report["limitations"].append("pixels_are_unredacted: screenshots contain this Space's rendered content; share only with authority")

@@ -504,8 +504,16 @@ When you want runtime evidence before the user opens it, you may call
 `spaces_inspect` with the `rev` the write returned. It runs that revision once in
 a throwaway local browser with read-only data and reports the outcome, errors,
 visible text and limitations. It changes nothing, and writes, Refresh, bot
-requests and network calls are refused and counted. It has no screenshot, so it
-cannot judge layout or looks. `loaded` is not proof the Space is right.
+requests and network calls are refused and counted. The default captures no pixels.
+For visual evidence, supply explicit `width` and `height` and `visual`, for example
+`{"screenshot":true,"routes":[{"hash":"","landmarks":{"primary":"#primary"}}]}`.
+Geometry includes the actual canvas, outer browser dimensions, landmark bounds and
+overflow. Up to four fresh hash routes share a 1 MiB PNG cap and the total timeout;
+each route has at most 10 seconds. Nonempty hashes need landmark selectors. A missing
+landmark or other failure makes coverage failed or incomplete and discards all PNGs.
+Images return inline only and are never retained in project files or records.
+Pixels contain this Space's rendered data without secret redaction. Share only with
+authority. `loaded` and measured geometry do not establish correctness or good design.
 `unavailable` means no local Chrome-family browser. It is optional: use it when
 it helps, and decide any fix yourself.
 
