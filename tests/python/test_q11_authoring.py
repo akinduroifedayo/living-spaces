@@ -77,6 +77,9 @@ class BatchEditTests(CoreCase):
         error = self.reject([{'path': 'index.html', 'old': 'Public demo', 'new': '<img src="missing.png"> Public demo'},
                              {'path': 'index.html', 'old': 'Public demo', 'new': 'Later text'}], index=0)
         self.assertTrue(error['diagnostics'])
+        # int-review-05: a later no-op replacement of the same reference is not blamed.
+        self.reject([{'path': 'index.html', 'old': 'Public demo', 'new': '<img src="missing.png"> Public demo'},
+                     {'path': 'index.html', 'old': 'missing.png', 'new': 'missing.png'}], index=0)
 
     def test_invalid_import_and_asset_reject_final_candidate(self):
         for replacement in ('<script type="module">import "./missing.js";</script>',
