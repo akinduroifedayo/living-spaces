@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dispatch desk · optional motion fixture</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f5f2e9; color: #252a24; font: 1rem/1.5 system-ui, sans-serif; }
+    main { max-width: 1120px; margin: auto; padding: clamp(16px, 4vw, 48px); }
+    header { border-top: 6px solid #315847; padding-top: 16px; margin-bottom: 28px; }
+    h1 { font: 600 clamp(2rem, 6vw, 3.6rem)/1.05 Georgia, serif; margin: 8px 0 16px; }
+    h2 { font-size: 1.25rem; margin: 0 0 12px; }
+    h3 { font-size: 1rem; margin: 0 0 8px; }
+    p { margin: 8px 0 16px; }
+    .eyebrow { letter-spacing: .12em; text-transform: uppercase; font-size: .8rem; font-weight: 700; }
+    .notice { border-left: 4px solid #315847; padding-left: 12px; max-width: 70ch; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .85fr); gap: 32px; align-items: start; }
+    .workspace, .queue { min-width: 0; }
+    .workspace { border-top: 1px solid #7b857b; padding-top: 20px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    textarea, select, button { font: inherit; }
+    textarea, select { width: 100%; min-height: 44px; border: 1px solid #69756b; border-radius: 4px; background: #fffefa; color: inherit; padding: 10px; }
+    textarea { resize: vertical; min-height: 104px; }
+    button { min-height: 44px; border: 1px solid #506454; border-radius: 4px; padding: 10px 14px; color: #233d30; background: #fffefa; cursor: pointer; }
+    button.primary { color: #fff; background: #315847; }
+    button:hover { border-color: #1a3022; background: #e7ede5; }
+    button.primary:hover { background: #234333; }
+    :focus-visible { outline: 3px solid #1e5cb2; outline-offset: 4px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+    .actions > button { flex: 1 1 160px; }
+    .result { margin: 20px 0; border: 2px solid #617063; border-radius: 4px; padding: 16px; background: #fffefa; overflow-wrap: anywhere; }
+    .result[data-state="pending"] { border-style: dashed; background: #f6edcf; }
+    .result[data-state="confirmed"] { border-color: #315847; background: #e4efe5; }
+    .result[data-state="failed"], .result[data-state="conflict"], .result[data-state="uncertain"] { border-color: #8b3a29; background: #f8e8df; }
+    .result-mark { display: inline-block; padding: 2px 8px; background: #252a24; color: #fffefa; font-weight: 650; }
+    .snapshot { padding-top: 12px; border-top: 1px solid #a5afa4; }
+    #snapshot { white-space: pre-wrap; overflow-wrap: anywhere; }
+    fieldset { border: 1px solid #7b857b; margin: 20px 0; padding: 16px; min-width: 0; }
+    legend { font-weight: 650; padding: 0 6px; }
+    .help { color: #4c564e; font-size: .9rem; }
+    .panel { background: #e7ede5; padding: 18px; border-top: 4px solid #315847; margin-top: 20px; }
+    .guide { border-left: 2px solid #7b857b; padding: 12px 0 0 16px; }
+    .queue { border-top: 1px solid #7b857b; padding-top: 20px; }
+    ol { margin: 0; padding-left: 2.5rem; font-variant-numeric: tabular-nums; }
+    li { padding: 10px 4px; border-bottom: 1px solid #c5cbbf; overflow-wrap: anywhere; }
+    li::marker { color: #4c564e; }
+    .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .stage { color: #3a5544; font-size: .9rem; }
+    footer { border-top: 1px solid #7b857b; margin-top: 32px; padding-top: 16px; }
+    [hidden] { display: none !important; }
+    @media (max-width: 760px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  </style>
+</head>
+<body>
+  <main id="desk">
+    <header>
+      <div class="eyebrow">Local interaction fixture</div>
+      <h1>Dispatch desk</h1>
+      <p class="notice">A synthetic queue for testing immediate actions and interrupted motion. No network, records, or durable saves. All results below are fixture simulations.</p>
+    </header>
+    <div class="layout">
+      <section class="workspace" aria-labelledby="work-title">
+        <h2 id="work-title">Prepare a dispatch note</h2>
+        <label for="draft">Draft note</label>
+        <textarea id="draft" aria-describedby="draft-help">Check the next batch before dispatch.</textarea>
+        <p id="draft-help" class="help">Edits stay available during simulated attempts. A result belongs to the note captured when its attempt began.</p>
+        <button id="begin" class="primary" type="button">Begin simulated save attempt</button>
+        <section id="result" class="result" data-state="idle" aria-labelledby="result-title">
+          <h3 id="result-title">Fixture result</h3>
+          <span id="result-mark" class="result-mark" aria-hidden="true">Ready</span>
+          <p id="save-status" role="status">No attempt yet. Nothing has been persisted.</p>
+          <div class="snapshot">
+            <strong>Last-good in-memory fixture snapshot</strong>
+            <p id="snapshot">Initial synthetic dispatch note.</p>
+          </div>
+        </section>
+        <fieldset>
+          <legend>Save-result fixture simulation</legend>
+          <label for="outcome">Simulated outcome</label>
+          <select id="outcome">
+            <option value="confirmed">Confirmed in this fixture only</option>
+            <option value="failed">Definite failure</option>
+            <option value="conflict">Revision conflict</option>
+            <option value="uncertain">Unknown outcome</option>
+          </select>
+          <div class="actions">
+            <button id="resolve" type="button">Deliver simulated result</button>
+            <button id="stale" type="button">Deliver stale confirmed callback</button>
+          </div>
+          <p class="help">Begin two attempts to make the first callback stale. Failure, conflict, and uncertainty keep the last-good snapshot and your draft.</p>
+          <p id="delivery-status" role="status">Result delivery is manual. No persistence service is connected.</p>
+        </fieldset>
+        <div class="actions">
+          <button id="panel-toggle" type="button" aria-expanded="false" aria-controls="panel">Open review panel</button>
+          <button id="reset" type="button">Reset motion session</button>
+        </div>
+        <p class="help">Toggle repeatedly to reverse a panel mid-transition. Reset cancels owned motion and pending fixture callbacks without clearing your draft.</p>
+        <section id="panel" class="panel" aria-labelledby="panel-title" hidden inert>
+          <h2 id="panel-title">Review before dispatch</h2>
+          <p>This is a non-modal panel. Opening leaves focus on its trigger. Closing returns focus before making this content inert.</p>
+          <label for="review-note">Unsaved review note</label>
+          <textarea id="review-note">This field stays mounted through panel reversals.</textarea>
+          <div class="actions"><button id="panel-close" type="button">Close review panel</button></div>
+          <p class="help">Escape also closes this panel when focus is inside it.</p>
+        </section>
+        <div class="actions"><button id="guide-toggle" type="button" aria-expanded="false" aria-controls="guide">Show fixture guide</button></div>
+        <div id="guide" class="guide" hidden inert>
+          <p>List refreshes update the mounted rows without an entrance. Save feedback pulses only after a current confirmed fixture report. OS reduced motion removes movement while preserving all end states.</p>
+          <p>These controls simulate outcomes. They do not qualify host persistence, session isolation, or performance.</p>
+        </div>
+      </section>
+      <section class="queue" aria-labelledby="queue-title">
+        <div class="eyebrow">Synthetic data</div>
+        <h2 id="queue-title">200 dispatch items</h2>
+        <div class="actions">
+          <button id="refresh" type="button">Refresh fixture list</button>
+          <button id="refresh-fail" type="button">Fail fixture refresh</button>
+        </div>
+        <p id="refresh-status" role="status">Initial fixture list. No live source is connected.</p>
+        <ol id="items"></ol>
+      </section>
+    </div>
+    <footer class="help">Native controls, system fonts, and authored CSS. This fixture imports only the adjacent optional motion module.</footer>
+  </main>
+  <script type="module">
+    import { createMotionScope } from './motion.mjs'
+
+    const root = document.querySelector('#desk')
+    const get = id => document.getElementById(id)
+    const rows = Array.from({ length: 200 }, (_, index) => {
+      const item = document.createElement('li')
+      const row = document.createElement('div')
+      row.className = 'row'
+      const name = document.createElement('span')
+      name.textContent = `Dispatch ${String(index + 1).padStart(3, '0')}`
+      const stage = document.createElement('span')
+      stage.className = 'stage'
+      stage.textContent = 'Queued fixture item'
+      row.append(name, stage)
+      item.append(row)
+      get('items').append(item)
+      return { item, stage }
+    })
+    let revision = 0
+    let panelOpen = false
+    let guideOpen = false
+    let staleAttempt = null
+    let teardown = null
+
+    function mount() {
+      const events = new AbortController()
+      let motion = createMotionScope(root)
+      let session = Symbol('fixture session')
+      let attempt = null
+      let alive = true
+      let sequence = 0
+      const on = (element, type, handler) => element.addEventListener(type, handler, { signal: events.signal })
+      const initialTargets = () => {
+        motion.present(get('panel'), { recipe: 'panel', open: panelOpen })
+        motion.present(get('guide'), { recipe: 'disclosure', open: guideOpen })
+        for (const { item } of rows) motion.present(item, { recipe: 'disclosure', open: true })
+      }
+      const setPanel = open => {
+        if (!open && get('panel').contains(document.activeElement)) get('panel-toggle').focus()
+        panelOpen = open
+        get('panel-toggle').setAttribute('aria-expanded', String(open))
+        get('panel-toggle').textContent = open ? 'Close review panel' : 'Open review panel'
+        motion.present(get('panel'), { recipe: 'panel', open })
+      }
+      const result = (state, label, message) => {
+        get('result').dataset.state = state
+        get('result-mark').textContent = label
+        get('save-status').textContent = message
+      }
+      const deliver = (candidate, outcome) => {
+        if (!candidate) {
+          get('delivery-status').textContent = 'No callback is available. Begin an attempt first.'
+          return
+        }
+        if (!alive || candidate.session !== session || candidate !== attempt) {
+          candidate.report(outcome)
+          get('delivery-status').textContent = 'Stale fixture callback ignored. Current data and status are unchanged.'
+          return
+        }
+        if (candidate.resolved) {
+          get('delivery-status').textContent = 'This fixture attempt already reported. Begin a new attempt to retry.'
+          return
+        }
+        candidate.resolved = true
+        if (outcome === 'confirmed') {
+          get('snapshot').textContent = candidate.payload
+          result('confirmed', 'Fixture confirmed', `Attempt ${candidate.id} confirmed in memory only. Nothing has been persisted.`)
+        } else {
+          const messages = {
+            failed: 'Simulated save failed. Last-good snapshot and draft retained. Begin a new attempt to retry.',
+            conflict: 'Simulated revision conflict. Last-good snapshot and draft retained. Review before a deliberate new attempt.',
+            uncertain: 'Simulated outcome unknown. Last-good snapshot and draft retained. No automatic retry.'
+          }
+          result(outcome, { failed: 'Failed', conflict: 'Conflict', uncertain: 'Unknown' }[outcome], messages[outcome])
+        }
+        candidate.report(outcome)
+        get('delivery-status').textContent = `Delivered ${outcome} for fixture attempt ${candidate.id}.`
+      }
+      initialTargets()
+      result('idle', 'Session ready', 'No active fixture attempt. Draft and last-good snapshot retained. Nothing has been persisted.')
+      on(get('begin'), 'click', () => {
+        if (attempt) staleAttempt = attempt
+        attempt = {
+          id: ++sequence,
+          session,
+          payload: get('draft').value,
+          report: motion.beginConfirmation(get('result-mark')),
+          resolved: false
+        }
+        result('pending', 'Awaiting result', `Fixture attempt ${attempt.id} pending. Use the simulation controls to deliver its result.`)
+        get('delivery-status').textContent = 'No result delivered yet. The draft remains editable.'
+      })
+      on(get('resolve'), 'click', () => deliver(attempt, get('outcome').value))
+      on(get('stale'), 'click', () => deliver(staleAttempt, 'confirmed'))
+      on(get('panel-toggle'), 'click', () => setPanel(!panelOpen))
+      on(get('panel-close'), 'click', () => setPanel(false))
+      on(get('panel'), 'keydown', event => {
+        if (event.key === 'Escape') { event.preventDefault(); setPanel(false) }
+      })
+      on(get('guide-toggle'), 'click', () => {
+        guideOpen = !guideOpen
+        if (!guideOpen && get('guide').contains(document.activeElement)) get('guide-toggle').focus()
+        get('guide-toggle').setAttribute('aria-expanded', String(guideOpen))
+        get('guide-toggle').textContent = guideOpen ? 'Hide fixture guide' : 'Show fixture guide'
+        motion.present(get('guide'), { recipe: 'disclosure', open: guideOpen })
+      })
+      on(get('refresh'), 'click', () => {
+        revision++
+        for (const { item, stage } of rows) {
+          stage.textContent = `Fixture batch ${revision}`
+          motion.present(item, { recipe: 'disclosure', open: true })
+        }
+        get('refresh-status').textContent = `Fixture batch ${revision} loaded. All 200 rows stayed mounted. No live source is connected.`
+      })
+      on(get('refresh-fail'), 'click', () => {
+        get('refresh-status').textContent = `Simulated refresh failed. Last-good fixture batch ${revision} is still visible. Refresh to retry.`
+      })
+      on(get('reset'), 'click', () => {
+        if (attempt) staleAttempt = attempt
+        attempt = null
+        session = Symbol('fixture session')
+        motion.dispose()
+        motion = createMotionScope(root)
+        initialTargets()
+        result('idle', 'Session reset', 'Pending fixture attempt invalidated. Draft and last-good snapshot retained. Nothing has been persisted.')
+        get('delivery-status').textContent = 'Motion session replaced. An old callback cannot update this session.'
+      })
+      const pointers = new Map()
+      const releasePointer = event => {
+        const button = pointers.get(event.pointerId)
+        if (button) motion.press(button, false)
+        pointers.delete(event.pointerId)
+      }
+      on(document, 'pointerup', releasePointer)
+      on(document, 'pointercancel', releasePointer)
+      on(window, 'blur', () => {
+        for (const button of pointers.values()) motion.press(button, false)
+        pointers.clear()
+      })
+      for (const button of root.querySelectorAll('button')) {
+        on(button, 'pointerdown', event => {
+          if (event.button !== 0) return
+          pointers.set(event.pointerId, button)
+          motion.press(button, true)
+        })
+        on(button, 'blur', () => motion.press(button, false))
+        on(button, 'keydown', event => {
+          if (!event.repeat && ['Enter', ' '].includes(event.key)) motion.press(button, true)
+        })
+        on(button, 'keyup', event => {
+          if (['Enter', ' '].includes(event.key)) motion.press(button, false)
+        })
+      }
+      teardown = () => {
+        alive = false
+        if (attempt) staleAttempt = attempt
+        motion.dispose()
+        events.abort()
+        teardown = null
+      }
+    }
+    mount()
+    window.addEventListener('pagehide', () => teardown?.())
+    window.addEventListener('pageshow', () => { if (!teardown) mount() })
+  </script>
+</body>
+</html>
