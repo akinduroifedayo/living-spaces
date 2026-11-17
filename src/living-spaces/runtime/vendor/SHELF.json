@@ -306,16 +306,16 @@
       "license": "ISC"
     },
     "vendor/markdown.mjs": {
-      "sha256": "5182d570c3fc90c8dc8e225525348b8111062abaea5538a0f01d01cffdc950cd",
-      "bytes": 83917,
+      "sha256": "32cf8cb650a6467152a2eb6f6f92c81fa73d0fedcb6e4e9683be471c2a068254",
+      "bytes": 84398,
       "source": "lib/marked.esm.js + dompurify dist/purify.es.mjs + scripts/vendor/markdown-entry.mjs (bundled and minified with esbuild)",
       "package": "marked",
       "version": "18.2.1",
       "license": "MIT AND Apache-2.0"
     },
     "vendor/licenses/markdown-LICENSE": {
-      "sha256": "47941012bf280feb392807a9911a1b99c8511d2b28f241ef9a934f6607ff43da",
-      "bytes": 15251,
+      "sha256": "9cf86e14bc059a0b80839c181028d40820000d48cd6e3a1274e3996757e6bb16",
+      "bytes": 16830,
       "source": "LICENSE",
       "package": "marked",
       "version": "18.2.1",

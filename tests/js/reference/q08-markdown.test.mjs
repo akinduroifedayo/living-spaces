@@ -46,13 +46,14 @@ test('hostile Markdown keeps no script, handler, frame, form or style', () => {
     for (const { name } of element.attributes)
       assert.ok(!/^on|^style$|^srcset$|^data-|^formaction$|^action$/i.test(name), `${element.tagName} kept ${name}`)
   assert.equal(window.pwned, undefined)
-  assert.equal(host.querySelector('img').getAttribute('src'), 'x.png')
+  assert.equal(host.querySelector('img'), null, 'no asset resolver, so the relative image is shown as alt text')
+  assert.ok(host.querySelector('.md-missing-image'))
 })
 
 test('only web, mail, in-document and in-Space relative links survive', () => {
   const links = {
     'https://example.com/a': true, 'http://example.com': true, 'mailto:demo@example.com': true,
-    '#section-2': true, 'notes/chapter.md': true, './a b.html': true,
+    '#section-2': true, 'notes/chapter.md': true, './a%20b.html': true, './a b.html': false,
     'javascript:alert(1)': false, 'JaVaScRiPt:alert(1)': false, ' javascript:alert(1)': false,
     'java&#x09;script:alert(1)': false, 'data:text/html,<script>alert(1)</script>': false,
     'vbscript:msgbox(1)': false, 'file:///etc/passwd': false, '//evil.example/x': false, 'blob:https://x/y': false,
@@ -70,17 +71,63 @@ test('only web, mail, in-document and in-Space relative links survive', () => {
 
 test('images come only from Space files or inline raster data', () => {
   const png = 'data:image/png;base64,iVBORw0KGgo='
+  const files = {'images/figure.png': 'blob:space/figure'}
+  const asset = path => files[path] ?? null
   const cases = {
-    'images/figure.png': true, [png]: true,
-    'https://cdn.example.com/x.png': false, '//cdn.example.com/x.png': false, '/abs/x.png': false,
-    'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=': false, 'javascript:alert(1)': false, 'file:///x.png': false,
+    'images/figure.png': 'blob:space/figure', [png]: png,
+    'images/absent.png': null, 'https://cdn.example.com/x.png': null, '//cdn.example.com/x.png': null, '/abs/x.png': null,
+    'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=': null, 'javascript:alert(1)': null, 'file:///x.png': null,
   }
-  for (const [src, kept] of Object.entries(cases)) {
-    const { host } = render(`![Figure 1](${src})`)
+  for (const [src, expected] of Object.entries(cases)) {
+    const { host } = render(`![Figure 1](${src})`, { asset })
     const img = host.querySelector('img')
-    assert.equal(Boolean(img), kept, src)
-    if (kept) assert.equal(img.getAttribute('alt'), 'Figure 1')
+    assert.equal(img?.getAttribute('src') ?? null, expected, src)
+    if (expected) assert.equal(img.getAttribute('alt'), 'Figure 1')
   }
+  // A Space file the Space does not have keeps its alt text visible rather than a broken request.
+  const { host } = render('![Figure 2](images/absent.png)', { asset })
+  assert.equal(host.querySelector('.md-missing-image').textContent, 'Figure 2')
+})
+
+test('relative images resolve through space.asset() by default (int-review-10)', () => {
+  const window = win()
+  window.space = { asset: path => (path === 'images/figure.png' ? 'blob:space/figure#x' : null) }
+  const host = window.document.createElement('article')
+  host.append(md.renderMarkdown('![Figure](images/figure.png)', { window }))
+  assert.equal(host.querySelector('img').getAttribute('src'), 'blob:space/figure#x')
+})
+
+test('control characters and backslashes cannot smuggle remote URLs (int-review-10)', () => {
+  for (const src of ['h&#x09;ttps://evil.example/x.png', 'h\tttps://evil.example/x.png', '\\\\evil.example/x.png',
+    '\\/evil.example/x.png', 'ht&#x0A;tps://evil.example/x.png']) {
+    const { host } = render(`<img src="${src}" alt="x">`, { asset: () => 'blob:should-not-be-used' })
+    assert.equal(host.querySelector('img'), null, src)
+  }
+  for (const href of ['h&#x09;ttps://evil.example', '\\\\evil.example/x', 'java&#x0A;script:alert(1)']) {
+    const { host } = render(`<a href="${href}">x</a>`)
+    assert.equal(host.querySelector('a').hasAttribute('href'), false, href)
+  }
+})
+
+test('download anchors and image-map areas are removed so every link goes through link.open (int-review-10)', () => {
+  const { host } = render('<a href="https://example.com/" download>d</a><map name="m"><area href="https://example.com/"></map><img src="images/a.png" usemap="#m">',
+    { asset: () => 'blob:space/a' })
+  assert.equal(host.querySelector('a').hasAttribute('download'), false)
+  assert.equal(host.querySelector('area'), null)
+  assert.equal(host.querySelector('map'), null)
+  assert.equal(host.querySelector('img').hasAttribute('usemap'), false)
+  // Every surviving link is an a[href] without download, which the Space loader intercepts.
+  for (const element of host.querySelectorAll('[href]')) {
+    assert.equal(element.tagName, 'A')
+    assert.equal(element.hasAttribute('download'), false)
+  }
+})
+
+test('the notice file covers code embedded inside DOMPurify (int-review-10)', () => {
+  const notice = readFileSync('src/living-spaces/runtime/vendor/licenses/markdown-LICENSE', 'utf8')
+  for (const text of ['Copyright (c) 2014-present, Facebook, Inc.', 'Permission is hereby granted, free of charge',
+    'elects Apache-2.0', 'TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION'])
+    assert.ok(notice.includes(text), text)
 })
 
 test('headings, code, citations and footnote-style references keep their structure and destination', () => {

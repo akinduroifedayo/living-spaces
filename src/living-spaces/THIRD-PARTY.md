@@ -211,11 +211,11 @@ Official sources: [marked 18.2.1 tarball](https://registry.npmjs.org/marked/-/ma
 
 Integrity: marked `sha512-ii4bxCTCqqwpT86XZWgJNs+ZnAIZksmLGYMViWA7PDIXYIeNo1x6cDdX3JOip9NM/cI6p8z57FxliACboTruMA==`; dompurify `sha512-ofe3wI/uNm68HInABYFJYqQxRw1EaKAjNdrFVKqjUY+UZurvNd2L/HuQe097s/4RivWiZyP6tT7aoT8atjfhwg==`.
 
-Selection key: `markdown`. Total copied size including notices: 99,168 bytes (budget: 512 KiB).
+Selection key: `markdown`. Total copied size including notices: 101,228 bytes (budget: 512 KiB).
 
 | Bundled file | Bytes | Upstream input |
 | --- | ---: | --- |
-| `vendor/markdown.mjs` | 83,917 | `lib/marked.esm.js` + `dist/purify.es.mjs` + `scripts/vendor/markdown-entry.mjs` |
-| `vendor/licenses/markdown-LICENSE` | 15,251 | `LICENSE` of marked and the Apache-2.0 `LICENSE` of DOMPurify |
+| `vendor/markdown.mjs` | 84,398 | `lib/marked.esm.js` + `dist/purify.es.mjs` + `scripts/vendor/markdown-entry.mjs` |
+| `vendor/licenses/markdown-LICENSE` | 16,830 | `LICENSE` of marked, the Apache-2.0 `LICENSE` of DOMPurify, and the MIT notice of Babel helpers embedded in DOMPurify |
 
 Built with the existing esbuild 0.28.0 as one minified browser ESM file with no external imports, from the repository's own entry `scripts/vendor/markdown-entry.mjs`, which exports only `renderMarkdown` (parse, then sanitize) and `versions`. Both tarballs were fetched directly from registry.npmjs.org and their SHA-512 checked against registry metadata before use. DOMPurify's `prepare: husky` script is a development hook and was never run; no install script ran. @types/trusted-types is types-only and is not bundled.

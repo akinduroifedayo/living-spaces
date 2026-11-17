@@ -77,7 +77,9 @@ article.replaceChildren(renderMarkdown(record.data.body, { tableLabel: 'Data tab
 - Script, style, event attributes, iframe, object, embed, form controls, SVG and
   MathML are removed. Links keep only http, https, mailto, `#fragment` and
   in-Space relative targets; clicks still open through the host, never by frame
-  navigation. Images load only from Space files or inline PNG/JPEG/GIF/WebP data.
+  navigation; `download` anchors and image-map areas are removed. Images load only
+  from Space files, resolved through `space.asset()` (a missing file shows its alt
+  text), or inline PNG/JPEG/GIF/WebP data. Remote images are never fetched.
 - Headings, lists, quotes, code blocks and tables survive. Each table is wrapped
   in a focusable, labelled `div.md-table` region; give it `overflow-x: auto` so a
   wide table scrolls instead of breaking a 320 px layout or 200 percent zoom.
