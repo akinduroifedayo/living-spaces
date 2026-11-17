@@ -96,11 +96,13 @@ def tokens(source: str) -> list[Token]:
                 at += 2
             elif source[at] == "`":
                 at += 1
-                _, begin, interpolated = frames.pop()
-                out.append(Token("`" if interpolated else source[begin:at], begin))
+                _, begin, head = frames.pop()
+                out.append(Token(source[begin:at] if head is None else "`", at - 1))
             elif source.startswith("${", at):
+                if frames[-1][2] is None:
+                    frames[-1][2] = source[frames[-1][1] + 1:at]
+                    out.append(Token("`" + frames[-1][2] + "${", frames[-1][1]))
                 at += 2
-                frames[-1][2] = True
                 frames.append([0])
             else:
                 at += 1
@@ -122,7 +124,7 @@ def tokens(source: str) -> list[Token]:
             quoted(char)
         elif char == "`":
             at += 1
-            frames.append(["`", start, False])
+            frames.append(["`", start, None])
         elif char == "/" and (not out or control or REGEX_CONTEXT.match(out[-1].text)):
             at += 1
             in_class = False
@@ -165,9 +167,19 @@ def _string(token):
     return token.text[:1] in "\"'" and len(token.text) > 1
 
 
+def _interpolated(token):
+    """A template literal with ${}; its text is the backtick, the static head and `${`."""
+    return token.text[:1] == "`" and token.text.endswith("${") and len(token.text) > 2
+
+
 def _constant(token):
     """A string literal, or a template literal with no ${} interpolation."""
-    return _string(token) or (token.text[:1] == "`" and len(token.text) > 1)
+    return _string(token) or (token.text[:1] == "`" and len(token.text) > 1 and not _interpolated(token))
+
+
+def _head(token):
+    """The static leading text of a string or template, as the browser sees it before URL parsing trims it."""
+    return (token.text[1:-2] if _interpolated(token) else token.text[1:-1]).strip()
 
 
 def _mediated(toks, i):
@@ -181,6 +193,10 @@ def _mediated(toks, i):
     j -= 1
     if j >= 0 and toks[j].text == "?":
         j -= 1
+    if j >= 0 and toks[j].text == ")":
+        j -= 1
+    if j >= 1 and toks[j].text == "]" and toks[j - 1].text in ("'net'", '"net"'):
+        return True
     return j >= 0 and toks[j].text == "net"
 
 
@@ -192,7 +208,7 @@ def _constant_at(toks, j, whole=True):
     opened = 0
     while 0 <= j < len(toks) and toks[j].text == "(":
         j, opened = j + 1, opened + 1
-    if not (0 <= j < len(toks) and _constant(toks[j])):
+    if not (0 <= j < len(toks) and (_constant(toks[j]) or not whole and _interpolated(toks[j]))):
         return None
     if not whole:
         return toks[j]
@@ -235,8 +251,8 @@ def _js(source, position):
             sinks.append(Sink("net.direct_call", "sendBeacon()", *where(token)))
         elif text in ("src", "href") and prev.text == "." and nxt.text == "=" and get(i + 2).text != "=":
             spec = _constant_at(toks, i + 2, whole=False)
-            if spec is not None and REMOTE.match(spec.text[1:-1]):
-                sinks.append(Sink("net.remote_resource", spec.text[1:-1], *where(token)))
+            if spec is not None and REMOTE.match(_head(spec)):
+                sinks.append(Sink("net.remote_resource", _head(spec), *where(token)))
     return refs, sinks
 
 
@@ -317,7 +333,7 @@ class _Html(HTMLParser):
             return
         position = self.position(*self.getpos())
         refs, sinks = (_css if self.script == "style" else _js)(data, position)
-        self.refs += [ref for ref in refs if self.script != "classic" or ref.dynamic]
+        self.refs += refs
         self.sinks += sinks
 
 
@@ -339,7 +355,7 @@ def scan(path: str, source: str) -> Facts:
         refs, sinks = _js(source, position)
     elif ext == "css":
         refs, sinks = _css(source, position)
-    elif ext in ("html", "htm"):
+    elif ext in ("html", "htm", "svg"):
         parser = _Html(starts)
         parser.feed(source)
         parser.close()
@@ -374,7 +390,7 @@ def diagnose(manifest: Mapping, blob_shas: Mapping[str, str], load: Callable[[st
         if target not in blob_shas:
             found.append(diagnostic("import.alias_target_missing", "space.json", ref=name, target=target))
     for path, sha in blob_shas.items():
-        if path.rsplit(".", 1)[-1].lower() not in ("js", "mjs", "css", "html", "htm"):
+        if path.rsplit(".", 1)[-1].lower() not in ("js", "mjs", "css", "html", "htm", "svg"):
             continue
         facts = _facts(path, sha, load)
         found += [diagnostic(s.code, path, s.line, s.column, s.ref) for s in facts.sinks]

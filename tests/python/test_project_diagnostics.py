@@ -208,6 +208,44 @@ class ProjectDiagnosticsTests(unittest.TestCase):
                 result = self.create({"index.html": INDEX, "app.js": f"const link = make();\n{line}\nconst after = 1;\n"}, name=name.title())
                 self.assertEqual([(d["code"], d["line"]) for d in network(result)], [("net.remote_resource", 2)], result["warnings"])
 
+    def test_round10_remote_loads_warn_on_create_write_and_restore(self):
+        cases = {"interpolated src": ("app.js", "obj.src=`https://e.org/${name}`;\n", 1, 5),
+                 "interpolated href": ("app.js", "obj.href=`https://e.org/${name}`;\n", 1, 5),
+                 "leading space": ("app.js", "img.src=' https://example.org/logo.png'\n", 1, 5),
+                 "standalone svg": ("image.svg", '<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.org/logo.png"/></svg>', 1, 41)}
+        for name, (path, source, line, column) in cases.items():
+            with self.subTest(name):
+                where = lambda result: [(d["code"], d["path"], d["line"], d["column"]) for d in network(result)]
+                expected = [("net.remote_resource", path, line, column)]
+                created = self.create({"index.html": INDEX, "app.js": "", path: source}, name=name.title())
+                self.assertEqual(where(created), expected, created["warnings"])
+                quiet = self.write(created["space"], {path: ""})
+                self.assertEqual(where(quiet), [], quiet["warnings"])
+                written = self.write(created["space"], {path: source})
+                self.assertEqual(where(written), expected, written["warnings"])
+                restored = self.tools.spaces_restore(self.core, {"space": created["space"], "rev": 1}, "Demo")
+                self.assertEqual(where(restored), expected, restored)
+        for name, app in {"local template": "img.src = `${base}/a.png`;\n", "inert template": "const t = `see https://x.org ${n}`;\n",
+                          "comparison": "if (img.src == ' https://e.org/a') go();\n"}.items():
+            with self.subTest(control=name):
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertEqual(network(created), [], created["warnings"])
+        svg = self.create({"index.html": INDEX, "app.js": "", "mark.svg": '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><use href="#a"/></svg>'}, name="Inert Svg")
+        self.assertEqual(network(svg), [], svg["warnings"])
+
+    def test_classic_script_static_import_of_a_missing_file_still_warns_as_on_trunk(self):
+        created = self.create({"index.html": "<!doctype html><script>import './static.js';</script>", "static.js": "export default 1;\n"}, name="Classic Static")
+        self.assertEqual(codes(created, "index.html"), [], created["warnings"])
+        removed = self.write(created["space"], {"static.js": None})
+        self.assertIn("import.unresolved", codes(removed, "index.html"), removed["warnings"])
+
+    def test_bracket_and_grouped_space_net_spellings_are_mediated(self):
+        for app in ("space['net'].fetch(u);\n", "(space.net).fetch(u);\n", "window.space[\"net\"].fetch(u);\n"):
+            with self.subTest(app):
+                created = self.create({"index.html": INDEX, "app.js": app}, name="Mediated Spelling")
+                self.assertEqual(network(created), [], created["warnings"])
+        self.assertIn("net.direct_call", codes(self.create({"index.html": INDEX, "app.js": "(window).fetch(u);\n"}, name="Grouped Window"), "app.js"))
+
     def test_dynamic_import_specifier_followed_by_a_newline_warns(self):
         created = self.create({"index.html": INDEX, "app.js": "import('https://example.org/a.js'\n);\n"}, name="Import Newline")
         self.assertEqual(codes(created, "app.js"), ["net.remote_import"], created["warnings"])
