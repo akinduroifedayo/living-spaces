@@ -5,7 +5,7 @@ from .errors import SpacesError
 _OPS = {
     "meta": (None, set(), set()),
     "net.fetch": ("net", {"url"}, {"method", "headers", "body", "as"}),
-    "data.query": ("data", {"collection"}, {"where", "order", "limit", "offset"}),
+    "data.query": ("data", {"collection"}, {"where", "order", "limit", "offset", "page", "cursor"}),
     "data.get": ("data", {"collection", "id"}, set()),
     "data.put": ("data", {"collection", "data"}, {"id", "base_rev", "merge"}),
     "data.delete": ("data", {"collection", "id"}, {"base_rev"}),
