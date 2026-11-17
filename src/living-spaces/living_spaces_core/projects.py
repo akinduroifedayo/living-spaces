@@ -285,11 +285,13 @@ def get_space(sid):
         for collection in manifest.get("data", {}).get("collections", {}):
             collections.setdefault(collection, 0)
         grant_rows = [grants._grant(row) for row in conn.execute("SELECT * FROM grants WHERE space=? ORDER BY capability", (sid,))]
+        from .storage import _summary as storage_summary
+        storage = storage_summary(conn, sid)
         errors = conn.execute("SELECT count(*) FROM logs WHERE space=? AND level='error' AND at>=?", (sid, db.now() - 86400)).fetchone()[0]
     with upkeep.read_projection():
         result = _summary(space)
     result.update(manifest=manifest, grants=grant_rows, recent_runs=runs.list_runs(sid, limit=10),
-                  data_version=space["data_version"], collections=collections, error_count_24h=errors)
+                  data_version=space["data_version"], collections=collections, error_count_24h=errors, storage=storage)
     return result
 
 

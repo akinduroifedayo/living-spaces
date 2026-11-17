@@ -1,7 +1,7 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState, Skeleton, host, useQuery } from '@hermes/plugin-sdk'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Action, Banner, CopyPrompt, DecisionDialog, Drawer, Icon, OwnerChip, SpaceTile, StatusPill, Freshness, DisabledReason, absolute } from './components.jsx'
-import { HistorySheet } from './history.jsx'
+import { HistorySheet, StorageNotice } from './history.jsx'
 import { PermissionsSheet } from './permissions.jsx'
 import { UpkeepSheet } from './upkeep.jsx'
 import { advanceCursor, diagnosticText, errorText, headerFacts, inFlight, refreshReason, runResult, spacePath, spaceStatus, statusDimensions } from './model.mjs'
@@ -226,6 +226,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
       <DropdownMenu><DropdownMenuTrigger asChild><Action ref={overflow} className="ls-action ls-overflow" aria-label="More Space actions" icon="ellipsis" /></DropdownMenuTrigger><DropdownMenuContent align="end">{headerMode !== 'wide' && <DropdownMenuItem onSelect={() => openHistory()}>History</DropdownMenuItem>}{!building && <>{headerMode === 'narrow' && <DropdownMenuItem onSelect={() => openSheet('upkeep')}>Upkeep</DropdownMenuItem>}<DropdownMenuSeparator /><DropdownMenuItem onSelect={() => act('pin', { pinned: !space.pinned })}>{space.pinned ? 'Unpin Space' : 'Pin Space'}</DropdownMenuItem><DropdownMenuItem onSelect={() => archived ? act('unarchive') : askConfirmation('archive')}>{archived ? 'Restore Space' : 'Archive Space…'}</DropdownMenuItem>{archived && <DropdownMenuItem onSelect={() => askConfirmation('delete')}>Delete…</DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
     </div></header>
     <p className="ls-secondary" role="status" aria-live="polite">Guest runtime: {dimensions.guest}. App readiness: {dimensions.appDomain}.</p>
+    <StorageNotice storage={space.storage} onReview={() => openHistory()} />
     {botAction && <Banner kind={['failed', 'offline', 'unknown'].includes(botAction.status) ? 'failed' : undefined} title={`Bot request: ${botAction.status}`} actions={<>
       <Action onClick={() => controller.current?.checkAction()}>Check bot status</Action>
       {botAction.activationId && ['unknown', 'failed', 'offline'].includes(botAction.status) && <Action onClick={() => controller.current?.retryAction()}>Retry same request</Action>}

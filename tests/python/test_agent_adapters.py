@@ -149,7 +149,7 @@ class ToolTests(AdapterCase):
         self.assertCountEqual(manifest["provides_tools"], registered)
 
     def test_registration_and_skill(self):
-        self.assertEqual(set(self.tools), set(PARAMS) | {"spaces_bind_maintainer"})
+        self.assertEqual(set(self.tools), set(PARAMS) | {"spaces_bind_maintainer", "spaces_retention"})
         for name, tool in self.tools.items():
             with self.subTest(name=name):
                 self.assertEqual(tool["toolset"], "living_spaces")

@@ -79,3 +79,9 @@ def path(value):
             or any(part in ("", ".", "..") for part in value.split("/"))):
         raise SpacesError("invalid", "Invalid project path")
     return value
+
+
+def usage(resource, used, maximum):
+    """Warn at 80 percent of an existing cap without changing limit enforcement."""
+    return {"resource": resource, "used": used, "limit": maximum,
+            "approaching": used * 5 >= maximum * 4}
