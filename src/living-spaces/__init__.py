@@ -435,7 +435,8 @@ def spaces_upkeep(core, args, owner):
     action = _text(core, args, "action")
     if action == "status":
         return core.get_upkeep(sid)
-    return core.upkeep_action(sid, action, actor=f"agent:{owner}")
+    confirmation = {"confirm": args["confirm"]} if "confirm" in args else {}
+    return core.upkeep_action(sid, action, actor=f"agent:{owner}", **confirmation)
 
 
 REF_NOTE = (" An ambiguous or unknown space fails with code ambiguous/not_found and lists candidates: ask the user "
@@ -663,9 +664,12 @@ TOOLS = [
         "Read or control this Space's linked Hermes cron job. status returns the link and public cron list metadata; "
         "full prompts, execution history and manual dispatch status are unavailable. pause, resume and run use "
         "the public cron tool; run returns its dispatch response without claiming an outcome. remove deletes the job and the "
-        "link." + REF_NOTE,
+        "link. recover requires explicit user confirmation with confirm set to the Space id. It checks native state, "
+        "removes Space-owned jobs and clears unknown barriers only after verified absence; it never replays a run. "
+        "Status includes a labeled settings aid, never current native schedule truth." + REF_NOTE,
         {"space": SPACE_ARG,
-         "action": {"type": "string", "enum": ["status", "pause", "resume", "run", "remove"]}},
+         "action": {"type": "string", "enum": ["status", "pause", "resume", "run", "remove", "recover"]},
+         "confirm": {"type": "string", "description": "For recover only: Space id after explicit user confirmation."}},
         ["space", "action"])),
 ]
 

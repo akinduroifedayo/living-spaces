@@ -193,8 +193,9 @@ async def upkeep_get(space_id: str):
 @router.post("/spaces/{space_id}/upkeep")
 async def upkeep_update(space_id: str, body=Body(default=None)):
     def action(core):
-        _body(core, body, ("action",), ("action",))
-        return core.upkeep_action(space_id, body["action"], actor="user")
+        _body(core, body, ("action", "confirm"), ("action",))
+        confirmation = {"confirm": body["confirm"]} if "confirm" in body else {}
+        return core.upkeep_action(space_id, body["action"], actor="user", **confirmation)
     return await _run(space_id, action)
 
 

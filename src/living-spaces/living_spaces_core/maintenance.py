@@ -18,6 +18,8 @@ _feed_writer: ContextVar[dict[str, Any] | None] = ContextVar("maintenance_feed_w
 
 
 def initialize(conn):
+    if "recovery_settings" not in {row["name"] for row in conn.execute("PRAGMA table_info(maintenance_spaces)")}:
+        conn.execute("ALTER TABLE maintenance_spaces ADD COLUMN recovery_settings TEXT")
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(refresh_claims)")}
     for name, declaration in (("incarnation", "TEXT"), ("link_generation", "INTEGER"),
                               ("command", "TEXT"), ("owner", "TEXT")):
@@ -204,7 +206,7 @@ def admit(conn, sid, command, *, actor, target=None, own=None):
 
 
 @contextmanager
-def control(sid, command, *, actor, kind=None):
+def control(sid, command, *, actor, kind=None, settings=None):
     with db.write() as conn:
         space = db.space(conn, sid)
         if command in ("schedule", "resume") and space["status"] == "archived":
@@ -217,7 +219,12 @@ def control(sid, command, *, actor, kind=None):
         if op is None:
             if command in ("schedule", "resume"):
                 admit(conn, sid, command, actor=actor, target=link["cron_job_id"] if link else None)
-            op = _insert_operation(conn, sid, command, actor, link["cron_job_id"] if link else None)
+        # Feed execution keeps its existing admission path. Controls also need a
+        # committed envelope when their native effect outlives a SQLite rollback.
+        op = _insert_operation(conn, sid, command, actor, link["cron_job_id"] if link else None)
+        if settings is not None:
+            conn.execute("UPDATE maintenance_spaces SET recovery_settings=? WHERE space=?",
+                         (json.dumps(settings), sid))
     try:
         with scope(op if "token" in op else None):
             yield op
