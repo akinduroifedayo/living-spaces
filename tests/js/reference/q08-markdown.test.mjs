@@ -116,6 +116,9 @@ test('download anchors and image-map areas are removed so every link goes throug
   assert.equal(host.querySelector('area'), null)
   assert.equal(host.querySelector('map'), null)
   assert.equal(host.querySelector('img').hasAttribute('usemap'), false)
+  // int-review-12: href on a non-anchor element is dropped too.
+  const extra = render('<div href="https://example.com/">d</div><img src="data:image/png;base64,iVBORw0KGgo=" href="https://example.com/" alt="i">').host
+  assert.equal(extra.querySelectorAll('[href]').length, 0)
   // Every surviving link is an a[href] without download, which the Space loader intercepts.
   for (const element of host.querySelectorAll('[href]')) {
     assert.equal(element.tagName, 'A')

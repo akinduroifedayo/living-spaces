@@ -26,7 +26,8 @@ function purifier(win) {
   const purify = createDOMPurify(win)
   purify.addHook('uponSanitizeAttribute', (node, data) => {
     const value = String(data.attrValue || '')
-    if (data.attrName === 'href' && !safe(SAFE_LINK, value)) data.keepAttr = false
+    // Only <a> may carry href: the Space loader intercepts a[href] clicks and nothing else.
+    if (data.attrName === 'href' && (node.nodeName !== 'A' || !safe(SAFE_LINK, value))) data.keepAttr = false
     if (data.attrName === 'src' && !(node.nodeName === 'IMG' && safe(SAFE_IMAGE, value))) data.keepAttr = false
     if (data.attrName === 'srcset' || data.attrName === 'target' || data.attrName === 'ping') data.keepAttr = false
   })

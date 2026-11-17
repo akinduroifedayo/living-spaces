@@ -306,8 +306,8 @@
       "license": "ISC"
     },
     "vendor/markdown.mjs": {
-      "sha256": "32cf8cb650a6467152a2eb6f6f92c81fa73d0fedcb6e4e9683be471c2a068254",
-      "bytes": 84398,
+      "sha256": "175a239a3f8e9bdabe4fee97c58c76b54aba0a0fe6ebb434e76e6cac6d2697ab",
+      "bytes": 84418,
       "source": "lib/marked.esm.js + dompurify dist/purify.es.mjs + scripts/vendor/markdown-entry.mjs (bundled and minified with esbuild)",
       "package": "marked",
       "version": "18.2.1",
