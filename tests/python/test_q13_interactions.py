@@ -11,7 +11,7 @@ from unittest.mock import patch
 from tests.python.test_inspection import InspectionCase, needs_browser, table_dump
 from tests.python.test_q12_visual_inspection import plugin
 import living_spaces_core as core
-from living_spaces_core import bridge, grants, inspection, records, sessions
+from living_spaces_core import bridge, db, grants, inspection, records, sessions
 from living_spaces_core.errors import SpacesError
 
 
@@ -118,6 +118,13 @@ class Q13OverlayTests(Q13Case):
         self.assertEqual(found['outcome']['status'], 'success', found)
         adapter.close()
         self.assertEqual((table_dump(self.db), self.bytes()), (before, hashes))
+
+    def test_q13_overlay_works_on_a_profile_without_the_draft_table(self):
+        sid = self.space('Legacy', '<main>x</main>')
+        with db.write() as conn:
+            conn.execute("DROP TABLE editor_drafts")
+        adapter = self.overlay(sid)
+        self.assertTrue(adapter.call('data.put', {'collection': 'notes', 'id': 'a', 'data': {}})['ok'])
 
     def test_q13_overlays_are_independent_and_discarded_after_close(self):
         sid = self.space('Separate', '<main>x</main>')

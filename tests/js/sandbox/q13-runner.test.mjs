@@ -38,6 +38,15 @@ test('Q13 inspection host assigns write request ids and can reconcile them', asy
     await delay(10)
     assert.equal(replies[0].result.rev, 1)
     assert.equal(replies[0].outcome.status, 'success')
+    // Editor saves keep the app's request id through the inspection transport (integration Q10 x Q13).
+    frames[0].peer.postMessage({ v: 1, id: 2, op: 'editor.save', request_id: 'editor_probe',
+      args: { editor: 'n', schema: 1, collection: 'notes', id: 'a', data: {}, base_rev: 1 } })
+    for (let i = 0; i < 50; i++) {
+      queued = await inspector.next(10)
+      if (queued.requests.length) break
+    }
+    assert.equal(queued.requests[0].op, 'editor.save')
+    assert.equal(queued.requests[0].request_id, 'editor_probe')
   } finally {
     inspector.destroy()
     frames[0].peer.close()

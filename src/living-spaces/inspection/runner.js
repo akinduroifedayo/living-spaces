@@ -189,7 +189,7 @@
         w();
       }
     };
-    const call = (op, args) => new Promise((resolve) => {
+    const call = (op, args, _transfer, requestId) => new Promise((resolve) => {
       if (queue.length >= MAX_QUEUE) {
         refused++;
         resolve({ ok: false, error: { code: "limit", message: "Inspection bridge queue is full" } });
@@ -197,7 +197,8 @@
       }
       const id = ++seq;
       pending.set(id, resolve);
-      queue.push({ id, op, args, ...["data.put", "data.delete", "data.batch"].includes(op) ? { request_id: `inspect_write_${id}` } : {} });
+      const rid = op === "editor.save" ? requestId : ["data.put", "data.delete", "data.batch"].includes(op) ? `inspect_write_${id}` : void 0;
+      queue.push({ id, op, args, ...rid ? { request_id: rid } : {} });
       notify();
     });
     return {

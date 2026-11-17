@@ -556,7 +556,9 @@ class RecordOverlay(PassiveAdapter):
             snapshot.conn.backup(self.conn, pages=256, progress=progress)
             # Private reopen drafts belong to the person, not to the inspected app: the copy starts with none, so
             # editor and draft calls during a journey only ever see drafts the journey itself wrote.
-            self.conn.execute("DELETE FROM editor_drafts")
+            # A profile upgraded to Q10 but never opened writably may not have the table yet; nothing to exclude then.
+            if self.conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='editor_drafts'").fetchone():
+                self.conn.execute("DELETE FROM editor_drafts")
             with db.disposable_database(self.uri):
                 self.session = sessions.open_session(snapshot.sid)["session"]
         except BaseException:
