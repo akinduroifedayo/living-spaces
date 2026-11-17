@@ -172,8 +172,9 @@ class Q19GateTests(unittest.TestCase):
         self.assertFalse(one_reviewer["pass"])
         self.assertEqual(len(one_reviewer["incomplete"]), 72)
         # int-review-07: the two-reviewer minimum cannot be lowered by a caller.
-        with self.assertRaises(ValueError):
-            q19.visual_gate(self.scores(plan, base, better, reviewers=("A",)), plan, min_reviewers=1)
+        for weak in (1, 0, float("nan"), 1.5, True, "2"):
+            with self.subTest(min_reviewers=weak), self.assertRaises(ValueError):
+                q19.visual_gate(self.scores(plan, base, better, reviewers=("A",)), plan, min_reviewers=weak)
 
     def test_time_gate_counts_omitted_and_failed_builds_and_never_passes_all_failures(self):
         plan = frozen()
