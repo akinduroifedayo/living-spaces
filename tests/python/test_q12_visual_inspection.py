@@ -166,6 +166,33 @@ class Q12RuntimeTests(Q12Case):
         self.assertTrue(all(r['screenshot'] is None for r in report['visual']['routes']))
         self.assertEqual(report['visual']['motion'], 'reduce')
 
+    def test_q12_earlier_route_diagnostics_and_network_survive_later_routes(self):
+        # Both routes overflow the bounded diagnostics. The final report must count both, not only the last route.
+        sid = self.space('Noisy first route', '<main id=page>Home</main><script type=module>'
+                         'for(let i=0;i<55;i++)console.warn("warn "+i)</script>')
+        report = self.visual(sid, visual={'routes': [{'hash': '', 'landmarks': {'home': '#page'}},
+                                                      {'hash': '#quiet', 'landmarks': {'home': '#page'}}]})
+        self.assertEqual(report['visual']['status'], 'complete', report)
+        # Each route loads the page afresh and logs 55 distinct warnings: totals must cover both routes.
+        self.assertGreaterEqual(report['counts']['warning'], 110, report['counts'])
+        self.assertGreaterEqual(report['counts']['dropped'], 60, report['counts'])
+        self.assertEqual(len(report['errors']), inspection.MAX_ENTRIES)
+        self.assertEqual(len(report['visual']['routes'][0]['errors']), inspection.MAX_ENTRIES)
+
+    def test_q12_route_carry_keeps_network_events_and_limits(self):
+        class Browser:
+            listeners = []
+        first = inspection._Run(Browser(), None, 100, False)
+        first.counts['warning'], first.dropped, first.network_blocked = 3, 2, 1
+        first.network, first.events, first.limited = ['https://a.invalid/'], [{'kind': 'blocked'}], {'reply': 1}
+        first.entries = [{'source': 'console', 'level': 'warning', 'text': 'w'}]
+        second = inspection._Run(Browser(), None, 100, False)
+        second.carry_from(first)
+        self.assertEqual((second.counts['warning'], second.dropped, second.network_blocked), (3, 2, 1))
+        self.assertEqual((second.network, second.events, second.limited),
+                         (['https://a.invalid/'], [{'kind': 'blocked'}], {'reply': 1}))
+        self.assertEqual((second.entries, second.prior_entries), ([], first.entries))
+
     def test_q12_missing_landmark_and_invalid_selector_fail_routes(self):
         sid = self.space('Missing route', '<main>home</main>')
         for selector, code in [('#absent', 'route_missing'), ('[', 'selector_invalid')]:
