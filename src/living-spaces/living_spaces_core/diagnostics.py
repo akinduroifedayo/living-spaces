@@ -184,14 +184,18 @@ def _mediated(toks, i):
     return j >= 0 and toks[j].text == "net"
 
 
-def _constant_at(toks, j):
-    """The constant string that forms the whole expression starting at token j, looking through
-    grouping parens; None when it is not constant (e.g. `'./' + name`)."""
+def _constant_at(toks, j, whole=True):
+    """The constant string starting the expression at token j, looking through grouping parens.
+    With whole=True (import specifiers) it must be the entire expression, so `'./' + name` is None.
+    With whole=False (.src/.href) anything may follow: a remote prefix stays remote after
+    concatenation, and a newline may end the statement by ASI."""
     opened = 0
     while 0 <= j < len(toks) and toks[j].text == "(":
         j, opened = j + 1, opened + 1
     if not (0 <= j < len(toks) and _constant(toks[j])):
         return None
+    if not whole:
+        return toks[j]
     k = j + 1
     while opened and k < len(toks) and toks[k].text == ")":
         k, opened = k + 1, opened - 1
@@ -230,7 +234,7 @@ def _js(source, position):
         elif text == "sendBeacon" and nxt.text == "(" and prev.text != "function":
             sinks.append(Sink("net.direct_call", "sendBeacon()", *where(token)))
         elif text in ("src", "href") and prev.text == "." and nxt.text == "=" and get(i + 2).text != "=":
-            spec = _constant_at(toks, i + 2)
+            spec = _constant_at(toks, i + 2, whole=False)
             if spec is not None and REMOTE.match(spec.text[1:-1]):
                 sinks.append(Sink("net.remote_resource", spec.text[1:-1], *where(token)))
     return refs, sinks

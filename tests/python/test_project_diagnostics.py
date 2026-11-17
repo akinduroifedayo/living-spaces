@@ -175,6 +175,45 @@ class ProjectDiagnosticsTests(unittest.TestCase):
         interpolated = self.create({"index.html": INDEX, "app.js": "img.src = `${base}/a.png`;\n"}, name="Interpolated")
         self.assertEqual(network(interpolated), [], interpolated["warnings"])
 
+    def test_remote_src_or_href_warns_whatever_follows_the_constant(self):
+        tails = {"newline": "\nconst after = 1;\n", "end of file": "", "concatenation": " + name;\n",
+                 "bracket continuation": "\n[1].forEach(f);\n", "paren continuation": "\n(f)();\n"}
+        for prop in ("href", "src"):
+            for name, tail in tails.items():
+                with self.subTest(prop=prop, tail=name):
+                    app = f"const el = document.createElement('link');\nel.{prop} = 'https://example.org/a.css'{tail}"
+                    created = self.create({"index.html": INDEX, "app.js": app}, name=f"{prop} {name}".title())
+                    self.assertIn(("net.remote_resource", 2), [(d["code"], d["line"]) for d in network(created)], created["warnings"])
+                    written = self.write(created["space"], {"app.js": app + "\n"})
+                    self.assertIn("net.remote_resource", [d["code"] for d in network(written)], written["warnings"])
+
+    def test_semicolonless_remote_href_keeps_its_located_warning_on_create_write_and_restore(self):
+        app = ("const link=document.createElement('link');\nlink.rel='stylesheet';\ndocument.head.append(link);\n"
+               "link.href = 'https://example.org/a.css'\nconst after = 1;\n")
+        where = lambda result: [(d["code"], d["path"], d["line"], d["column"], d["ref"]) for d in network(result)]
+        expected = [("net.remote_resource", "app.js", 4, 6, "https://example.org/a.css")]
+        created = self.create({"index.html": INDEX, "app.js": app}, name="Semicolonless")
+        self.assertEqual(where(created), expected, created["warnings"])
+        sid = created["space"]
+        quiet = self.write(sid, {"app.js": "const after = 1;\n"})
+        self.assertEqual(where(quiet), [], quiet["warnings"])
+        written = self.write(sid, {"app.js": app})
+        self.assertEqual(where(written), expected, written["warnings"])
+        restored = self.tools.spaces_restore(self.core, {"space": sid, "rev": 1}, "Demo")
+        self.assertEqual(where(restored), expected, restored)
+        for name, rhs in {"semicolon": "'https://example.org/a.css';", "grouped": "('https://example.org/a.css')",
+                          "newline plus suffix": "'https://example.org/'\n  + name", "src": None}.items():
+            with self.subTest(name):
+                line = "link.src = 'https://example.org/a.js'" if rhs is None else f"link.href = {rhs}"
+                result = self.create({"index.html": INDEX, "app.js": f"const link = make();\n{line}\nconst after = 1;\n"}, name=name.title())
+                self.assertEqual([(d["code"], d["line"]) for d in network(result)], [("net.remote_resource", 2)], result["warnings"])
+
+    def test_dynamic_import_specifier_followed_by_a_newline_warns(self):
+        created = self.create({"index.html": INDEX, "app.js": "import('https://example.org/a.js'\n);\n"}, name="Import Newline")
+        self.assertEqual(codes(created, "app.js"), ["net.remote_import"], created["warnings"])
+        partial = self.create({"index.html": INDEX, "app.js": "import('https://example.org/' + name);\n"}, name="Import Partial")
+        self.assertEqual(codes(partial, "app.js"), [], partial["warnings"])
+
     def test_legacy_javascript_types_are_scanned(self):
         for kind in ("text/ecmascript", "application/ecmascript", "text/javascript1.5", "text/javascript; charset=utf-8"):
             with self.subTest(kind):
