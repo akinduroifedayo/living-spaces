@@ -237,6 +237,8 @@ def grade(brief_id, phase, observed):
 def visual_gate(scores, frozen, min_reviewers=2):
     """ACCEPTANCE 'Judge visuals'. scores: [{artifact, reviewer, critical, <dimension>: 1..5}] keyed by the
     plan's blind artifact ids. Any planned artifact without enough reviewers makes the gate incomplete."""
+    if min_reviewers < 2:
+        raise ValueError("ACCEPTANCE requires at least two independent reviewers per artifact")
     expected = artifacts(frozen)
     reviewers = {}
     for row in scores:
