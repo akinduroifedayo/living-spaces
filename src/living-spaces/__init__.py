@@ -264,7 +264,7 @@ def spaces_retention(core, args, owner):
     if "proposal_id" not in args and "confirm" not in args:
         return core.propose_retention(sid, scope)
     return core.execute_retention(sid, scope=scope, proposal_id=_text(core, args, "proposal_id"),
-                                  confirm=_text(core, args, "confirm"), actor="user:" + owner)
+                                  confirm=_text(core, args, "confirm"), actor=f"agent:{owner}")
 
 
 def spaces_create(core, args, owner, maintainer=None):

@@ -36,6 +36,11 @@ class Q18TransportTests(CoreCase):
         executed = reply('spaces_retention', {'space': self.sid, 'scope': scope, 'proposal_id': proposal['id'], 'confirm': proposal['confirmation']})
         self.assertTrue(executed['ok'], executed)
         self.assertEqual(executed['result']['removed']['records'], 1)
+        # int-opus-01 Q18 P2: deletions executed through the agent tool are audited as the agent, not the owner.
+        from living_spaces_core import db
+        with db.read() as conn:
+            actors = [row[0] for row in conn.execute("SELECT actor FROM audit WHERE space=? AND action='retention'", (self.sid,))]
+        self.assertEqual(actors, ['agent:Demo'])
 
     def test_host_routes_scope_validate_and_reject_stale_without_mutation(self):
         api = self.load('q18_api', ROOT / 'src/living-spaces/dashboard/plugin_api.py')
