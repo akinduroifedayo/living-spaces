@@ -27,6 +27,7 @@ LIBRARIES = {
         "vendor/lucide.mjs": "dist/esm/lucide.mjs (bundled with esbuild)",
     }),
     "plot": ("@observablehq/plot", "ISC", {f"vendor/plot.mjs": "dist/plot.js + d3 7.9.2 ESM modules (bundled and minified with esbuild)"}),
+    "markdown": ("marked", "MIT AND Apache-2.0", {f"vendor/markdown.mjs": "lib/marked.esm.js + dompurify dist/purify.es.mjs + scripts/vendor/markdown-entry.mjs (bundled and minified with esbuild)"}),
     **{f"font:{font}": (f"@fontsource/{font}", "OFL-1.1", {
         f"vendor/fonts/{font}.css": "latin-400.css + latin-700.css (adapted relative URLs)",
         **{f"vendor/fonts/{font}-latin-{weight}-normal.woff2":

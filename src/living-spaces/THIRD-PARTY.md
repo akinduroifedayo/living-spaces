@@ -202,3 +202,20 @@ Built with the repository's existing esbuild 0.28.0 as one minified browser ESM 
 | interval-tree-1d | 1.0.4 | MIT | `sha512-wY8QJH+6wNI0uh4pDQzMvl+478Qh7Rl4qLmqiluxALlNvl+I+o5x38Pw3/z7mDPTPS1dQalZJXsmbvxx5gclhQ==` |
 | isoformat | 0.2.1 | ISC | `sha512-tFLRAygk9NqrRPhJSnNGh7g7oaVWDwR0wKh/GM2LgmPa50Eg4UfyaCO4I8k6EqJHl1/uh2RAD6g06n5ygEnrjQ==` |
 | robust-predicates | 3.0.3 | Unlicense | `sha512-NS3levdsRIUOmiJ8FZWCP7LG3QpJyrs/TE0Zpf1yvZu8cAJJ6QMW92H1c7kWpdIHo8RvmLxN/o2JXTKHp74lUA==` |
+
+## marked 18.2.1 and DOMPurify 3.4.18 (safe rich text)
+
+License: `MIT AND Apache-2.0`. marked is MIT. DOMPurify is offered as `MPL-2.0 OR Apache-2.0`; this distribution elects **Apache-2.0**.
+
+Official sources: [marked 18.2.1 tarball](https://registry.npmjs.org/marked/-/marked-18.2.1.tgz) and [dompurify 3.4.18 tarball](https://registry.npmjs.org/dompurify/-/dompurify-3.4.18.tgz).
+
+Integrity: marked `sha512-ii4bxCTCqqwpT86XZWgJNs+ZnAIZksmLGYMViWA7PDIXYIeNo1x6cDdX3JOip9NM/cI6p8z57FxliACboTruMA==`; dompurify `sha512-ofe3wI/uNm68HInABYFJYqQxRw1EaKAjNdrFVKqjUY+UZurvNd2L/HuQe097s/4RivWiZyP6tT7aoT8atjfhwg==`.
+
+Selection key: `markdown`. Total copied size including notices: 99,168 bytes (budget: 512 KiB).
+
+| Bundled file | Bytes | Upstream input |
+| --- | ---: | --- |
+| `vendor/markdown.mjs` | 83,917 | `lib/marked.esm.js` + `dist/purify.es.mjs` + `scripts/vendor/markdown-entry.mjs` |
+| `vendor/licenses/markdown-LICENSE` | 15,251 | `LICENSE` of marked and the Apache-2.0 `LICENSE` of DOMPurify |
+
+Built with the existing esbuild 0.28.0 as one minified browser ESM file with no external imports, from the repository's own entry `scripts/vendor/markdown-entry.mjs`, which exports only `renderMarkdown` (parse, then sanitize) and `versions`. Both tarballs were fetched directly from registry.npmjs.org and their SHA-512 checked against registry metadata before use. DOMPurify's `prepare: husky` script is a development hook and was never run; no install script ran. @types/trusted-types is types-only and is not bundled.

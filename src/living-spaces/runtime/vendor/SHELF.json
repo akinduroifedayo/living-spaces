@@ -83,6 +83,17 @@
       "imports": {
         "plot": "vendor/plot.mjs"
       }
+    },
+    "markdown": {
+      "version": "18.2.1",
+      "license": "MIT AND Apache-2.0",
+      "files": [
+        "vendor/markdown.mjs",
+        "vendor/licenses/markdown-LICENSE"
+      ],
+      "imports": {
+        "markdown": "vendor/markdown.mjs"
+      }
     }
   },
   "files": {
@@ -293,6 +304,22 @@
       "package": "@observablehq/plot",
       "version": "0.6.19",
       "license": "ISC"
+    },
+    "vendor/markdown.mjs": {
+      "sha256": "5182d570c3fc90c8dc8e225525348b8111062abaea5538a0f01d01cffdc950cd",
+      "bytes": 83917,
+      "source": "lib/marked.esm.js + dompurify dist/purify.es.mjs + scripts/vendor/markdown-entry.mjs (bundled and minified with esbuild)",
+      "package": "marked",
+      "version": "18.2.1",
+      "license": "MIT AND Apache-2.0"
+    },
+    "vendor/licenses/markdown-LICENSE": {
+      "sha256": "47941012bf280feb392807a9911a1b99c8511d2b28f241ef9a934f6607ff43da",
+      "bytes": 15251,
+      "source": "LICENSE",
+      "package": "marked",
+      "version": "18.2.1",
+      "license": "MIT AND Apache-2.0"
     }
   },
   "sources": [
@@ -343,6 +370,12 @@
       "version": "0.6.19",
       "url": "https://registry.npmjs.org/@observablehq/plot/-/plot-0.6.19.tgz",
       "integrity": "sha512-8Tg8+doIBDKTG6gL9Px7Tws+Tuni+bwjhaJufAKR3V8HFi2dtGQf57fH0UKwOrMYgjmEdX2PP1E4LIi7gyhgYw=="
+    },
+    {
+      "name": "marked",
+      "version": "18.2.1",
+      "url": "https://registry.npmjs.org/marked/-/marked-18.2.1.tgz",
+      "integrity": "sha512-ii4bxCTCqqwpT86XZWgJNs+ZnAIZksmLGYMViWA7PDIXYIeNo1x6cDdX3JOip9NM/cI6p8z57FxliACboTruMA=="
     }
   ]
 }

@@ -61,6 +61,29 @@ page: let the work lead, not a decorative welcome screen.
 - **Game:** Score, turn and restart are findable.
 - **Document:** a reading measure of about 65–75ch, generous margins, useful
   headings.
+
+### Render rich text safely
+
+Select the `markdown` library and render with its one export:
+
+```js
+import { renderMarkdown } from 'markdown'
+article.replaceChildren(renderMarkdown(record.data.body, { tableLabel: 'Data table' }))
+```
+
+- It parses with marked, then sanitizes with DOMPurify, always in that order.
+  Raw HTML in the source is cleaned, never executed. Don't write your own
+  `innerHTML` path for Markdown, notes, feeds or fetched text.
+- Script, style, event attributes, iframe, object, embed, form controls, SVG and
+  MathML are removed. Links keep only http, https, mailto, `#fragment` and
+  in-Space relative targets; clicks still open through the host, never by frame
+  navigation. Images load only from Space files or inline PNG/JPEG/GIF/WebP data.
+- Headings, lists, quotes, code blocks and tables survive. Each table is wrapped
+  in a focusable, labelled `div.md-table` region; give it `overflow-x: auto` so a
+  wide table scrolls instead of breaking a 320 px layout or 200 percent zoom.
+- For long documents keep a 65–75ch measure, add a heading outline from the
+  rendered `h2`/`h3`, and keep citations as ordinary links so their destination
+  stays visible.
 - **Visual piece / live board:** Keep spatial meaning on narrow screens.
 
 ### Make data visual

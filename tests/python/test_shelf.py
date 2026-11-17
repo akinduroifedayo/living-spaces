@@ -38,6 +38,9 @@ class ShelfTests(unittest.TestCase):
             ("plot", "@observablehq/plot", "ISC", {
                 "vendor/plot.mjs": "dist/plot.js + d3 7.9.2 ESM modules (bundled and minified with esbuild)",
             }),
+            ("markdown", "marked", "MIT AND Apache-2.0", {
+                "vendor/markdown.mjs": "lib/marked.esm.js + dompurify dist/purify.es.mjs + scripts/vendor/markdown-entry.mjs (bundled and minified with esbuild)",
+            }),
             ("font:inter", "@fontsource/inter", "OFL-1.1", self.font_files("inter")),
             ("font:dm-sans", "@fontsource/dm-sans", "OFL-1.1", self.font_files("dm-sans")),
             *((f"font:{font}", f"@fontsource/{font}", "OFL-1.1", self.font_files(font))
@@ -95,7 +98,7 @@ class ShelfTests(unittest.TestCase):
 
     def test_valid_shelf(self):
         self.assertEqual(checker.check_shelf(self.runtime),
-                         (26, sum(file["bytes"] for file in self.shelf["files"].values())))
+                         (28, sum(file["bytes"] for file in self.shelf["files"].values())))
 
     def test_cli_success_and_failure_have_exit_codes(self):
         for valid in (True, False):
@@ -121,7 +124,7 @@ class ShelfTests(unittest.TestCase):
     def test_wrong_shapes_fail_cleanly(self):
         baseline = copy.deepcopy(self.shelf)
         for field, value in (("schema", True), ("schema", 2), ("libraries", []), ("files", []),
-                             ("sources", {}), ("sources", [None] * 8)):
+                             ("sources", {}), ("sources", [None] * 9)):
             with self.subTest(field=field, value=value):
                 self.shelf = copy.deepcopy(baseline)
                 self.shelf[field] = value
