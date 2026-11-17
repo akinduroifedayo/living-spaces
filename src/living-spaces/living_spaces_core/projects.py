@@ -24,6 +24,10 @@ _LIBRARIES = {
 }
 _ACCENTS = {"blue", "green", "amber", "purple", "teal", "rose", "orange", "grey"}
 _THEME_PRESETS = {"editorial", "terminal", "playful", "minimal", "data", "journal", "game"}
+READ_FILES_MAX = 20
+READ_FILE_BYTES = 256 * 1024
+READ_TOTAL_BYTES = 1024 * 1024
+EDIT_FILES_MAX = 100
 
 
 def _manifest(value, name, description):
@@ -305,7 +309,40 @@ def list_files(sid, rev=None):
                 for path, sha in sorted(revision["files"].items())]
 
 
-def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=()):
+def read_files(sid, paths):
+    """Read one head snapshot, with bounded content and an outcome for every path."""
+    if not isinstance(paths, list) or not paths:
+        raise SpacesError("invalid", "paths must be a nonempty array")
+    limits.check(len(paths), READ_FILES_MAX, "read paths")
+    results, used = [], 0
+    with db.read() as conn:
+        revision = _revision(conn, sid)
+        for path in paths:
+            try:
+                limits.path(path)
+                if path == "space.json":
+                    raw = limits.dumps(revision["manifest"]).encode("utf-8")
+                    sha = hashlib.sha256(raw).hexdigest()
+                else:
+                    sha = revision["files"].get(path)
+                    if sha is None:
+                        raise SpacesError("not_found", "File not found")
+                    size = conn.execute("SELECT size FROM blobs WHERE sha=?", (sha,)).fetchone()[0]
+                    limits.check(size, READ_FILE_BYTES, "read file bytes")
+                    raw = conn.execute("SELECT content FROM blobs WHERE sha=?", (sha,)).fetchone()[0]
+                limits.check(len(raw), READ_FILE_BYTES, "read file bytes")
+                content = _content(raw)
+                size = len(next(iter(content.values())).encode("utf-8"))
+                limits.check(used + size, READ_TOTAL_BYTES, "read content bytes")
+                used += size
+                result = {"path": path, **content, "size": len(raw), "sha": sha, "rev": revision["rev"]}
+                results.append({"path": path, "ok": True, "result": result})
+            except SpacesError as exc:
+                results.append({"path": path, "ok": False, "error": exc.to_dict()})
+    return {"space": sid, "rev": revision["rev"], "results": results}
+
+
+def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=(), *, validate=False):
     space = db.space(conn, sid, writable=True)
     if base_rev is not None:
         limits.integer(base_rev, "base_rev")
@@ -324,10 +361,13 @@ def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=()
     conn.execute("SAVEPOINT revision_write")
     try:
         stored = _store_files(conn, old["files"], changed)
+        report = _diagnose(conn, manifest, stored, found) if validate else None
+        if report and report["diagnostics"]:
+            raise SpacesError("invalid", "Batch candidate failed project validation", **report)
         if version > space["data_version"]:
             migrations.apply(conn, sid, space["data_version"], version, manifest["data"].get("migrations", []), actor=author)
         info = _save_revision(conn, space, manifest, stored, kind="edit" if space["head_rev"] else "create", author=author, summary=summary)
-        info.update(_diagnose(conn, manifest, stored, found))
+        info.update(report if report is not None else _diagnose(conn, manifest, stored, found))
     except Exception as exc:
         conn.execute("ROLLBACK TO revision_write")
         conn.execute("RELEASE revision_write")
@@ -377,6 +417,69 @@ def edit_file(sid, path, *, old, new, author, summary, base_rev=None):
     if error:
         raise error
     return info
+
+
+def edit_files(sid, *, edits, base_rev, author, summary):
+    """Apply ordered exact replacements to one candidate and publish all or none."""
+    if not isinstance(edits, list) or not edits:
+        raise SpacesError("invalid", "edits must be a nonempty array")
+    limits.check(len(edits), EDIT_FILES_MAX, "project edits")
+    limits.text(author, "author")
+    limits.text(summary, "summary", nonempty=False)
+    index, path, indexes = 0, None, {}
+    with db.write() as conn:
+        try:
+            path = edits[0].get("path") if isinstance(edits[0], dict) else None
+            limits.integer(base_rev, "base_rev")
+            space = db.space(conn, sid, writable=True)
+            if base_rev != space["head_rev"]:
+                raise SpacesError("conflict", "Project revision changed", current={"head_rev": space["head_rev"]})
+            revision, candidate = _revision(conn, sid), {}
+            for index, edit in enumerate(edits):
+                path = edit.get("path") if isinstance(edit, dict) else None
+                if not isinstance(edit, dict) or set(edit) != {"path", "old", "new"}:
+                    raise SpacesError("invalid", "Each edit requires exactly path, old and new")
+                limits.path(path)
+                old, new = edit["old"], edit["new"]
+                if not isinstance(old, str) or not old or not isinstance(new, str):
+                    raise SpacesError("invalid", "old must be nonempty text and new must be text")
+                if path in candidate:
+                    raw = candidate[path]
+                elif path == "space.json":
+                    raw = limits.dumps(revision["manifest"]).encode("utf-8")
+                else:
+                    sha = revision["files"].get(path)
+                    if sha is None:
+                        raise SpacesError("not_found", "File not found")
+                    raw = conn.execute("SELECT content FROM blobs WHERE sha=?", (sha,)).fetchone()[0]
+                try:
+                    text = raw.decode("utf-8")
+                except UnicodeError as exc:
+                    raise SpacesError("invalid", "Cannot edit a binary file") from exc
+                if text.count(old) != 1:
+                    raise SpacesError("invalid", "old must occur exactly once")
+                try:
+                    raw = text.replace(old, new, 1).encode("utf-8")
+                except UnicodeError as exc:
+                    raise SpacesError("invalid", "Replacement must be valid UTF-8") from exc
+                limits.check(len(raw), limits.FILE_BYTES, "file bytes")
+                candidate[path], indexes[path] = raw, index
+            # Attribute manifest parsing, normalization and migration failures to its last edit.
+            if "space.json" in indexes:
+                index, path = indexes["space.json"], "space.json"
+            changed, supplied = _input_files(candidate, None)
+            info, error = _write(conn, sid, changed, supplied, author, summary, base_rev, validate=True)
+            if error:
+                raise error
+            return info
+        except SpacesError as exc:
+            for diagnostic in exc.extra.get("diagnostics", []):
+                affected = diagnostic["path"]
+                if affected in indexes or diagnostic.get("target") in indexes:
+                    path = affected if affected in indexes else diagnostic["target"]
+                    index = indexes[path]
+                    break
+            raise SpacesError(exc.code, exc.message, **{**exc.extra, "edit_index": index, "path": path}) from exc
 
 
 def list_revisions(sid):
