@@ -41,6 +41,42 @@ class Q17RecoveryTests(unittest.TestCase):
         self.assertEqual(self.fx.upkeep.get_upkeep(self.sid), state)
         self.assertEqual(self.fx.cron.calls, before)
 
+    def test_background_run_is_in_flight_not_unknown_and_settles_on_completion(self):
+        # int-opus-01 Q17 P1: a recorded background reply is the normal in-flight case, not lost confirmation.
+        self.fx.schedule(self.sid)
+        jid = next(iter(self.fx.cron.jobs))
+        self.fx.ctx.run_reply = {'success': True, 'job': dict(self.fx.ctx.format_job(self.fx.cron.get_job(jid)),
+                                                              executed=True, execution_mode='background')}
+        self.fx.upkeep.upkeep_action(self.sid, 'run', actor='user')
+        state = self.fx.upkeep.get_upkeep(self.sid)
+        self.assertIsNone(state['recovery'], state['recovery'])
+        listed = self.fx.projects.get_space(self.sid)['upkeep']
+        self.assertEqual((listed['enabled'], listed['state']), (True, 'scheduled'))
+        self.assertIsNotNone(listed['next_run_at'])
+        self.fx.cron.jobs[jid].update(last_run_at='2026-11-17T00:00:00+00:00', last_status='ok')
+        self.fx.ctx.run_reply = {'success': True, 'job': dict(self.fx.ctx.format_job(self.fx.cron.get_job(jid)),
+                                                              executed=True, execution_success=True)}
+        self.fx.upkeep.upkeep_action(self.sid, 'run', actor='user')
+        self.assertIsNone(self.fx.upkeep.get_upkeep(self.sid)['recovery'])
+        self.assertEqual([a for a, _ in self.fx.cron.calls].count('remove'), 0)
+
+    def test_lost_run_reply_still_raises_the_unknown_barrier(self):
+        self.fx.schedule(self.sid)
+        original = self.fx.ctx.dispatch_tool
+
+        def dispatch(name, args):
+            result = original(name, args)
+            if args['action'] == 'run':
+                raise OSError('reply lost after native run')
+            return result
+
+        with patch.object(self.fx.ctx, 'dispatch_tool', side_effect=dispatch):
+            with self.assertRaises(self.fx.core.SpacesError):
+                self.fx.upkeep.upkeep_action(self.sid, 'run', actor='user')
+        state = self.fx.upkeep.get_upkeep(self.sid)
+        self.assertEqual((state['recovery'] or {}).get('state'), 'unknown')
+        self.assertEqual(state['recovery']['operations'][0]['action'], 'run')
+
     def test_confirmation_is_required_before_recovery_touches_native_state(self):
         self.uncertain()
         before = list(self.fx.ctx.calls)

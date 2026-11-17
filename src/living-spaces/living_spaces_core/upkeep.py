@@ -360,6 +360,13 @@ def _read(sid, projection=None):
     if saved and saved["recovery_settings"]:
         result["recovery_aid"] = {"label": "Recovery settings aid", "authoritative": False,
                                   "settings": json.loads(saved["recovery_settings"])}
+    # A run whose native reply was recorded as background is the normal in-flight case: its reply is durable and
+    # a later Run joins and settles it from the native last-run stamp. Only operations without a durable native
+    # confirmation are uncertain, and only those raise the recovery barrier.
+    in_flight = [op for op in operations if op["phase"] == "background" and op["action"] in ("run", "refresh")]
+    operations = [op for op in operations if op not in in_flight]
+    if in_flight:
+        result["in_flight"] = in_flight
     if operations:
         result["recovery"] = {
             "state": "unknown", "operations": operations,

@@ -113,3 +113,12 @@ test('Q17 native outage retains aid and prevents recovery submission', async () 
   await click('Recover upkeep')
   assert.deepEqual(calls, [])
 })
+
+test('Q17 uncertain state keeps the evidence that can reconcile it visible', async () => {
+  // int-opus-01 Q17 P1: executions and the last error must not be hidden while an action is uncertain (R13).
+  unknown()
+  state.job = { ...state.job, last_status: 'error', last_error: 'Provider timeout during the earlier run' }
+  await render()
+  assert.ok(document.getElementById('ls-upkeep-executions'), 'Executions section hidden while uncertain')
+  assert.match(document.body.textContent, /Provider timeout during the earlier run/)
+})
