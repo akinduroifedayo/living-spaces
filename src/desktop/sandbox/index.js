@@ -86,6 +86,7 @@ export function mountSpace(container, { bundle, grants = [], call, onEvent = () 
   let state = 'created'
   let lastLog = -Infinity
   let overflowReported = false
+  let faults = 0
   const overflow = () => {
     if (overflowReported) return
     overflowReported = true
@@ -134,7 +135,7 @@ export function mountSpace(container, { bundle, grants = [], call, onEvent = () 
     let args = m.args
     if (m.op === 'log') {
       if ((args.lifecycle !== undefined && !['loaded', 'failed'].includes(args.lifecycle)) ||
-          ['dropped', 'unconfirmed'].some(key => args[key] !== undefined && (!Number.isSafeInteger(args[key]) || args[key] < 0))) {
+          ['dropped', 'unconfirmed', 'faults'].some(key => args[key] !== undefined && (!Number.isSafeInteger(args[key]) || args[key] < 0))) {
         return reject({ code: 'invalid', message: 'Invalid log metadata' })
       }
       if (!Array.isArray(args.entries) || Array.from(args.entries).some(entry =>
@@ -150,6 +151,10 @@ export function mountSpace(container, { bundle, grants = [], call, onEvent = () 
         overflow()
         reply({ ok: true, result: { stored: 0, throttled: true } })
         return
+      }
+      if (args.faults > faults) {
+        faults = args.faults
+        onEvent({ kind: 'fault', count: faults })
       }
       lastLog = now
       args = { entries: args.entries }

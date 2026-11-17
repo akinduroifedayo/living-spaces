@@ -4,7 +4,7 @@ import { Action, Banner, CopyPrompt, DecisionDialog, Drawer, Icon, OwnerChip, Sp
 import { HistorySheet } from './history.jsx'
 import { PermissionsSheet } from './permissions.jsx'
 import { UpkeepSheet } from './upkeep.jsx'
-import { advanceCursor, diagnosticText, errorText, guestFailure, headerFacts, inFlight, refreshReason, runResult, spacePath, spaceStatus, statusDimensions } from './model.mjs'
+import { advanceCursor, diagnosticText, errorText, headerFacts, inFlight, refreshReason, runResult, spacePath, spaceStatus, statusDimensions } from './model.mjs'
 import { createSpaceSession } from './session.mjs'
 import { mountSpace } from '../sandbox/index.js'
 
@@ -109,7 +109,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
         const reply = await options.call(op, args)
         if (current() && op === 'log' && reply?.ok === true) {
           if (args.lifecycle === 'failed') fail('The guest reported a load or runtime failure. Review this Space\'s diagnostic log for details.')
-          if (args.lifecycle === 'loaded') setGuest(value => value.status === 'failed' ? value : { status: 'loaded', diagnostic: null })
+          if (args.lifecycle === 'loaded') setGuest(value => ['failed', 'faulted'].includes(value.status) ? value : { status: 'loaded', diagnostic: null })
         }
         return reply
       } }),
@@ -120,7 +120,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
         if (event.kind === 'booted') setReady(true)
         if (event.kind === 'denied') setAnnouncement('A Space request was denied. Review Permissions for access details.')
         if (event.kind === 'log-overflow') setAnnouncement('Some diagnostic entries were dropped because the log limit was reached.')
-        if (guestFailure(event)) fail(`${event.message || event.error || 'The guest reported a fatal error'}${event.location || event.filename ? `\nLocation: ${event.location || event.filename}` : ''}`)
+        if (event.kind === 'fault') setGuest(value => value.status === 'failed' ? value : { status: 'faulted', diagnostic: null })
       }
     })
     controller.current = session
@@ -230,6 +230,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
       <Action onClick={() => controller.current?.checkAction()}>Check bot status</Action>
       {botAction.activationId && ['unknown', 'failed', 'offline'].includes(botAction.status) && <Action onClick={() => controller.current?.retryAction()}>Retry same request</Action>}
     </>}><span role="status" aria-live="polite">{botAction.message}</span>{botAction.answer && <p>{botAction.answer}</p>}</Banner>}
+    {guest.status === 'faulted' && <Banner kind="failed" title="This Space hit an uncaught error"><span role="status">It is still open and may keep working. Saved records are unaffected. Review this Space's diagnostic log for details.</span></Banner>}
     {actionError && <Banner kind="failed" title={actionError} />}
     {detail.error && <Banner kind="failed" title="Space status could not be refreshed. You're seeing the last loaded state." actions={<Action onClick={() => detail.refetch()}>Try again</Action>}>{errorText(detail.error)}</Banner>}
     {changes.error && <Banner kind="failed" title="Live record updates are delayed. Your displayed data may be out of date." actions={<Action onClick={() => changes.refetch()}>Retry live updates</Action>}>{errorText(changes.error)}</Banner>}

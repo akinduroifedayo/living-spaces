@@ -60,7 +60,7 @@ class Q04RecoveryTransportTests(CoreCase):
         self.assertEqual((detail.json()["id"], detail.json()["data_version"], detail.json()["head_rev"]),
                          (self.sid, 1, 2))
         self.assertEqual(history.status_code, 200)
-        self.assertEqual(history.json(), projects.list_revisions(self.sid))
+        self.assertEqual(history.json(), projects.list_revisions(self.sid, files=False))
         self.assertEqual([row["rev"] for row in history.json()], [2, 1])
         self.assertEqual(records.list_recovery_points(self.sid), [])
 

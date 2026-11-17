@@ -42,9 +42,6 @@ export function statusDimensions(space, { guest = 'unknown', write = null, hostE
   const host = hostError ? 'unavailable' : space.status === 'archived' ? 'archived' : space.status === 'building' || !space.head_rev ? 'building' : 'available'
   return { host, guest, save: write?.status || 'idle', freshness: space.freshness, appDomain: 'unknown' }
 }
-export function guestFailure(event) {
-  return event.kind === 'error' && (event.fatal === true || event.phase === 'load')
-}
 export function needsAttention(space) {
   return space.status !== 'archived' && ['failed', 'blocked', 'crashed'].includes(spaceStatus(space, true))
 }
