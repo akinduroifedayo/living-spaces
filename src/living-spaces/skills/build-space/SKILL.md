@@ -133,6 +133,8 @@ Read only the applicable recipes, keeping this core contract loaded.
 - [Project evolution](references/project-evolution.md) for code and data migrations.
 - [Upkeep](references/upkeep.md) for feed and agent refresh and native schedules.
 - [Visual inspection](references/inspection.md) for `spaces_inspect` geometry and PNG evidence.
+- [Accessible controls](references/accessible-controls.md) for the optional `bindDialog`, `bindDrawer`,
+  `bindTabs`, `bindDisclosure` and `bindMenu` behavior helpers. They need no kit stylesheet.
 
 ## Verify and finish
 
