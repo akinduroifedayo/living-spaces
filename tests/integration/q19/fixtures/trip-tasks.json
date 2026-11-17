@@ -1,0 +1,41 @@
+{
+ "label": "PUBLIC SYNTHETIC FIXTURE - Q19 trip tracker",
+ "today": "2027-01-06",
+ "tasks": [
+  {
+   "id": "book-flights",
+   "title": "Book flights",
+   "due": "2027-01-05",
+   "status": "done",
+   "blocked_by": null
+  },
+  {
+   "id": "pack-dive-gear",
+   "title": "Pack dive gear",
+   "due": "2027-01-08",
+   "status": "open",
+   "blocked_by": "book-dive"
+  },
+  {
+   "id": "book-ferry",
+   "title": "Book island ferry",
+   "due": "2027-01-10",
+   "status": "open",
+   "blocked_by": null
+  },
+  {
+   "id": "book-dive",
+   "title": "Book dive trip",
+   "due": "2027-01-12",
+   "status": "open",
+   "blocked_by": null
+  },
+  {
+   "id": "exchange-cash",
+   "title": "Exchange cash",
+   "due": "2027-01-14",
+   "status": "open",
+   "blocked_by": null
+  }
+ ]
+}
