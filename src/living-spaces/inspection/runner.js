@@ -12,6 +12,7 @@
     "bot.request": null,
     refresh: null,
     "runs.list": null,
+    freshness: null,
     log: "logs"
   });
   var MAX_REQUEST_SIZE = 1024 * 1024;

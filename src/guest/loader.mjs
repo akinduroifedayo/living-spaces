@@ -228,6 +228,7 @@ export function spaceLoader(resolver) {
     ask: (text, { activationId = crypto.randomUUID(), records = [] } = {}) => send('bot.request', { activation_id: activationId, text, records }),
     refresh: () => send('refresh', {}),
     runs: () => send('runs.list', {}),
+    freshness: () => send('freshness', {}),
     net: {
       fetch: (url, { method, headers, body, as } = {}) => send('net.fetch', Object.fromEntries(
         Object.entries({ url, method, headers, body, as }).filter(([, value]) => value !== undefined)

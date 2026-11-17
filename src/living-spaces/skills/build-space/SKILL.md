@@ -138,6 +138,8 @@ After creation, check the copied kit too. Adapt callers to that source.
 | `ConflictBanner` | `{current, onKeepMine, onUseUpdated, message?}`. Each button passes `current` to its callback. The caller owns rebase, retry, or discard. |
 | `EmptyState` | `{title?, children, action?}`. Put explanatory markup in children, and optional button markup in `action`. |
 | `RefreshButton` | No props. Requests refresh, follows run events, and reports denial or failure. A queued reply is not completion. |
+| `readFreshness()` | Resolves to the SQLite-backed freshness summary from `space.freshness()`, including per-source facts across retained run history. It does not read native cron. |
+| `useFreshness()` | `{freshness, loading, error, reload}`. Loads the summary and reloads on run events. Keeps the last-good summary on read failure and ignores stale replies. |
 
 Keep the active view mounted while `collection.loading` changes. Show a loading
 message alongside it. Replacing the view on every requery discards its drafts.
@@ -476,10 +478,35 @@ outcome with `spaces_upkeep` action `status` (`one_shots` for unlinked runs).
 The app's `space.refresh()` runs only the feed handler. For an agent Space it
 returns `blocked` with reason `agent_from_guest`; agent upkeep runs from Refresh
 now in Hermes, from chat, or from the linked cron job.
-The frame has `space.runs()`, not a freshness-summary method. Research Desk uses
-recent runs and labels that limited window. If no success appears there, say
-"No success in recent history", not "Never refreshed". Keep last-good collection
-records and mounted editors visible through refresh or query errors.
+Use `space.freshness()` or the kit's `useFreshness()` for freshness. The summary
+has `last_attempt_at`, `last_attempt_status`, `last_success_at`, `source_as_of`
+and `sources`. Each source has `id`, `url`, `collection`, `last_attempt_at`,
+`last_success_at`, `source_as_of`, `failure_reason` and latest attempt `counts`.
+`sources` is null before any source attempt. A source's failure does not erase
+its last success or source-as-of time. The overall last success includes successful
+sources in a failed refresh; check each source for complete coverage.
+The guest summary's `next_run_at` is null because it never queries native cron.
+These summaries use all retained feed runs, not the `space.runs()` history window.
+Legacy runs may have an unknown per-source source-as-of time or counts.
+
+In feed run details, `counts` reports `committed` as added plus updated entries,
+`skipped` as unchanged entries or valid entries withheld from a failed atomic
+source batch, and `rejected` as invalid, id-less or oversized entries. A rejected
+source batch writes nothing. Other sources still commit. Transport or XML failures
+have zero entry counts when entries cannot be enumerated. The existing `changed`
+dictionary and source `added`, `updated`, `unchanged` fields remain available.
+
+```js
+const {freshness, error} = useFreshness();
+const sources = freshness?.sources || [];
+// Render each source's last_success_at and source_as_of separately.
+// Show failure_reason alongside last-good records, without replacing user notes.
+```
+
+For older copied kits, read `space.runs()` and label that limited window.
+If no success appears there, say "No success in recent history", never
+"Never refreshed". Keep last-good records and mounted editors visible through
+refresh or query errors. Do not write source fields into user-owned `data`.
 
 When the user asks for scheduled upkeep, call `spaces_schedule_upkeep` with
 `kind`, `cadence`, an IANA `timezone`, and for `agent` the `prompt`. It creates an

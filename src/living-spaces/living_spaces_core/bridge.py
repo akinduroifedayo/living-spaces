@@ -13,6 +13,7 @@ _OPS = {
     "bot.request": (None, {"activation_id", "text"}, {"records"}),
     "refresh": (None, set(), set()),
     "runs.list": (None, set(), {"limit"}),
+    "freshness": (None, set(), set()),
     "log": ("logs", {"entries"}, {"lifecycle", "dropped", "unconfirmed"}),
 }
 
@@ -56,6 +57,8 @@ def _call(sid, session, op, args):
         return runs.start_refresh(sid, trigger="manual", actor="app", session=session)
     if op == "runs.list":
         return runs.list_runs(sid, **args)
+    if op == "freshness":
+        return runs.freshness(sid, include_upkeep=False)
     if op in ("data.put", "data.delete", "data.batch", "log"):
         return _mutate(sid, session, op, args)
     if op == "data.query":
