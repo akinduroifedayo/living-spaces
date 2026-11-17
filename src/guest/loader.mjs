@@ -111,10 +111,19 @@ export function spaceLoader(resolver) {
   document.addEventListener('click', event => {
     const anchor = event.target?.closest?.('a[href]')
     const href = anchor?.getAttribute('href')
-    if (!href?.startsWith('#') || event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-    if (anchor.target && anchor.target !== '_self') return
+    if (!href || event.defaultPrevented || event.button > 0) return
+    if (href.startsWith('#')) {
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      if (anchor.target && anchor.target !== '_self') return
+      event.preventDefault()
+      window.location.hash = href.slice(1)
+      return
+    }
+    if (/^\s*javascript:/i.test(href) || anchor.hasAttribute('download')) return
+    // Navigating would unload the Space, so the host decides whether the destination opens outside it.
     event.preventDefault()
-    window.location.hash = href.slice(1)
+    if (!event.isTrusted || !port) return
+    send('link.open', { url: href }).catch(error => pushLog('warn', [`Link not opened: ${error.message}`]))
   })
   let port = null
   let closed = false

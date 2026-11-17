@@ -10,6 +10,7 @@
     "data.delete": "data",
     "data.batch": "data",
     "bot.request": null,
+    "link.open": null,
     refresh: null,
     "runs.list": null,
     log: "logs"
