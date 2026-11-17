@@ -1433,9 +1433,9 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
       detail: "This Space asked to open the link above outside Hermes.",
       durationMs: 15e3
     }, "Open link", async () => {
-      shownNotice = null;
+      const handoff = shownNotice = {};
       const opened = await os.openExternal(target.url).catch(() => false);
-      if (opened === true || shownNotice || closed || !active()) return;
+      if (opened === true || shownNotice !== handoff || closed || !active()) return;
       showNotice({
         kind: "error",
         title: "Your browser could not open this link",

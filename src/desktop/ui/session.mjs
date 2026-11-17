@@ -56,9 +56,10 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     }
     showNotice({ kind: 'info', title: `Open ${target.host} in your browser?`, message: target.url,
       detail: 'This Space asked to open the link above outside Hermes.', durationMs: 15000 }, 'Open link', async () => {
-      shownNotice = null
+      // The handoff itself holds the slot, so any newer notice or handoff makes this outcome obsolete.
+      const handoff = shownNotice = {}
       const opened = await os.openExternal(target.url).catch(() => false)
-      if (opened === true || shownNotice || closed || !active()) return
+      if (opened === true || shownNotice !== handoff || closed || !active()) return
       showNotice({ kind: 'error', title: 'Your browser could not open this link', message: target.url,
         detail: 'Nothing was opened. Copy the link to open it yourself.' }, 'Copy link', () => { os.writeClipboard?.(target.url)?.catch?.(() => {}) })
     })

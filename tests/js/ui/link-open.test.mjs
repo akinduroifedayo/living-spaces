@@ -192,3 +192,38 @@ test('only the notice currently shown for a Space can act; older Open link or Co
   await settle()
   assert.deepEqual(f.copied, ['https://example.com/old'], 'the current failure notice still copies')
 })
+
+test('an older link that fails after a newer one was confirmed never replaces the newer outcome', async () => {
+  for (const newer of ['opened', 'pending', 'failed']) {
+    const f = fixture()
+    await f.session.ready
+    const settlers = []
+    f.state.pendingOpen = undefined
+    const pend = () => new Promise(resolve => settlers.push(resolve))
+    f.state.pendingOpen = pend()
+    await f.call('link.open', { url: 'https://example.com/old' })
+    f.notes.at(-1).action.onClick()
+    await settle()
+    f.state.pendingOpen = pend()
+    await f.call('link.open', { url: 'https://example.com/new' })
+    f.notes.at(-1).action.onClick()
+    await settle()
+    if (newer === 'opened') settlers[1](true)
+    if (newer === 'failed') settlers[1](false)
+    await settle()
+    const before = f.notes.length
+    settlers[0](false)
+    await settle()
+    assert.equal(f.notes.length, before, `${newer}: the obsolete failure is not shown`)
+    if (newer === 'failed') assert.equal(f.notes.at(-1).message, 'https://example.com/new')
+  }
+})
+test('a confirmation opens once even when Open link is clicked twice', async () => {
+  const f = fixture()
+  await f.session.ready
+  await f.call('link.open', { url: 'https://example.com/once' })
+  const notice = f.notes.at(-1)
+  notice.action.onClick(); notice.action.onClick()
+  await settle()
+  assert.deepEqual(f.opened, ['https://example.com/once'])
+})
