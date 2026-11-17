@@ -897,7 +897,22 @@ class _Run:
         self.stable_since = None  # when the current unchanged observation began (None: changing or unobserved)
         self.last_traffic = None
         self.visual = False
+        self.prior_entries = []   # earlier visual routes' reported entries, kept so the final report stays cumulative
         browser.listeners.append(self.on_event)
+
+    def carry_from(self, prev):
+        """Continue a multi-route inspection: evidence observed on earlier routes is never lost when a route's page
+        is replaced. Per-route entries stay per-route; totals, dropped counts, network and sandbox events add up."""
+        self.counts = dict(prev.counts)
+        self.dropped = prev.dropped
+        self.exceptions = prev.exceptions
+        self.network = list(prev.network)
+        self.network_blocked = prev.network_blocked
+        self.events = list(prev.events)
+        self.host_notices = dict(prev.host_notices)
+        self.limited = dict(prev.limited)
+        self.reply_limited = prev.reply_limited
+        self.prior_entries = prev.prior_entries + prev.entries
 
     def record(self, source, level, text, url=None):
         level = {"warn": "warning", "assert": "error", "log": "info", "debug": "info", "verbose": "info",
@@ -1272,7 +1287,8 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit, visual=None, intera
                         browser.call("Target.closeTarget", {"targetId": run.page_target})
                         adapter.lifecycle = None
                         browser.listeners.remove(run.on_event)
-                        run = _Run(browser, adapter, text_limit, withhold)
+                        previous, run = run, _Run(browser, adapter, text_limit, withhold)
+                        run.carry_from(previous)
                     item = report["visual"]["routes"][index]
                     report["readiness"]["settled"] = False
                     report["text"] = None
@@ -1594,8 +1610,10 @@ def _finish(run, adapter, report):
     if report["outcome"] in (None, "timed_out") and readiness["shell_booted"] and not adapter.lifecycle \
             and "reason" not in readiness:
         readiness["reason"] = "lifecycle_not_reported_before_deadline"
-    report["errors"] = run.entries
-    report["counts"] = {**run.counts, "dropped": run.dropped, "guest_reported": adapter.guest_logs}
+    combined = getattr(run, "prior_entries", []) + run.entries
+    report["errors"] = combined[:MAX_ENTRIES]
+    dropped = run.dropped + max(0, len(combined) - MAX_ENTRIES)
+    report["counts"] = {**run.counts, "dropped": dropped, "guest_reported": adapter.guest_logs}
     report["blocked"] = dict(adapter.refused)
     report["limited"] = {**getattr(run, "limited", {}), **getattr(adapter, "limited", {})}
     if report["limited"]:
