@@ -1117,14 +1117,14 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
       /* @__PURE__ */ jsx5("div", { ref: feedbackNode, tabIndex: -1, role: "status", "aria-live": "polite", className: "ls-upkeep-feedback", children: feedback }),
       error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: error }),
       job?.uses_model === true && job.prompt && !data?.unavailable?.prompt && /* @__PURE__ */ jsx5("div", { className: "ls-section", children: /* @__PURE__ */ jsx5(Action, { "aria-expanded": fullPrompt, "aria-controls": "ls-upkeep-prompt", onClick: () => setFullPrompt(!fullPrompt), children: fullPrompt ? "Show less" : "Show full prompt" }) }),
-      !uncertain && job?.last_error && ["failed", "error"].includes(job.last_status) && /* @__PURE__ */ jsxs5(Banner, { kind: "failed", title: `Last run failed${lastAt != null ? ` ${absolute(lastAt)}` : ""}`, actions: /* @__PURE__ */ jsxs5(Fragment5, { children: [
+      job?.last_error && ["failed", "error"].includes(job.last_status) && /* @__PURE__ */ jsxs5(Banner, { kind: "failed", title: `Last run failed${lastAt != null ? ` ${absolute(lastAt)}` : ""}`, actions: /* @__PURE__ */ jsxs5(Fragment5, { children: [
         /* @__PURE__ */ jsx5(Action, { "aria-disabled": blocked || running, onClick: () => act("run"), children: "Run now" }),
         !data?.unavailable?.executions && /* @__PURE__ */ jsx5(Action, { onClick: () => document.getElementById("ls-upkeep-executions")?.focus(), children: "View history" })
       ] }), children: [
         /* @__PURE__ */ jsx5("p", { id: "ls-upkeep-error", className: fullError ? "" : "ls-clamp-three", children: job.last_error }),
         /* @__PURE__ */ jsx5(Action, { "aria-expanded": fullError, "aria-controls": "ls-upkeep-error", onClick: () => setFullError(!fullError), children: fullError ? "Show less" : "Show more" })
       ] }),
-      link && !uncertain && /* @__PURE__ */ jsxs5("section", { className: "ls-section", id: "ls-upkeep-executions", tabIndex: -1, children: [
+      link && /* @__PURE__ */ jsxs5("section", { className: "ls-section", id: "ls-upkeep-executions", tabIndex: -1, children: [
         /* @__PURE__ */ jsx5("h3", { className: "ls-section-title", children: "Executions" }),
         /* @__PURE__ */ jsx5(Executions, { executions: data.executions, unavailable: data.unavailable?.executions }),
         data.unavailable?.dispatch && /* @__PURE__ */ jsx5("p", { className: "ls-secondary", children: data.unavailable.dispatch })
