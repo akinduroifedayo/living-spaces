@@ -79,6 +79,7 @@ class AdapterCase(unittest.TestCase):
         self.addCleanup(self.env.stop)
         self.core = types.ModuleType("living_spaces_core")
         self.core.SpacesError = SpacesError
+        self.core.bridge = types.SimpleNamespace(native_refresh=lambda sid, start: start())
         returns = {
             "resolve_space": SID, "list_spaces": [DETAIL.copy()], "get_space": DETAIL.copy(),
             "create_space": DETAIL.copy(), "read_file": {"path": "app.js", "text": "value = 2", "rev": 2},
@@ -417,7 +418,7 @@ class RestTests(AdapterCase):
                 self.core.dispatch.side_effect = error
                 response = self.request("POST", f"/spaces/{SID}/bridge", json=body)
                 self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.json(), {"ok": False, "error": error.to_dict()})
+                self.assertEqual(response.json(), {"ok": False, "error": error.to_dict(), "outcome": {"status": "rejected"}})
         self.core.dispatch.side_effect = None
         self.core.dispatch.return_value = {"ok": False, "error": {"code": "session_invalid", "message": "Closed"}}
         self.assertEqual(self.request("POST", f"/spaces/{SID}/bridge", json=body).json(), self.core.dispatch.return_value)

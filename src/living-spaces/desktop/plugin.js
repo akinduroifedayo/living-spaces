@@ -1174,6 +1174,14 @@ function createBotActions({ host: host5, backend, post, onStatus, isActive, user
 
 // src/desktop/ui/session.mjs
 var errorCode = (error) => [error?.error?.code, error?.body?.error?.code, error?.message, String(error)].filter(Boolean).join(" ");
+var freezeDraft = (value) => {
+  if (value && typeof value === "object") {
+    Object.values(value).forEach(freezeDraft);
+    Object.freeze(value);
+  }
+  return value;
+};
+var requestId = () => "write_" + Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, "0")).join("");
 function createSpaceSession({ rest, backend, sid, container, mount, onEvent, host: host5, onAction = () => {
 }, onWrite = () => {
 }, onCloseError = (error) => console.warn("Space session cleanup failed", error) }) {
@@ -1196,8 +1204,11 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
   let nextWrite = 0;
   let pendingWrites = 0;
   const failures = /* @__PURE__ */ new Map();
+  const attempts = /* @__PURE__ */ new Map();
   const retries = /* @__PURE__ */ new Map();
-  const publish = (event) => onWrite(failures.values().next().value || (pendingWrites ? { status: "saving" } : event));
+  const publish = (event) => {
+    if (!closed && active()) onWrite(failures.values().next().value || (pendingWrites ? { status: "saving" } : event));
+  };
   const actions = host5 ? createBotActions({
     host: host5,
     backend: scope,
@@ -1236,16 +1247,56 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     });
     return closePromise;
   };
+  const invalidSession = () => ({ ok: false, error: { code: "session_invalid", message: "This Space session is closed" } });
+  const send = async (body) => {
+    try {
+      return await scopedRequest(`${base}/bridge`, { method: "POST", body });
+    } catch (error) {
+      const reply = error?.body || error;
+      if (reply?.outcome?.status) return reply;
+      return { ok: false, error: { code: "unavailable", message: error.message || String(error) }, outcome: { status: "unknown" } };
+    }
+  };
+  const finishWrite = (attempt, reply, lookup = false) => {
+    const certainty = reply?.outcome?.status;
+    const saved = reply?.ok === true && (certainty == null || ["success", "confirmed"].includes(certainty)) && (!lookup || ["success", "confirmed"].includes(certainty));
+    const status = certainty === "unknown" || lookup && !saved ? "unknown" : saved ? "saved" : certainty !== "busy" && reply?.error?.code === "conflict" ? "conflict" : "failed";
+    attempt.unknown = status === "unknown";
+    if (saved) attempt.confirmed = reply;
+    const retry = (next) => {
+      if (closed || !active()) return Promise.resolve(invalidSession());
+      if (retries.has(attempt.token)) return retries.get(attempt.token);
+      const current = attempts.get(attempt.token) || attempt;
+      if (current.confirmed) return Promise.resolve(current.confirmed);
+      const promise = (current.unknown ? reconcile(current) : call(current.op, next || current.args, current.token)).finally(() => retries.delete(attempt.token));
+      retries.set(attempt.token, promise);
+      return promise;
+    };
+    const event = { status, token: attempt.token, op: attempt.op, args: attempt.args, reply, at: Date.now() / 1e3, retry };
+    if (saved) failures.delete(attempt.token);
+    else failures.set(attempt.token, event);
+    publish(event);
+  };
+  const reconcile = async (attempt) => {
+    if (closed || !active()) return invalidSession();
+    pendingWrites++;
+    const reply = await send({ session: attempt.session, op: "outcome.get", args: { request_id: attempt.request_id } });
+    pendingWrites--;
+    if (closed || !active()) return invalidSession();
+    finishWrite(attempt, reply, true);
+    return reply;
+  };
   const call = async (op, args, retryToken) => {
-    if (closed || !active()) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
+    if (closed || !active()) return invalidSession();
     if (op === "bot.request") {
       if (!actions) return { ok: false, error: { code: "blocked", message: "Native bot actions are unavailable" } };
       const result = await actions.request(args);
-      if (closed || !active()) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
+      if (closed || !active()) return invalidSession();
       return { ok: true, result };
     }
     const writing = ["data.put", "data.delete", "data.batch"].includes(op);
-    if (writing && retryToken == null) {
+    let attempt;
+    if (writing) {
       args = structuredClone(args);
       const identify = (put) => {
         if (put.id == null) {
@@ -1253,39 +1304,19 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
           put.base_rev = 0;
         }
       };
-      if (op === "data.put") identify(args);
-      if (op === "data.batch" && Array.isArray(args.ops)) args.ops.forEach((item) => {
+      if (retryToken == null && op === "data.put") identify(args);
+      if (retryToken == null && op === "data.batch" && Array.isArray(args.ops)) args.ops.forEach((item) => {
         if (item?.op === "put") identify(item);
       });
-    }
-    const token = retryToken ?? ++nextWrite;
-    if (writing) {
+      attempt = { token: retryToken ?? ++nextWrite, op, args: freezeDraft(args), session, request_id: requestId(), unknown: false };
+      attempts.set(attempt.token, attempt);
       pendingWrites++;
       publish({ status: "saving", op, args });
     }
-    let reply;
-    let unknown = false;
-    try {
-      reply = await scopedRequest(`${base}/bridge`, { method: "POST", body: { session, op, args } });
-    } catch (error) {
-      unknown = true;
-      reply = { ok: false, error: { code: "unavailable", message: error.message || String(error) } };
-    }
-    if (closed || !active()) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
-    if (writing) {
-      pendingWrites--;
-      const retry = (next) => {
-        if (retries.has(token)) return retries.get(token);
-        const promise = call(op, next || args, token).finally(() => retries.delete(token));
-        retries.set(token, promise);
-        return promise;
-      };
-      unknown ||= failures.get(token)?.status === "unknown";
-      const event = { status: reply.ok ? "saved" : reply.error?.code === "conflict" ? "conflict" : unknown ? "unknown" : "failed", token, op, args, reply, at: Date.now() / 1e3, retry };
-      if (reply.ok) failures.delete(token);
-      else failures.set(token, event);
-      publish(event);
-    }
+    const reply = await send({ session, op, args, ...attempt ? { request_id: attempt.request_id } : {} });
+    if (writing) pendingWrites--;
+    if (closed || !active()) return invalidSession();
+    if (attempt) finishWrite(attempt, reply);
     return reply;
   };
   const ready = (async () => {
@@ -1569,7 +1600,8 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const [botAction, setBotAction] = useState6(null);
   const [refreshPending, setRefreshPending] = useState6(false);
   const [ready, setReady] = useState6(false);
-  const refreshLock = useRef4(false);
+  const refreshLock = useRef4(null);
+  const refreshLifetime = useRef4(null);
   const actionLock = useRef4(false);
   const content = useRef4(null);
   const overflow = useRef4(null);
@@ -1594,6 +1626,18 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
       disposed = true;
     };
   }, [ctx, base]);
+  useLayoutEffect(() => {
+    const lifetime = { active: true };
+    refreshLifetime.current = lifetime;
+    return () => {
+      lifetime.active = false;
+      if (refreshLock.current?.lifetime === lifetime) {
+        refreshLock.current = null;
+        setRefreshPending(false);
+        setAnnouncement("");
+      }
+    };
+  }, [ctx, openingSessionRest, connectionId, profile, scopeKey, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
   useEffect2(() => {
     if (building || archived || crash || remoteCrash || !content.current) return;
     let disposed = false;
@@ -1634,7 +1678,7 @@ Location: ${event.location || event.filename}` : ""}`));
       session.destroy().catch((e) => host2.notifyError(e, "A Space session could not be closed after retries."));
       if (controller.current === session) controller.current = null;
     };
-  }, [ctx, openingSessionRest, connectionId, profile, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
+  }, [ctx, openingSessionRest, connectionId, profile, scopeKey, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
   const changes = useQuery5({ queryKey: ["living-spaces", scopeKey, sid, "changes", space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 });
   useEffect2(() => {
     if (!hasData || !ready || !changes.data || !controller.current) return;
@@ -1657,24 +1701,50 @@ Location: ${event.location || event.filename}` : ""}`));
   }, [space?.head_rev]);
   async function refresh() {
     if (refreshLock.current || refreshPending || status === "updating" || inFlight(lastRun?.status) || refreshReason(space)) return;
-    refreshLock.current = true;
+    const request = { lifetime: refreshLifetime.current, controller: controller.current };
+    const current = () => request.lifetime?.active && refreshLifetime.current === request.lifetime && controller.current === request.controller && host2.state.connectionId.get() === connectionId && host2.state.profile.get() === profile;
+    if (!current()) return;
+    refreshLock.current = request;
     setRefreshPending(true);
     setActionError("");
     setAnnouncement("Refreshing\u2026");
     try {
-      const run = await ctx.rest(`${base}/refresh`, { method: "POST" });
-      if (run?.kind === "cron") setAnnouncement("Refresh started in Hermes");
-      else {
-        controller.current?.postEvent("run.updated", run);
-        if (!inFlight(run.status)) setAnnouncement(`Refresh ${run.status}: ${runResult(run)}`);
+      let reply;
+      try {
+        reply = await ctx.rest(`${base}/refresh`, { method: "POST" });
+      } catch (error) {
+        reply = error?.body || error;
+        if (!reply?.outcome?.status) reply = { outcome: { status: "unknown" } };
       }
-      await detail.refetch();
-    } catch (e) {
-      setActionError(errorText(e));
-      setAnnouncement("Refresh failed");
+      if (!current()) return;
+      const certainty = reply?.outcome?.status;
+      if (certainty === "unknown") {
+        setAnnouncement("Refresh outcome unknown");
+        return;
+      }
+      if (certainty === "busy" || certainty === "rejected") {
+        setActionError(errorText(reply.error || reply));
+        setAnnouncement(certainty === "busy" ? "Refresh busy" : "Refresh failed");
+        return;
+      }
+      const run = reply?.result || reply;
+      if (reply?.ok === false || !run?.id && run?.kind !== "cron") {
+        setAnnouncement("Refresh outcome unknown");
+        return;
+      }
+      if (run.kind === "cron") setAnnouncement("Refresh started in Hermes");
+      else {
+        request.controller?.postEvent("run.updated", run);
+        if (!inFlight(run.status) && run.status) setAnnouncement(`Refresh ${run.status}: ${runResult(run)}`);
+      }
+      await detail.refetch().catch((error) => {
+        if (current()) setActionError(errorText(error));
+      });
     } finally {
-      refreshLock.current = false;
-      setRefreshPending(false);
+      if (refreshLock.current === request) {
+        refreshLock.current = null;
+        setRefreshPending(false);
+      }
     }
   }
   async function act(path, body) {
