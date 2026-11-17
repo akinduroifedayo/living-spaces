@@ -15,6 +15,11 @@ ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("check_shelf", ROOT / "scripts/check-shelf.py")
 checker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(checker)
+FONT_FAMILIES = {
+    "newsreader": "Newsreader",
+    "bricolage-grotesque": "Bricolage Grotesque",
+    "jetbrains-mono": "JetBrains Mono",
+}
 
 
 class ShelfTests(unittest.TestCase):
@@ -32,34 +37,50 @@ class ShelfTests(unittest.TestCase):
             }),
             ("font:inter", "@fontsource/inter", "OFL-1.1", self.font_files("inter")),
             ("font:dm-sans", "@fontsource/dm-sans", "OFL-1.1", self.font_files("dm-sans")),
+            *((f"font:{font}", f"@fontsource/{font}", "OFL-1.1", self.font_files(font))
+              for font in FONT_FAMILIES),
         ):
-            payload[f"vendor/licenses/{name.removeprefix('font:')}-LICENSE"] = "LICENSE"
-            library = {"version": "1.2.3", "license": license_name, "files": list(payload)}
+            font = name.removeprefix("font:")
+            version = "5.3.0" if font in FONT_FAMILIES else "1.2.3"
+            payload[f"vendor/licenses/{font}-LICENSE"] = "LICENSE"
+            library = {"version": version, "license": license_name, "files": list(payload)}
             if not name.startswith("font:"):
                 library["imports"] = {name: f"vendor/{name}.mjs"}
             self.shelf["libraries"][name] = library
             self.shelf["sources"].append({
-                "name": package, "version": "1.2.3",
-                "url": f"https://registry.npmjs.org/{package}/-/{package.rsplit('/', 1)[-1]}-1.2.3.tgz",
+                "name": package, "version": version,
+                "url": f"https://registry.npmjs.org/{package}/-/{package.rsplit('/', 1)[-1]}-{version}.tgz",
                 "integrity": "sha512-" + base64.b64encode(b"x" * 64).decode(),
             })
             for relative, upstream in payload.items():
-                raw = f"fixture {relative}\n".encode()
+                raw = (self.font_css(font) if font in FONT_FAMILIES and relative.endswith(".css")
+                       else f"fixture {relative}\n").encode()
                 path = self.runtime / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(raw)
                 self.shelf["files"][relative] = {
                     "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw),
-                    "source": upstream, "package": package, "version": "1.2.3", "license": license_name,
+                    "source": upstream, "package": package, "version": version, "license": license_name,
                 }
         self.write_manifest()
 
     def font_files(self, name):
+        source = ("latin-400.css + latin-700.css + unicode.json (adapted relative URLs)"
+                  if name in FONT_FAMILIES else "latin-400.css + latin-700.css (adapted relative URLs)")
         return {
-            f"vendor/fonts/{name}.css": "latin-400.css + latin-700.css (adapted relative URLs)",
+            f"vendor/fonts/{name}.css": source,
             f"vendor/fonts/{name}-latin-400-normal.woff2": f"files/{name}-latin-400-normal.woff2",
             f"vendor/fonts/{name}-latin-700-normal.woff2": f"files/{name}-latin-700-normal.woff2",
         }
+
+    def font_css(self, name):
+        coverage = ("U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,"
+                    "U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,"
+                    "U+2212,U+2215,U+FEFF,U+FFFD")
+        return "\n".join(
+            f"@font-face {{font-family: '{FONT_FAMILIES[name]}'; font-style: normal; font-display: swap; "
+            f"font-weight: {weight}; src: url('./{name}-latin-{weight}-normal.woff2') format('woff2'); "
+            f"unicode-range: {coverage};}}" for weight in (400, 700))
 
     def write_manifest(self):
         self.manifest.write_text(json.dumps(self.shelf), encoding="utf-8")
@@ -71,7 +92,7 @@ class ShelfTests(unittest.TestCase):
 
     def test_valid_shelf(self):
         self.assertEqual(checker.check_shelf(self.runtime),
-                         (12, sum(file["bytes"] for file in self.shelf["files"].values())))
+                         (24, sum(file["bytes"] for file in self.shelf["files"].values())))
 
     def test_cli_success_and_failure_have_exit_codes(self):
         for valid in (True, False):
@@ -97,7 +118,7 @@ class ShelfTests(unittest.TestCase):
     def test_wrong_shapes_fail_cleanly(self):
         baseline = copy.deepcopy(self.shelf)
         for field, value in (("schema", True), ("schema", 2), ("libraries", []), ("files", []),
-                             ("sources", {}), ("sources", [None] * 4)):
+                             ("sources", {}), ("sources", [None] * 7)):
             with self.subTest(field=field, value=value):
                 self.shelf = copy.deepcopy(baseline)
                 self.shelf[field] = value

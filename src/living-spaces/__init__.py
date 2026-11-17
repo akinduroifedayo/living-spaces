@@ -14,7 +14,8 @@ from .desktop_rpc import register_desktop_rpc
 TOOLSET = "living_spaces"
 EMOJI = "🪴"
 DEFAULT_LIBRARIES = ["preact", "preact/hooks", "spaces-kit"]
-LIBRARIES = [*DEFAULT_LIBRARIES, "lightweight-charts", "htm", "lucide", "font:inter", "font:dm-sans"]
+LIBRARIES = [*DEFAULT_LIBRARIES, "lightweight-charts", "htm", "lucide", "font:inter", "font:dm-sans",
+             "font:newsreader", "font:bricolage-grotesque", "font:jetbrains-mono"]
 MANIFEST_PATH = "space.json"
 SKILL_PATH = Path(__file__).resolve().parent / "skills" / "build-space" / "SKILL.md"
 NEXT = "End your reply with the directive paragraph so the user gets an Open Space card."
@@ -45,7 +46,10 @@ FILES_ARG = {
 LIBRARIES_ARG = {"type": "array", "items": {"type": "string", "enum": LIBRARIES},
                  "description": "Copy selected bundled groups, including licenses, and add import aliases. "
                                 "Existing files and aliases are preserved unless explicitly replaced. "
-                                "Fonts copy to vendor/fonts/. [] copies nothing. Create defaults to preact, "
+                                "Fonts copy to vendor/fonts/. Load the selected family's CSS, then set a "
+                                "font-family with a system fallback. Newsreader, Bricolage Grotesque and "
+                                "JetBrains Mono include Latin normal 400 and 700 only. [] copies nothing. "
+                                "Create defaults to preact, "
                                 "preact/hooks and spaces-kit; writes default to no additions."}
 
 
