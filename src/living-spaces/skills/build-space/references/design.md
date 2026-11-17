@@ -65,8 +65,13 @@ page: let the work lead, not a decorative welcome screen.
 
 ### Make data visual
 
-- Use local SVG or Canvas, a bundled chart library appropriate to the data
-  (`lightweight-charts` is for time series), or a locally vendored dependency.
+- Use local SVG or Canvas, or a bundled chart library appropriate to the data:
+  `plot` (Observable Plot) for bar, distribution, heatmap and general time-series
+  charts, `lightweight-charts` only for financial price series. Don't select both
+  for the same job. Copy a recipe from [charts/recipes.mjs](charts/recipes.mjs):
+  each derives its domain from the data, names the unit on the axis or legend,
+  keeps negative values and gaps visible, returns a text summary, and shows an
+  empty state when nothing is eligible.
 - Keep the numbers honest. Use real calculations, units on every axis or
   label, and a text summary or table on demand. Don't invent trends, and
   never identify a series by colour alone. Compute the domain from all eligible

@@ -72,6 +72,17 @@
         "vendor/fonts/jetbrains-mono.css",
         "vendor/licenses/jetbrains-mono-LICENSE"
       ]
+    },
+    "plot": {
+      "version": "0.6.19",
+      "license": "ISC",
+      "files": [
+        "vendor/plot.mjs",
+        "vendor/licenses/plot-LICENSE"
+      ],
+      "imports": {
+        "plot": "vendor/plot.mjs"
+      }
     }
   },
   "files": {
@@ -266,6 +277,22 @@
       "package": "@fontsource/jetbrains-mono",
       "version": "5.3.0",
       "license": "OFL-1.1"
+    },
+    "vendor/plot.mjs": {
+      "sha256": "75e0ec66f165d25e046e41b4ed59d7011f6ae6022fb2c588e580006f13bfc2ca",
+      "bytes": 387154,
+      "source": "dist/plot.js + d3 7.9.2 ESM modules (bundled and minified with esbuild)",
+      "package": "@observablehq/plot",
+      "version": "0.6.19",
+      "license": "ISC"
+    },
+    "vendor/licenses/plot-LICENSE": {
+      "sha256": "483afda2a933beee559a7cffe52244331939426e4e8762c53d60adffb46125e1",
+      "bytes": 45394,
+      "source": "LICENSE",
+      "package": "@observablehq/plot",
+      "version": "0.6.19",
+      "license": "ISC"
     }
   },
   "sources": [
@@ -310,6 +337,12 @@
       "version": "5.3.0",
       "url": "https://registry.npmjs.org/@fontsource/jetbrains-mono/-/jetbrains-mono-5.3.0.tgz",
       "integrity": "sha512-fqDfB5I9f1p1TV486aUgB9t8zP84P0O1FtQR5Ol9vjwPy+S+EIGlVYm1cvj2W5shcZMTg2nZFdVMoH5wFu8a1A=="
+    },
+    {
+      "name": "@observablehq/plot",
+      "version": "0.6.19",
+      "url": "https://registry.npmjs.org/@observablehq/plot/-/plot-0.6.19.tgz",
+      "integrity": "sha512-8Tg8+doIBDKTG6gL9Px7Tws+Tuni+bwjhaJufAKR3V8HFi2dtGQf57fH0UKwOrMYgjmEdX2PP1E4LIi7gyhgYw=="
     }
   ]
 }

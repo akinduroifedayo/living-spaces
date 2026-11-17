@@ -111,7 +111,8 @@ Limits are 8 MiB per file, 600 files and 25 MiB per revision, 256 KiB per record
 and 1 MiB per bridge message. Do not stage credentials to bypass asset guards.
 
 Default libraries are `preact`, `preact/hooks`, and `spaces-kit`. Optional shipped
-groups are `lightweight-charts`, `htm`, `lucide`, `font:inter`, and `font:dm-sans`.
+groups are `lightweight-charts`, `plot`, `htm`, `lucide`, `font:inter`, and `font:dm-sans`.
+Use `plot` (Observable Plot) for general charts; keep `lightweight-charts` for financial time series.
 Use relative app imports and manifest aliases. The host supplies the import map.
 Read an existing Space's copied kit before editing callers. Plugin updates do
 not upgrade copied dependencies. Upgrade them explicitly in a revision.
