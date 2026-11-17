@@ -63,7 +63,11 @@ test('unordered readings are sorted so a gap is never bridged (int-review-10)', 
   const {node, summary} = recipes.timeSeries(points, {date: 't', value: 'v', unit: '°C', label: 'Temperature', document: doc()})
   assert.match(summary, /2026-01-01 \(2 °C\) to 2026-01-04 \(3 °C\)/)
   const path = node.querySelector('g[aria-label="line"] path').getAttribute('d')
-  assert.equal((path.match(/M/g) || []).length, 2, 'Jan 1 is not joined to Jan 3 across the missing Jan 2')
+  // Sorted: Jan 1 alone, then Jan 3 to Jan 4. Unsorted input would draw Jan 1 to Jan 3 straight over Jan 2.
+  const segments = path.split('M').filter(Boolean)
+  assert.equal(segments.length, 2)
+  assert.doesNotMatch(segments[0], /L/, 'Jan 1 is not joined to Jan 3 across the missing Jan 2')
+  assert.match(segments[1], /L/)
 })
 
 test('the notice file covers code embedded inside bundled packages (int-review-10)', () => {
