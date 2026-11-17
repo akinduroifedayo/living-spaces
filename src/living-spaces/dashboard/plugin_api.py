@@ -200,7 +200,7 @@ async def upkeep_update(space_id: str, body=Body(default=None)):
 
 @router.get("/spaces/{space_id}/revisions")
 async def revisions(space_id: str):
-    return await _run(space_id, lambda core: core.list_revisions(space_id))
+    return await _run(space_id, lambda core: core.list_revisions(space_id, files=False))
 
 
 @router.get("/spaces/{space_id}/recovery-points")
