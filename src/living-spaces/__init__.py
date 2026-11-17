@@ -13,7 +13,7 @@ TOOLSET = "living_spaces"
 EMOJI = "🪴"
 DEFAULT_LIBRARIES = ["preact", "preact/hooks", "spaces-kit"]
 LIBRARIES = [*DEFAULT_LIBRARIES, "lightweight-charts", "htm", "lucide", "font:inter", "font:dm-sans",
-             "font:newsreader", "font:bricolage-grotesque", "font:jetbrains-mono"]
+             "font:newsreader", "font:bricolage-grotesque", "font:jetbrains-mono", "plot", "markdown"]
 MANIFEST_PATH = "space.json"
 SKILL_PATH = Path(__file__).resolve().parent / "skills" / "build-space" / "SKILL.md"
 NEXT = "End your reply with the directive paragraph so the user gets an Open Space card."

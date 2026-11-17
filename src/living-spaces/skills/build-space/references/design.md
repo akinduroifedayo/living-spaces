@@ -61,12 +61,42 @@ page: let the work lead, not a decorative welcome screen.
 - **Game:** Score, turn and restart are findable.
 - **Document:** a reading measure of about 65–75ch, generous margins, useful
   headings.
+
+### Render rich text safely
+
+Select the `markdown` library and render with its one export:
+
+```js
+import { renderMarkdown } from 'markdown'
+article.replaceChildren(renderMarkdown(record.data.body, { tableLabel: 'Data table' }))
+```
+
+- It parses with marked, then sanitizes with DOMPurify, always in that order.
+  Raw HTML in the source is cleaned, never executed. Don't write your own
+  `innerHTML` path for Markdown, notes, feeds or fetched text.
+- Script, style, event attributes, iframe, object, embed, form controls, SVG and
+  MathML are removed. Links keep only http, https, mailto, `#fragment` and
+  in-Space relative targets; clicks still open through the host, never by frame
+  navigation; `download` anchors and image-map areas are removed. Images load only
+  from Space files, resolved through `space.asset()` (a missing file shows its alt
+  text), or inline PNG/JPEG/GIF/WebP data. Remote images are never fetched.
+- Headings, lists, quotes, code blocks and tables survive. Each table is wrapped
+  in a focusable, labelled `div.md-table` region; give it `overflow-x: auto` so a
+  wide table scrolls instead of breaking a 320 px layout or 200 percent zoom.
+- For long documents keep a 65–75ch measure, add a heading outline from the
+  rendered `h2`/`h3`, and keep citations as ordinary links so their destination
+  stays visible.
 - **Visual piece / live board:** Keep spatial meaning on narrow screens.
 
 ### Make data visual
 
-- Use local SVG or Canvas, a bundled chart library appropriate to the data
-  (`lightweight-charts` is for time series), or a locally vendored dependency.
+- Use local SVG or Canvas, or a bundled chart library appropriate to the data:
+  `plot` (Observable Plot) for bar, distribution, heatmap and general time-series
+  charts, `lightweight-charts` only for financial price series. Don't select both
+  for the same job. Copy a recipe from [charts/recipes.mjs](charts/recipes.mjs):
+  each derives its domain from the data, names the unit on the axis or legend,
+  keeps negative values and gaps visible, returns a text summary, and shows an
+  empty state when nothing is eligible.
 - Keep the numbers honest. Use real calculations, units on every axis or
   label, and a text summary or table on demand. Don't invent trends, and
   never identify a series by colour alone. Compute the domain from all eligible

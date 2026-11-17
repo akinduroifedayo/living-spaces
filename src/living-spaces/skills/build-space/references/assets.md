@@ -62,7 +62,7 @@ use `space.asset('images/hero.png')`, which returns a frame-local URL or `null`.
 The default `libraries` are `preact`, `preact/hooks`, and `spaces-kit`.
 The tool copies their local files and adds their bare names to `manifest.imports`.
 Add other bundled offline libraries explicitly when the app needs them:
-`lightweight-charts`, `htm`, `lucide` (SVG icons), `font:inter` and `font:dm-sans`
+`lightweight-charts`, `plot` (Observable Plot with D3, general charts), `markdown` (marked + DOMPurify safe rich text), `htm`, `lucide` (SVG icons), `font:inter` and `font:dm-sans`
 (WOFF2 files under `vendor/fonts/`). They are optional. Vendoring your own ESM
 library into the project's files also works. Use relative imports for
 application modules and local asset paths in HTML/CSS. Do not write an HTML
