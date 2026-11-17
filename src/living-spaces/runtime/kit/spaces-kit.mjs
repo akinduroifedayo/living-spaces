@@ -130,6 +130,32 @@ export function useRecord(collection, id) {
   const result = useQuery(async () => [await space.get(collection, id)], JSON.stringify([collection, id]), collection)
   return { record: result.records[0] ?? null, loading: result.loading, error: result.error, reload: result.reload }
 }
+export function readFreshness() {
+  return space.freshness()
+}
+export function useFreshness() {
+  const [value, setValue] = useState({ freshness: null, loading: true, error: null })
+  const current = useRef(0)
+  const active = useRef(false)
+  const reload = useCallback(async () => {
+    const request = ++current.current
+    setValue(previous => ({ ...previous, loading: true, error: null }))
+    try {
+      const freshness = await readFreshness()
+      if (active.current && request === current.current) setValue({ freshness, loading: false, error: null })
+      return freshness
+    } catch (error) {
+      if (active.current && request === current.current) setValue(previous => ({ ...previous, loading: false, error }))
+    }
+  }, [])
+  useEffect(() => {
+    active.current = true
+    reload()
+    const unsubscribe = space.on('run', reload)
+    return () => { active.current = false; current.current++; unsubscribe() }
+  }, [reload])
+  return { ...value, reload }
+}
 export function useSaveState() {
   const [status, setStatus] = useState({ state: 'idle', message: '', current: null })
   const latest = useRef(0)

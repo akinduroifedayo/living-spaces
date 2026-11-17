@@ -36,20 +36,63 @@ def list_runs(sid, limit=50):
     return [_run(row) for row in rows]
 
 
-def freshness(sid):
+def _source_summaries(conn, sid):
+    rows = conn.execute("""
+        WITH sources AS (
+          SELECT r.rowid AS run_row, CAST(j.key AS INTEGER) AS source_index,
+            json_extract(j.value, '$.id') AS id,
+            json_extract(j.value, '$.url') AS url,
+            json_extract(j.value, '$.collection') AS collection,
+            COALESCE(json_extract(j.value, '$.last_attempt_at'), r.started_at, r.queued_at) AS attempt_at,
+            CASE WHEN json_extract(j.value, '$.ok') = 1 THEN
+              COALESCE(json_extract(j.value, '$.last_success_at'), r.ended_at) END AS success_at,
+            json_extract(j.value, '$.source_as_of') AS as_of,
+            json_extract(j.value, '$.error') AS failure_reason,
+            json_extract(j.value, '$.counts') AS counts
+          FROM runs r, json_each(r.detail, '$.sources') j
+          WHERE r.space=? AND r.handler='feed'
+        ), ranked AS (
+          SELECT *,
+            row_number() OVER (PARTITION BY id ORDER BY attempt_at DESC, run_row DESC, source_index DESC) AS latest,
+            first_value(success_at) OVER (PARTITION BY id ORDER BY success_at DESC, run_row DESC, source_index DESC) AS last_success_at,
+            first_value(as_of) OVER (PARTITION BY id ORDER BY success_at DESC, run_row DESC, source_index DESC) AS source_as_of
+          FROM sources
+        )
+        SELECT id,url,collection,attempt_at AS last_attempt_at,last_success_at,source_as_of,failure_reason,counts
+        FROM ranked WHERE latest=1 ORDER BY id
+        """, (sid,)).fetchall()
+    return [dict(row, counts=json.loads(row["counts"]) if row["counts"] else None) for row in rows]
+
+
+def _freshness_rows(conn, sid):
+    success = conn.execute("SELECT ended_at,source_as_of FROM runs WHERE space=? AND status='succeeded' ORDER BY ended_at DESC LIMIT 1", (sid,)).fetchone()
+    attempt = conn.execute("SELECT queued_at,status FROM runs WHERE space=? ORDER BY queued_at DESC, rowid DESC LIMIT 1", (sid,)).fetchone()
+    return success, attempt, _source_summaries(conn, sid)
+
+
+def freshness(sid, *, include_upkeep=True, conn=None):
     from . import upkeep
 
-    with db.read() as conn:
-        success = conn.execute("SELECT ended_at,source_as_of FROM runs WHERE space=? AND status='succeeded' ORDER BY ended_at DESC LIMIT 1", (sid,)).fetchone()
-        attempt = conn.execute("SELECT queued_at,status FROM runs WHERE space=? ORDER BY queued_at DESC, rowid DESC LIMIT 1", (sid,)).fetchone()
-    linked = upkeep.summary(sid)
-    return {
-        "last_success_at": success["ended_at"] if success else None,
+    with nullcontext(conn) if conn is not None else db.read() as conn:
+        db.space(conn, sid)
+        success, attempt, sources = _freshness_rows(conn, sid)
+    latest_success = max((source for source in sources if source["last_success_at"] is not None),
+                         key=lambda source: source["last_success_at"], default=None)
+    last_success_at = success["ended_at"] if success else None
+    source_as_of = success["source_as_of"] if success else None
+    if latest_success and (last_success_at is None or latest_success["last_success_at"] > last_success_at):
+        last_success_at, source_as_of = latest_success["last_success_at"], latest_success["source_as_of"]
+    linked = upkeep.summary(sid) if include_upkeep else None
+    result = {
+        "last_success_at": last_success_at,
         "last_attempt_at": attempt["queued_at"] if attempt else None,
         "last_attempt_status": attempt["status"] if attempt else None,
-        "source_as_of": success["source_as_of"] if success else None,
+        "source_as_of": source_as_of,
         "next_run_at": linked["next_run_at"] if linked else None,
     }
+    if sources or not include_upkeep:
+        result["sources"] = sources or None
+    return result
 
 
 def cancel_pending(sid, reason):
@@ -161,16 +204,24 @@ def _work(run_id, upkeep):
     pulse.start()
     changed = {"added": 0, "updated": 0, "unchanged": 0, "removed": 0}
     sources = []
+    counts = {"committed": 0, "skipped": 0, "rejected": 0}
     source_as_of = None
     status, error = "succeeded", None
     try:
         for source in upkeep.get("sources", []):
             _require_running(run_id)
-            result = {"id": source.get("id"), "ok": False, "added": 0, "updated": 0, "unchanged": 0}
+            result = {"id": source.get("id"), "url": source.get("url"), "collection": source.get("collection"),
+                      "ok": False, "added": 0, "updated": 0, "unchanged": 0,
+                      "last_attempt_at": db.now(), "last_success_at": None, "source_as_of": None,
+                      "failure_reason": None, "counts": {"committed": 0, "skipped": 0, "rejected": 0}}
             try:
                 with maintenance.feed_writes(run_id):
-                    _, as_of = feeds.refresh_source(run["space"], source, actor=run["actor"], before_write=lambda: _require_running(run_id), counts=result)
+                    _, as_of = feeds.refresh_source(run["space"], source, actor=run["actor"],
+                                                    before_write=lambda: _require_running(run_id), counts=result,
+                                                    entry_counts=result["counts"])
                 result["ok"] = True
+                result["last_success_at"] = db.now()
+                result["source_as_of"] = as_of
                 source_as_of = max(source_as_of or as_of, as_of)
             except _Canceled:
                 raise
@@ -183,16 +234,20 @@ def _work(run_id, upkeep):
                     if "limit" in exc.extra and "actual" in exc.extra:
                         result["error"] += f" (limit {exc.extra['limit']}, actual {exc.extra['actual']})"
                 status = "failed"
+                result["failure_reason"] = result["error"]
                 message = f"{result['id']}: {result['error']}"
                 error = message if error is None else error + f"; {message}"
             for key in ("added", "updated", "unchanged"):
                 changed[key] += result[key]
+            for key in counts:
+                counts[key] += result["counts"][key]
             sources.append(result)
             with db.write() as conn:
                 row = conn.execute("SELECT detail FROM runs WHERE id=? AND status='running'", (run_id,)).fetchone()
                 if row:
                     detail = json.loads(row["detail"])
                     detail["sources"] = sources
+                    detail["counts"] = counts
                     conn.execute("UPDATE runs SET changed=?,source_as_of=?,detail=?,heartbeat_at=? WHERE id=?", (
                         json.dumps(changed), source_as_of, json.dumps(detail), db.now(), run_id,
                     ))
@@ -209,6 +264,7 @@ def _work(run_id, upkeep):
             if row:
                 detail = json.loads(row["detail"])
                 detail["sources"] = sources
+                detail["counts"] = counts
                 if detail.get("cancel_reason"):
                     status, error = "canceled", None
                 conn.execute("UPDATE runs SET status=?,ended_at=?,heartbeat_at=?,source_as_of=?,changed=?,error=?,detail=? WHERE id=?", (

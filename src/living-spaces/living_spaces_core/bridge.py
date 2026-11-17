@@ -18,6 +18,7 @@ _OPS = {
     "bot.request": (None, {"activation_id", "text"}, {"records"}),
     "refresh": (None, set(), set()),
     "runs.list": (None, set(), {"limit"}),
+    "freshness": (None, set(), set()),
     "log": ("logs", {"entries"}, {"lifecycle", "dropped", "unconfirmed"}),
 }
 _LOCAL_WRITES = {"data.put", "data.delete", "data.batch", "log"}
@@ -166,6 +167,8 @@ def _call(sid, session, op, args):
         return runs.list_runs(sid, **args)
     if op == "outcome.get":
         return _lookup(sid, session, args["request_id"])
+    if op == "freshness":
+        return runs.freshness(sid, include_upkeep=False)
     if op in _LOCAL_WRITES:
         return _mutate(sid, session, op, args)
     if op == "data.query":

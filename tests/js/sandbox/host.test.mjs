@@ -26,7 +26,7 @@ test('validator accepts the v1 envelope, measures JSON length and catches serial
   assert.match(validateRequest(request({ args: { text: 'a'.repeat(MAX_REQUEST_SIZE - base + 1) } })), /1 MB/)
 })
 test('grant map exactly covers the frozen v1 operations', () => {
-  assert.deepEqual(OP_GRANT, { meta: null, 'data.query': 'data', 'data.get': 'data', 'data.put': 'data', 'data.delete': 'data', 'data.batch': 'data', refresh: null, 'runs.list': null, 'bot.request': null, 'link.open': null, log: 'logs', 'net.fetch': 'net' })
+  assert.deepEqual(OP_GRANT, { meta: null, 'data.query': 'data', 'data.get': 'data', 'data.put': 'data', 'data.delete': 'data', 'data.batch': 'data', refresh: null, 'runs.list': null, freshness: null, 'bot.request': null, 'link.open': null, log: 'logs', 'net.fetch': 'net' })
   for (const op of Object.keys(OP_GRANT)) {
     assert.equal(checkGrant(op, ['data', 'logs', 'refresh', 'net']), null)
     if (OP_GRANT[op] === null) assert.equal(checkGrant(op, []), null)
@@ -427,6 +427,17 @@ test('guest console preserves messages at the cap and reports the combined count
   assert.ok(entries[1].msg.length <= 4000)
   assert.match(entries[1].msg, /truncated/i)
   assert.ok(entries[1].msg.includes('5001'))
+})
+
+test('Q15 host routes the freshness read to the backend without a capability grant', async () => {
+  const summary = { last_success_at: '2026-11-17T10:00:00Z', sources: [{ id: 'a', last_success_at: '2026-11-17T10:00:00Z' }] }
+  const f = fixture(async op => ({ ok: true, result: op === 'freshness' ? summary : null }), [])
+  try {
+    f.frame.peer.postMessage(request({ id: 71, op: 'freshness', args: {} }))
+    await until(() => f.replies.length === 1)
+    assert.deepEqual(f.calls, [['freshness', {}]])
+    assert.deepEqual(f.replies[0].result, summary)
+  } finally { f.cleanup() }
 })
 
 test('host forwards lifecycle and loss metadata and explicitly acknowledges throttling', async () => {

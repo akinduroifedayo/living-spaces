@@ -12,6 +12,7 @@ export const OP_GRANT = Object.freeze({
   'link.open': null,
   refresh: null,
   'runs.list': null,
+  freshness: null,
   log: 'logs'
 })
 export const MAX_REQUEST_SIZE = 1024 * 1024

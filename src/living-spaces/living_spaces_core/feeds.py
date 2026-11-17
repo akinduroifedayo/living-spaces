@@ -60,7 +60,7 @@ def _timestamp(value):
     return stamp.timestamp()
 
 
-def parse(payload):
+def parse(payload, *, counts=None):
     size = len(payload.encode("utf-8")) if isinstance(payload, str) else len(payload)
     limits.check(size, MAX_BYTES, "feed bytes")
     # Removing NULs also catches declarations in UTF-16 and UTF-32 XML.
@@ -80,8 +80,11 @@ def parse(payload):
     else:
         raise SpacesError("invalid", "Expected an RSS 2.0 or Atom feed")
     if len(entries) > MAX_ENTRIES:
+        if counts is not None:
+            counts["rejected"] = len(entries)
         raise SpacesError("limit", f"Feed exceeds {MAX_ENTRIES} entries", limit=MAX_ENTRIES, actual=len(entries))
     mapped = []
+    failure = None
     for entry in entries:
         if atom:
             links = entry.findall(ATOM + "link")
@@ -104,20 +107,35 @@ def parse(payload):
                 "published": _timestamp(_text(entry, "pubDate")),
                 "updated": _timestamp(_text(entry, "updated") or _text(entry, DC + "date") or _text(entry, "pubDate")),
             }
-        if not identity:
-            raise SpacesError("invalid", "Feed entry needs an id or link")
-        limits.object_json(fields, limits.SOURCE_BYTES, "record source")
+        try:
+            if not identity:
+                raise SpacesError("invalid", "Feed entry needs an id or link")
+            limits.object_json(fields, limits.SOURCE_BYTES, "record source")
+        except SpacesError as exc:
+            failure = failure or exc
+            if counts is not None:
+                counts["rejected"] += 1
+            continue
         rid = "src_" + hashlib.sha1(identity.encode("utf-8")).hexdigest()[:16]
         mapped.append((rid, fields))
+    if failure is not None:
+        if counts is not None:
+            counts["skipped"] += len(mapped)
+        raise failure
     return mapped
 
 
-def refresh_source(sid, source, *, actor, before_write, fetcher=None, counts=None):
+def refresh_source(sid, source, *, actor, before_write, fetcher=None, counts=None, entry_counts=None):
     from . import grants, records
 
     source_host(source["url"])
     grants.check(sid, "net")
-    entries = parse((fetcher or fetch)(sid, source["url"]))
+    if counts is None:
+        counts = {"added": 0, "updated": 0, "unchanged": 0}
+    if entry_counts is None:
+        entry_counts = {"committed": 0, "skipped": 0, "rejected": 0}
+    entries = parse((fetcher or fetch)(sid, source["url"]), counts=entry_counts)
+    entry_counts["skipped"] = len(entries)
     fetched_at = db.now()
     source_as_of = max((fields["updated"] or fetched_at for _, fields in entries), default=fetched_at)
     source_entries = [
@@ -129,8 +147,7 @@ def refresh_source(sid, source, *, actor, before_write, fetcher=None, counts=Non
     before_write()
     grants.check(sid, "net")
     result = records.upsert_sources(sid, source["collection"], source_entries, actor=actor)
-    if counts is None:
-        counts = {"added": 0, "updated": 0, "unchanged": 0}
     for key in ("added", "updated", "unchanged"):
         counts[key] += result[key]
+    entry_counts.update(committed=result["added"] + result["updated"], skipped=result["unchanged"])
     return counts, source_as_of

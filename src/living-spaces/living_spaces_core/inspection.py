@@ -32,7 +32,7 @@ import uuid
 from pathlib import Path
 from urllib.parse import quote
 
-from . import bridge, db, grants as grants_mod, limits, logs, projects, records
+from . import bridge, db, grants as grants_mod, limits, logs, projects, records, runs
 from .errors import SpacesError
 
 PACKAGE = Path(__file__).resolve().parent.parent
@@ -438,6 +438,8 @@ class PassiveAdapter:
                                 (sid, limit)).fetchall()
             return [{**dict(row), "changed": json.loads(row["changed"]), "detail": json.loads(row["detail"])}
                     for row in rows]
+        if op == "freshness":
+            return runs.freshness(sid, include_upkeep=False, conn=conn)
         if op == "data.query":
             collection = args["collection"]
             options = {key: value for key, value in args.items() if key != "collection"}
