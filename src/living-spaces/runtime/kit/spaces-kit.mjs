@@ -120,6 +120,9 @@ function useQuery(load, key, collection) {
   }, [reload, collection])
   return { ...value, reload }
 }
+export function queryPage(collection, options = {}) {
+  return space.queryPage(collection, options)
+}
 export function useCollection(collection, options = {}) {
   return useQuery(() => space.query(collection, options), JSON.stringify([collection, options]), collection)
 }

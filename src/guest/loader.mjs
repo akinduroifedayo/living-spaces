@@ -221,6 +221,7 @@ export function spaceLoader(resolver) {
   const api = {
     meta: null,
     query: async (collection, options = {}) => (await send('data.query', { ...options, collection })).records,
+    queryPage: (collection, options = {}) => send('data.query', { ...options, collection, page: true }),
     get: (collection, id) => send('data.get', { collection, id }),
     put: (collection, id, data, { baseRev, merge } = {}) => send('data.put', { collection, id, data, base_rev: baseRev, merge }),
     delete: (collection, id, { baseRev } = {}) => send('data.delete', { collection, id, base_rev: baseRev }),

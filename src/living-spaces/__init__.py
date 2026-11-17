@@ -328,10 +328,23 @@ def spaces_edit_file(core, args, owner):
 
 
 def spaces_query(core, args, owner):
+    if set(args) - {"space", "collection", "where", "order", "limit", "offset", "page", "cursor"}:
+        raise _invalid(core, "Unknown query arguments")
     sid = _space(core, args)
     where = _json_arg(core, args, "where", dict, required=False)
-    limit = _int(core, args, "limit", required=False)
-    return core.query(sid, _text(core, args, "collection"), where=where, limit=100 if limit is None else limit)
+    page = args.get("page", False)
+    if page is True:
+        limit = args.get("limit", 100)
+    else:
+        limit = _int(core, args, "limit", required=False)
+        limit = 100 if limit is None else limit
+    cursor = _json_arg(core, args, "cursor", dict, required=False)
+    options = {key: args[key] for key in ("offset", "page") if key in args}
+    if "order" in args:
+        options["order"] = _text(core, args, "order", required=False)
+    if "cursor" in args:
+        options["cursor"] = cursor
+    return core.query(sid, _text(core, args, "collection"), where=where, limit=limit, **options)
 
 
 def spaces_write_records(core, args, owner):
@@ -484,11 +497,21 @@ TOOLS = [
         "spaces_query",
         "Read records from one collection of a Space, the same data the app shows. Each record has id, rev, data "
         "(user-owned fields) and source (fields filled by refresh); a field's value is data[name] if set, else "
-        "source[name]. Returns {records, total, seq}. Use it to answer questions about the Space and before every "
-        "write, to get each record's current rev." + REF_NOTE,
+        "source[name]. Returns {records, total, seq}. page=true adds has_more and next_cursor. Continue with "
+        "the same collection, where, order and limit plus cursor; omit offset. Any same-Space record change "
+        "expires the cursor with cursor_expired and restart_required=true; discard accumulated pages and "
+        "restart explicitly. Each page reads one transaction; no retained snapshot or time expiry. Use it to "
+        "answer questions about the Space and before every write, to get each record's current rev." + REF_NOTE,
         {"space": SPACE_ARG, "collection": {"type": "string", "description": "Collection name, e.g. \"papers\"."},
          "where": {"type": "object", "description": "Equality filter on fields, e.g. {\"status\": \"reading\"}."},
-         "limit": {"type": "integer", "description": "Max records to return (default 100, max 500)."}},
+         "order": {"type": "string", "description": "Field name; prefix '-' for descending, including ID ties. "
+                   "Null data falls through to source. Null/missing effective values use updated_at. "
+                   "Numbers (including booleans) precede text and serialized JSON in ascending order."},
+         "limit": {"type": "integer", "default": 100,
+                   "description": "Max records to return (default 100; page=true requires 1..500)."},
+         "offset": {"type": "integer", "description": "Nonnegative starting offset (default 0). Nonzero starts a suffix."},
+         "page": {"type": "boolean", "default": False, "description": "Opt into explicit continuation and expiry."},
+         "cursor": {"type": "object", "description": "next_cursor from a page with identical query options. Requires page=true."}},
         ["space", "collection"])),
     (spaces_write_records, _schema(
         "spaces_write_records",

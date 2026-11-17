@@ -299,6 +299,7 @@ class Snapshot:
         limits.integer(rev, "rev", minimum=1)
         revision = projects._revision(conn, self.sid, rev)
         self.space = {"id": self.sid, "name": space["name"]}
+        self.created_at = space["created_at"]
         self.rev = revision["rev"]
         self.head_rev = space["head_rev"]
         self.status = space["status"]
@@ -373,6 +374,22 @@ class PassiveAdapter:
         if self.deadline is not None and time.monotonic() >= self.deadline:
             raise _Timeout()
 
+    def _select_query(self, collection, *, where=None, order=None, limit=500, offset=0):
+        rows, size = [], 0
+        for row in self.snap.conn.execute("SELECT * FROM records WHERE space=? AND collection=? ORDER BY id",
+                                          (self.snap.sid, collection)):
+            size += sum(len((row[key] or "").encode("utf-8", "surrogatepass"))
+                        for key in ("data", "source", "source_meta"))
+            if size > MAX_QUERY_BYTES:
+                self.limited["collection_too_large"] = self.limited.get("collection_too_large", 0) + 1
+                raise SpacesError("limit", "Collection is too large to query during inspection")
+            self._check_deadline()
+            record = records._record(row)
+            if all(records._field(record, field) == value for field, value in (where or {}).items()):
+                rows.append(record)
+        self._check_deadline()
+        return self._order_and_page(rows, order, limit, offset)
+
     def call(self, op, args):
         try:
             return {"ok": True, "result": self._call(op, args)}
@@ -423,26 +440,11 @@ class PassiveAdapter:
                     for row in rows]
         if op == "data.query":
             collection = args["collection"]
-            options = {key: args[key] for key in ("where", "order", "limit", "offset") if key in args}
-            options.setdefault("limit", 500)
-            options.setdefault("offset", 0)
-            records._query_args(collection, options.get("where"), options.get("order"), options["limit"], options["offset"])
-            where = options.pop("where", None) or {}
-            rows, size = [], 0
-            for row in conn.execute("SELECT * FROM records WHERE space=? AND collection=? ORDER BY id", (sid, collection)):
-                size += sum(len((row[key] or "").encode("utf-8", "surrogatepass"))      # bytes, not characters
-                            for key in ("data", "source", "source_meta"))
-                if size > MAX_QUERY_BYTES:
-                    self.limited["collection_too_large"] = self.limited.get("collection_too_large", 0) + 1
-                    raise SpacesError("limit", "Collection is too large to query during inspection")
-                self._check_deadline()
-                record = records._record(row)
-                # The same predicate records._select applies, evaluated here so the deadline is checked per record.
-                if all(records._field(record, field) == value for field, value in where.items()):
-                    rows.append(record)
+            options = {key: value for key, value in args.items() if key != "collection"}
             self._check_deadline()
-            page, total = self._order_and_page(rows, options.get("order"), options["limit"], options["offset"])
-            return {"records": page, "total": total, "seq": self.snap.seq}
+            request = records._Query(collection, **options)
+            return request.result(sid, self.snap.created_at, self.snap.seq,
+                                  lambda **options: self._select_query(collection, **options))
         records._ids(args["collection"], args["id"])                       # data.get
         row = records._row(conn, sid, args["collection"], args["id"])
         if row is None:
