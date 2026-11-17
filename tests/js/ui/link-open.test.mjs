@@ -165,3 +165,30 @@ test('an open failure that settles after the session closes or a newer link is s
     assert.equal(f.notes.length, before, `${settleAfter}: a stale failure does not replace current state`)
   }
 })
+
+test('only the notice currently shown for a Space can act; older Open link or Copy link callbacks do nothing', async () => {
+  for (const stale of ['destroy', 'profile', 'backend', 'newer']) {
+    const f = fixture({ openResult: false })
+    await f.session.ready
+    await f.call('link.open', { url: 'https://example.com/old' })
+    f.notes.at(-1).action.onClick()
+    await settle()
+    const failure = f.notes.at(-1)
+    assert.equal(failure.action.label, 'Copy link')
+    if (stale === 'destroy') await f.session.destroy()
+    if (stale === 'profile') f.state.profile = 'other-profile'
+    if (stale === 'backend') f.state.connectionId = 'other-backend'
+    if (stale === 'newer') await f.call('link.open', { url: 'https://example.com/new' })
+    failure.action.onClick()
+    await settle()
+    assert.deepEqual(f.copied, [], `${stale}: a replaced or orphaned Copy link writes nothing`)
+  }
+  const f = fixture({ openResult: false })
+  await f.session.ready
+  await f.call('link.open', { url: 'https://example.com/old' })
+  f.notes.at(-1).action.onClick()
+  await settle()
+  f.notes.at(-1).action.onClick()
+  await settle()
+  assert.deepEqual(f.copied, ['https://example.com/old'], 'the current failure notice still copies')
+})

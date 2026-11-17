@@ -37,15 +37,13 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     }
   }) : null
   const linkNotice = `living-spaces:link:${sid}`
-  let pendingLink = null
-  const confirmLink = async request => {
-    if (request !== pendingLink || closed || !active()) return
-    pendingLink = null
-    const opened = await os.openExternal(request.url).catch(() => false)
-    if (opened === true || pendingLink || closed || !active()) return
-    host.notify({ id: linkNotice, kind: 'error', title: 'Your browser could not open this link', message: request.url,
-      detail: 'Nothing was opened. Copy the link to open it yourself.',
-      action: { label: 'Copy link', onClick: () => { if (!closed && active()) os.writeClipboard?.(request.url)?.catch?.(() => {}) } } })
+  // One notice slot per Space: only the notice currently shown may act, and only while this session is live.
+  let shownNotice = null
+  const showNotice = (input, label, run) => {
+    const notice = {}
+    shownNotice = notice
+    const action = run && { label, onClick: () => { if (shownNotice === notice && !closed && active()) run() } }
+    host.notify({ id: linkNotice, ...input, action })
   }
   const openLink = args => {
     if (!userActivation()) return { ok: false, error: { code: 'blocked', message: 'Links open only from a click in the Space. Nothing was opened.' } }
@@ -53,13 +51,17 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     if (typeof os?.openExternal !== 'function' || typeof host?.notify !== 'function') return { ok: false, error: { code: 'blocked', message: 'This Desktop cannot open links from a Space' } }
     const target = linkTarget(args.url)
     if (!target.ok) {
-      host.notify({ id: linkNotice, kind: 'warning', title: 'Link not opened', message: target.reason })
+      showNotice({ kind: 'warning', title: 'Link not opened', message: target.reason })
       return { ok: false, error: { code: 'invalid', message: target.reason } }
     }
-    const request = pendingLink = { url: target.url }
-    host.notify({ id: linkNotice, kind: 'info', title: `Open ${target.host} in your browser?`, message: target.url,
-      detail: 'This Space asked to open the link above outside Hermes.', durationMs: 15000,
-      action: { label: 'Open link', onClick: () => { confirmLink(request) } } })
+    showNotice({ kind: 'info', title: `Open ${target.host} in your browser?`, message: target.url,
+      detail: 'This Space asked to open the link above outside Hermes.', durationMs: 15000 }, 'Open link', async () => {
+      shownNotice = null
+      const opened = await os.openExternal(target.url).catch(() => false)
+      if (opened === true || shownNotice || closed || !active()) return
+      showNotice({ kind: 'error', title: 'Your browser could not open this link', message: target.url,
+        detail: 'Nothing was opened. Copy the link to open it yourself.' }, 'Copy link', () => { os.writeClipboard?.(target.url)?.catch?.(() => {}) })
+    })
     return { ok: true, result: { status: 'confirming', url: target.url, host: target.host } }
   }
   const close = () => {
