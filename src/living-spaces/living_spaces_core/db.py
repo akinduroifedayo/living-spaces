@@ -118,6 +118,19 @@ _initialized: set[str] = set()
 _schema_lock = threading.Lock()
 _deadline: ContextVar[float | None] = ContextVar("bridge_db_deadline", default=None)
 _invocation: ContextVar[Invocation | None] = ContextVar("bridge_invocation", default=None)
+_disposable: ContextVar[str | None] = ContextVar("disposable_database", default=None)
+
+
+@contextmanager
+def disposable_database(uri):
+    """Route this context's store calls to an already initialized in-memory copy."""
+    if not uri.startswith("file:ls-overlay-") or not uri.endswith("?mode=memory&cache=shared"):
+        raise ValueError("A disposable database must be an inspection memory database")
+    marker = _disposable.set(uri)
+    try:
+        yield
+    finally:
+        _disposable.reset(marker)
 
 
 @dataclass
@@ -185,6 +198,12 @@ def _busy_timeout():
 
 
 def connect() -> sqlite3.Connection:
+    transient = _disposable.get()
+    if transient is not None:
+        conn = sqlite3.connect(transient, uri=True, timeout=_busy_timeout(), isolation_level=None)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
     path = db_path()
     existed = path.exists()
     path.parent.mkdir(parents=True, exist_ok=True)

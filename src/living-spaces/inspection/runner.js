@@ -197,7 +197,7 @@
       }
       const id = ++seq;
       pending.set(id, resolve);
-      queue.push({ id, op, args });
+      queue.push({ id, op, args, ...["data.put", "data.delete", "data.batch"].includes(op) ? { request_id: `inspect_write_${id}` } : {} });
       notify();
     });
     return {

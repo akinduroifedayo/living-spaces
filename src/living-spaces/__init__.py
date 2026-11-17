@@ -407,7 +407,7 @@ def spaces_revisions(core, args, owner):
 
 
 def spaces_inspect(core, args, owner):
-    unknown = set(args) - {"space", "rev", "width", "height", "timeout_s", "text_limit", "visual"}
+    unknown = set(args) - {"space", "rev", "width", "height", "timeout_s", "text_limit", "visual", "interactions"}
     if unknown:
         raise _invalid(core, f"Unknown arguments: {', '.join(sorted(unknown))}")
     # The reference is resolved inside the read-only snapshot, never through the writable connection.
@@ -416,7 +416,8 @@ def spaces_inspect(core, args, owner):
                               height=_int(core, args, "height", required=False),
                               timeout_s=_int(core, args, "timeout_s", required=False),
                               text_limit=_int(core, args, "text_limit", required=False),
-                              **({"visual": args["visual"]} if "visual" in args else {}))
+                              **({"visual": args["visual"]} if "visual" in args else {}),
+                              **({"interactions": args["interactions"]} if "interactions" in args else {}))
 
 
 def spaces_restore(core, args, owner):
@@ -609,7 +610,8 @@ TOOLS = [
         "spaces_inspect",
         "Optional runtime check of one saved revision: runs it once in a throwaway headless browser on this "
         "machine and reports what happened. Nothing is saved and nothing runs automatically. The Space sees "
-        "current records read-only; writes, Refresh, bot requests and network are refused and counted in "
+        "current records read-only by default. Optional interactions allow record writes in a disposable overlay. "
+        "Refresh, bot requests and network stay refused and counted in "
         "blocked; capabilities the Space was not granted are refused and counted in denied; requests refused by "
         "inspection's own size or queue limits are counted in limited. Returns outcome "
         "(loaded, loaded_with_errors, failed, rendered_unconfirmed, timed_out, "
@@ -624,8 +626,25 @@ TOOLS = [
          "height": {"type": "integer", "description": "Viewport CSS height, 240-1600. Default 768."},
          "timeout_s": {"type": "integer", "description": "Seconds to wait for the Space to settle, 3-30. Default 15."},
          "text_limit": {"type": "integer", "description": "Max visible-text characters returned, 0-16000. Default 4000."},
+         "interactions": {"type": "array", "minItems": 1, "maxItems": 20,
+                          "description": "Optional disposable journey. Records are copied in memory and discarded, never "
+                                         "saved to the real Space. Steps run in order and settle before continuing. Any "
+                                         "missing target, failed operation or timeout stops later steps and returns "
+                                         "incomplete coverage. Default step timeout 5000 ms, total bounded by timeout_s "
+                                         "(at most 30 seconds). Type appends text to an editable input or textarea. "
+                                         "Click and select use DOM events. No native persistence claim. Visual captures "
+                                         "observe the resulting page and overlay without remounting it.",
+                          "items": {"type": "object", "additionalProperties": False, "required": ["action", "selector"],
+                                    "properties": {
+                                        "action": {"type": "string", "enum": ["click", "type", "key", "select"]},
+                                        "selector": {"type": "string", "minLength": 1, "maxLength": 256},
+                                        "text": {"type": "string", "maxLength": 4096, "description": "Required for type."},
+                                        "value": {"type": "string", "maxLength": 4096, "description": "Required for select."},
+                                        "key": {"type": "string", "enum": ["Enter", "Tab", "Escape", "Backspace", "Delete",
+                                             "ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown", " ", "Home", "End"]},
+                                        "timeout_ms": {"type": "integer", "minimum": 1, "maximum": 10000}}}},
          "visual": {"type": "object", "additionalProperties": False,
-                    "description": "Read-only visual evidence. Requires explicit width and height. Reduced motion. "
+                    "description": "Visual evidence, read-only unless interactions are supplied. Requires explicit width and height. Reduced motion. "
                                    "Each route gets at most 10 seconds within timeout_s. PNGs are inline only, never "
                                    "retained. Any failure discards every PNG. Pixels may contain this Space's records "
                                    "and are not secret-redacted. No native persistence or design-quality claim.",
