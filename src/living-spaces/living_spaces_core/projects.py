@@ -7,7 +7,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-from . import db, grants, limits, migrations, records, runs, upkeep
+from . import db, diagnostics, grants, limits, migrations, records, runs, upkeep
 from .errors import SpacesError
 
 RUNTIME = Path(__file__).parent.parent / "runtime"
@@ -117,7 +117,7 @@ def _input_files(files, manifest):
     return prepared, manifest if manifest is not None else extracted
 
 
-def _libraries(files, manifest, libraries, warnings, existing=()):
+def _libraries(files, manifest, libraries, found, existing=()):
     if not isinstance(libraries, (tuple, list)):
         raise SpacesError("invalid", "libraries must be an array")
     for library in libraries:
@@ -128,7 +128,7 @@ def _libraries(files, manifest, libraries, warnings, existing=()):
             source = RUNTIME / path
             if not source.is_file():
                 if path.startswith("kit/"):
-                    warnings.append(f"Bundled file is not available yet: {path}")
+                    found.append(diagnostics.diagnostic("library.file_unavailable", ref=path))
                     continue
                 raise SpacesError("blocked", f"Bundled library file is unavailable: {path}", reason="no_handler")
             if path not in files and path not in existing:
@@ -167,30 +167,10 @@ def _store_files(conn, existing, changed):
     return files
 
 
-def _warnings(conn, manifest, files):
-    warnings = []
-    if manifest["entry"] not in files:
-        warnings.append(f"Entry file is missing: {manifest['entry']}")
-    for name, path in manifest["imports"].items():
-        if path not in files:
-            warnings.append(f"Unresolved import {name}: {path}")
-    for path, sha in files.items():
-        if not path.endswith((".js", ".mjs", ".html", ".css")):
-            continue
-        content = conn.execute("SELECT content FROM blobs WHERE sha=?", (sha,)).fetchone()[0].decode("utf-8", errors="replace")
-        if re.search(r"https?://(?!www\.w3\.org/)", content):
-            warnings.append(f"Network URLs in {path} are blocked at runtime; use space.net.fetch for public HTTPS")
-        for target in re.findall(r'''(?:from\s*|import\s*|import\s*\(\s*)["'](\.[^"']+)["']''', content):
-            parts = list(Path(path).parent.parts)
-            for segment in target.split("/"):
-                if segment == "..":
-                    if parts:
-                        parts.pop()
-                elif segment not in ("", "."):
-                    parts.append(segment)
-            if "/".join(parts) not in files:
-                warnings.append(f"Unresolved relative import in {path}: {target}")
-    return warnings
+def _diagnose(conn, manifest, files, found=()):
+    load = lambda sha: conn.execute("SELECT content FROM blobs WHERE sha=?", (sha,)).fetchone()[0]
+    found = [*found, *diagnostics.diagnose(manifest, files, load)]
+    return {"diagnostics": found, "warnings": [d["message"] for d in found]}
 
 
 def _save_revision(conn, space, manifest, files, *, kind, author, summary, restored_from=None):
@@ -215,8 +195,8 @@ def create_space(name, *, description="", owner, files=None, manifest=None, libr
     if any(value is None for value in changed.values()):
         raise SpacesError("invalid", "New project files cannot be null")
     normalized = _manifest(supplied if supplied is not None else {}, name, description)
-    warnings = []
-    _libraries(changed, normalized, libraries, warnings)
+    found = []
+    _libraries(changed, normalized, libraries, found)
     slug = re.sub(r"[^a-z0-9]+", "-", unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()).strip("-")[:48].rstrip("-")
     if len(slug) < 2:
         slug = (slug + "-space") if slug else "space"
@@ -232,15 +212,12 @@ def create_space(name, *, description="", owner, files=None, manifest=None, libr
         from . import maintenance
         maintenance.create_identity(conn, sid)
         grants._seed(conn, sid, normalized, author)
+        stored = {}
         if changed or supplied is not None or libraries:
             stored = _store_files(conn, {}, changed)
             _save_revision(conn, db.space(conn, sid), normalized, stored, kind="create", author=author, summary=summary)
-            warnings += _warnings(conn, normalized, stored)
-        else:
-            warnings.append(f"Entry file is missing: {normalized['entry']}")
-    result = get_space(sid)
-    result["warnings"] = warnings
-    return result
+        report = _diagnose(conn, normalized, stored, found)
+    return {**get_space(sid), **report}
 
 
 def _resolve(conn, ref):
@@ -336,8 +313,8 @@ def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=()
             raise SpacesError("conflict", "Project revision changed", current={"head_rev": space["head_rev"]})
     old = _revision(conn, sid)
     manifest = _manifest(supplied if supplied is not None else old["manifest"], space["name"], space["description"])
-    warnings = []
-    _libraries(changed, manifest, libraries, warnings, existing=old["files"])
+    found = []
+    _libraries(changed, manifest, libraries, found, existing=old["files"])
     version = manifest["data"]["version"]
     if version < space["data_version"]:
         raise SpacesError("incompatible", "Project requires an older data version", from_version=space["data_version"], to_version=version)
@@ -350,7 +327,7 @@ def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=()
         if version > space["data_version"]:
             migrations.apply(conn, sid, space["data_version"], version, manifest["data"].get("migrations", []), actor=author)
         info = _save_revision(conn, space, manifest, stored, kind="edit" if space["head_rev"] else "create", author=author, summary=summary)
-        info["warnings"] = warnings + _warnings(conn, manifest, stored)
+        info.update(_diagnose(conn, manifest, stored, found))
     except Exception as exc:
         conn.execute("ROLLBACK TO revision_write")
         conn.execute("RELEASE revision_write")
@@ -419,7 +396,7 @@ def restore_revision(sid, rev, *, author):
                               from_version=space["data_version"], to_version=version)
         result = _save_revision(conn, space, target["manifest"], target["files"], kind="restore", author=author,
                                 summary=f"Restored revision {rev}", restored_from=rev)
-        result["warnings"] = _warnings(conn, target["manifest"], target["files"])
+        result.update(_diagnose(conn, target["manifest"], target["files"]))
         return result
 
 

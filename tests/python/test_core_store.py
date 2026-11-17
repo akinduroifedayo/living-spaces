@@ -170,8 +170,10 @@ class ProjectTests(CoreCase):
 
     def test_warnings_for_unresolved_imports_and_network(self):
         result = self.write({"app.mjs": "import x from './missing.mjs'; const url='https://example.org'"})
-        self.assertTrue(any("Unresolved relative import" in item for item in result["warnings"]))
-        self.assertTrue(any("Network URLs" in item for item in result["warnings"]))
+        self.assertEqual([d["code"] for d in result["diagnostics"] if d["path"] == "app.mjs"], ["import.unresolved"])
+        direct = self.write({"app.mjs": "fetch('https://example.org')"})
+        self.assertEqual([d["code"] for d in direct["diagnostics"] if d["path"] == "app.mjs"], ["net.direct_call"])
+        self.assertTrue(any(w.startswith("app.mjs:1:1:") for w in direct["warnings"]))
 
     def test_invalid_accent_values_fall_back(self):
         for value in (["bad"], {"bad": True}, None, 1):

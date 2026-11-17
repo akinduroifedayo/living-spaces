@@ -4,8 +4,6 @@ import base64
 import binascii
 import importlib
 import json
-import posixpath
-import re
 from pathlib import Path
 
 from . import _core
@@ -230,65 +228,15 @@ def _split_manifest(core, files, manifest):
     return files, manifest
 
 
-IMPORT_RE = re.compile(r"""(?:\bfrom\s*|\bimport\s*\(?\s*)['"]([^'"\n]+)['"]""")
-HTML_REF_RE = re.compile(r"""<(?:script|link|img|source)\b[^>]*?\b(?:src|href)\s*=\s*['"]([^'"]+)['"]""", re.I)
-CSS_URL_RE = re.compile(r"""url\(\s*['"]?([^'")]+)['"]?\s*\)""")
-NETWORK_RE = re.compile(r"""\bfetch\s*\(|\bXMLHttpRequest\b|\bnew\s+WebSocket\b|\bEventSource\s*\(|\bsendBeacon\s*\("""
-                        r"""|\b(?:src|href)\s*=\s*['"]https?://|\bfrom\s*['"]https?://|\bimport\s*\(\s*['"]https?://"""
-                        r"""|url\(\s*['"]?https?://|@import\s+['"]?(?:url\()?\s*['"]?https?://""")
-
-
-def _refs(path, text):
-    ext = posixpath.splitext(path)[1].lower()
-    if ext in (".js", ".mjs"):
-        return [(ref, True) for ref in IMPORT_RE.findall(text)]
-    if ext in (".html", ".htm"):
-        scripts = re.findall(r"<script\b[^>]*type\s*=\s*['\"]module['\"][^>]*>(.*?)</script>", text, re.I | re.S)
-        return ([(ref, False) for ref in HTML_REF_RE.findall(text)]
-                + [(ref, True) for body in scripts for ref in IMPORT_RE.findall(body)])
-    if ext == ".css":
-        return [(ref, False) for ref in CSS_URL_RE.findall(text)]
-    return []
-
-
-def _warnings(written, paths, manifest):
-    manifest = manifest or {}
-    entry = manifest.get("entry") or "index.html"
-    imports = set((manifest.get("imports") or {}).keys())
-    warnings = []
-    if entry not in paths:
-        warnings.append(f"Entry file {entry!r} is missing, so the Space cannot boot.")
-    for path, text in sorted(written.items()):
-        if not isinstance(text, str):
-            continue
-        if NETWORK_RE.search(text):
-            warnings.append(f"{path}: direct network access (fetch, WebSocket or a remote URL) is blocked in the frame. "
-                            "Use space.net.fetch for public HTTPS, window.space for saved data, and project files or "
-                            "libraries for code and assets.")
-        for ref, is_module in _refs(path, text):
-            if re.match(r"^(?:[a-z][a-z0-9+.-]*:|#|//)", ref, re.I):
-                continue
-            if is_module and not ref.startswith((".", "/")):
-                if ref not in imports:
-                    warnings.append(f"{path}: bare import {ref!r} is not in the manifest imports; add it to "
-                                    "libraries or vendor the file.")
-                continue
-            target = posixpath.normpath(posixpath.join(posixpath.dirname(path), ref.split("?")[0].split("#")[0]))
-            if ref.startswith("/"):
-                target = target.lstrip("/")
-            if target not in paths:
-                warnings.append(f"{path}: {ref!r} does not resolve to a project file.")
-    return warnings
-
-
-def _change_result(core, sid, rev, extra_warnings=()):
+def _change_result(core, sid, info, extra_warnings=()):
+    rev = info.get("rev", info.get("head_rev"))
     project = core.bundle(sid, rev=rev)
     paths = {file["path"] for file in project["files"]}
-    texts = {file["path"]: file["text"] for file in project["files"] if "text" in file}
     pending = [{"capability": g.get("capability"), "purpose": g.get("purpose"),
                 "scope": g.get("requested_scope") or g.get("scope")}
                for g in core.list_grants(sid) if g.get("status") == "requested"]
-    warnings = list(dict.fromkeys([*extra_warnings, *_warnings(texts, paths, project["manifest"])]))
+    diagnostics = list(info.get("diagnostics") or ())
+    warnings = list(dict.fromkeys([*(info.get("warnings") or ()), *extra_warnings]))
     notes = []
     if "kit/spaces-kit.css" in paths:
         notes.append("Optional: link kit/spaces-kit.css for the quiet Hermes look. "
@@ -296,7 +244,7 @@ def _change_result(core, sid, rev, extra_warnings=()):
                      'The tag is <link rel="stylesheet" href="kit/spaces-kit.css"> '
                      "(adjust the relative path for a nested entry).")
     return {"space": sid, "rev": rev, "open": _open(sid), "grants_pending": pending, "warnings": warnings,
-            "notes": notes, "next": NEXT}
+            "diagnostics": diagnostics, "notes": notes, "next": NEXT}
 
 
 def spaces_list(core, args, owner):
@@ -326,12 +274,12 @@ def spaces_create(core, args, owner, maintainer=None):
     detail = core.create_space(name, description=description, owner=owner, files=files, manifest=manifest,
                                libraries=libraries, author=actor, summary=_summary_with_sources("Created", sources))
     sid = detail["id"]
-    warnings = list(detail.get("warnings") or ())
+    warnings = []
     if maintainer:
         core.bind_maintainer(sid, maintainer)
     else:
         warnings.append("Canvas bot actions are unavailable because native maintaining-session context was missing. Bind it from a native maintenance turn with spaces_bind_maintainer.")
-    result = _change_result(core, sid, detail.get("head_rev"), warnings)
+    result = _change_result(core, sid, detail, warnings)
     if maintainer:
         result["notes"].append("Canvas controls can call space.ask(text, {activationId, records: [{collection, id}]}) and listen with space.on('bot', status => ...). Keep activationId stable for an uncertain retry. Requests use native model turns and need a current user activation. Use space.refresh() for no-model feed refresh.")
     return result
@@ -352,7 +300,7 @@ def spaces_write_files(core, args, owner):
     info = core.write_files(sid, files=files, manifest=manifest, author=f"agent:{owner}", summary=summary,
                             base_rev=_int(core, args, "base_rev", required=False),
                             **({"libraries": libraries} if libraries is not None else {}))
-    return _change_result(core, sid, info.get("rev"), info.get("warnings") or ())
+    return _change_result(core, sid, info)
 
 
 def spaces_edit_file(core, args, owner):
@@ -374,9 +322,9 @@ def spaces_edit_file(core, args, owner):
         _, manifest = _split_manifest(core, {MANIFEST_PATH: text.replace(old, new)}, None)
         info = core.write_files(sid, files={}, manifest=manifest, author=actor, summary=summary,
                                 base_rev=current["rev"])
-        return _change_result(core, sid, info.get("rev"), info.get("warnings") or ())
+        return _change_result(core, sid, info)
     info = core.edit_file(sid, path, old=old, new=new, author=actor, summary=summary)
-    return _change_result(core, sid, info.get("rev"), info.get("warnings") or ())
+    return _change_result(core, sid, info)
 
 
 def spaces_query(core, args, owner):
@@ -441,7 +389,9 @@ def spaces_inspect(core, args, owner):
 def spaces_restore(core, args, owner):
     sid = _space(core, args)
     info = core.restore_revision(sid, _int(core, args, "rev"), author=f"agent:{owner}")
-    return {"space": sid, "rev": info.get("rev"), "revision": info, "open": _open(sid), "next": NEXT}
+    return {"space": sid, "rev": info.get("rev"), "revision": info, "open": _open(sid),
+            "warnings": list(info.get("warnings") or ()), "diagnostics": list(info.get("diagnostics") or ()),
+            "next": NEXT}
 
 
 def spaces_refresh(core, args, owner):
@@ -466,7 +416,7 @@ def spaces_upkeep(core, args, owner):
 
 REF_NOTE = (" An ambiguous or unknown space fails with code ambiguous/not_found and lists candidates: ask the user "
             "which one they mean, never guess.")
-WRITE_NOTE = (" Returns {space, rev, open, grants_pending, warnings, notes}. Fix every warning and follow notes "
+WRITE_NOTE = (" Returns {space, rev, open, grants_pending, warnings, diagnostics, notes}. Fix every warning and follow notes "
               "for stylesheet links. End your reply with "
               "open.directive on its own line and say what changed, the revision, and any pending grants.")
 BINARY_NOTE = (" Place binary files by reference in one line: {\"from_path\":\"/absolute/path\"} copies a local "
