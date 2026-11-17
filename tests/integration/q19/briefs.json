@@ -1,48 +1,204 @@
 {
-  "version": 1,
-  "note": "Public synthetic Q19 briefs (SPEC 'Generated-artifact evaluation'). Each oracle is deterministic and is checked against the app's saved records, never against model prose.",
-  "briefs": [
-    {
-      "id": "trip-tracker",
-      "prompt": "Build a trip tracker for a two-week trip. Tasks have a title, due date, status and optional blocking task. Show what to do next and why a task is blocked.",
-      "edit": "Add a packing checklist grouped by bag, saved with the trip.",
-      "fixture": "fixtures/trip-tasks.json",
-      "oracle": {"kind": "next_task", "expected": {"next": "book-ferry", "blocked": {"pack-dive-gear": "book-dive"}}}
+ "version": 2,
+ "note": "Public synthetic Q19 briefs (SPEC 'Generated-artifact evaluation'). Each oracle is deterministic and is checked against the app's saved records, never against model prose.",
+ "briefs": [
+  {
+   "id": "trip-tracker",
+   "prompt": "Build a trip tracker for a two-week trip. Tasks have a title, due date, status and optional blocking task. Show what to do next and why a task is blocked.",
+   "edit": "Add a packing checklist grouped by bag, saved with the trip.",
+   "oracle": {
+    "build": {
+     "expected": {
+      "next": "book-ferry",
+      "blocked": {
+       "pack-dive-gear": "book-dive"
+      }
+     }
     },
-    {
-      "id": "rss-desk",
-      "prompt": "Build an RSS reading desk that refreshes a public feed source and lets me mark items read and save favourites.",
-      "edit": "Add a per-source unread count and a filter for saved items.",
-      "fixture": "fixtures/feed.xml",
-      "oracle": {"kind": "unread_count", "expected": {"total": 5, "after_marking": ["item-2"], "unread": 4}}
-    },
-    {
-      "id": "csv-spending",
-      "prompt": "Build a spending visualization from a pasted CSV of transactions with date, category and amount. Show totals by category and by month, including refunds.",
-      "edit": "Add a monthly budget per category and highlight overspending.",
-      "fixture": "fixtures/spending.csv",
-      "oracle": {"kind": "category_totals", "expected": {"groceries": 182.4, "transport": 61.0, "dining": 74.25, "refunds": -20.0}}
-    },
-    {
-      "id": "memory-game",
-      "prompt": "Build a memory card game with a saved best score per board size.",
-      "edit": "Add a timed mode with its own best score.",
-      "fixture": null,
-      "oracle": {"kind": "best_score", "expected": {"rule": "fewest moves wins; ties keep the earlier record", "sequence": [18, 14, 14, 20], "best": 14}}
-    },
-    {
-      "id": "long-document",
-      "prompt": "Build a reader for a long Markdown document with a table of contents, saved reading position and highlights.",
-      "edit": "Add notes attached to highlights and an export of highlights.",
-      "fixture": "fixtures/long-document.md",
-      "oracle": {"kind": "toc", "expected": {"h2": 12, "h3": 30}}
-    },
-    {
-      "id": "weather-board",
-      "prompt": "Build a weather board for three saved places that refreshes forecasts and shows the next 24 hours.",
-      "edit": "Add a rain warning when any place has more than 60 percent precipitation in the next 6 hours.",
-      "fixture": "fixtures/forecast.json",
-      "oracle": {"kind": "rain_warning", "expected": {"warn": ["harbor"], "quiet": ["hill", "market"]}}
+    "edit": {
+     "expected": {
+      "bags": {
+       "carry-on": 3,
+       "checked": 2,
+       "dive": 2
+      }
+     }
     }
-  ]
+   },
+   "fixtures": [
+    "trip-tasks.json",
+    "packing.json"
+   ],
+   "scenario": {}
+  },
+  {
+   "id": "rss-desk",
+   "prompt": "Build an RSS reading desk that refreshes a public feed source and lets me mark items read and save favourites.",
+   "edit": "Add a per-source unread count and a filter for saved items.",
+   "oracle": {
+    "build": {
+     "expected": {
+      "total": 5,
+      "unread": 4
+     }
+    },
+    "edit": {
+     "expected": {
+      "unread_by_source": {
+       "PUBLIC SYNTHETIC FIXTURE - Q19 feed": 4
+      },
+      "saved_filter": [
+       "item-3"
+      ]
+     }
+    }
+   },
+   "fixtures": [
+    "feed.xml"
+   ],
+   "scenario": {
+    "mark_read": [
+     "item-2"
+    ],
+    "save": [
+     "item-3"
+    ]
+   }
+  },
+  {
+   "id": "csv-spending",
+   "prompt": "Build a spending visualization from a pasted CSV of transactions with date, category and amount. Show totals by category and by month, including refunds.",
+   "edit": "Add a monthly budget per category and highlight overspending.",
+   "oracle": {
+    "build": {
+     "expected": {
+      "groceries": 182.4,
+      "transport": 61.0,
+      "dining": 74.25,
+      "refunds": -20.0
+     }
+    },
+    "edit": {
+     "expected": {
+      "overspent": {
+       "2026-09": [
+        "dining",
+        "groceries"
+       ],
+       "2026-10": [
+        "transport"
+       ]
+      }
+     }
+    }
+   },
+   "fixtures": [
+    "spending.csv",
+    "budgets.json"
+   ],
+   "scenario": {}
+  },
+  {
+   "id": "memory-game",
+   "prompt": "Build a memory card game with a saved best score per board size.",
+   "edit": "Add a timed mode with its own best score.",
+   "oracle": {
+    "build": {
+     "expected": {
+      "best": {
+       "4x4": "g2",
+       "6x6": "g4"
+      }
+     }
+    },
+    "edit": {
+     "expected": {
+      "best": {
+       "4x4": "g2",
+       "6x6": "g4"
+      },
+      "timed_best": {
+       "4x4": "g6"
+      }
+     }
+    }
+   },
+   "fixtures": [
+    "memory-games.json"
+   ],
+   "scenario": {}
+  },
+  {
+   "id": "long-document",
+   "prompt": "Build a reader for a long Markdown document with a table of contents, saved reading position and highlights.",
+   "edit": "Add notes attached to highlights and an export of highlights.",
+   "oracle": {
+    "build": {
+     "expected": {
+      "h2": 12,
+      "h3": 30
+     }
+    },
+    "edit": {
+     "expected": {
+      "export": [
+       [
+        "h-early",
+        "Key claim"
+       ],
+       [
+        "h-mid",
+        null
+       ],
+       [
+        "h-late",
+        "Compare with section 2"
+       ]
+      ]
+     }
+    }
+   },
+   "fixtures": [
+    "long-document.md",
+    "highlights.json"
+   ],
+   "scenario": {}
+  },
+  {
+   "id": "weather-board",
+   "prompt": "Build a weather board for three saved places that refreshes forecasts and shows the next 24 hours.",
+   "edit": "Add a rain warning when any place has more than 60 percent precipitation in the next 6 hours.",
+   "oracle": {
+    "build": {
+     "expected": {
+      "hours": {
+       "harbor": 24,
+       "hill": 24,
+       "market": 24
+      },
+      "peak": {
+       "harbor": 75,
+       "hill": 90,
+       "market": 40
+      }
+     }
+    },
+    "edit": {
+     "expected": {
+      "warn": [
+       "harbor"
+      ],
+      "quiet": [
+       "hill",
+       "market"
+      ]
+     }
+    }
+   },
+   "fixtures": [
+    "forecast.json"
+   ],
+   "scenario": {}
+  }
+ ]
 }

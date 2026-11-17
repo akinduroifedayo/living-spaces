@@ -1,0 +1,33 @@
+{
+ "label": "PUBLIC SYNTHETIC FIXTURE - Q19 packing list",
+ "items": [
+  {
+   "id": "passport",
+   "bag": "carry-on"
+  },
+  {
+   "id": "charger",
+   "bag": "carry-on"
+  },
+  {
+   "id": "medication",
+   "bag": "carry-on"
+  },
+  {
+   "id": "sandals",
+   "bag": "checked"
+  },
+  {
+   "id": "rain-jacket",
+   "bag": "checked"
+  },
+  {
+   "id": "mask",
+   "bag": "dive"
+  },
+  {
+   "id": "fins",
+   "bag": "dive"
+  }
+ ]
+}
