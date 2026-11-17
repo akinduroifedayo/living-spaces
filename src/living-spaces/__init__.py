@@ -291,6 +291,18 @@ def spaces_read_file(core, args, owner):
     return core.read_file(sid, path)
 
 
+def spaces_read_files(core, args, owner):
+    return core.read_files(_space(core, args), _json_arg(core, args, "paths", list))
+
+
+def spaces_edit_files(core, args, owner):
+    sid = _space(core, args)
+    info = core.edit_files(sid, edits=_json_arg(core, args, "edits", list),
+                           base_rev=_int(core, args, "base_rev"), author=f"agent:{owner}",
+                           summary=_text(core, args, "summary"))
+    return _change_result(core, sid, info)
+
+
 def spaces_write_files(core, args, owner):
     sid = _space(core, args)
     files, sources = _files(core, args, deleting=True, space=sid)
@@ -469,6 +481,33 @@ TOOLS = [
         "a file before editing it." + REF_NOTE,
         {"space": SPACE_ARG, "path": {"type": "string", "description": "Relative path, e.g. \"views/queue.js\"."}},
         ["space", "path"])),
+    (spaces_read_files, _schema(
+        "spaces_read_files",
+        "Read 1-20 paths from one current head snapshot. Returns {space, rev, results}, in request order. "
+        "Each item is {path, ok:true, result:{path,text or b64,size,sha,rev}} or {path,ok:false,error:{code,message,...}}. "
+        "An invalid, missing or oversized path does not hide other results. Max 256 KiB raw bytes per file "
+        "and 1 MiB returned content per call, counting UTF-8 and base64 expansion. Duplicate paths count again. "
+        "Over-budget files return code limit without truncation; later smaller files can still fit." + REF_NOTE,
+        {"space": SPACE_ARG, "paths": {"type": "array", "minItems": 1, "maxItems": 20,
+                                        "items": {"type": "string", "maxLength": 200}}},
+        ["space", "paths"])),
+    (spaces_edit_files, _schema(
+        "spaces_edit_files",
+        "Apply 1-100 ordered exact text replacements to one in-memory candidate against required base_rev. "
+        "Later edits see earlier replacements, including space.json. Every old must match exactly once. "
+        "Validate the entire final project with existing diagnostics, then publish exactly one revision or none. "
+        "Any diagnostic rejects the batch with code invalid. Stale head returns conflict. Errors name the "
+        "zero-based edit_index and path; binary edits, invalid assets/imports or manifest/migration failures "
+        "leave head and history unchanged. Use spaces_write_files for whole files, additions or deletions. "
+        "No model call or automatic inspection." + REF_NOTE + WRITE_NOTE,
+        {"space": SPACE_ARG, "base_rev": {"type": "integer", "minimum": 0},
+         "edits": {"type": "array", "minItems": 1, "maxItems": 100,
+                   "items": {"type": "object", "properties": {
+                       "path": {"type": "string", "maxLength": 200},
+                       "old": {"type": "string", "minLength": 1}, "new": {"type": "string"}},
+                       "required": ["path", "old", "new"], "additionalProperties": False}},
+         "summary": {"type": "string", "description": "One revision-history summary for the entire batch."}},
+        ["space", "base_rev", "edits", "summary"])),
     (spaces_write_files, _schema(
         "spaces_write_files",
         "Write whole files as one new revision: add or replace files, delete a file by mapping its path to null, "

@@ -46,6 +46,9 @@ PARAMS = {
     "spaces_write_files": {"space": SID, "files": {"app.js": "export const value = 2"},
                            "summary": "Update value", "base_rev": 2},
     "spaces_edit_file": {"space": SID, "path": "app.js", "old": "1", "new": "2", "summary": "Fix value"},
+    "spaces_read_files": {"space": SID, "paths": ["app.js", "index.html"]},
+    "spaces_edit_files": {"space": SID, "base_rev": 2, "summary": "Fix values",
+                          "edits": [{"path": "app.js", "old": "1", "new": "2"}]},
     "spaces_query": {"space": SID, "collection": "papers", "where": {"status": "reading"}, "limit": 7},
     "spaces_write_records": {"space": SID, "ops": [{"op": "put", "collection": "papers", "id": "demo",
                                                      "data": {"notes": "Demo note"}, "base_rev": 3}]},
@@ -61,6 +64,7 @@ PARAMS = {
 TARGETS = {
     "spaces_list": "list_spaces", "spaces_get": "get_space", "spaces_create": "create_space",
     "spaces_read_file": "read_file", "spaces_write_files": "write_files", "spaces_edit_file": "edit_file",
+    "spaces_read_files": "read_files", "spaces_edit_files": "edit_files",
     "spaces_query": "query", "spaces_write_records": "batch", "spaces_read_logs": "read_logs",
     "spaces_inspect": "inspect", "spaces_revisions": "list_revisions", "spaces_restore": "restore_revision",
     "spaces_refresh": "start_refresh", "spaces_schedule_upkeep": "schedule_upkeep", "spaces_upkeep": "get_upkeep",
@@ -85,6 +89,8 @@ class AdapterCase(unittest.TestCase):
             "create_space": DETAIL.copy(), "read_file": {"path": "app.js", "text": "value = 2", "rev": 2},
             "list_files": [{"path": "index.html"}, {"path": "app.js"}, {"path": "vendor/preact.mjs"}],
             "write_files": {"rev": 3}, "edit_file": {"rev": 3}, "list_revisions": [{"rev": 2}],
+            "read_files": {"space": SID, "rev": 2, "results": [{"path": "app.js", "ok": True, "result": {"path": "app.js", "text": "value = 2", "rev": 2}}]},
+            "edit_files": {"rev": 3},
             "restore_revision": {"rev": 3}, "query": {"records": [], "total": 0, "seq": 8},
             "batch": {"results": [{"id": "demo", "rev": 4}], "seq": 9}, "read_logs": [{"level": "error", "msg": "Demo"}],
             "list_grants": [{"capability": "net", "status": "requested", "scope": {},
@@ -314,7 +320,7 @@ def tool_success(name):
         self.assertTrue(reply["ok"], reply)
         target = getattr(self.core, TARGETS[name])
         target.assert_called_once()
-        if name in ("spaces_list", "spaces_read_file", "spaces_query", "spaces_write_records",
+        if name in ("spaces_list", "spaces_read_file", "spaces_read_files", "spaces_query", "spaces_write_records",
                     "spaces_revisions", "spaces_refresh", "spaces_schedule_upkeep", "spaces_upkeep", "spaces_inspect"):
             self.assertEqual(reply, {"ok": True, "result": target.return_value})
         elif name == "spaces_read_logs":
