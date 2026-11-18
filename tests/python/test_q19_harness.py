@@ -277,6 +277,29 @@ class Q19CreativeTests(unittest.TestCase):
         self.assertFalse(result["pass"])
         self.assertIn("rss-desk", result["variety_declines"])
 
+    def test_failed_variety_penalty_does_not_depend_on_min_reviewers(self):
+        # Same complete three-reviewer input must get the same verdict whatever completeness threshold is satisfied.
+        base = dict.fromkeys(q19.CREATIVE_DIMENSIONS, 3)
+        cand = {**base, "distinctiveness": 4, "craft": 4}
+        three = ("A", "B", "C")
+        failed = [next(b["blind_id"] for b in self.plan["builds"]
+                       if b["condition"] == "candidate" and b["brief"] == "rss-desk")]
+        verdicts = {m: self.gate(base, cand, scores=self.scores(base, cand, generic=(True, False), reviewers=three),
+                                 variety=self.variety(3, 3, reviewers=three), failed=failed, min_reviewers=m)
+                    for m in (2, 3)}
+        self.assertEqual(verdicts[2]["pass"], verdicts[3]["pass"])
+        self.assertEqual(verdicts[2]["variety_declines"], verdicts[3]["variety_declines"])
+
+    def test_failed_artifacts_are_scored_without_reviewer_rows(self):
+        # CREATIVE.md scores a failed build deterministically (1 everywhere, generic); reviewers are not asked to
+        # judge it, so missing real rows for a failed artifact do not make the review incomplete. Real builds still do.
+        base = dict.fromkeys(q19.CREATIVE_DIMENSIONS, 3)
+        cand = {**base, "distinctiveness": 4, "craft": 4}
+        bid = next(b["blind_id"] for b in self.plan["builds"] if b["condition"] == "candidate")
+        rows = [r for r in self.scores(base, cand, generic=(True, False)) if not r["artifact"].startswith(bid + ":")]
+        self.assertEqual(self.gate(base, cand, scores=rows, failed=[bid])["incomplete"], [])
+        self.assertTrue(self.gate(base, cand, scores=rows)["incomplete"])
+
     def test_duplicate_reviewer_rows_are_refused(self):
         base = dict.fromkeys(q19.CREATIVE_DIMENSIONS, 3)
         cand = {**base, "distinctiveness": 4, "craft": 4}

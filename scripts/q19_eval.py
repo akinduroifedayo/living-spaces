@@ -334,12 +334,14 @@ def creative_gate(scores, variety, sessions, frozen, failed=(), min_reviewers=2)
             raise ValueError(f"duplicate variety judgment {v['brief']}/{v['condition']}/{v['reviewer']}")
         vcount.setdefault((v["brief"], v["condition"]), set()).add(v["reviewer"])
     incomplete_variety = sorted(g for g in groups if len(vcount.get(g, ())) < min_reviewers)
-    # CREATIVE.md: each failed build contributes variety 1 to its group, weighted like one build seen by every reviewer.
+    # CREATIVE.md: each failed build contributes variety 1 to its group. It is weighted like one more judgment from
+    # each reviewer who actually judged that group, so the penalty depends on real judgments, never on min_reviewers.
     variety = list(variety)
     for build in frozen["builds"]:
         if build["blind_id"] in failed:
-            variety += [{"brief": build["brief"], "condition": build["condition"], "reviewer": f"failed-{build['blind_id']}-{r}",
-                         "variety": 1} for r in range(min_reviewers)]
+            group = (build["brief"], build["condition"])
+            variety += [{"brief": group[0], "condition": group[1], "reviewer": f"failed-{build['blind_id']}-{r}",
+                         "variety": 1} for r in sorted(vcount.get(group, ()))]
     rows = [{**row, "brief": expected[row["artifact"]][0], "condition": expected[row["artifact"]][1]} for row in rows]
     median = lambda subset, key: statistics.median([r[key] for r in subset])
     by = lambda data, **match: [r for r in data if all(r[k] == v for k, v in match.items())]
