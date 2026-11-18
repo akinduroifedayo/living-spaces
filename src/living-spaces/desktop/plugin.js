@@ -440,7 +440,7 @@ function SpacesIndex({ ctx, scopeKey = null }) {
 }
 
 // src/desktop/ui/space.jsx
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery5 } from "@hermes/plugin-sdk";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery5, useQueryClient } from "@hermes/plugin-sdk";
 import { useEffect as useEffect3, useLayoutEffect, useMemo, useRef as useRef5, useState as useState6 } from "react";
 
 // src/desktop/ui/history.jsx
@@ -1902,6 +1902,7 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
 function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const { connectionId, profile } = useMemo(() => scope || { connectionId: host2.state.connectionId.get(), profile: host2.state.profile.get() }, [scope, ctx, scopeKey, sid]);
   const base = spacePath(sid);
+  const queryClient = useQueryClient();
   const detail = useQuery5({ queryKey: ["living-spaces", scopeKey, sid, "detail"], queryFn: () => ctx.rest(base), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "dataUpdatedAt"] });
   const space = detail.data;
   const [frame, headerMode] = useHeaderMode(!!space);
@@ -2105,7 +2106,10 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
     } };
   };
   const openSheet = (kind, tab) => setSheet({ kind, tab, returnFocus: opener() });
-  const openHistory = (tab) => openSheet("history", tab || "runs");
+  const openHistory = (tab) => {
+    detail.refetch();
+    openSheet("history", tab || "runs");
+  };
   const askConfirmation = (kind) => {
     confirmationTrigger.current = opener();
     setConfirmation(kind);
@@ -2234,6 +2238,8 @@ Logged to this Space only. Common credential values redacted.` }),
     confirmation && /* @__PURE__ */ jsx6(DecisionDialog, { returnFocus: confirmationTrigger.current, danger: true, title: confirmation === "delete" ? `Delete ${space.name}?` : `Archive ${space.name}?`, description: confirmation === "delete" ? "Delete removes this Space, all its records and revisions permanently and stops future upkeep. Already-running work may finish. Exported copies aren't recalled." : "Archiving pauses future upkeep. Already-running work may finish. Your records and revisions are kept. Restoring this Space does not resume upkeep.", confirmLabel: confirmation === "delete" ? "Delete Space" : "Archive Space", onClose: () => setConfirmation(null), onConfirm: async () => {
       if (confirmation === "delete") {
         await ctx.rest(`${base}?confirm=${encodeURIComponent(sid)}`, { method: "DELETE" });
+        queryClient.setQueryData(["living-spaces", scopeKey, "spaces"], (list) => list?.spaces ? { ...list, spaces: list.spaces.filter((row) => row.id !== sid) } : list);
+        queryClient.invalidateQueries({ queryKey: ["living-spaces", scopeKey, "spaces"] });
         host2.navigate("/spaces");
       } else {
         await ctx.rest(`${base}/archive`, { method: "POST" });

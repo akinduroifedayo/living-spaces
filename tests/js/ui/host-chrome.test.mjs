@@ -671,3 +671,31 @@ for (const mode of ['unchanged', 'replacement', 'revocation', 'closed']) {
     } finally { pending.resolve({ status: 'succeeded', changed: {} }); if (!unmounted) await cleanup() }
   })
 }
+
+test('deleting a Space drops it from the cached Spaces list before returning to the index', async () => {
+  setup(); data.detail = space({ status: 'archived' }); sdk.queryClientCalls.length = 0
+  const calls = [], routes = [], originalNavigate = sdk.host.navigate
+  sdk.host.navigate = route => routes.push(route)
+  const ctx = { rest: async (path, request) => { calls.push({ path, method: request?.method }); return path.endsWith('/sessions') ? { session: 'demo', head_rev: 2, grants: [] } : {} } }
+  try {
+    await render(SpaceView, { ctx, sid: 'demo-space' })
+    await click('Delete…'); await click('Delete Space')
+    assert.ok(calls.some(call => call.method === 'DELETE' && call.path.startsWith('/spaces/demo-space?confirm=')))
+    const update = sdk.queryClientCalls.find(call => call.setQueryData)
+    assert.deepEqual(update.setQueryData, ['living-spaces', null, 'spaces'])
+    assert.deepEqual(update.update({ spaces: [{ id: 'demo-space' }, { id: 'kept' }] }), { spaces: [{ id: 'kept' }] })
+    assert.ok(sdk.queryClientCalls.some(call => JSON.stringify(call.invalidateQueries) === JSON.stringify(['living-spaces', null, 'spaces'])))
+    assert.deepEqual(routes, ['/spaces'])
+  } finally { await cleanup(); sdk.host.navigate = originalNavigate }
+})
+
+test('opening History refetches Space detail so storage counts are current', async () => {
+  setup(); data.detail = space()
+  const ctx = { rest: async path => path.endsWith('/sessions') ? { session: 'demo', head_rev: 2, grants: [] } : path.endsWith('/bundle') ? { rev: 2 } : [] }
+  try {
+    await render(SpaceView, { ctx, sid: 'demo-space' })
+    refetches.length = 0
+    await click('History')
+    assert.ok(refetches.includes('detail'), 'History opened without refreshing Space detail')
+  } finally { await cleanup() }
+})

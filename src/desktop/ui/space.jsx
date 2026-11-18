@@ -1,4 +1,4 @@
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState, Skeleton, host, useQuery } from '@hermes/plugin-sdk'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState, Skeleton, host, useQuery, useQueryClient } from '@hermes/plugin-sdk'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Action, Banner, CopyPrompt, DecisionDialog, Drawer, Icon, OwnerChip, SpaceTile, StatusPill, Freshness, DisabledReason, absolute } from './components.jsx'
 import { HistorySheet, StorageNotice } from './history.jsx'
@@ -43,6 +43,7 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
 export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const { connectionId, profile } = useMemo(() => scope || { connectionId: host.state.connectionId.get(), profile: host.state.profile.get() }, [scope, ctx, scopeKey, sid])
   const base = spacePath(sid)
+  const queryClient = useQueryClient()
   const detail = useQuery({ queryKey: ['living-spaces', scopeKey, sid, 'detail'], queryFn: () => ctx.rest(base), refetchInterval: 2000, notifyOnChangeProps: ['data', 'error', 'dataUpdatedAt'] })
   const space = detail.data
   const [frame, headerMode] = useHeaderMode(!!space)
@@ -215,7 +216,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
     } }
   }
   const openSheet = (kind, tab) => setSheet({ kind, tab, returnFocus: opener() })
-  const openHistory = tab => openSheet('history', tab || 'runs')
+  const openHistory = tab => { detail.refetch(); openSheet('history', tab || 'runs') }
   const askConfirmation = kind => { confirmationTrigger.current = opener(); setConfirmation(kind) }
   const crashMessage = diagnosticText(crash || space.attention?.message || 'The guest reported a fatal error.')
   return <div ref={frame} className="ls-frame" data-header-mode={headerMode} data-testid="space-view"><header className="ls-framebar"><Action icon="chevron-left" onClick={() => host.navigate('/spaces')}>Spaces</Action><div className="ls-identity"><SpaceTile space={space} small /><div><div className="ls-name-row"><h1>{space.name}</h1><span>Host <StatusPill status={dimensions.host === 'available' ? 'ready' : dimensions.host} /></span>{!['ready', dimensions.host].includes(status) && <StatusPill status={status} />}</div><div className="ls-frame-meta"><OwnerChip owner={space.owner} /><span> · <Freshness facts={headerFacts(space)} /></span></div></div></div>
@@ -245,6 +246,6 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
     {sheet?.kind === 'history' && <HistorySheet returnFocus={sheet.returnFocus} ctx={ctx} scopeKey={scopeKey} space={space} initialTab={sheet.tab} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
     {sheet?.kind === 'upkeep' && <UpkeepSheet returnFocus={sheet.returnFocus} ctx={ctx} scopeKey={scopeKey} space={space} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
     {sheet?.kind === 'compare' && write && <Drawer returnFocus={sheet.returnFocus} title="Compare record changes" description="Your submitted change and the latest stored record" onClose={() => setSheet(null)}><div className="ls-compare"><h2>Your change</h2><pre className="ls-diagnostic">{JSON.stringify(write.args, null, 2)}</pre><h2>Updated record</h2><pre className="ls-diagnostic">{JSON.stringify(write.reply?.error?.current, null, 2)}</pre></div></Drawer>}
-    {confirmation && <DecisionDialog returnFocus={confirmationTrigger.current} danger title={confirmation === 'delete' ? `Delete ${space.name}?` : `Archive ${space.name}?`} description={confirmation === 'delete' ? "Delete removes this Space, all its records and revisions permanently and stops future upkeep. Already-running work may finish. Exported copies aren't recalled." : 'Archiving pauses future upkeep. Already-running work may finish. Your records and revisions are kept. Restoring this Space does not resume upkeep.'} confirmLabel={confirmation === 'delete' ? 'Delete Space' : 'Archive Space'} onClose={() => setConfirmation(null)} onConfirm={async () => { if (confirmation === 'delete') { await ctx.rest(`${base}?confirm=${encodeURIComponent(sid)}`, { method: 'DELETE' }); host.navigate('/spaces') } else { await ctx.rest(`${base}/archive`, { method: 'POST' }); await detail.refetch() } }} />}
+    {confirmation && <DecisionDialog returnFocus={confirmationTrigger.current} danger title={confirmation === 'delete' ? `Delete ${space.name}?` : `Archive ${space.name}?`} description={confirmation === 'delete' ? "Delete removes this Space, all its records and revisions permanently and stops future upkeep. Already-running work may finish. Exported copies aren't recalled." : 'Archiving pauses future upkeep. Already-running work may finish. Your records and revisions are kept. Restoring this Space does not resume upkeep.'} confirmLabel={confirmation === 'delete' ? 'Delete Space' : 'Archive Space'} onClose={() => setConfirmation(null)} onConfirm={async () => { if (confirmation === 'delete') { await ctx.rest(`${base}?confirm=${encodeURIComponent(sid)}`, { method: 'DELETE' }); queryClient.setQueryData(['living-spaces', scopeKey, 'spaces'], list => list?.spaces ? { ...list, spaces: list.spaces.filter(row => row.id !== sid) } : list); queryClient.invalidateQueries({ queryKey: ['living-spaces', scopeKey, 'spaces'] }); host.navigate('/spaces') } else { await ctx.rest(`${base}/archive`, { method: 'POST' }); await detail.refetch() } }} />}
   </div>
 }
