@@ -1,0 +1,21 @@
+{
+  "about": "Which Desktop journeys a change can affect. tools/verify-desktop/affected.py reads this; DESKTOP.md explains it.",
+  "prerequisites": {
+    "paths": ["tools/verify-desktop/", "src/living-spaces/plugin.yaml", "src/living-spaces/__init__.py", "src/desktop/plugin.src.js"],
+    "why": "The driver, its fixture, plugin registration or Desktop loading changed: re-drive every journey."
+  },
+  "journeys": {
+    "note-save-reopen": {
+      "status": "driven",
+      "command": "drive.py --out <new dir>",
+      "proves": "In a real isolated Desktop: Spaces opens, a note typed into the synthetic notebook saves, shows, survives leave and reopen, and matches the plugin SQLite store.",
+      "paths": ["src/desktop/ui/index.jsx", "src/desktop/ui/space.jsx", "src/desktop/ui/", "src/guest/", "src/living-spaces/guest/",
+                "src/living-spaces/desktop/", "src/living-spaces/desktop_rpc.py", "src/living-spaces/living_spaces_core/"]
+    },
+    "chat-build-and-refresh": {
+      "status": "not driven by this tool",
+      "proves": "Building a Space in a normal chat and Refresh/upkeep need a model route. The driver switches the host's free-tier guest off, so these journeys stay outside it until a separately approved model route exists.",
+      "paths": ["src/living-spaces/skills/", "src/living-spaces/living_spaces_core/upkeep", "src/desktop/ui/upkeep.jsx"]
+    }
+  }
+}
