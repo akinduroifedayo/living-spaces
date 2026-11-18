@@ -306,14 +306,15 @@ const harness = async plan => {
   const v8 = await import('node:v8'), vm = await import('node:vm')
   v8.setFlagsFromString('--expose_gc')
   const gc = vm.runInNewContext('gc')
-  const requests = [], heldReplies = []
+  const requests = [], heldReplies = [], heldArgs = []
   let bridge, last = null
   const rest = async (path, request = {}) => {
     if (path.endsWith('/sessions')) return { session: 'demo-session', head_rev: 1, grants: ['data'] }
     if (path.endsWith('/bundle')) return { rev: 1 }
     if (request.method === 'DELETE') return { closed: true }
     const body = request.body
-    requests.push({ op: body.op, request_id: body.op === 'outcome.get' ? body.args.request_id : body.request_id, args: body.args })
+    requests.push({ op: body.op, request_id: body.op === 'outcome.get' ? body.args.request_id : body.request_id })
+    if (body.args && typeof body.args === 'object') heldArgs.push(new WeakRef(body.args))
     const reply = await plan(body, requests.length)
     if (reply && typeof reply === 'object') heldReplies.push(new WeakRef(reply))
     return reply
@@ -322,7 +323,7 @@ const harness = async plan => {
     onEvent() {}, onWrite: w => { if (w) last = w } })
   await session.ready
   const collect = async () => { for (let i = 0; i < 3; i++) { await new Promise(r => setTimeout(r, 0)); gc() } }
-  return { session, requests, heldReplies, collect, put: args => bridge.call('data.put', args), last: () => last, clear: () => { last = null } }
+  return { session, requests, heldReplies, heldArgs, collect, put: args => bridge.call('data.put', args), last: () => last, clear: () => { last = null } }
 }
 
 test('settled and dismissed writes are not retained by the session', async () => {
@@ -341,6 +342,7 @@ test('settled and dismissed writes are not retained by the session', async () =>
     h.clear()
     await h.collect()
     assert.ok(h.heldReplies.filter(ref => ref.deref()).length <= 1, 'settled or dismissed write replies must be collectable')
+    assert.ok(h.heldArgs.filter(ref => ref.deref()).length <= 1, 'settled or dismissed write payloads must be collectable')
   } finally { await h.session.destroy() }
 })
 
