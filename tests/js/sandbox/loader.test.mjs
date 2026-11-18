@@ -232,6 +232,51 @@ test('throttled batches are resent with their entries, lifecycle and fault count
   assert.equal(f.messages.length, sent, 'an acknowledged retry is not resent')
 })
 
+test('a throttled first batch resends its unacknowledged lifecycle and entries', async () => {
+  const f = loaderFixture()
+  await tick()
+  f.timers[0].fn()
+  const first = f.messages.at(-1)
+  assert.equal(first.args.lifecycle, 'failed')
+  reply(f, first, { stored: 0, throttled: true })
+  await tick()
+  f.timers[0].fn()
+  const retry = f.messages.at(-1)
+  assert.notEqual(retry.id, first.id)
+  assert.equal(retry.args.lifecycle, 'failed')
+  assert.deepEqual(retry.args.entries, first.args.entries)
+  assert.equal(retry.args.dropped, 0)
+  reply(f, retry, { stored: retry.args.entries.length })
+  await tick()
+  const sent = f.messages.length
+  f.timers[0].fn()
+  assert.equal(f.messages.length, sent, 'an acknowledged lifecycle is not resent')
+})
+
+test('repeated throttling of an overflowing batch never requeues the marker or inflates the drop count', async () => {
+  const f = loaderFixture()
+  await tick()
+  f.timers[0].fn()
+  reply(f, f.messages.at(-1), { stored: f.messages.at(-1).args.entries.length })
+  await tick()
+  vm.runInContext('for (let i = 0; i < 60; i++) console.log("n", i)', f.context)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    f.timers[0].fn()
+    const batch = f.messages.at(-1)
+    assert.equal(batch.args.entries.length, 50)
+    assert.equal(batch.args.entries.filter(entry => entry.msg.startsWith('Space log overflow')).length, 1)
+    assert.equal(batch.args.entries.at(-1).msg, 'Space log overflow: dropped 11 entries')
+    assert.equal(batch.args.entries[0].msg, 'n 0')
+    assert.equal(batch.args.dropped, 11)
+    if (attempt < 2) reply(f, batch, { stored: 0, throttled: true })
+    else reply(f, batch, { stored: batch.args.entries.length })
+    await tick()
+  }
+  const sent = f.messages.length
+  f.timers[0].fn()
+  assert.equal(f.messages.length, sent)
+})
+
 test('requeued throttled entries stay within the fifty-entry queue and count only real drops', async () => {
   const f = loaderFixture()
   await tick()
