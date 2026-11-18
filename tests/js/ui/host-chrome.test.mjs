@@ -672,30 +672,74 @@ for (const mode of ['unchanged', 'replacement', 'revocation', 'closed']) {
   })
 }
 
-test('deleting a Space drops it from the cached Spaces list before returning to the index', async () => {
-  setup(); data.detail = space({ status: 'archived' }); sdk.queryClientCalls.length = 0
-  const calls = [], routes = [], originalNavigate = sdk.host.navigate
-  sdk.host.navigate = route => routes.push(route)
-  const ctx = { rest: async (path, request) => { calls.push({ path, method: request?.method }); return path.endsWith('/sessions') ? { session: 'demo', head_rev: 2, grants: [] } : {} } }
-  try {
-    await render(SpaceView, { ctx, sid: 'demo-space' })
+async function withRealQueries(run) {
+  const { QueryClient, QueryClientProvider, useQuery, useQueryClient } = require('@tanstack/react-query')
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const original = { useQuery: sdk.useQuery, useQueryClient: sdk.useQueryClient, navigate: sdk.host.navigate }
+  const routes = []
+  sdk.useQuery = useQuery; sdk.useQueryClient = useQueryClient; sdk.host.navigate = route => routes.push(route)
+  const mount = (component, props) => render(QueryClientProvider, { client, children: React.createElement(component, props) })
+  try { await run({ client, mount, routes }) } finally { await cleanup(); client.clear(); Object.assign(sdk, { useQuery: original.useQuery, useQueryClient: original.useQueryClient }); sdk.host.navigate = original.navigate }
+}
+const settle = ms => act(async () => new Promise(resolve => setTimeout(resolve, ms)))
+const sessionReply = path => path.endsWith('/sessions') ? { session: 'demo', head_rev: 2, grants: [] } : path.endsWith('/bundle') ? { rev: 2 } : null
+
+for (const scopeKey of [null, 'profile-a']) {
+  test(`deleting a Space removes it from the Spaces list even when an older list request settles later (scope ${scopeKey})`, async () => {
+    setup()
+    await withRealQueries(async ({ client, mount, routes }) => {
+      const listKey = ['living-spaces', scopeKey, 'spaces']
+      const before = { spaces: [space({ status: 'archived' }), space({ id: 'kept', name: 'Kept' })] }
+      client.setQueryData(listKey, before)
+      let releaseOld
+      client.fetchQuery({ queryKey: listKey, queryFn: () => new Promise(resolve => { releaseOld = () => resolve(before) }), staleTime: 0 }).catch(() => {})
+      const deleted = []
+      const ctx = { rest: async (path, request) => {
+        if (request?.method === 'DELETE') { deleted.push(path); return {} }
+        return sessionReply(path) || (path === '/spaces/demo-space' ? space({ status: 'archived' }) : {})
+      } }
+      await mount(SpaceView, { ctx, sid: 'demo-space', scopeKey })
+      await settle(20)
+      await click('Delete…'); await click('Delete Space')
+      await settle(10)
+      releaseOld()
+      await settle(20)
+      assert.equal(deleted.length, 1)
+      assert.deepEqual(routes, ['/spaces'])
+      assert.deepEqual(client.getQueryData(listKey).spaces.map(row => row.id), ['kept'], 'a pre-delete list response resurrected the deleted Space')
+    })
+  })
+}
+
+test('a failed delete leaves the Spaces list and the route unchanged', async () => {
+  setup()
+  await withRealQueries(async ({ client, mount, routes }) => {
+    const listKey = ['living-spaces', null, 'spaces']
+    client.setQueryData(listKey, { spaces: [space({ status: 'archived' })] })
+    const ctx = { rest: async (path, request) => {
+      if (request?.method === 'DELETE') throw { error: { code: 'conflict', message: 'Synthetic delete refusal' } }
+      return sessionReply(path) || (path === '/spaces/demo-space' ? space({ status: 'archived' }) : {})
+    } }
+    await mount(SpaceView, { ctx, sid: 'demo-space' })
+    await settle(20)
     await click('Delete…'); await click('Delete Space')
-    assert.ok(calls.some(call => call.method === 'DELETE' && call.path.startsWith('/spaces/demo-space?confirm=')))
-    const update = sdk.queryClientCalls.find(call => call.setQueryData)
-    assert.deepEqual(update.setQueryData, ['living-spaces', null, 'spaces'])
-    assert.deepEqual(update.update({ spaces: [{ id: 'demo-space' }, { id: 'kept' }] }), { spaces: [{ id: 'kept' }] })
-    assert.ok(sdk.queryClientCalls.some(call => JSON.stringify(call.invalidateQueries) === JSON.stringify(['living-spaces', null, 'spaces'])))
-    assert.deepEqual(routes, ['/spaces'])
-  } finally { await cleanup(); sdk.host.navigate = originalNavigate }
+    await settle(20)
+    assert.deepEqual(routes, [])
+    assert.deepEqual(client.getQueryData(listKey).spaces.map(row => row.id), ['demo-space'])
+  })
 })
 
-test('opening History refetches Space detail so storage counts are current', async () => {
-  setup(); data.detail = space()
-  const ctx = { rest: async path => path.endsWith('/sessions') ? { session: 'demo', head_rev: 2, grants: [] } : path.endsWith('/bundle') ? { rev: 2 } : [] }
-  try {
-    await render(SpaceView, { ctx, sid: 'demo-space' })
-    refetches.length = 0
+test('opening History shows the current stored record count, not the cached one', async () => {
+  setup()
+  await withRealQueries(async ({ client, mount }) => {
+    const storage = count => ({ categories: { records: { count, bytes: count * 34 } }, limits: [], warnings: [] })
+    let stored = 1
+    const ctx = { rest: async path => sessionReply(path) || (path === '/spaces/demo-space' ? space({ storage: storage(stored) }) : []) }
+    await mount(SpaceView, { ctx, sid: 'demo-space' })
+    await settle(20)
+    stored = 2   // a note saved inside the canvas; the 2 s detail poll has not run yet
     await click('History')
-    assert.ok(refetches.includes('detail'), 'History opened without refreshing Space detail')
-  } finally { await cleanup() }
+    await settle(50)
+    assert.match(document.querySelector('section[aria-label="Storage"]').textContent, /records: 2 · 68 bytes/)
+  })
 })

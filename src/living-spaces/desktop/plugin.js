@@ -2238,6 +2238,7 @@ Logged to this Space only. Common credential values redacted.` }),
     confirmation && /* @__PURE__ */ jsx6(DecisionDialog, { returnFocus: confirmationTrigger.current, danger: true, title: confirmation === "delete" ? `Delete ${space.name}?` : `Archive ${space.name}?`, description: confirmation === "delete" ? "Delete removes this Space, all its records and revisions permanently and stops future upkeep. Already-running work may finish. Exported copies aren't recalled." : "Archiving pauses future upkeep. Already-running work may finish. Your records and revisions are kept. Restoring this Space does not resume upkeep.", confirmLabel: confirmation === "delete" ? "Delete Space" : "Archive Space", onClose: () => setConfirmation(null), onConfirm: async () => {
       if (confirmation === "delete") {
         await ctx.rest(`${base}?confirm=${encodeURIComponent(sid)}`, { method: "DELETE" });
+        await queryClient.cancelQueries({ queryKey: ["living-spaces", scopeKey, "spaces"] });
         queryClient.setQueryData(["living-spaces", scopeKey, "spaces"], (list) => list?.spaces ? { ...list, spaces: list.spaces.filter((row) => row.id !== sid) } : list);
         queryClient.invalidateQueries({ queryKey: ["living-spaces", scopeKey, "spaces"] });
         host2.navigate("/spaces");
