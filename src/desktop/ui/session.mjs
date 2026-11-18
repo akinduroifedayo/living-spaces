@@ -110,6 +110,9 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     const status = certainty === 'unknown' || (lookup && !saved) ? 'unknown' : saved ? 'saved' : certainty !== 'busy' && reply?.error?.code === 'conflict' ? 'conflict' : 'failed'
     attempt.unknown = status === 'unknown'
     if (saved) attempt.confirmed = reply
+    // Only unresolved writes need the token -> latest-attempt lookup that retry uses; a settled attempt stays
+    // reachable through its own event's retry closure, so the session cache does not grow with write history.
+    if (saved && attempts.get(attempt.token) === attempt) attempts.delete(attempt.token)
     const retry = next => {
       if (closed || !active()) return Promise.resolve(invalidSession())
       if (retries.has(attempt.token)) return retries.get(attempt.token)
@@ -201,7 +204,7 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     ready,
     checkAction() { return actions?.check() },
     retryAction() { return actions?.retry() },
-    dismissWrite(token) { failures.delete(token); publish(null) },
+    dismissWrite(token) { failures.delete(token); if (!retries.has(token)) attempts.delete(token); publish(null) },
     postEvent(event, payload) { if (!closed && active()) mounted?.postEvent?.(event, payload) },
     destroy() {
       closed = true

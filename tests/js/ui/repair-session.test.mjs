@@ -301,3 +301,47 @@ for (const failure of ['missing', 'ambiguous', 'unsupported', 'error-result']) {
     assert.equal(f.calls.filter(call => call.method === 'DELETE').length, 0)
   })
 }
+
+test('settled and dismissed writes are released from the session cache; unresolved retry keeps its lookup', async () => {
+  const v8 = await import('node:v8'), vm = await import('node:vm')
+  v8.setFlagsFromString('--expose_gc')
+  const gc = vm.runInNewContext('gc')
+  const replies = [], requests = []
+  let lose = false
+  let last = null
+  const rest = async (path, request = {}) => {
+    if (path.endsWith('/sessions')) return { session: 'demo-session', head_rev: 1, grants: ['data'] }
+    if (path.endsWith('/bundle')) return { rev: 1 }
+    if (request.method === 'DELETE') return { closed: true }
+    const body = request.body
+    requests.push({ op: body.op, request_id: body.op === 'outcome.get' ? body.args.request_id : body.request_id })
+    if (body.op === 'outcome.get') return { ok: false, error: { code: 'ambiguous' }, outcome: { status: 'unknown' } }
+    if (lose) { lose = false; throw new Error('Response lost after commit') }
+    const reply = { ok: true, result: { pad: 'x'.repeat(64 * 1024) } }
+    replies.push(new WeakRef(reply))
+    return reply
+  }
+  let bridge
+  const session = createSpaceSession({ rest, sid: 'demo-space', container: {}, mount: (_, v) => { bridge = v; return { destroy() {} } },
+    onEvent() {}, onWrite: w => { if (w) last = w } })
+  try {
+    await session.ready
+    lose = true
+    await bridge.call('data.put', { collection: 'notes', data: { text: 'uncertain' } })
+    const unknown = last
+    assert.equal(unknown.status, 'unknown')
+    for (let i = 0; i < 100; i++) await bridge.call('data.put', { collection: 'notes', data: { text: `n${i}`, pad: 'y'.repeat(64 * 1024) } })
+    last = null
+    await new Promise(r => setTimeout(r, 0)); gc(); await new Promise(r => setTimeout(r, 0)); gc()
+    assert.ok(replies.filter(ref => ref.deref()).length <= 1, 'settled write responses must not be retained by the session')
+    // The unresolved write still reconciles against its original request, never resending the mutation.
+    const before = requests.filter(r => r.op === 'data.put').length
+    await unknown.retry()
+    assert.equal(requests.at(-1).op, 'outcome.get')
+    assert.equal(requests.at(-1).request_id, requests[0].request_id)
+    assert.equal(requests.filter(r => r.op === 'data.put').length, before)
+    session.dismissWrite(unknown.token)
+    await unknown.retry()
+    assert.equal(requests.at(-1).op, 'outcome.get', 'a held retry closure still reconciles; it never replays after dismissal')
+  } finally { await session.destroy() }
+})
