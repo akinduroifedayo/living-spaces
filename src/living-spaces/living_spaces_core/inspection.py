@@ -1625,6 +1625,9 @@ def _finish(run, adapter, report):
     if report["outcome"] in (None, "timed_out") and readiness["shell_booted"] and not adapter.lifecycle \
             and "reason" not in readiness:
         readiness["reason"] = "lifecycle_not_reported_before_deadline"
+    if report["outcome"] == "timed_out" and not readiness["shell_booted"] and "reason" not in readiness:
+        # The renderer started but never loaded the shell (a slow or stuck browser): say so instead of nothing.
+        readiness["reason"] = "shell_not_booted_before_deadline"
     combined = getattr(run, "prior_entries", []) + run.entries
     report["errors"] = combined[:MAX_ENTRIES]
     dropped = run.dropped + max(0, len(combined) - MAX_ENTRIES)
