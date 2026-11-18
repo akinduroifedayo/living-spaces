@@ -305,9 +305,14 @@ def creative_gate(scores, variety, sessions, frozen, failed=(), min_reviewers=2)
     expected = artifacts(frozen)
     failed = set(failed)
     rows = []
+    seen = set()
     for row in scores:
         if row["artifact"] not in expected:
             raise ValueError(f"unplanned artifact {row['artifact']}")
+        if (row["artifact"], row["reviewer"]) in seen:
+            # One vote per reviewer: a repeated row would otherwise outweigh another reviewer in the generic majority.
+            raise ValueError(f"duplicate judgment {row['artifact']}/{row['reviewer']}")
+        seen.add((row["artifact"], row["reviewer"]))
         if row["artifact"].split(":")[0] in failed:
             continue
         rows.append(row)
@@ -325,8 +330,16 @@ def creative_gate(scores, variety, sessions, frozen, failed=(), min_reviewers=2)
     for v in variety:
         if (v["brief"], v["condition"]) not in groups:
             raise ValueError(f"unplanned variety group {v['brief']}/{v['condition']}")
+        if v["reviewer"] in vcount.get((v["brief"], v["condition"]), ()):
+            raise ValueError(f"duplicate variety judgment {v['brief']}/{v['condition']}/{v['reviewer']}")
         vcount.setdefault((v["brief"], v["condition"]), set()).add(v["reviewer"])
     incomplete_variety = sorted(g for g in groups if len(vcount.get(g, ())) < min_reviewers)
+    # CREATIVE.md: each failed build contributes variety 1 to its group, weighted like one build seen by every reviewer.
+    variety = list(variety)
+    for build in frozen["builds"]:
+        if build["blind_id"] in failed:
+            variety += [{"brief": build["brief"], "condition": build["condition"], "reviewer": f"failed-{build['blind_id']}-{r}",
+                         "variety": 1} for r in range(min_reviewers)]
     rows = [{**row, "brief": expected[row["artifact"]][0], "condition": expected[row["artifact"]][1]} for row in rows]
     median = lambda subset, key: statistics.median([r[key] for r in subset])
     by = lambda data, **match: [r for r in data if all(r[k] == v for k, v in match.items())]

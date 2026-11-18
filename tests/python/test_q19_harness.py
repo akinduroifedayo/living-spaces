@@ -266,6 +266,30 @@ class Q19CreativeTests(unittest.TestCase):
         self.assertEqual(result["generic_rate"]["candidate"], 1.0)
         self.assertEqual(result["inspected_rate"]["candidate"], 0.0)
 
+    def test_failed_builds_contribute_variety_one(self):
+        # CREATIVE.md: failed builds score 1 on variety too. Two of three candidate builds failing in one brief must
+        # drag that brief's candidate variety below baseline even when surviving judges rate the group highly.
+        base = dict.fromkeys(q19.CREATIVE_DIMENSIONS, 3)
+        cand = {**base, "distinctiveness": 4, "craft": 4}
+        self.assertTrue(self.gate(base, cand)["pass"])
+        ids = [b["blind_id"] for b in self.plan["builds"] if b["condition"] == "candidate" and b["brief"] == "rss-desk"]
+        result = self.gate(base, cand, failed=ids[:2])
+        self.assertFalse(result["pass"])
+        self.assertIn("rss-desk", result["variety_declines"])
+
+    def test_duplicate_reviewer_rows_are_refused(self):
+        base = dict.fromkeys(q19.CREATIVE_DIMENSIONS, 3)
+        cand = {**base, "distinctiveness": 4, "craft": 4}
+        rows = self.scores(base, cand, generic=(True, False))
+        artifact = next(a for a, (_, c) in self.expected.items() if c == "candidate")
+        rows.append(next(r for r in rows if r["artifact"] == artifact and r["reviewer"] == "B"))
+        with self.assertRaises(ValueError):
+            self.gate(base, cand, scores=rows)
+        variety = self.variety(2, 3)
+        variety.append(dict(variety[0]))
+        with self.assertRaises(ValueError):
+            self.gate(base, cand, variety=variety)
+
     def test_absolute_floor_on_coherence_and_craft(self):
         base = dict.fromkeys(q19.CREATIVE_DIMENSIONS, 2)
         weak = {**base, "distinctiveness": 4, "subject_insight": 4}       # beats baseline, still mediocre
