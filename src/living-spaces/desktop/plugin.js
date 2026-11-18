@@ -1630,7 +1630,6 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
   let pendingWrites = 0;
   let editorWrite = null;
   const failures = /* @__PURE__ */ new Map();
-  const attempts = /* @__PURE__ */ new Map();
   const retries = /* @__PURE__ */ new Map();
   const publish = (event) => {
     if (!closed && active()) onWrite(failures.values().next().value || (pendingWrites ? { status: "saving" } : event));
@@ -1732,9 +1731,10 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     const retry = (next) => {
       if (closed || !active()) return Promise.resolve(invalidSession());
       if (retries.has(attempt.token)) return retries.get(attempt.token);
-      const current = attempts.get(attempt.token) || attempt;
+      let current = attempt;
+      while (current.next) current = current.next;
       if (current.confirmed) return Promise.resolve(current.confirmed);
-      const promise = (current.unknown ? reconcile(current) : call(current.op, next || current.args, current.token)).finally(() => retries.delete(attempt.token));
+      const promise = (current.unknown ? reconcile(current) : call(current.op, next || current.args, current.token, void 0, current)).finally(() => retries.delete(attempt.token));
       retries.set(attempt.token, promise);
       return promise;
     };
@@ -1753,7 +1753,7 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     finishWrite(attempt, reply, true);
     return reply;
   };
-  const call = async (op, args, retryToken, editorRequestId) => {
+  const call = async (op, args, retryToken, editorRequestId, supersedes) => {
     if (closed || !active()) return invalidSession();
     if (op === "link.open") return openLink(args);
     if (op === "bot.request") {
@@ -1777,7 +1777,7 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
         if (item?.op === "put") identify(item);
       });
       attempt = { token: retryToken ?? ++nextWrite, op, args: freezeDraft(args), session, request_id: op === "editor.save" ? editorRequestId : requestId(), unknown: false };
-      attempts.set(attempt.token, attempt);
+      if (supersedes) supersedes.next = attempt;
       pendingWrites++;
       publish({ status: "saving", op, args });
     }

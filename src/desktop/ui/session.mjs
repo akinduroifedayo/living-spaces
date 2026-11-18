@@ -32,7 +32,6 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
   let pendingWrites = 0
   let editorWrite = null
   const failures = new Map()
-  const attempts = new Map()
   const retries = new Map()
   const publish = event => { if (!closed && active()) onWrite(failures.values().next().value || (pendingWrites ? { status: 'saving' } : event)) }
   const actions = host ? createBotActions({ host, backend: scope, isActive: () => !closed && active(),
@@ -110,15 +109,13 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     const status = certainty === 'unknown' || (lookup && !saved) ? 'unknown' : saved ? 'saved' : certainty !== 'busy' && reply?.error?.code === 'conflict' ? 'conflict' : 'failed'
     attempt.unknown = status === 'unknown'
     if (saved) attempt.confirmed = reply
-    // Only unresolved writes need the token -> latest-attempt lookup that retry uses; a settled attempt stays
-    // reachable through its own event's retry closure, so the session cache does not grow with write history.
-    if (saved && attempts.get(attempt.token) === attempt) attempts.delete(attempt.token)
     const retry = next => {
       if (closed || !active()) return Promise.resolve(invalidSession())
       if (retries.has(attempt.token)) return retries.get(attempt.token)
-      const current = attempts.get(attempt.token) || attempt
+      let current = attempt
+      while (current.next) current = current.next   // latest attempt for this token, as the old token map gave
       if (current.confirmed) return Promise.resolve(current.confirmed)
-      const promise = (current.unknown ? reconcile(current) : call(current.op, next || current.args, current.token))
+      const promise = (current.unknown ? reconcile(current) : call(current.op, next || current.args, current.token, undefined, current))
         .finally(() => retries.delete(attempt.token))
       retries.set(attempt.token, promise)
       return promise
@@ -138,7 +135,7 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     finishWrite(attempt, reply, true)
     return reply
   }
-  const call = async (op, args, retryToken, editorRequestId) => {
+  const call = async (op, args, retryToken, editorRequestId, supersedes) => {
     if (closed || !active()) return invalidSession()
     if (op === 'link.open') return openLink(args)
     if (op === 'bot.request') {
@@ -160,7 +157,9 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
       if (retryToken == null && op === 'data.put') identify(args)
       if (retryToken == null && op === 'data.batch' && Array.isArray(args.ops)) args.ops.forEach(item => { if (item?.op === 'put') identify(item) })
       attempt = { token: retryToken ?? ++nextWrite, op, args: freezeDraft(args), session, request_id: op === 'editor.save' ? editorRequestId : requestId(), unknown: false }
-      attempts.set(attempt.token, attempt)
+      // Superseded attempts point forward to their replacement, so a held retry closure still resolves the latest
+      // attempt. No session-wide map: an attempt (cloned args and reply) lives only while some event closure holds it.
+      if (supersedes) supersedes.next = attempt
       pendingWrites++
       publish({ status: 'saving', op, args })
     }
@@ -204,7 +203,7 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     ready,
     checkAction() { return actions?.check() },
     retryAction() { return actions?.retry() },
-    dismissWrite(token) { failures.delete(token); if (!retries.has(token)) attempts.delete(token); publish(null) },
+    dismissWrite(token) { failures.delete(token); publish(null) },
     postEvent(event, payload) { if (!closed && active()) mounted?.postEvent?.(event, payload) },
     destroy() {
       closed = true
