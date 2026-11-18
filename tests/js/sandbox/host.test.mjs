@@ -452,6 +452,17 @@ test('host forwards lifecycle and loss metadata and explicitly acknowledges thro
   } finally { f.cleanup() }
 })
 
+test('a throttled batch is not reported as log overflow', async () => {
+  const f = fixture(async (op, args) => ({ ok: true, result: { stored: args.entries.length } }))
+  try {
+    f.frame.peer.postMessage(request({ id: 93, op: 'log', args: { entries: [{ level: 'log', msg: 'first' }] } }))
+    f.frame.peer.postMessage(request({ id: 94, op: 'log', args: { entries: [{ level: 'error', msg: 'fault' }], faults: 1 } }))
+    await until(() => f.replies.length === 2)
+    assert.deepEqual(f.replies.find(reply => reply.id === 94).result, { stored: 0, throttled: true })
+    assert.equal(f.events.filter(e => e.kind === 'log-overflow').length, 0)
+  } finally { f.cleanup() }
+})
+
 test('host turns a rising guest fault count into one typed event and never forwards it', async () => {
   const f = fixture(async (op, args) => ({ ok: true, result: { stored: args.entries.length } }))
   try {

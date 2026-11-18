@@ -214,7 +214,13 @@ export function spaceLoader(resolver) {
     if (faults !== reportedFaults) args.faults = faults
     logInFlight = true
     send('log', args).then(result => {
-      if (result.throttled || (result.stored === 0 && entries.length)) {
+      if (result.throttled) {
+        // Throttling is backpressure, not loss: resend these entries first; anything past the queue bound is a real drop.
+        logQueue.unshift(...entries.slice(0, originals))
+        if (logQueue.length > 50) { dropped += logQueue.length - 50; logQueue.length = 50 }
+        return
+      }
+      if (result.stored === 0 && entries.length) {
         dropped += originals
         return
       }

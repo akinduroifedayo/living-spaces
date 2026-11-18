@@ -1541,7 +1541,6 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
       if (args.entries.some((entry) => entry.level === "warn" && entry.msg.startsWith("Space log overflow:"))) overflow();
       const now = performance.now();
       if (now - lastLog < 500) {
-        overflow();
         reply({ ok: true, result: { stored: 0, throttled: true } });
         return;
       }
