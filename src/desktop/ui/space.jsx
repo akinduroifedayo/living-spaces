@@ -192,11 +192,17 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
       if (refreshLock.current === request) { refreshLock.current = null; setRefreshPending(false) }
     }
   }
+  const listKey = ['living-spaces', scopeKey, 'spaces']
+  async function syncList(fresh) {
+    await queryClient.cancelQueries({ queryKey: listKey })
+    if (fresh) queryClient.setQueryData(listKey, list => list?.spaces ? { ...list, spaces: list.spaces.map(row => row.id === sid ? Object.fromEntries(Object.keys(row).map(key => [key, key in fresh ? fresh[key] : row[key]])) : row) } : list)
+    queryClient.invalidateQueries({ queryKey: listKey })
+  }
   async function act(path, body) {
     if (actionLock.current) return
     actionLock.current = true
     setActionError('')
-    try { await ctx.rest(`${base}/${path}`, { method: 'POST', ...(body ? { body } : {}) }); await detail.refetch() }
+    try { await ctx.rest(`${base}/${path}`, { method: 'POST', ...(body ? { body } : {}) }); await syncList((await detail.refetch()).data) }
     catch (e) { setActionError(errorText(e)) }
     finally { actionLock.current = false }
   }
@@ -246,6 +252,6 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
     {sheet?.kind === 'history' && <HistorySheet returnFocus={sheet.returnFocus} ctx={ctx} scopeKey={scopeKey} space={space} initialTab={sheet.tab} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
     {sheet?.kind === 'upkeep' && <UpkeepSheet returnFocus={sheet.returnFocus} ctx={ctx} scopeKey={scopeKey} space={space} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
     {sheet?.kind === 'compare' && write && <Drawer returnFocus={sheet.returnFocus} title="Compare record changes" description="Your submitted change and the latest stored record" onClose={() => setSheet(null)}><div className="ls-compare"><h2>Your change</h2><pre className="ls-diagnostic">{JSON.stringify(write.args, null, 2)}</pre><h2>Updated record</h2><pre className="ls-diagnostic">{JSON.stringify(write.reply?.error?.current, null, 2)}</pre></div></Drawer>}
-    {confirmation && <DecisionDialog returnFocus={confirmationTrigger.current} danger title={confirmation === 'delete' ? `Delete ${space.name}?` : `Archive ${space.name}?`} description={confirmation === 'delete' ? "Delete removes this Space, all its records and revisions permanently and stops future upkeep. Already-running work may finish. Exported copies aren't recalled." : 'Archiving pauses future upkeep. Already-running work may finish. Your records and revisions are kept. Restoring this Space does not resume upkeep.'} confirmLabel={confirmation === 'delete' ? 'Delete Space' : 'Archive Space'} onClose={() => setConfirmation(null)} onConfirm={async () => { if (confirmation === 'delete') { await ctx.rest(`${base}?confirm=${encodeURIComponent(sid)}`, { method: 'DELETE' }); await queryClient.cancelQueries({ queryKey: ['living-spaces', scopeKey, 'spaces'] }); queryClient.setQueryData(['living-spaces', scopeKey, 'spaces'], list => list?.spaces ? { ...list, spaces: list.spaces.filter(row => row.id !== sid) } : list); queryClient.invalidateQueries({ queryKey: ['living-spaces', scopeKey, 'spaces'] }); host.navigate('/spaces') } else { await ctx.rest(`${base}/archive`, { method: 'POST' }); await detail.refetch() } }} />}
+    {confirmation && <DecisionDialog returnFocus={confirmationTrigger.current} danger title={confirmation === 'delete' ? `Delete ${space.name}?` : `Archive ${space.name}?`} description={confirmation === 'delete' ? "Delete removes this Space, all its records and revisions permanently and stops future upkeep. Already-running work may finish. Exported copies aren't recalled." : 'Archiving pauses future upkeep. Already-running work may finish. Your records and revisions are kept. Restoring this Space does not resume upkeep.'} confirmLabel={confirmation === 'delete' ? 'Delete Space' : 'Archive Space'} onClose={() => setConfirmation(null)} onConfirm={async () => { if (confirmation === 'delete') { await ctx.rest(`${base}?confirm=${encodeURIComponent(sid)}`, { method: 'DELETE' }); await queryClient.cancelQueries({ queryKey: ['living-spaces', scopeKey, 'spaces'] }); queryClient.setQueryData(['living-spaces', scopeKey, 'spaces'], list => list?.spaces ? { ...list, spaces: list.spaces.filter(row => row.id !== sid) } : list); queryClient.invalidateQueries({ queryKey: ['living-spaces', scopeKey, 'spaces'] }); host.navigate('/spaces') } else { await ctx.rest(`${base}/archive`, { method: 'POST' }); await syncList((await detail.refetch()).data) } }} />}
   </div>
 }

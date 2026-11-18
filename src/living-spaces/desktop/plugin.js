@@ -2074,13 +2074,19 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
       }
     }
   }
+  const listKey = ["living-spaces", scopeKey, "spaces"];
+  async function syncList(fresh) {
+    await queryClient.cancelQueries({ queryKey: listKey });
+    if (fresh) queryClient.setQueryData(listKey, (list) => list?.spaces ? { ...list, spaces: list.spaces.map((row) => row.id === sid ? Object.fromEntries(Object.keys(row).map((key) => [key, key in fresh ? fresh[key] : row[key]])) : row) } : list);
+    queryClient.invalidateQueries({ queryKey: listKey });
+  }
   async function act(path, body) {
     if (actionLock.current) return;
     actionLock.current = true;
     setActionError("");
     try {
       await ctx.rest(`${base}/${path}`, { method: "POST", ...body ? { body } : {} });
-      await detail.refetch();
+      await syncList((await detail.refetch()).data);
     } catch (e) {
       setActionError(errorText(e));
     } finally {
@@ -2244,7 +2250,7 @@ Logged to this Space only. Common credential values redacted.` }),
         host2.navigate("/spaces");
       } else {
         await ctx.rest(`${base}/archive`, { method: "POST" });
-        await detail.refetch();
+        await syncList((await detail.refetch()).data);
       }
     } })
   ] });

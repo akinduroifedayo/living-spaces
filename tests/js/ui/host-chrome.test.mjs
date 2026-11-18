@@ -743,3 +743,40 @@ test('opening History shows the current stored record count, not the cached one'
     assert.match(document.querySelector('section[aria-label="Storage"]').textContent, /records: 2 · 68 bytes/)
   })
 })
+
+for (const [label, before, after, run] of [
+  ['pin', { pinned: false }, { pinned: true }, async () => { await click('Pin Space') }],
+  ['restore', { status: 'archived' }, { status: 'active' }, async () => { await click('Restore Space') }],
+  ['archive', { status: 'active' }, { status: 'archived' }, async () => { await click('Archive Space…'); await click('Archive Space') }]
+]) {
+  test(`${label} updates the cached Spaces list row, even when an older list request settles later`, async () => {
+    setup()
+    const menu = { content: sdk.DropdownMenuContent, item: sdk.DropdownMenuItem }
+    sdk.DropdownMenuContent = ({ children }) => React.createElement('div', null, children)
+    sdk.DropdownMenuItem = ({ children, onSelect }) => React.createElement('button', { type: 'button', onClick: onSelect }, children)
+    try {
+    await withRealQueries(async ({ client, mount }) => {
+      const listKey = ['living-spaces', null, 'spaces']
+      const row = state => ({ ...space(state), status: state.status || 'active', pinned: !!state.pinned })
+      const stale = { spaces: [row(before), { ...space(), id: 'kept', name: 'Kept' }] }
+      client.setQueryData(listKey, stale)
+      let releaseOld
+      client.fetchQuery({ queryKey: listKey, queryFn: () => new Promise(resolve => { releaseOld = () => resolve(stale) }), staleTime: 0 }).catch(() => {})
+      let current = row(before)
+      const ctx = { rest: async (path, request) => {
+        if (request?.method === 'POST' && /\/(pin|archive|unarchive)$/.test(path)) { current = row(after); return {} }
+        return sessionReply(path) || (path === '/spaces/demo-space' ? current : path === '/spaces' ? { spaces: [current, stale.spaces[1]] } : {})
+      } }
+      await mount(SpaceView, { ctx, sid: 'demo-space' })
+      await settle(30)
+      await run()
+      await settle(20)
+      releaseOld()
+      await settle(30)
+      const cached = client.getQueryData(listKey).spaces.find(entry => entry.id === 'demo-space')
+      for (const [key, value] of Object.entries(after)) assert.equal(cached[key], value, `${label}: list row ${key} is stale`)
+      assert.equal(client.getQueryData(listKey).spaces.length, 2)
+    })
+    } finally { sdk.DropdownMenuContent = menu.content; sdk.DropdownMenuItem = menu.item }
+  })
+}
