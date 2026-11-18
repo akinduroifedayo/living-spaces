@@ -815,9 +815,12 @@ test('a failed detail refresh after pin still ends on the server list, not an ol
       const listKey = ['living-spaces', null, 'spaces']
       let pinned = false, failDetail = false
       client.setQueryData(listKey, { spaces: [{ ...space(), pinned: false }] })
-      let releasePending
-      // a list request already in flight; it will carry the newer pinned row once the server has it
-      client.fetchQuery({ queryKey: listKey, queryFn: () => new Promise(resolve => { releasePending = () => resolve({ spaces: [{ ...space(), pinned }] }) }), staleTime: 0 }).catch(() => {})
+      // Every list request stays pending until released. The first is the one already in flight before the pin; it answers
+      // with whatever the server holds when it is released, i.e. the newer pinned row.
+      const pending = []
+      const listRequest = () => new Promise(resolve => pending.push(() => resolve({ spaces: [{ ...space(), pinned }] })))
+      client.fetchQuery({ queryKey: listKey, queryFn: listRequest, staleTime: 0 }).catch(() => {})
+      client.setQueryDefaults(listKey, { queryFn: listRequest })
       const ctx = { rest: async (path, request) => {
         if (request?.method === 'POST' && path.endsWith('/pin')) { pinned = true; failDetail = true; return {} }
         if (path === '/spaces/demo-space') { if (failDetail) throw { error: { code: 'unavailable', message: 'Synthetic detail outage' } }; return { ...space(), pinned: false } }
@@ -828,8 +831,11 @@ test('a failed detail refresh after pin still ends on the server list, not an ol
       await settle(30)
       await click('Pin Space')
       await settle(10)
-      releasePending()
-      await settle(40)
+      assert.ok(pending.length >= 1, 'the original list request was not in flight')
+      pending[0]()                       // the original request answers late
+      await settle(20)
+      while (pending.length > 1) { pending.splice(1, 1)[0](); await settle(10) }   // then any replacement the action scheduled
+      await settle(20)
       assert.equal(client.getQueryData(listKey).spaces[0].pinned, true, 'the list ended on a stale or cancelled result')
     })
   } finally { sdk.DropdownMenuContent = menu.content; sdk.DropdownMenuItem = menu.item }
