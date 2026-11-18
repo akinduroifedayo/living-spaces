@@ -290,6 +290,23 @@ class Q19CreativeTests(unittest.TestCase):
         self.assertEqual(verdicts[2]["pass"], verdicts[3]["pass"])
         self.assertEqual(verdicts[2]["variety_declines"], verdicts[3]["variety_declines"])
 
+    def test_failed_artifact_score_penalty_does_not_depend_on_min_reviewers(self):
+        # Three real reviewers, one failed candidate build in one brief: the failed artifacts must weigh the same at
+        # min_reviewers 2 and 3, so every reported gate component is identical.
+        base = dict.fromkeys(q19.CREATIVE_DIMENSIONS, 3)
+        cand = {**base, "distinctiveness": 4, "craft": 4}
+        three = ("A", "B", "C")
+        failed = [next(b["blind_id"] for b in self.plan["builds"]
+                       if b["condition"] == "candidate" and b["brief"] == "rss-desk")]
+        scores = self.scores(base, cand, generic=(True, False), reviewers=three)
+        for row in scores:                  # one dissenting reviewer so the synthetic weight can move a median
+            if row["reviewer"] == "C" and self.expected[row["artifact"]] == ("rss-desk", "candidate"):
+                row.update(base)
+        out = [self.gate(base, cand, scores=scores, variety=self.variety(2, 3, reviewers=three), failed=failed,
+                         min_reviewers=m) for m in (2, 3)]
+        for key in ("pass", "brief_declines", "improved_dimensions", "floor_misses", "generic_rate", "judgments"):
+            self.assertEqual(out[0][key], out[1][key], key)
+
     def test_failed_artifacts_are_scored_without_reviewer_rows(self):
         # CREATIVE.md scores a failed build deterministically (1 everywhere, generic); reviewers are not asked to
         # judge it, so missing real rows for a failed artifact do not make the review incomplete. Real builds still do.

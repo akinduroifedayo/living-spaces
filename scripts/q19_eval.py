@@ -319,12 +319,13 @@ def creative_gate(scores, variety, sessions, frozen, failed=(), min_reviewers=2)
     reviewers = {}
     for row in rows:
         reviewers.setdefault(row["artifact"], set()).add(row["reviewer"])
-    for artifact in expected:
-        if artifact.split(":")[0] in failed:
-            for r in range(min_reviewers):
-                rows.append({"artifact": artifact, "reviewer": f"failed-{r}", **FAILED_CREATIVE})
-                reviewers.setdefault(artifact, set()).add(f"failed-{r}")
-    incomplete = sorted(a for a in expected if len(reviewers.get(a, ())) < min_reviewers)
+    # A failed artifact is scored deterministically (CREATIVE.md:55-56), so it needs no real judgment to be complete.
+    # It weighs like one judgment from each reviewer on the panel, so the penalty never depends on min_reviewers.
+    panel = sorted({row["reviewer"] for row in rows})
+    failed_artifacts = {a for a in expected if a.split(":")[0] in failed}
+    for artifact in sorted(failed_artifacts):
+        rows += [{"artifact": artifact, "reviewer": f"failed-{r}", **FAILED_CREATIVE} for r in panel]
+    incomplete = sorted(a for a in expected if a not in failed_artifacts and len(reviewers.get(a, ())) < min_reviewers)
     groups = {(b, c) for b, c in expected.values()}
     vcount = {}
     for v in variety:
