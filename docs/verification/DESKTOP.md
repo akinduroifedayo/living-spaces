@@ -15,7 +15,7 @@ This is the canonical way to prove a Living Spaces change in the real Hermes Des
 7. Reads the plugin SQLite store read-only after save and after reopen; the note must be persisted both times.
 8. Quits the app normally, then sends at most one TERM to the backend gateway this run started, after re-proving its start time, Hermes home and listener. It never signals by name or group and never force-kills. It then checks that nothing still references the state directory, the debugging port is free, and other Hermes gateways are unchanged.
 
-No model is used, so the Space header shows *Bot request: offline* (no maintaining chat is bound). That banner is expected in this journey and is not a failure. The disposable config sets `nous.guest: false`, the host's own switch that stops a fresh home from claiming the Desktop welcome trial or creating a free-tier account. `result.json` records `no_identity_minted`.
+No model is used, so the Space header shows *Bot request: offline* (no maintaining chat is bound). That banner is expected in this journey and is not a failure. The disposable config sets `nous.guest: false`, the host's own switch that stops a fresh home from claiming the Desktop welcome trial or creating a free-tier account. The run also pins the shared Nous credential store inside its own state. It fails unless no `auth.json` or `nous_auth.json` appears there and the real shared store is unchanged (`result.json`: `identity`, `no_identity_minted`).
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ PY=~/.hermes/hermes-agent/venv/bin/python
 "$PY" -I tools/verify-desktop/drive.py --out .run/verify-desktop/$(date +%Y%m%d-%H%M%S)
 ```
 
-`--out` must be new and is never overwritten. The state directory defaults to a fresh temporary directory, and `--state` picks a new one; neither may sit inside `~/.hermes` or `~/Library/Application Support`. The command exits 0 only when the journey passed **and** cleanup was clean. Keep evidence under the ignored `.run/`; do not commit it.
+`--out` must be new and is never overwritten. The state directory defaults to a fresh temporary directory, and `--state` picks a new one; neither may sit inside `~/.hermes` or `~/Library/Application Support`. The command exits 0 only when the journey passed, cleanup was clean and no identity was minted (`result.json`: `passed`). Keep evidence under the ignored `.run/`; do not commit it.
 
 ## Read the result
 
@@ -45,11 +45,12 @@ PY=~/.hermes/hermes-agent/venv/bin/python
 |---|---|
 | `journey_passed` | The product journey passed on the loaded commit (`prepare.json` → `repo_head`, `product_dirty`). Check `residue.clean` too. |
 | `setup_failure` | The harness, host or environment stopped before the journey: launch, backend, isolation, onboarding, Spaces navigation or fixture. Not a product verdict. |
-| `product_failure` | Setup completed and the journey itself failed: save status, visible note, persistence, navigation back, or reopen. |
+| `harness_failure` | Setup completed but the driver itself failed during the journey (debugging connection, screenshot or disk error, an ambiguous selector). Not a product verdict. |
+| `product_failure` | A product expectation failed: save status, visible note, persistence, navigation back to the index, or the note after reopen. |
 
 Screenshots and page text are saved at each step (`onboarding`, `empty-spaces`, `before-save`, `after-save`, `after-leave`, `after-reopen`, and `failure` when one occurs), along with `actions.jsonl`, `records-*.json`, `isolation.json` and `backend-identity.json`. A survivor process is reported in `shutdown` and `residue` and left running for you to inspect.
 
-Keep three kinds of claims apart. A **setup failure** says nothing about the product. A pass on an **older commit** is history, not proof for the current one. A **current-head** claim needs a run whose `repo_head` is the commit you are claiming, with `product_dirty: false`.
+Keep three kinds of claims apart. A **setup or harness failure** says nothing about the product. A pass on an **older commit** is history, not proof for the current one. A **current-head** claim needs a run whose `repo_head` is the commit you are claiming, with `product_dirty: false`.
 
 ## Coverage and when to re-drive
 
@@ -59,7 +60,7 @@ Keep three kinds of claims apart. A **setup failure** says nothing about the pro
 python3 tools/verify-desktop/affected.py origin/main
 ```
 
-Exit 3 means a driven journey is affected: run `drive.py` on the final commit. A change to the driver, the fixture, plugin registration or Desktop loading re-drives everything. Source changes with no mapped journey are listed; extend `coverage.json` in the same change, or record why no journey applies. When you add a journey, add its entry to `coverage.json` and its steps to this page.
+Exit 3 means a driven journey is affected: run `drive.py` on the final commit. A change to the driver, the fixture, plugin registration or Desktop loading re-drives everything. Moved files count at both paths. Source changes with no mapped journey are listed; extend `coverage.json` in the same change, or record why no journey applies. When you add a journey, add its entry to `coverage.json` and its steps to this page.
 
 Only one journey is driven today. Building a Space in chat and Refresh/upkeep need a model route, which this tool deliberately does not create; they remain **not driven** and must not be claimed from this run.
 

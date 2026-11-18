@@ -24,6 +24,12 @@ security:
   allow_lazy_installs: false
 """
 
+class ProductFailure(AssertionError):
+    """A product expectation failed. Any other exception during the journey is a harness failure."""
+
+def expect(cond, msg):
+    if not cond: raise ProductFailure(msg)
+
 def run(*a): return subprocess.run(list(a), capture_output=True, text=True)
 def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def processes():
@@ -79,14 +85,14 @@ class Run:
     def capture(self, name):
         self.out.joinpath(name + ".png").write_bytes(base64.b64decode(self.call("Page.captureScreenshot", format="png")["data"]))
         self.out.joinpath(name + ".txt").write_text(self.text())
-    def wait_text(self, *texts, timeout=90):
+    def wait_text(self, *texts, timeout=90, product=False):
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             t = self.text()
             for x in texts:
                 if x in t: return x
             time.sleep(0.5)
-        self.capture("wait-failed"); raise TimeoutError(f"visible text not found: {texts}")
+        self.capture("wait-failed"); raise (ProductFailure if product else TimeoutError)(f"visible text not found: {texts}")
     def press(self, pos):
         self.call_many([("Page.bringToFront", {}), ("Input.dispatchMouseEvent", dict(type="mouseMoved", **pos)),
                         ("Input.dispatchMouseEvent", dict(type="mousePressed", button="left", clickCount=1, **pos)),
@@ -148,6 +154,7 @@ class Run:
         (self.home / "config.yaml").write_text(CONFIG)
         stamp = self.a.app / "Contents/Resources/install-stamp.json"
         self.live_before = {g["pid"]: g["started"] for g in gateways()}
+        self.real_shared_before = self.real_shared()
         facts = dict(repo_head=head, product_dirty=bool(dirty), product_files=len(list((self.home / "plugins/living-spaces").rglob("*"))),
                      app=str(self.a.app), app_stamp=json.loads(stamp.read_text()) if stamp.exists() else None,
                      app_asar_sha256=sha(self.a.app / "Contents/Resources/app.asar"), hermes_root=str(self.a.hermes_root),
@@ -158,10 +165,19 @@ class Run:
         assert not dirty or self.a.allow_dirty, "product tree has uncommitted changes; commit them or pass --allow-dirty"
         assert facts["cdp_port_free"], f"CDP port {self.a.cdp_port} already has a listener"
         self.prepared = True; self.phase("prepare", dict(repo_head=head, dirty=bool(dirty)))
+    REAL_SHARED = Path.home() / ".hermes/shared/nous_auth.json"
+    def real_shared(self):
+        p = self.REAL_SHARED; return (p.stat().st_mtime_ns, p.stat().st_size) if p.exists() else None
+    def identities(self):
+        """Credential stores a mint would write: per-home auth.json and the shared nous_auth.json (pinned inside the run).
+        The host's empty machine marker is a first-launch probe, not an identity."""
+        found = sorted(str(p) for n in ("auth.json", "nous_auth.json") for p in self.state.rglob(n))
+        return dict(stores_in_state=found, real_shared_store_unchanged=self.real_shared() == self.real_shared_before)
     def env(self):
         keep = {k: os.environ[k] for k in ("PATH", "LANG", "USER", "LOGNAME", "SHELL") if k in os.environ}
         return {**keep, "HOME": str(self.osh), "HERMES_HOME": str(self.home), "TMPDIR": str(self.tmp),
                 "HERMES_DESKTOP_USER_DATA_DIR": str(self.ud), "HERMES_DESKTOP_CWD": str(self.tmp),
+                "HERMES_SHARED_AUTH_DIR": str(self.home / "shared"),   # pin the shared Nous store inside the run
                 "HERMES_DESKTOP_HERMES_ROOT": str(self.a.hermes_root), "HERMES_DESKTOP_PYTHON": self.a.python,
                 "HERMES_DESKTOP_ISOLATED_BACKEND": "1", "HERMES_DISABLE_LAZY_INSTALLS": "1", "PYTHONDONTWRITEBYTECODE": "1",
                 "HERMES_DESKTOP_SKIP_QUIT_CONFIRM": "1", "HERMES_DESKTOP_APP_NAME": "Hermes Living Spaces Verification"}
@@ -222,24 +238,22 @@ class Run:
         self.phase("fixture", "Verification Notebook created by spaces_create (synthetic; not chat creation)")
     def journey(self):
         note = "Verification note " + time.strftime("%H%M%S"); card = 'a[href="#/spaces?space=verification-notebook"]'
-        self.wait_text("Verification Notebook"); self.click(card); time.sleep(3); self.capture("before-save")
+        self.wait_text("Verification Notebook", product=True); self.click(card); time.sleep(3); self.capture("before-save")
         self.press(self.guest('input[aria-label="Note"]')["pos"]); self.call("Input.insertText", text=note); self.act(action="type", text=note)
         self.press(self.guest("button#save")["pos"]); self.act(action="guest-click", selector="button#save")
         deadline = time.monotonic() + 20
         while self.guest("#status")["text"] != "Note saved":
-            assert time.monotonic() < deadline, f"visible status: {self.guest('#status')['text']}"; time.sleep(0.5)
-        self.capture("after-save"); assert note in self.guest("#notes")["text"], "note not shown after save"
-        assert any(note in str(x["data"]) for x in self.records("after-save")["records"]), "note not persisted"
+            expect(time.monotonic() < deadline, f"visible status: {self.guest('#status')['text']}"); time.sleep(0.5)
+        self.capture("after-save"); expect(note in self.guest("#notes")["text"], "note not shown after save")
+        expect(any(note in str(x["data"]) for x in self.records("after-save")["records"]), "note not persisted")
         self.phase("save", dict(note=note, visible="Note saved", persisted=True))
-        self.click("header.ls-framebar > button:first-child"); self.wait_text("Verification Notebook"); time.sleep(1); self.capture("after-leave")
-        assert self.eval('!!document.querySelector(\'[data-testid="spaces-index"]\')'), "did not return to the Spaces index"
+        self.click("header.ls-framebar > button:first-child"); self.wait_text("Verification Notebook", product=True); time.sleep(1); self.capture("after-leave")
+        expect(self.eval('!!document.querySelector(\'[data-testid="spaces-index"]\')'), "did not return to the Spaces index")
         self.click(card); time.sleep(3); self.capture("after-reopen")
-        assert note in self.guest("#notes")["text"], "note not visible after reopen"
-        assert any(note in str(x["data"]) for x in self.records("after-reopen")["records"])
+        expect(note in self.guest("#notes")["text"], "note not visible after reopen")
+        expect(any(note in str(x["data"]) for x in self.records("after-reopen")["records"]), "note not persisted after reopen")
         self.phase("reopen", "note visible after leave and reopen; SQLite readback matches")
         self.result["outcome"] = "journey_passed"
-        # The host writes an empty machine marker on every first probe; only a credential file means an identity was minted.
-        self.phase("no_identity_minted", not any(self.state.rglob("auth.json")))
     def shutdown(self):
         s = self.result.setdefault("shutdown", {})
         if self.proc is not None and self.proc.poll() is None:
@@ -269,6 +283,9 @@ class Run:
         res = dict(processes_referencing_state=refs, open_files_under_state=lsof.stdout[-4000:], lsof_rc=lsof.returncode,
                    cdp_listener=port_listeners(self.a.cdp_port), other_gateways_unchanged=(live_now == self.live_before) if self.prepared else None,
                    limits="snapshot: a detached process with no reference to the state directory and no open file there is not seen")
+        if self.prepared:
+            ident = self.identities(); self.result["identity"] = ident
+            self.result["no_identity_minted"] = not ident["stores_in_state"] and ident["real_shared_store_unchanged"]
         res["clean"] = (not refs and not lsof.stdout.strip() and lsof.returncode in (0, 1) and not res["cdp_listener"] and res["other_gateways_unchanged"] is True)
         self.result["residue"] = res; self.dump("result.json", self.result)
 
@@ -290,19 +307,27 @@ def main():
     r = Run(a)
     try:
         r.prepare(); r.launch(); r.backend(); r.isolation_then_flag(); r.open_spaces(); r.fixture()
-        stage = "product_failure"   # only the journey itself judges the product; everything before it is harness or setup
+        in_journey = True
         r.journey()
-    except Exception as e:
-        r.result["outcome"] = locals().get("stage", "setup_failure")
+    except ProductFailure as e:   # only a failed product expectation inside the journey judges the product
+        r.result["outcome"] = "product_failure"
+        r.result["error"] = f"{type(e).__name__}: {e}"; r.result["trace"] = traceback.format_exc()
+        try:
+            if r.proc is not None and r.proc.poll() is None: r.capture("failure")
+        except Exception: pass
+    except Exception as e:        # launch, isolation, onboarding, fixture, CDP, screenshots, disk: not a product verdict
+        r.result["outcome"] = "harness_failure" if locals().get("in_journey") else "setup_failure"
         r.result["error"] = f"{type(e).__name__}: {e}"; r.result["trace"] = traceback.format_exc()
         try:
             if r.proc is not None and r.proc.poll() is None: r.capture("failure")
         except Exception: pass
     finally:
         r.shutdown()
-    print(json.dumps({k: r.result.get(k) for k in ("outcome", "error", "shutdown")}, default=str))
+    print(json.dumps({k: r.result.get(k) for k in ("outcome", "error", "shutdown", "no_identity_minted")}, default=str))
     print("evidence:", a.out, "state:", a.state)
-    sys.exit(0 if r.result["outcome"] == "journey_passed" and r.result["residue"]["clean"] else 1)
+    ok = r.result["outcome"] == "journey_passed" and r.result["residue"]["clean"] and r.result.get("no_identity_minted") is True
+    r.result["passed"] = ok; r.dump("result.json", r.result)
+    sys.exit(0 if ok else 1)
 
 if __name__ == "__main__":
     main()

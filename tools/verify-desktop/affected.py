@@ -1,7 +1,8 @@
 """List the Desktop journeys to re-drive for a change, from tools/verify-desktop/coverage.json.
 
 Usage: python3 tools/verify-desktop/affected.py [BASE]   (default BASE: origin/main; compares BASE...HEAD plus the working tree)
-Exit 0 when nothing mapped changed, 3 when a driven journey must be re-driven. Unmapped files are listed, never ignored."""
+Exit 0 when nothing mapped changed, 3 when a driven journey must be re-driven. Unmapped source files are listed, never ignored;
+renamed or moved files count at both their old and new paths."""
 import json
 import subprocess
 import sys
@@ -9,9 +10,13 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[2]
 base = sys.argv[1] if len(sys.argv) > 1 else "origin/main"
-git = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, check=True).stdout.split()
-changed = sorted(set(git("diff", "--name-only", f"{base}...HEAD")) | set(git("diff", "--name-only", "HEAD"))
-                 | set(git("ls-files", "--others", "--exclude-standard")))
+def git(*a):  # NUL-delimited: no quoting of unusual names, no splitting on spaces
+    out = subprocess.run(["git", "-C", str(root), *a], capture_output=True, check=True).stdout
+    return [p.decode("utf-8", "surrogateescape") for p in out.split(b"\0") if p]
+# --no-renames reports a move as delete + add, so both the old and the new path are checked
+changed = sorted(set(git("diff", "-z", "--no-renames", "--name-only", f"{base}...HEAD"))
+                 | set(git("diff", "-z", "--no-renames", "--name-only", "HEAD"))
+                 | set(git("ls-files", "-z", "--others", "--exclude-standard")))
 cov = json.loads((root / "tools/verify-desktop/coverage.json").read_text())
 hit = lambda paths, f: any(f == p or (p.endswith("/") and f.startswith(p)) or f.startswith(p + "/") for p in paths)
 prereq = [f for f in changed if hit(cov["prerequisites"]["paths"], f)]
