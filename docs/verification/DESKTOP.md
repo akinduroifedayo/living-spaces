@@ -15,7 +15,7 @@ This is the canonical way to prove a Living Spaces change in the real Hermes Des
 7. Reads the plugin SQLite store read-only after save and after reopen; the note must be persisted both times.
 8. Quits the app normally, then sends at most one TERM to the backend gateway this run started, after re-proving its start time, Hermes home and listener. It never signals by name or group and never force-kills. It then checks that nothing still references the state directory, the debugging port is free, and other Hermes gateways are unchanged.
 
-No model is used. The disposable config sets `nous.guest: false`, the host's own switch that stops a fresh home from claiming the Desktop welcome trial or creating a free-tier account. `result.json` records `no_identity_minted`.
+No model is used, so the Space header shows *Bot request: offline* (no maintaining chat is bound). That banner is expected in this journey and is not a failure. The disposable config sets `nous.guest: false`, the host's own switch that stops a fresh home from claiming the Desktop welcome trial or creating a free-tier account. `result.json` records `no_identity_minted`.
 
 ## Prerequisites
 
