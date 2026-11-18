@@ -20,12 +20,15 @@ SUITE = ROOT / "tests/integration/q19"
 CONDITIONS = ("baseline", "candidate")
 REPEATS = 3
 DIMENSIONS = ("task_hierarchy", "readability", "identity", "state_completeness", "interaction_clarity")
+# tests/integration/q19/CREATIVE.md: pre-registered second rubric, scored alongside DIMENSIONS, never instead of it.
+CREATIVE_DIMENSIONS = ("distinctiveness", "coherence", "craft", "subject_insight")
 
 # Frozen per-session limits (APPROVAL-PACKET section 4). Reaching a limit fails the session; it is never retried.
 BUDGETS = {
     "build": {"input_tokens": 3_000_000, "output_tokens": 80_000, "tool_calls": 60, "minutes": 20},
     "edit": {"input_tokens": 1_500_000, "output_tokens": 40_000, "tool_calls": 30, "minutes": 10},
     "review": {"input_tokens": 200_000, "output_tokens": 10_000},
+    "variety": {"input_tokens": 50_000, "output_tokens": 3_000},
 }
 # USD per million tokens, from ~/.hermes/hermes-agent/agent/usage_pricing.py snapshots.
 PRICING = {
@@ -85,10 +88,12 @@ def worst_case_total():
     builds = len(load_briefs()) * len(CONDITIONS) * REPEATS
     scored = len(PHASES) * builds
     sol = lambda kind: session_cost("gpt-6.1-sol", BUDGETS[kind], worst_case=True)
-    # Reviewer A (Opus) and reviewer B (fresh Sol) each judge every artifact.
+    groups = len(load_briefs()) * len(CONDITIONS)
+    opus = lambda kind: session_cost("claude-opus-5-5", BUDGETS[kind], worst_case=True)
+    # Reviewer A (Opus) and reviewer B (fresh Sol) each judge every artifact and every variety group.
     return round(builds * (sol("build") + sol("edit"))
-                 + scored * session_cost("claude-opus-5-5", BUDGETS["review"], worst_case=True)
-                 + scored * sol("review"), 2)
+                 + scored * (opus("review") + sol("review"))
+                 + groups * (opus("variety") + sol("variety")), 2)
 
 
 class StopRun(Exception):
@@ -265,6 +270,113 @@ def visual_gate(scores, frozen, min_reviewers=2):
     return {"pass": not incomplete and not declines and len(improved) >= 2 and not critical,
             "incomplete": incomplete, "brief_declines": declines, "improved_dimensions": improved,
             "critical": critical, "disagreements": disagreement, "judgments": len(rows)}
+
+
+def exploration(tool_calls):
+    """CREATIVE.md exploration measures from one session's ordered tool calls [{name, args}]. Deterministic."""
+    inspect_at = [i for i, c in enumerate(tool_calls) if c["name"] == "spaces_inspect"]
+    writes = [(i, c) for i, c in enumerate(tool_calls) if c["name"] in ("spaces_write_files", "spaces_edit_file",
+                                                                         "spaces_edit_files", "spaces_create")]
+    def touched(call):
+        args = call.get("args") or {}
+        files = args.get("files")
+        names = set(files) if isinstance(files, dict) else {f.get("path") for f in files or [] if isinstance(f, dict)}
+        if args.get("path"):
+            names.add(args["path"])
+        return names
+    entry_writes = [c for _, c in writes if "index.html" in touched(c)]
+    reads = {(c.get("args") or {}).get("path") for c in tool_calls
+             if c["name"] in ("read_file", "skill_view") and (c.get("args") or {}).get("path")}
+    return {"inspected": bool(inspect_at),
+            "revised_after_inspect": bool(inspect_at) and any(i > inspect_at[0] for i, _ in writes),
+            "references_read": len(reads),
+            "entry_rewrites": len(entry_writes)}
+
+
+FAILED_CREATIVE = {**dict.fromkeys(CREATIVE_DIMENSIONS, 1), "generic": True}
+
+
+def creative_gate(scores, variety, sessions, frozen, failed=(), min_reviewers=2):
+    """CREATIVE.md gate. scores: [{artifact, reviewer, generic, <creative dimension>: 1..5}];
+    variety: [{brief, condition, reviewer, variety: 1..5}]; sessions: {blind_id: exploration(...)};
+    failed: blind ids of failed/limit-reached builds, scored as FAILED_CREATIVE and variety contribution 1."""
+    if type(min_reviewers) is not int or min_reviewers < 2:
+        raise ValueError("ACCEPTANCE requires at least two independent reviewers per artifact")
+    expected = artifacts(frozen)
+    failed = set(failed)
+    rows = []
+    for row in scores:
+        if row["artifact"] not in expected:
+            raise ValueError(f"unplanned artifact {row['artifact']}")
+        if row["artifact"].split(":")[0] in failed:
+            continue
+        rows.append(row)
+    reviewers = {}
+    for row in rows:
+        reviewers.setdefault(row["artifact"], set()).add(row["reviewer"])
+    for artifact in expected:
+        if artifact.split(":")[0] in failed:
+            for r in range(min_reviewers):
+                rows.append({"artifact": artifact, "reviewer": f"failed-{r}", **FAILED_CREATIVE})
+                reviewers.setdefault(artifact, set()).add(f"failed-{r}")
+    incomplete = sorted(a for a in expected if len(reviewers.get(a, ())) < min_reviewers)
+    groups = {(b, c) for b, c in expected.values()}
+    vcount = {}
+    for v in variety:
+        if (v["brief"], v["condition"]) not in groups:
+            raise ValueError(f"unplanned variety group {v['brief']}/{v['condition']}")
+        vcount.setdefault((v["brief"], v["condition"]), set()).add(v["reviewer"])
+    incomplete_variety = sorted(g for g in groups if len(vcount.get(g, ())) < min_reviewers)
+    rows = [{**row, "brief": expected[row["artifact"]][0], "condition": expected[row["artifact"]][1]} for row in rows]
+    median = lambda subset, key: statistics.median([r[key] for r in subset])
+    by = lambda data, **match: [r for r in data if all(r[k] == v for k, v in match.items())]
+    declines, variety_declines = [], []
+    for brief in sorted({b for b, _ in groups}):
+        base, cand = by(rows, brief=brief, condition="baseline"), by(rows, brief=brief, condition="candidate")
+        if base and cand:
+            declines += [(brief, d) for d in CREATIVE_DIMENSIONS if median(cand, d) < median(base, d)]
+        vb, vc = by(variety, brief=brief, condition="baseline"), by(variety, brief=brief, condition="candidate")
+        if vb and vc and median(vc, "variety") <= median(vb, "variety") - 1:
+            variety_declines.append(brief)
+    base, cand = by(rows, condition="baseline"), by(rows, condition="candidate")
+    improved = [d for d in CREATIVE_DIMENSIONS if base and cand and median(cand, d) > median(base, d)]
+    vb, vc = by(variety, condition="baseline"), by(variety, condition="candidate")
+    variety_ok = bool(vb and vc) and median(vc, "variety") >= median(vb, "variety") and not variety_declines
+    def rate(condition):
+        # Per artifact: generic if a majority of its reviewers say so; ties count as generic.
+        arts = [a for a, (_, c) in expected.items() if c == condition]
+        if not arts:
+            return 1.0
+        def is_generic(a):
+            votes = [r["generic"] for r in rows if r["artifact"] == a]
+            return sum(votes) * 2 >= len(votes)
+        return sum(1 for a in arts if is_generic(a)) / len(arts)
+    generic = {"baseline": rate("baseline"), "candidate": rate("candidate")}
+    floor_misses = []
+    for scope in ["overall", *sorted({b for b, _ in groups})]:
+        subset = cand if scope == "overall" else by(rows, brief=scope, condition="candidate")
+        floor_misses += [(scope, d) for d in ("coherence", "craft") if subset and median(subset, d) < 3]
+    generic_ok = generic["candidate"] < generic["baseline"] or generic["candidate"] == generic["baseline"] == 0
+    def inspected(condition):
+        ids = [b["blind_id"] for b in frozen["builds"] if b["condition"] == condition]
+        return sum(1 for i in ids if i not in failed and sessions.get(i, {}).get("inspected")) / len(ids)
+    inspect_rate = {"baseline": inspected("baseline"), "candidate": inspected("candidate")}
+    disagreement = 0
+    for artifact in expected:
+        group = [r for r in rows if r["artifact"] == artifact and not str(r["reviewer"]).startswith("failed-")]
+        if len(group) > 1 and any(max(r[d] for r in group) - min(r[d] for r in group) >= 2 for d in CREATIVE_DIMENSIONS):
+            disagreement += 1
+    passed = (not incomplete and not incomplete_variety and not declines and len(improved) >= 2 and variety_ok
+              and generic_ok and inspect_rate["candidate"] >= inspect_rate["baseline"] and not floor_misses)
+    survivors = [r for r in rows if not str(r["reviewer"]).startswith("failed-")]
+    without_failures = {c: {d: statistics.median([r[d] for r in survivors if r["condition"] == c])
+                            for d in CREATIVE_DIMENSIONS}
+                        for c in CONDITIONS if any(r["condition"] == c for r in survivors)}
+    return {"pass": passed, "incomplete": incomplete, "incomplete_variety": incomplete_variety,
+            "brief_declines": declines, "improved_dimensions": improved, "variety_declines": variety_declines,
+            "variety_ok": variety_ok, "generic_rate": generic, "inspected_rate": inspect_rate,
+            "floor_misses": floor_misses, "medians_without_failures": without_failures,
+            "disagreements": disagreement, "failed_builds": sorted(failed), "judgments": len(rows)}
 
 
 def time_gate(results, frozen):

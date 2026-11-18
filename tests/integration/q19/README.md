@@ -16,5 +16,8 @@ Offline only. Nothing here calls a model or spends anything. Execution of the 72
     python3 scripts/q19_eval.py plan --seed <n> --controls controls.json   # refuses unless every control is pinned
     python3 scripts/q19_eval.py oracles
 
+Creative criteria: tests/integration/q19/CREATIVE.md (pre-registered second rubric, variety, exploration measures and
+gate; scored alongside the ACCEPTANCE rubric, never instead of it).
+
 Not covered yet: the session executor, capture and blinding of artifacts, native persistence checks, the
 non-kit and non-Preact compatibility fixtures, and packaged legacy/new/upgraded Spaces (all need N1/N2 or Q19 approval).
