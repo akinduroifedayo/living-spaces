@@ -2075,9 +2075,10 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
     }
   }
   const listKey = ["living-spaces", scopeKey, "spaces"];
-  async function syncList(fresh) {
+  const fresh = (result) => result?.status === "success" ? result.data : null;
+  async function syncList(fresh2) {
     await queryClient.cancelQueries({ queryKey: listKey });
-    if (fresh) queryClient.setQueryData(listKey, (list) => list?.spaces ? { ...list, spaces: list.spaces.map((row) => row.id === sid ? Object.fromEntries(Object.keys(row).map((key) => [key, key in fresh ? fresh[key] : row[key]])) : row) } : list);
+    if (fresh2) queryClient.setQueryData(listKey, (list) => list?.spaces ? { ...list, spaces: list.spaces.map((row) => row.id === sid ? Object.fromEntries(Object.keys(row).map((key) => [key, key in fresh2 ? fresh2[key] : row[key]])) : row) } : list);
     queryClient.invalidateQueries({ queryKey: listKey });
   }
   async function act(path, body) {
@@ -2086,7 +2087,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
     setActionError("");
     try {
       await ctx.rest(`${base}/${path}`, { method: "POST", ...body ? { body } : {} });
-      await syncList((await detail.refetch()).data);
+      await syncList(fresh(await detail.refetch()));
     } catch (e) {
       setActionError(errorText(e));
     } finally {
@@ -2250,7 +2251,7 @@ Logged to this Space only. Common credential values redacted.` }),
         host2.navigate("/spaces");
       } else {
         await ctx.rest(`${base}/archive`, { method: "POST" });
-        await syncList((await detail.refetch()).data);
+        await syncList(fresh(await detail.refetch()));
       }
     } })
   ] });

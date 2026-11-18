@@ -780,3 +780,27 @@ for (const [label, before, after, run] of [
     } finally { sdk.DropdownMenuContent = menu.content; sdk.DropdownMenuItem = menu.item }
   })
 }
+
+test('a failed detail refresh after pin does not overwrite a newer Spaces list row', async () => {
+  setup()
+  const menu = { content: sdk.DropdownMenuContent, item: sdk.DropdownMenuItem }
+  sdk.DropdownMenuContent = ({ children }) => React.createElement('div', null, children)
+  sdk.DropdownMenuItem = ({ children, onSelect }) => React.createElement('button', { type: 'button', onClick: onSelect }, children)
+  try {
+    await withRealQueries(async ({ client, mount }) => {
+      const listKey = ['living-spaces', null, 'spaces']
+      let failDetail = false
+      const ctx = { rest: async (path, request) => {
+        if (request?.method === 'POST' && path.endsWith('/pin')) { failDetail = true; client.setQueryData(listKey, { spaces: [{ ...space(), pinned: true }] }); return {} }
+        if (path === '/spaces/demo-space') { if (failDetail) throw { error: { code: 'unavailable', message: 'Synthetic detail outage' } }; return { ...space(), pinned: false } }
+        return sessionReply(path) || {}
+      } }
+      client.setQueryData(listKey, { spaces: [{ ...space(), pinned: false }] })
+      await mount(SpaceView, { ctx, sid: 'demo-space' })
+      await settle(30)
+      await click('Pin Space')
+      await settle(30)
+      assert.equal(client.getQueryData(listKey).spaces[0].pinned, true, 'stale detail from a failed refetch overwrote the newer list row')
+    })
+  } finally { sdk.DropdownMenuContent = menu.content; sdk.DropdownMenuItem = menu.item }
+})
