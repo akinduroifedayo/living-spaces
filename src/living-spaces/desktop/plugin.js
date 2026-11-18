@@ -2077,9 +2077,11 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const listKey = ["living-spaces", scopeKey, "spaces"];
   const fresh = (result) => result?.status === "success" ? result.data : null;
   async function syncList(fresh2) {
-    await queryClient.cancelQueries({ queryKey: listKey });
-    if (fresh2) queryClient.setQueryData(listKey, (list) => list?.spaces ? { ...list, spaces: list.spaces.map((row) => row.id === sid ? Object.fromEntries(Object.keys(row).map((key) => [key, key in fresh2 ? fresh2[key] : row[key]])) : row) } : list);
-    queryClient.invalidateQueries({ queryKey: listKey });
+    if (fresh2) {
+      await queryClient.cancelQueries({ queryKey: listKey });
+      queryClient.setQueryData(listKey, (list) => list?.spaces ? { ...list, spaces: list.spaces.map((row) => row.id === sid ? Object.fromEntries(Object.keys(row).map((key) => [key, key in fresh2 ? fresh2[key] : row[key]])) : row) } : list);
+    }
+    queryClient.invalidateQueries({ queryKey: listKey, refetchType: "all" });
   }
   async function act(path, body) {
     if (actionLock.current) return;

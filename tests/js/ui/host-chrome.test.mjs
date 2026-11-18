@@ -760,9 +760,9 @@ for (const [label, before, after, run] of [
       const row = state => ({ ...space(state), status: state.status || 'active', pinned: !!state.pinned })
       const stale = { spaces: [row(before), { ...space(), id: 'kept', name: 'Kept' }] }
       client.setQueryData(listKey, stale)
-      let releaseOld
-      client.fetchQuery({ queryKey: listKey, queryFn: () => new Promise(resolve => { releaseOld = () => resolve(stale) }), staleTime: 0 }).catch(() => {})
-      let current = row(before)
+      let releaseOld, current = row(before), listCalls = 0
+      // the first list request is the older in-flight one; later calls read the server, as the index's own query does
+      client.fetchQuery({ queryKey: listKey, queryFn: () => listCalls++ === 0 ? new Promise(resolve => { releaseOld = () => resolve(stale) }) : Promise.resolve({ spaces: [current, stale.spaces[1]] }), staleTime: 0 }).catch(() => {})
       const ctx = { rest: async (path, request) => {
         if (request?.method === 'POST' && /\/(pin|archive|unarchive)$/.test(path)) { current = row(after); return {} }
         return sessionReply(path) || (path === '/spaces/demo-space' ? current : path === '/spaces' ? { spaces: [current, stale.spaces[1]] } : {})
@@ -801,6 +801,36 @@ test('a failed detail refresh after pin does not overwrite a newer Spaces list r
       await click('Pin Space')
       await settle(30)
       assert.equal(client.getQueryData(listKey).spaces[0].pinned, true, 'stale detail from a failed refetch overwrote the newer list row')
+    })
+  } finally { sdk.DropdownMenuContent = menu.content; sdk.DropdownMenuItem = menu.item }
+})
+
+test('a failed detail refresh after pin still ends on the server list, not an older or cancelled one', async () => {
+  setup()
+  const menu = { content: sdk.DropdownMenuContent, item: sdk.DropdownMenuItem }
+  sdk.DropdownMenuContent = ({ children }) => React.createElement('div', null, children)
+  sdk.DropdownMenuItem = ({ children, onSelect }) => React.createElement('button', { type: 'button', onClick: onSelect }, children)
+  try {
+    await withRealQueries(async ({ client, mount }) => {
+      const listKey = ['living-spaces', null, 'spaces']
+      let pinned = false, failDetail = false
+      client.setQueryData(listKey, { spaces: [{ ...space(), pinned: false }] })
+      let releasePending
+      // a list request already in flight; it will carry the newer pinned row once the server has it
+      client.fetchQuery({ queryKey: listKey, queryFn: () => new Promise(resolve => { releasePending = () => resolve({ spaces: [{ ...space(), pinned }] }) }), staleTime: 0 }).catch(() => {})
+      const ctx = { rest: async (path, request) => {
+        if (request?.method === 'POST' && path.endsWith('/pin')) { pinned = true; failDetail = true; return {} }
+        if (path === '/spaces/demo-space') { if (failDetail) throw { error: { code: 'unavailable', message: 'Synthetic detail outage' } }; return { ...space(), pinned: false } }
+        if (path === '/spaces') return { spaces: [{ ...space(), pinned }] }
+        return sessionReply(path) || {}
+      } }
+      await mount(SpaceView, { ctx, sid: 'demo-space' })
+      await settle(30)
+      await click('Pin Space')
+      await settle(10)
+      releasePending()
+      await settle(40)
+      assert.equal(client.getQueryData(listKey).spaces[0].pinned, true, 'the list ended on a stale or cancelled result')
     })
   } finally { sdk.DropdownMenuContent = menu.content; sdk.DropdownMenuItem = menu.item }
 })

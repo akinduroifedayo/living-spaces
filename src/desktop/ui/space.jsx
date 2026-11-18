@@ -196,9 +196,13 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
   // Only a successful refetch is fresh: a failed one keeps the cached (pre-action) detail.
   const fresh = result => result?.status === 'success' ? result.data : null
   async function syncList(fresh) {
-    await queryClient.cancelQueries({ queryKey: listKey })
-    if (fresh) queryClient.setQueryData(listKey, list => list?.spaces ? { ...list, spaces: list.spaces.map(row => row.id === sid ? Object.fromEntries(Object.keys(row).map(key => [key, key in fresh ? fresh[key] : row[key]])) : row) } : list)
-    queryClient.invalidateQueries({ queryKey: listKey })
+    // A fetch started after the mutation is authoritative and supersedes any older in-flight list request.
+    // The row patch only makes the index correct before that fetch returns, so it needs fresh detail.
+    if (fresh) {
+      await queryClient.cancelQueries({ queryKey: listKey })
+      queryClient.setQueryData(listKey, list => list?.spaces ? { ...list, spaces: list.spaces.map(row => row.id === sid ? Object.fromEntries(Object.keys(row).map(key => [key, key in fresh ? fresh[key] : row[key]])) : row) } : list)
+    }
+    queryClient.invalidateQueries({ queryKey: listKey, refetchType: 'all' })
   }
   async function act(path, body) {
     if (actionLock.current) return
