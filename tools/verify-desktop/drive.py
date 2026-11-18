@@ -167,12 +167,15 @@ class Run:
         self.prepared = True; self.phase("prepare", dict(repo_head=head, dirty=bool(dirty)))
     REAL_SHARED = Path.home() / ".hermes/shared/nous_auth.json"
     def real_shared(self):
-        p = self.REAL_SHARED; return (p.stat().st_mtime_ns, p.stat().st_size) if p.exists() else None
+        try: st = self.REAL_SHARED.stat(); return (st.st_mtime_ns, st.st_size)
+        except FileNotFoundError: return None
     def identities(self):
         """Credential stores a mint would write: per-home auth.json and the shared nous_auth.json (pinned inside the run).
         The host's empty machine marker is a first-launch probe, not an identity."""
         found = sorted(str(p) for n in ("auth.json", "nous_auth.json") for p in self.state.rglob(n))
-        return dict(stores_in_state=found, real_shared_store_unchanged=self.real_shared() == self.real_shared_before)
+        # The run's backend is pinned to its own shared store, and other gateways legitimately rewrite the real one on token
+        # refresh, so a change there is reported as an observation, not counted as a mint by this run.
+        return dict(stores_in_state=found, real_shared_store_changed_during_run=self.real_shared() != self.real_shared_before)
     def env(self):
         keep = {k: os.environ[k] for k in ("PATH", "LANG", "USER", "LOGNAME", "SHELL") if k in os.environ}
         return {**keep, "HOME": str(self.osh), "HERMES_HOME": str(self.home), "TMPDIR": str(self.tmp),
@@ -285,7 +288,7 @@ class Run:
                    limits="snapshot: a detached process with no reference to the state directory and no open file there is not seen")
         if self.prepared:
             ident = self.identities(); self.result["identity"] = ident
-            self.result["no_identity_minted"] = not ident["stores_in_state"] and ident["real_shared_store_unchanged"]
+            self.result["no_identity_minted"] = not ident["stores_in_state"]
         res["clean"] = (not refs and not lsof.stdout.strip() and lsof.returncode in (0, 1) and not res["cdp_listener"] and res["other_gateways_unchanged"] is True)
         self.result["residue"] = res; self.dump("result.json", self.result)
 
