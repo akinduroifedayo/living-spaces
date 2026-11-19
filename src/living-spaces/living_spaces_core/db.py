@@ -6,6 +6,8 @@ import sqlite3
 import time
 import threading
 from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, field
 from pathlib import Path
 
 SCHEMA_VERSION = 2
@@ -51,6 +53,15 @@ CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY, space TEXT NOT NULL, cr
   closed_at REAL, head_rev INTEGER NOT NULL, lifecycle TEXT,
   log_errors INTEGER NOT NULL DEFAULT 0, log_warnings INTEGER NOT NULL DEFAULT 0,
   log_dropped INTEGER NOT NULL DEFAULT 0, log_unconfirmed INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS editor_drafts(space TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+  editor TEXT NOT NULL, schema INTEGER NOT NULL, collection TEXT NOT NULL, record_id TEXT NOT NULL,
+  data_version INTEGER NOT NULL, payload TEXT NOT NULL, bytes INTEGER NOT NULL,
+  updated_at REAL NOT NULL, expires_at REAL NOT NULL,
+  PRIMARY KEY(space,editor,schema,collection,record_id));
+CREATE TABLE IF NOT EXISTS bridge_receipts(space TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+  space_created_at REAL NOT NULL, session TEXT NOT NULL, request_id TEXT NOT NULL,
+  operation TEXT NOT NULL, fingerprint TEXT NOT NULL, confirmation TEXT NOT NULL, created_at REAL NOT NULL,
+  PRIMARY KEY(space, space_created_at, session, request_id));
 CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY, space TEXT NOT NULL,
   trigger TEXT NOT NULL CHECK(trigger IN ('manual','schedule','chat')), handler TEXT NOT NULL, actor TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('queued','running','succeeded','failed','canceled','blocked')),
@@ -105,23 +116,111 @@ def db_path() -> Path:
 
 _initialized: set[str] = set()
 _schema_lock = threading.Lock()
+_deadline: ContextVar[float | None] = ContextVar("bridge_db_deadline", default=None)
+_invocation: ContextVar[Invocation | None] = ContextVar("bridge_invocation", default=None)
+_disposable: ContextVar[str | None] = ContextVar("disposable_database", default=None)
+
+
+@contextmanager
+def disposable_database(uri):
+    """Route this context's store calls to an already initialized in-memory copy."""
+    if not uri.startswith("file:ls-overlay-") or not uri.endswith("?mode=memory&cache=shared"):
+        raise ValueError("A disposable database must be an inspection memory database")
+    marker = _disposable.set(uri)
+    try:
+        yield
+    finally:
+        _disposable.reset(marker)
+
+
+@dataclass
+class EffectProof:
+    owner: tuple
+    state: str = "not_started"
+
+    @property
+    def possible(self):
+        return self.state not in ("not_started", "rolled_back")
+
+
+@dataclass
+class Invocation:
+    sid: str
+    session: str | None
+    op: str
+    request_id: str | None = None
+    capability: str | None = None
+    space_created_at: float | None = None
+    effect: EffectProof = field(init=False)
+
+    def __post_init__(self):
+        self.effect = EffectProof((self.sid, self.session, self.op))
+
+
+class ContentionError(sqlite3.OperationalError):
+    pass
+
+
+def is_busy(error):
+    code = getattr(error, "sqlite_errorcode", 0)
+    return isinstance(error, ContentionError) or (code & 255) in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
+
+
+@contextmanager
+def contention_limit(seconds):
+    deadline = time.monotonic() + seconds
+    previous = _deadline.get()
+    marker = _deadline.set(min(previous, deadline) if previous is not None else deadline)
+    try:
+        yield
+    finally:
+        _deadline.reset(marker)
+
+
+@contextmanager
+def invocation(sid, session, op, request_id=None):
+    current = Invocation(sid, session, op, request_id)
+    marker = _invocation.set(current)
+    try:
+        with contention_limit(.25):
+            yield current
+    finally:
+        _invocation.reset(marker)
+
+
+def current_invocation():
+    return _invocation.get()
+
+
+def _busy_timeout():
+    deadline = _deadline.get()
+    return 5.0 if deadline is None else max(0.0, min(5.0, deadline - time.monotonic()))
 
 
 def connect() -> sqlite3.Connection:
+    transient = _disposable.get()
+    if transient is not None:
+        conn = sqlite3.connect(transient, uri=True, timeout=_busy_timeout(), isolation_level=None)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
     path = db_path()
     existed = path.exists()
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path, timeout=5.0, check_same_thread=False, isolation_level=None)
+    conn = sqlite3.connect(path, timeout=_busy_timeout(), check_same_thread=False, isolation_level=None)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA busy_timeout=5000")
-    conn.execute("PRAGMA foreign_keys=ON")
-    key = str(path)
-    with _schema_lock:
-        if key not in _initialized or not existed:
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.executescript(DDL)
-            conn.execute("BEGIN IMMEDIATE")
-            try:
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")
+        key = str(path)
+        acquired = _schema_lock.acquire() if _deadline.get() is None else _schema_lock.acquire(timeout=_busy_timeout())
+        if not acquired:
+            raise ContentionError("Schema initialization is busy")
+        try:
+            conn.execute(f"PRAGMA busy_timeout={int(_busy_timeout() * 1000)}")
+            if key not in _initialized or not existed:
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.executescript(DDL)
+                conn.execute("BEGIN IMMEDIATE")
                 from .migrations import (grant_internet_access, link_native_upkeep,
                                          add_action_refusal_reason, add_runtime_diagnostics)
                 grant_internet_access(conn)
@@ -130,13 +229,18 @@ def connect() -> sqlite3.Connection:
                 add_runtime_diagnostics(conn)
                 from . import maintenance
                 maintenance.initialize(conn)
+                from . import storage
+                storage.initialize(conn)
                 conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 conn.execute("COMMIT")
-            except BaseException:
-                conn.close()
-                raise
-            _initialized.add(key)
-    return conn
+                _initialized.add(key)
+        finally:
+            _schema_lock.release()
+        conn.execute(f"PRAGMA busy_timeout={int(_busy_timeout() * 1000)}")
+        return conn
+    except BaseException:
+        conn.close()
+        raise
 
 
 @contextmanager
@@ -150,8 +254,7 @@ def read():
 
 
 @contextmanager
-def write():
-    """One IMMEDIATE transaction: every multi-step write commits whole or not at all."""
+def write(proof=None):
     conn = connect()
     try:
         conn.execute("BEGIN IMMEDIATE")
@@ -161,8 +264,14 @@ def write():
             yield conn
         except BaseException:
             conn.execute("ROLLBACK")
+            if proof is not None and proof.state == "active":
+                proof.state = "rolled_back"
             raise
+        if proof is not None and proof.state == "active":
+            proof.state = "commit_attempted"
         conn.execute("COMMIT")
+        if proof is not None and proof.state == "commit_attempted":
+            proof.state = "committed"
     finally:
         conn.close()
 

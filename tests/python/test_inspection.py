@@ -1346,6 +1346,18 @@ class BoundaryTests(InspectionCase):
         self.assertIsNone(report["text"])
         self.assertFalse(report["readiness"]["shell_booted"])
 
+    def test_shell_that_never_boots_says_why(self):
+        # A renderer that starts but never loads the shell must time out with a reason, not a bare readiness block.
+        hang = Path(self.enterContext(tempfile.TemporaryDirectory())) / "hang.sh"
+        hang.write_text("#!/bin/sh\nexec sleep 30\n")
+        hang.chmod(0o755)
+        sid = self.space("Any", "<main>x</main>")
+        with patch.dict(os.environ, {inspection.BROWSER_ENV: str(hang)}):
+            report = self.inspect(sid, timeout_s=3)
+        self.assertEqual(report["outcome"], "timed_out", report)
+        self.assertFalse(report["readiness"]["shell_booted"])
+        self.assertEqual(report["readiness"]["reason"], "shell_not_booted_before_deadline")
+
     def test_renderer_that_exits_is_an_error_not_success(self):
         sid = self.space("Any", "<main>x</main>")
         with patch.dict(os.environ, {inspection.BROWSER_ENV: "/usr/bin/true"}):

@@ -1,0 +1,59 @@
+{
+ "label": "PUBLIC SYNTHETIC FIXTURE - Q19 memory games",
+ "rules": {
+  "classic": "fewest moves",
+  "timed": "fewest seconds",
+  "tie": "earlier record kept"
+ },
+ "games": [
+  {
+   "id": "g1",
+   "size": "4x4",
+   "mode": "classic",
+   "moves": 18,
+   "seconds": 70
+  },
+  {
+   "id": "g2",
+   "size": "4x4",
+   "mode": "classic",
+   "moves": 14,
+   "seconds": 66
+  },
+  {
+   "id": "g3",
+   "size": "4x4",
+   "mode": "classic",
+   "moves": 14,
+   "seconds": 50
+  },
+  {
+   "id": "g4",
+   "size": "6x6",
+   "mode": "classic",
+   "moves": 30,
+   "seconds": 140
+  },
+  {
+   "id": "g5",
+   "size": "4x4",
+   "mode": "timed",
+   "moves": 16,
+   "seconds": 40
+  },
+  {
+   "id": "g6",
+   "size": "4x4",
+   "mode": "timed",
+   "moves": 20,
+   "seconds": 35
+  },
+  {
+   "id": "g7",
+   "size": "4x4",
+   "mode": "timed",
+   "moves": 12,
+   "seconds": 35
+  }
+ ]
+}

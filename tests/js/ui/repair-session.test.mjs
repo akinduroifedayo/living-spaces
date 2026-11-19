@@ -36,8 +36,13 @@ for (const batch of [false, true]) {
   test(`F2 lost ${batch ? 'batch' : 'put'} response reuses create IDs and never overwrites a later edit`, async () => {
     const rows = new Map(), requests = []
     let lost = true
-    const f = fixture(({ args }) => {
-      requests.push(structuredClone(args))
+    const f = fixture(body => {
+      const { op: operation, args } = body
+      requests.push(structuredClone(body))
+      if (operation === 'outcome.get') {
+        assert.deepEqual(args, { request_id: requests[0].request_id })
+        return { ok: false, error: { code: 'ambiguous' }, outcome: { status: 'unknown' } }
+      }
       const ops = batch ? args.ops : [args]
       for (const op of ops) {
         const id = op.id ?? `server-${rows.size}`
@@ -54,19 +59,22 @@ for (const batch of [false, true]) {
       const args = batch ? { ops: [{ op: 'put', ...create }, { op: 'put', collection: 'notes', data: { text: 'second' } }] } : create
       await f.call(batch ? 'data.batch' : 'data.put', args)
       const retry = f.writes.at(-1).retry
-      const first = batch ? requests[0].ops : [requests[0]]
+      const first = batch ? requests[0].args.ops : [requests[0].args]
       for (const op of first) { assert.match(op.id, /^r_[0-9a-f]{12}$/); assert.equal(op.base_rev, 0) }
       assert.equal(new Set(first.map(op => op.id)).size, first.length)
       await retry()
-      assert.deepEqual(requests[1], requests[0])
+      assert.equal(requests[1].op, 'outcome.get')
+      assert.equal(requests.filter(request => request.op.startsWith('data.')).length, 1)
       assert.equal(rows.size, first.length)
-      assert.equal(f.writes.at(-1).status, 'conflict')
+      assert.equal(f.writes.at(-1).status, 'unknown')
       const current = rows.get(first[0].id)
       current.rev = 2; current.data.text = 'newer chat note'
       await retry()
       assert.equal(rows.size, first.length)
       assert.equal(current.data.text, 'newer chat note')
-      assert.equal(f.writes.at(-1).status, 'conflict')
+      assert.equal(f.writes.at(-1).status, 'unknown')
+      assert.equal(requests[2].op, 'outcome.get')
+      assert.equal(requests.filter(request => request.op.startsWith('data.')).length, 1)
       assert.equal(create.id, undefined)
     } finally { await f.session.destroy() }
   })
@@ -99,10 +107,14 @@ test('F2 retry keeps the first draft snapshot and preserves explicit record revi
     await f.call('data.put', args)
     args.data.text = 'later local edit'
     await f.writes.at(-1).retry()
-    const sent = f.calls.filter(c => c.path.endsWith('/bridge')).map(c => c.body.args)
-    assert.deepEqual(sent[1], sent[0])
-    assert.equal(sent[1].base_rev, 4)
-    assert.equal(sent[1].id, 'existing')
+    const sent = f.calls.filter(c => c.path.endsWith('/bridge')).map(c => c.body)
+    assert.equal(sent[1].op, 'outcome.get')
+    assert.deepEqual(sent[1].args, { request_id: sent[0].request_id })
+    assert.equal(sent.filter(request => request.op === 'data.put').length, 1)
+    assert.equal(sent[0].args.base_rev, 4)
+    assert.equal(sent[0].args.id, 'existing')
+    assert.equal(sent[0].args.data.text, 'original')
+    assert.deepEqual(f.writes.at(-1).args, sent[0].args)
   } finally { await f.session.destroy() }
 })
 
@@ -289,3 +301,90 @@ for (const failure of ['missing', 'ambiguous', 'unsupported', 'error-result']) {
     assert.equal(f.calls.filter(call => call.method === 'DELETE').length, 0)
   })
 }
+
+const harness = async plan => {
+  const v8 = await import('node:v8'), vm = await import('node:vm')
+  v8.setFlagsFromString('--expose_gc')
+  const gc = vm.runInNewContext('gc')
+  const requests = [], heldReplies = [], heldArgs = []
+  let bridge, last = null
+  const rest = async (path, request = {}) => {
+    if (path.endsWith('/sessions')) return { session: 'demo-session', head_rev: 1, grants: ['data'] }
+    if (path.endsWith('/bundle')) return { rev: 1 }
+    if (request.method === 'DELETE') return { closed: true }
+    const body = request.body
+    requests.push({ op: body.op, request_id: body.op === 'outcome.get' ? body.args.request_id : body.request_id })
+    if (body.args && typeof body.args === 'object') heldArgs.push(new WeakRef(body.args))
+    const reply = await plan(body, requests.length)
+    if (reply && typeof reply === 'object') heldReplies.push(new WeakRef(reply))
+    return reply
+  }
+  const session = createSpaceSession({ rest, sid: 'demo-space', container: {}, mount: (_, v) => { bridge = v; return { destroy() {} } },
+    onEvent() {}, onWrite: w => { if (w) last = w } })
+  await session.ready
+  const collect = async () => { for (let i = 0; i < 3; i++) { await new Promise(r => setTimeout(r, 0)); gc() } }
+  return { session, requests, heldReplies, heldArgs, collect, put: args => bridge.call('data.put', args), last: () => last, clear: () => { last = null } }
+}
+
+test('settled and dismissed writes are not retained by the session', async () => {
+  let failNext = 0
+  const h = await harness(body => {
+    if (failNext && body.op === 'data.put') { failNext--; return { ok: false, error: { code: 'invalid', message: 'no' }, outcome: { status: 'rejected' }, pad: 'z'.repeat(64 * 1024) } }
+    return { ok: true, result: { pad: 'x'.repeat(64 * 1024) } }
+  })
+  try {
+    for (let i = 0; i < 50; i++) await h.put({ collection: 'notes', data: { text: `n${i}`, pad: 'y'.repeat(64 * 1024) } })
+    failNext = 20
+    for (let i = 0; i < 20; i++) {
+      await h.put({ collection: 'notes', data: { text: `f${i}` } })
+      h.session.dismissWrite(h.last().token)
+    }
+    h.clear()
+    await h.collect()
+    assert.ok(h.heldReplies.filter(ref => ref.deref()).length <= 1, 'settled or dismissed write replies must be collectable')
+    assert.ok(h.heldArgs.filter(ref => ref.deref()).length <= 1, 'settled or dismissed write payloads must be collectable')
+  } finally { await h.session.destroy() }
+})
+
+test('a held retry closure follows the latest attempt for its token and never replays superseded arguments', async () => {
+  let mode = 'conflict'
+  const h = await harness(body => {
+    if (body.op === 'outcome.get') return { ok: false, error: { code: 'ambiguous' }, outcome: { status: 'unknown' } }
+    if (mode === 'conflict') { mode = 'lose'; return { ok: false, error: { code: 'conflict', message: 'stale' }, outcome: { status: 'rejected' } } }
+    if (mode === 'lose') { mode = 'ok'; throw new Error('Response lost after commit') }
+    return { ok: true, result: {} }
+  })
+  try {
+    await h.put({ collection: 'notes', id: 'r1', base_rev: 1, data: { text: 'mine' } })
+    const conflict = h.last()
+    assert.equal(conflict.status, 'conflict')
+    await conflict.retry({ ...conflict.args, base_rev: 2 })            // corrected retry; response lost -> unknown
+    const unknown = h.last()
+    assert.equal(unknown.status, 'unknown')
+    h.session.dismissWrite(unknown.token)
+    const puts = h.requests.filter(r => r.op === 'data.put').length
+    await conflict.retry()                                              // the ORIGINAL event's closure
+    assert.equal(h.requests.at(-1).op, 'outcome.get', 'must reconcile the latest unknown attempt, not resend')
+    assert.equal(h.requests.at(-1).request_id, h.requests.filter(r => r.op === 'data.put').at(-1).request_id)
+    assert.equal(h.requests.filter(r => r.op === 'data.put').length, puts)
+  } finally { await h.session.destroy() }
+})
+
+test('after a successful retry, an older closure returns the confirmation instead of resending', async () => {
+  let mode = 'fail'
+  const h = await harness(body => {
+    if (mode === 'fail') { mode = 'ok'; return { ok: false, error: { code: 'invalid', message: 'no' }, outcome: { status: 'rejected' } } }
+    return { ok: true, result: { saved: true } }
+  })
+  try {
+    await h.put({ collection: 'notes', data: { text: 'x' } })
+    const failed = h.last()
+    assert.equal(failed.status, 'failed')
+    const ok = await failed.retry()
+    assert.equal(ok.ok, true)
+    const puts = h.requests.filter(r => r.op === 'data.put').length
+    const again = await failed.retry()
+    assert.deepEqual(again, ok)
+    assert.equal(h.requests.filter(r => r.op === 'data.put').length, puts, 'a confirmed write must not be resent')
+  } finally { await h.session.destroy() }
+})

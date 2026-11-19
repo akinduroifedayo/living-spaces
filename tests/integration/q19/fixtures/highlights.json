@@ -1,0 +1,20 @@
+{
+ "label": "PUBLIC SYNTHETIC FIXTURE - Q19 highlights",
+ "highlights": [
+  {
+   "id": "h-late",
+   "heading": "Section 9",
+   "note": "Compare with section 2"
+  },
+  {
+   "id": "h-early",
+   "heading": "Section 2",
+   "note": "Key claim"
+  },
+  {
+   "id": "h-mid",
+   "heading": "Section 5.2",
+   "note": null
+  }
+ ]
+}

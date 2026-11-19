@@ -5,12 +5,12 @@ real mountSpace, the same code Desktop uses. Nothing it does reaches production 
 
 - Space data is read through a read-only SQLite connection held in one read transaction, so the revision, records,
   grants and runs it sees form one consistent snapshot and no write is possible (mode=ro, query_only).
-- Bridge calls are answered from that snapshot by a passive adapter. Reads are served; writes, Refresh, bot
-  requests and network fetches are refused before anything executes, and every refusal is reported.
+- By default a passive adapter serves reads and refuses writes. Optional selector journeys use a private memory
+  copy and the live bridge's record mutations. Refresh, bot requests, unknown operations and network stay refused.
 - The browser is driven over the DevTools pipe (no port), with a temporary profile, a minimal environment, every
   network request failed at the DevTools layer, a dead proxy and an unresolvable host map as backstops.
 
-The report states what was observed. It never claims a screenshot: no pixels are captured.
+The default report captures no pixels. Explicit visual requests add bounded inline PNGs and geometry.
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ import uuid
 from pathlib import Path
 from urllib.parse import quote
 
-from . import bridge, db, grants as grants_mod, limits, logs, projects, records
+from . import bridge, db, grants as grants_mod, limits, logs, projects, records, runs, sessions
 from .errors import SpacesError
 
 PACKAGE = Path(__file__).resolve().parent.parent
@@ -112,6 +112,81 @@ def _bounded(value, name, bounds):
     if not low <= value <= high:
         raise SpacesError("invalid", f"{name} must be between {low} and {high}")
     return value
+
+
+# Visual output stays inline. The shared PNG cap leaves room for base64 and diagnostics under 2 MiB.
+VISUAL_BYTES = 1024 * 1024
+VISUAL_OUTPUT_BYTES = 2 * 1024 * 1024
+VISUAL_ROUTE_S = 10
+MAX_STEPS = 20
+KEYS = {"Enter": 13, "Tab": 9, "Escape": 27, "Backspace": 8, "Delete": 46,
+        "ArrowLeft": 37, "ArrowUp": 38, "ArrowRight": 39, "ArrowDown": 40, " ": 32,
+        "Home": 36, "End": 35}
+
+
+def _interaction_options(value):
+    if value is None:
+        return None
+    if not isinstance(value, list) or not 1 <= len(value) <= MAX_STEPS:
+        raise SpacesError("invalid", "interactions must contain 1 to 20 selector steps")
+    steps = []
+    for step in value:
+        if not isinstance(step, dict) or step.get("action") not in ("click", "type", "key", "select"):
+            raise SpacesError("invalid", "Step action must be click, type, key or select")
+        field = {"type": "text", "key": "key", "select": "value"}.get(step["action"])
+        if (step.keys() - {"action", "selector", "timeout_ms", field}
+                or not isinstance(step.get("selector"), str) or not 1 <= len(step["selector"]) <= 256):
+            raise SpacesError("invalid", "Steps need bounded CSS selectors and known arguments")
+        if field and (not isinstance(step.get(field), str) or len(step[field]) > 4096):
+            raise SpacesError("invalid", "Step values must be strings of at most 4096 characters")
+        if field == "key" and step[field] not in KEYS:
+            raise SpacesError("invalid", "Unsupported interaction key")
+        timeout = step.get("timeout_ms", 5000)
+        if not _is_int(timeout) or not 1 <= timeout <= 10000:
+            raise SpacesError("invalid", "Step timeout_ms must be between 1 and 10000")
+        steps.append({**step, "timeout_ms": timeout})
+    return steps
+
+
+def _visual_options(value, width, height):
+    if value is None:
+        return None
+    if not isinstance(value, dict) or value.keys() - {"screenshot", "max_bytes", "routes"}:
+        raise SpacesError("invalid", "visual must be an object with screenshot, max_bytes or routes")
+    if width is None or height is None:
+        raise SpacesError("invalid", "visual requires explicit width and height")
+    screenshot = value.get("screenshot", False)
+    if not isinstance(screenshot, bool):
+        raise SpacesError("invalid", "visual.screenshot must be a boolean")
+    budget = value.get("max_bytes", VISUAL_BYTES)
+    if not _is_int(budget) or not 1 <= budget <= VISUAL_BYTES:
+        raise SpacesError("invalid", f"visual.max_bytes must be between 1 and {VISUAL_BYTES}")
+    routes = value.get("routes", [{"hash": ""}])
+    if not isinstance(routes, list) or not 1 <= len(routes) <= 4:
+        raise SpacesError("invalid", "visual.routes must contain 1 to 4 hash routes")
+    normalized = []
+    for route in routes:
+        if not isinstance(route, dict) or route.keys() - {"hash", "landmarks"}:
+            raise SpacesError("invalid", "A visual route must have hash and optional landmarks")
+        fragment = route.get("hash")
+        if not isinstance(fragment, str) or (fragment != "" and not re.fullmatch(
+                r"#[A-Za-z0-9/_?=&.%~-]{1,200}", fragment)):
+            raise SpacesError("invalid", "A route must be empty or a bounded ASCII #fragment")
+        landmarks = route.get("landmarks", {})
+        if not isinstance(landmarks, dict) or len(landmarks) > 20 or (fragment and not landmarks):
+            raise SpacesError("invalid", "A nonempty route needs landmarks; at most 20 are allowed")
+        for name, selector in landmarks.items():
+            if (not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name)
+                    or not isinstance(selector, str) or not 1 <= len(selector) <= 256):
+                raise SpacesError("invalid", "Landmarks need bounded names and CSS selectors of 1 to 256 characters")
+        normalized.append({"hash": fragment, "landmarks": dict(landmarks)})
+    return {"screenshot": screenshot, "max_bytes": budget, "routes": normalized}
+
+
+class _VisualFailed(Exception):
+    def __init__(self, code):
+        super().__init__(code)
+        self.code = code
 
 
 WITHHELD_DEEP = "[WITHHELD: JSON nested too deeply to redact safely; {} chars]"
@@ -299,6 +374,7 @@ class Snapshot:
         limits.integer(rev, "rev", minimum=1)
         revision = projects._revision(conn, self.sid, rev)
         self.space = {"id": self.sid, "name": space["name"]}
+        self.created_at = space["created_at"]
         self.rev = revision["rev"]
         self.head_rev = space["head_rev"]
         self.status = space["status"]
@@ -334,6 +410,11 @@ class PassiveAdapter:
         "data.put": "Inspection is read-only: records are not changed",
         "data.delete": "Inspection is read-only: records are not changed",
         "data.batch": "Inspection is read-only: records are not changed",
+        "draft.get": "Inspection does not read private drafts",
+        "draft.put": "Inspection does not retain private drafts",
+        "draft.delete": "Inspection does not delete private drafts",
+        "editor.save": "Inspection is read-only: records and drafts are not changed",
+        "outcome.get": "Inspection does not reconcile private editor saves",
         "refresh": "Inspection does not run Refresh or upkeep",
         "bot.request": "Inspection does not contact the bot",
         "net.fetch": "Inspection makes no network requests",
@@ -372,6 +453,22 @@ class PassiveAdapter:
     def _check_deadline(self):
         if self.deadline is not None and time.monotonic() >= self.deadline:
             raise _Timeout()
+
+    def _select_query(self, collection, *, where=None, order=None, limit=500, offset=0):
+        rows, size = [], 0
+        for row in self.snap.conn.execute("SELECT * FROM records WHERE space=? AND collection=? ORDER BY id",
+                                          (self.snap.sid, collection)):
+            size += sum(len((row[key] or "").encode("utf-8", "surrogatepass"))
+                        for key in ("data", "source", "source_meta"))
+            if size > MAX_QUERY_BYTES:
+                self.limited["collection_too_large"] = self.limited.get("collection_too_large", 0) + 1
+                raise SpacesError("limit", "Collection is too large to query during inspection")
+            self._check_deadline()
+            record = records._record(row)
+            if all(records._field(record, field) == value for field, value in (where or {}).items()):
+                rows.append(record)
+        self._check_deadline()
+        return self._order_and_page(rows, order, limit, offset)
 
     def call(self, op, args):
         try:
@@ -421,33 +518,116 @@ class PassiveAdapter:
                                 (sid, limit)).fetchall()
             return [{**dict(row), "changed": json.loads(row["changed"]), "detail": json.loads(row["detail"])}
                     for row in rows]
+        if op == "freshness":
+            return runs.freshness(sid, include_upkeep=False, conn=conn)
         if op == "data.query":
             collection = args["collection"]
-            options = {key: args[key] for key in ("where", "order", "limit", "offset") if key in args}
-            options.setdefault("limit", 500)
-            options.setdefault("offset", 0)
-            records._query_args(collection, options.get("where"), options.get("order"), options["limit"], options["offset"])
-            where = options.pop("where", None) or {}
-            rows, size = [], 0
-            for row in conn.execute("SELECT * FROM records WHERE space=? AND collection=? ORDER BY id", (sid, collection)):
-                size += sum(len((row[key] or "").encode("utf-8", "surrogatepass"))      # bytes, not characters
-                            for key in ("data", "source", "source_meta"))
-                if size > MAX_QUERY_BYTES:
-                    self.limited["collection_too_large"] = self.limited.get("collection_too_large", 0) + 1
-                    raise SpacesError("limit", "Collection is too large to query during inspection")
-                self._check_deadline()
-                record = records._record(row)
-                # The same predicate records._select applies, evaluated here so the deadline is checked per record.
-                if all(records._field(record, field) == value for field, value in where.items()):
-                    rows.append(record)
+            options = {key: value for key, value in args.items() if key != "collection"}
             self._check_deadline()
-            page, total = self._order_and_page(rows, options.get("order"), options["limit"], options["offset"])
-            return {"records": page, "total": total, "seq": self.snap.seq}
+            request = records._Query(collection, **options)
+            return request.result(sid, self.snap.created_at, self.snap.seq,
+                                  lambda **options: self._select_query(collection, **options))
         records._ids(args["collection"], args["id"])                       # data.get
         row = records._row(conn, sid, args["collection"], args["id"])
         if row is None:
             raise SpacesError("not_found", "Record not found")
         return records._record(row)
+
+
+class RecordOverlay(PassiveAdapter):
+    """A private memory copy. Only allowlisted bridge calls enter its store context."""
+
+    ALLOWED = {"meta", "data.query", "data.get", "data.put", "data.delete", "data.batch", "outcome.get", "log", "runs.list",
+               "freshness", "draft.get", "draft.put", "draft.delete", "editor.save"}
+    WRITES = {"data.put", "data.delete", "data.batch", "editor.save"}
+
+    def __init__(self, snapshot, deadline=None):
+        super().__init__(snapshot, deadline)
+        self.uri = "file:ls-overlay-" + uuid.uuid4().hex + "?mode=memory&cache=shared"
+        self.conn = sqlite3.connect(self.uri, uri=True, isolation_level=None)
+        self.conn.row_factory = sqlite3.Row
+        self.closed = False
+        self.failures = 0
+        try:
+            def progress(status, remaining, total):
+                self._check_deadline()
+                limits.check(total * snapshot.conn.execute("PRAGMA page_size").fetchone()[0],
+                             128 * 1024 * 1024, "inspection snapshot bytes")
+            snapshot.conn.backup(self.conn, pages=256, progress=progress)
+            # Private reopen drafts belong to the person, not to the inspected app: the copy starts with none, so
+            # editor and draft calls during a journey only ever see drafts the journey itself wrote.
+            # A profile upgraded to Q10 but never opened writably may not have the table yet; nothing to exclude then.
+            if self.conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='editor_drafts'").fetchone():
+                self.conn.execute("DELETE FROM editor_drafts")
+            with db.disposable_database(self.uri):
+                self.session = sessions.open_session(snapshot.sid)["session"]
+        except BaseException:
+            self.close()
+            raise
+
+    def call(self, op, args, request_id=None):
+        self._check_deadline()
+        if self.closed:
+            return {"ok": False, "error": {"code": "session_invalid", "message": "Inspection ended"},
+                    "outcome": {"status": "rejected"}}
+        if not isinstance(op, str) or op not in self.ALLOWED:
+            name = op if isinstance(op, str) else "unknown"
+            self.refused[name] = self.refused.get(name, 0) + 1
+            self.failures += 1
+            return {"ok": False, "error": {"code": "blocked", "message": "Operation refused during inspection", "inspection": True},
+                    "outcome": {"status": "rejected"}}
+        with db.disposable_database(self.uri):
+            # Snapshot query limits and per-record deadlines also apply to the memory copy.
+            if op in {"data.query", "data.get", "meta", "runs.list", "freshness"} and request_id is None:
+                original_conn, original_seq = self.snap.conn, self.snap.seq
+                try:
+                    self.snap.conn, self.snap.seq = self.conn, records._seq(self.conn, self.snap.sid)
+                    result = super().call(op, args)
+                    result["outcome"] = {"status": "success" if result["ok"] else "rejected"}
+                finally:
+                    self.snap.conn, self.snap.seq = original_conn, original_seq
+            else:
+                result = bridge.dispatch(self.snap.sid, self.session, op, args, request_id=request_id)
+                if result["ok"]:
+                    self.served[op] = self.served.get(op, 0) + 1
+                    if op == "log":
+                        if args.get("lifecycle") in ("loaded", "failed"):
+                            self.lifecycle = args["lifecycle"]
+                        self.guest_logs["entries"] += len(args.get("entries", []))
+                        for key in ("dropped", "unconfirmed"):
+                            self.guest_logs[key] = max(self.guest_logs[key], args.get(key, 0))
+                elif result.get("error", {}).get("code") == "not_granted":
+                    self.denied[op] = self.denied.get(op, 0) + 1
+        if not result["ok"]:
+            self.failures += 1
+        self._check_deadline()
+        return result
+
+    def evidence(self, max_bytes=512 * 1024):
+        evidence = {"changes": [], "truncated": False, "discarded": self.closed}
+        size = len(json.dumps(evidence).encode())
+        rows = self.conn.execute("SELECT collection,record_id AS id,max(seq) AS seq FROM changes "
+                                 "WHERE space=? AND seq>? GROUP BY collection,record_id ORDER BY collection,record_id",
+                                 (self.snap.sid, self.snap.seq))
+        for change in rows:
+            row = records._row(self.conn, self.snap.sid, change["collection"], change["id"])
+            item = {"collection": change["collection"], "id": change["id"], "record": records._record(row) if row else None}
+            # Apply the existing structural secret redaction before evidence leaves the adapter.
+            try:
+                item = json.loads(_redact(json.dumps(item)))
+            except (ValueError, RecursionError):
+                evidence["truncated"] = True
+                break
+            size += len(json.dumps(item).encode()) + 2
+            if size > max_bytes:
+                evidence["truncated"] = True
+                break
+            evidence["changes"].append(item)
+        return evidence
+
+    def close(self):
+        self.conn.close()
+        self.closed = True
 
 
 # --- DevTools pipe ---------------------------------------------------------------------------------------------
@@ -731,7 +911,23 @@ class _Run:
         self.contexts = {}        # (sessionId, executionContextId) -> frameId
         self.stable_since = None  # when the current unchanged observation began (None: changing or unobserved)
         self.last_traffic = None
+        self.visual = False
+        self.prior_entries = []   # earlier visual routes' reported entries, kept so the final report stays cumulative
         browser.listeners.append(self.on_event)
+
+    def carry_from(self, prev):
+        """Continue a multi-route inspection: evidence observed on earlier routes is never lost when a route's page
+        is replaced. Per-route entries stay per-route; totals, dropped counts, network and sandbox events add up."""
+        self.counts = dict(prev.counts)
+        self.dropped = prev.dropped
+        self.exceptions = prev.exceptions
+        self.network = list(prev.network)
+        self.network_blocked = prev.network_blocked
+        self.events = list(prev.events)
+        self.host_notices = dict(prev.host_notices)
+        self.limited = dict(prev.limited)
+        self.reply_limited = prev.reply_limited
+        self.prior_entries = prev.prior_entries + prev.entries
 
     def record(self, source, level, text, url=None):
         level = {"warn": "warning", "assert": "error", "log": "info", "debug": "info", "verbose": "info",
@@ -768,6 +964,9 @@ class _Run:
                                ("Target.setAutoAttach", {"autoAttach": True, "waitForDebuggerOnStart": True,
                                                          "flatten": True})):
             self.b.send(method, params, session)
+        if self.visual:
+            self.b.send("Emulation.setEmulatedMedia", {
+                "features": [{"name": "prefers-reduced-motion", "value": "reduce"}]}, session)
         self.b.send("Runtime.runIfWaitingForDebugger", None, session)
 
     def on_event(self, message):
@@ -888,6 +1087,46 @@ class _Run:
             self.worlds.pop(frame, None)      # the context may be gone; a fresh world restarts the counter
             return None
 
+    def geometry(self, route, width, height):
+        frame = self.guest_frame()
+        if not frame or frame not in self.worlds:
+            raise _VisualFailed("canvas_unavailable")
+        result = self.b.call("Runtime.evaluate", {
+            "contextId": self.worlds[frame], "returnByValue": True, "timeout": 1500,
+            "expression": """(() => {
+              const wanted = JSON.parse(%s);
+              if (location.hash !== wanted.hash) return {error: 'route_mismatch'};
+              const landmarks = Object.create(null);
+              for (const [name, selector] of Object.entries(wanted.landmarks)) {
+                let el;
+                try { el = document.querySelector(selector) } catch { return {error: 'selector_invalid'} }
+                if (!el) return {error: 'route_missing'};
+                const r = el.getBoundingClientRect();
+                landmarks[name] = {x:r.x, y:r.y, width:r.width, height:r.height,
+                  outside_viewport: r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight};
+              }
+              const d = document.documentElement, b = document.body;
+              const sw = Math.max(d.scrollWidth, b?.scrollWidth || 0);
+              const sh = Math.max(d.scrollHeight, b?.scrollHeight || 0);
+              return {canvas:{width:innerWidth, height:innerHeight}, landmarks,
+                overflow:{horizontal:sw > innerWidth, vertical:sh > innerHeight, scroll_width:sw, scroll_height:sh},
+                motion:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduce' : 'no-preference'};
+            })()""" % json.dumps(json.dumps(route))}, self.owner(frame), timeout=2)
+        value = result.get("result", {}).get("value")
+        if not isinstance(value, dict):
+            raise _VisualFailed("geometry_unavailable")
+        if value.get("error"):
+            raise _VisualFailed(value["error"])
+        if value.get("canvas") != {"width": width, "height": height}:
+            raise _VisualFailed("canvas_dimensions")
+        outer = self.b.call("Runtime.evaluate", {"returnByValue": True,
+            "expression": "({viewport:[innerWidth,innerHeight],window:[outerWidth,outerHeight],device_scale:devicePixelRatio})"},
+            self.page).get("result", {}).get("value")
+        if not isinstance(outer, dict) or outer.get("viewport") != [width, height]:
+            raise _VisualFailed("canvas_dimensions")
+        value["outer"] = outer
+        return value
+
     def serve(self, drained):
         """Answer queued bridge requests within the deadline and the reply limits, sending replies in batches."""
         batch, size, answered = [], 0, False
@@ -897,7 +1136,9 @@ class _Run:
                 raise _Timeout()
             item, reason = None, "reply_budget"
             if self.reply_bytes < MAX_REPLY_TOTAL:
-                item = f"[{int(request['id'])},{json.dumps(self.adapter.call(request.get('op'), request.get('args') or {}))}]"
+                options = ({"request_id": request["request_id"]}
+                           if isinstance(self.adapter, RecordOverlay) and "request_id" in request else {})
+                item = f"[{int(request['id'])},{json.dumps(self.adapter.call(request.get('op'), request.get('args') or {}, **options))}]"
                 if len(item) > MAX_REPLY_ITEM:
                     item, reason = None, "reply_too_large"
                 elif self.reply_bytes + len(item) > MAX_REPLY_TOTAL:
@@ -945,8 +1186,10 @@ class _Run:
                                          "returnByValue": True}, self.page, timeout=5)
 
 
-def inspect(ref, rev, *, width=None, height=None, timeout_s=None, text_limit=None):
+def inspect(ref, rev, *, width=None, height=None, timeout_s=None, text_limit=None, visual=None, interactions=None):
     limits.text(ref, "space")
+    interactions = _interaction_options(interactions)
+    visual = _visual_options(visual, width, height)
     width = _bounded(width, "width", WIDTH)
     height = _bounded(height, "height", HEIGHT)
     timeout_s = _bounded(timeout_s, "timeout_s", TIMEOUT_S)
@@ -954,12 +1197,12 @@ def inspect(ref, rev, *, width=None, height=None, timeout_s=None, text_limit=Non
     if not _slots.acquire(blocking=False):
         raise SpacesError("blocked", f"At most {MAX_CONCURRENT} inspections run at once; try again shortly")
     try:
-        return _inspect(ref, rev, width, height, timeout_s, text_limit)
+        return _inspect(ref, rev, width, height, timeout_s, text_limit, visual, interactions)
     finally:
         _slots.release()
 
 
-def _inspect(ref, rev, width, height, timeout_s, text_limit):
+def _inspect(ref, rev, width, height, timeout_s, text_limit, visual=None, interactions=None):
     started = time.time()
     clock = time.monotonic()
     conn = _open_snapshot()
@@ -975,6 +1218,28 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit):
             "text": None, "dom": None, "viewport": {"requested": [width, height]},
             "screenshot": None, "limitations": list(LIMITATIONS), "cleanup": None,
         }
+        overlay = None
+        if interactions is not None:
+            report["inspection"]["mode"] = "disposable-headless-interaction"
+            report["interactions"] = {
+                "status": "incomplete", "evidence": "disposable interaction", "route": "",
+                "motion": "reduce", "mutations_allowed": sorted(RecordOverlay.WRITES),
+                "limits": {"steps": MAX_STEPS, "total_s": timeout_s, "output_bytes": VISUAL_OUTPUT_BYTES},
+                "steps": [{"action": s["action"], "selector": _clip(s["selector"], 256),
+                           "outcome": "refused", "reason": "not_run"} for s in interactions],
+                "overlay": {"changes": [], "truncated": False, "discarded": True}}
+            report["limitations"].append("disposable_records: overlay changes are discarded and do not prove native persistence")
+        if visual is not None:
+            report["visual"] = {"status": "incomplete", "evidence": "read-only", "motion": "reduce",
+                                "mutations_allowed": [], "artifact_paths": [],
+                                "retention": "inline-only; no retained artifacts",
+                                "routes": [{"route": route["hash"], "status": "incomplete", "screenshot": None}
+                                           for route in visual["routes"]],
+                                "limits": {"artifact_bytes": visual["max_bytes"], "output_bytes": VISUAL_OUTPUT_BYTES,
+                                           "route_s": VISUAL_ROUTE_S, "total_s": timeout_s}}
+            if interactions is not None:
+                report["visual"]["evidence"] = "disposable interaction"
+                report["visual"]["mutations_allowed"] = sorted(RecordOverlay.WRITES)
         if not snap.files or snap.manifest.get("entry") not in {f["path"] for f in snap.files}:
             report["outcome"] = "failed"
             report["readiness"]["reason"] = "entry_missing"
@@ -989,7 +1254,18 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit):
         shell = SHELL.read_text(encoding="utf-8")
         runner = RUNNER.read_text(encoding="utf-8")
         report["inspection"]["harness_sha256"] = hashlib.sha256((runner + "\0" + shell).encode()).hexdigest()
-        adapter = PassiveAdapter(snap, deadline=clock + timeout_s)
+        if interactions is not None:
+            try:
+                overlay = RecordOverlay(snap, deadline=clock + timeout_s)
+            except _Timeout:
+                report["outcome"] = "timed_out"
+                return report
+            except (SpacesError, sqlite3.Error) as exc:
+                report["outcome"] = "failed"
+                report["error"] = {"code": exc.code if isinstance(exc, SpacesError) else "overlay_failed",
+                                   "message": "The disposable snapshot could not be prepared"}
+                return report
+        adapter = overlay or PassiveAdapter(snap, deadline=clock + timeout_s)
         withhold = "logs" not in snap.granted
         if withhold:
             report["limitations"].append("diagnostics_not_granted: console text is withheld and the guest cannot report lifecycle")
@@ -1007,7 +1283,70 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit):
             return report
         try:
             run = _Run(browser, adapter, text_limit, withhold)
-            _drive(run, snap, shell, runner, width, height, deadline, report)
+            if interactions is not None:
+                browser.deadline = adapter.deadline = min(deadline, time.monotonic() + VISUAL_ROUTE_S)
+                _drive(run, snap, shell, runner, width, height, browser.deadline, report, {"hash": "", "landmarks": {}})
+                if report["outcome"] not in ("loaded", "rendered_unconfirmed"):
+                    raise _VisualFailed("journey_boot_failed")
+                browser.deadline = adapter.deadline = deadline
+                _journey(run, interactions, deadline, report)
+            if visual is None:
+                if interactions is None:
+                    _drive(run, snap, shell, runner, width, height, deadline, report)
+            else:
+                used = 0
+                for index, route in enumerate(visual["routes"]):
+                    browser.deadline = min(deadline, time.monotonic() + VISUAL_ROUTE_S)
+                    adapter.deadline = browser.deadline
+                    if index and interactions is None:
+                        browser.call("Target.closeTarget", {"targetId": run.page_target})
+                        adapter.lifecycle = None
+                        browser.listeners.remove(run.on_event)
+                        previous, run = run, _Run(browser, adapter, text_limit, withhold)
+                        run.carry_from(previous)
+                    item = report["visual"]["routes"][index]
+                    report["readiness"]["settled"] = False
+                    report["text"] = None
+                    if interactions is None:
+                        _drive(run, snap, shell, runner, width, height, browser.deadline, report, route)
+                    else:
+                        _observe(run, browser.deadline, report, route)
+                    item["outcome"] = report["outcome"]
+                    item["errors"] = list(run.entries)
+                    if run.limited or adapter.limited:
+                        raise _VisualFailed("inspection_limit")
+                    if report["outcome"] not in ("loaded", "loaded_with_errors", "rendered_unconfirmed"):
+                        raise _VisualFailed("route_failed")
+                    item["geometry"] = run.geometry(route, width, height)
+                    if visual["screenshot"]:
+                        png = browser.call("Page.captureScreenshot", {
+                            "format": "png", "fromSurface": True, "captureBeyondViewport": False,
+                            "clip": {"x": 0, "y": 0, "width": width, "height": height, "scale": 1}}, run.page)["data"]
+                        # Check encoded size before allocating decoded bytes. Then apply the exact shared cap.
+                        if len(png) > 4 * ((visual["max_bytes"] - used + 2) // 3):
+                            raise _VisualFailed("artifact_limit")
+                        raw = base64.b64decode(png, validate=True)
+                        used += len(raw)
+                        if used > visual["max_bytes"]:
+                            raise _VisualFailed("artifact_limit")
+                        if (raw[:8] != b"\x89PNG\r\n\x1a\n" or len(raw) < 24
+                                or (int.from_bytes(raw[16:20], "big"), int.from_bytes(raw[20:24], "big")) != (width, height)):
+                            raise _VisualFailed("capture_dimensions")
+                        item["screenshot"] = {"mime": "image/png", "b64": png, "bytes": len(raw),
+                                              "width": width, "height": height, "space": snap.sid, "rev": snap.rev,
+                                              "inspection_id": report["inspection"]["id"]}
+                    if run.reloaded or run.crashed or time.monotonic() >= browser.deadline:
+                        if time.monotonic() >= browser.deadline:
+                            raise _Timeout()
+                        raise _VisualFailed("space_navigated" if run.reloaded else "renderer_crashed")
+                    item["status"] = "complete"
+                report["visual"]["status"] = "complete"
+                if any(item["outcome"] == "loaded_with_errors" for item in report["visual"]["routes"]):
+                    report["outcome"] = "loaded_with_errors"
+        except _VisualFailed as exc:
+            report["outcome"] = "failed"
+            report["error"] = {"code": exc.code, "message": "Inspection did not complete" if interactions is not None
+                               else "Visual inspection did not complete"}
         except _Timeout:
             report["outcome"] = "timed_out"
         except _Crashed as exc:
@@ -1046,10 +1385,25 @@ def _inspect(ref, rev, width, height, timeout_s, text_limit):
                 report["inspection"]["head_rev_at_end"] = None
         return report
     finally:
-        conn.close()
+        try:
+            if "overlay" in locals() and overlay is not None:
+                try:
+                    report["interactions"]["overlay"] = overlay.evidence()
+                finally:
+                    overlay.close()
+                    report["interactions"]["overlay"]["discarded"] = True
+        finally:
+            conn.close()
+        if "report" in locals():
+            if interactions is not None:
+                _finish_interactions(report)
+            if visual is not None:
+                _finish_visual(report, visual)
+                if interactions is not None and report["visual"]["status"] != "complete":
+                    report["interactions"]["status"] = "incomplete"
 
 
-def _drive(run, snap, shell, runner, width, height, deadline, report):
+def _drive(run, snap, shell, runner, width, height, deadline, report, route=None):
     b = run.b
     version = b.call("Browser.getVersion")
     report["inspection"]["renderer"] = {"product": version.get("product"), "protocol": version.get("protocolVersion")}
@@ -1058,9 +1412,12 @@ def _drive(run, snap, shell, runner, width, height, deadline, report):
     run.page_target = target
     session = b.call("Target.attachToTarget", {"targetId": target, "flatten": True})["sessionId"]
     run.page = session
+    run.visual = route is not None
     run.attach(session, target)
     b.call("Emulation.setDeviceMetricsOverride", {"width": width, "height": height, "deviceScaleFactor": 1,
                                                   "mobile": False}, session)
+    if route is not None:
+        b.call("Emulation.setEmulatedMedia", {"features": [{"name": "prefers-reduced-motion", "value": "reduce"}]}, session)
     b.call("Fetch.enable", {"patterns": [{"urlPattern": "*"}]}, session)
     b.call("Page.enable", None, session)
     navigation = b.call("Page.navigate", {"url": HOST_URL}, session)
@@ -1076,7 +1433,13 @@ def _drive(run, snap, shell, runner, width, height, deadline, report):
         "returnByValue": True}, session)
     if mounted.get("exceptionDetails"):
         raise _Closed("The sandbox host could not mount this Space")
+    _observe(run, deadline, report, route)
+
+
+def _observe(run, deadline, report, route=None):
+    b, session = run.b, run.page
     stable_since, last, last_traffic = None, None, time.monotonic()
+    routed = route is None or not route["hash"]
     while True:
         drained = b.call("Runtime.evaluate", {"expression": "__lsInspect.next(200)", "awaitPromise": True,
                                               "returnByValue": True}, session, timeout=5)
@@ -1089,6 +1452,14 @@ def _drive(run, snap, shell, runner, width, height, deadline, report):
         now = time.monotonic()
         if run.crashed:
             raise _Crashed("The Space's renderer crashed")
+        if sample is not None and not routed and (run.adapter.lifecycle == "loaded" or run.withhold):
+            frame = run.guest_frame()
+            b.call("Runtime.evaluate", {"expression": f"location.hash = {json.dumps(route['hash'])}",
+                                        "contextId": run.worlds[frame], "returnByValue": True, "timeout": 1500},
+                   run.owner(frame), timeout=2)
+            routed = True
+            last, stable_since, last_traffic = None, None, time.monotonic()
+            continue
         if sample is not None:
             report["text"] = sample
             key = (sample["chars"], sample["nodes"], sample["failure"], sample["mutations"])
@@ -1106,16 +1477,118 @@ def _drive(run, snap, shell, runner, width, height, deadline, report):
         if now >= deadline:
             raise _Timeout()
         quiet = stable_since is not None and now - stable_since >= SETTLE_MS / 1000 and now - last_traffic >= SETTLE_MS / 1000
-        if lifecycle and quiet:
+        if lifecycle and quiet and (routed or lifecycle == "failed"):
             report["readiness"]["settled"] = True
             report["outcome"] = ("failed" if lifecycle == "failed" else
                                  "loaded_with_errors" if run.counts["error"] else "loaded")
             return
-        if not lifecycle and run.withhold and stable_since is not None and now - stable_since >= QUIET_MS / 1000 \
+        if routed and not lifecycle and run.withhold and stable_since is not None and now - stable_since >= QUIET_MS / 1000 \
                 and now - last_traffic >= QUIET_MS / 1000:
             report["readiness"]["settled"] = True
             report["outcome"] = "rendered_unconfirmed"
             return
+
+
+def _journey(run, steps, deadline, report):
+    b, adapter = run.b, run.adapter
+    for step, item in zip(steps, report["interactions"]["steps"]):
+        b.deadline = adapter.deadline = min(deadline, time.monotonic() + step["timeout_ms"] / 1000)
+        before = (adapter.failures, sum(adapter.denied.values()), run.network_blocked, run.counts["error"])
+        report["readiness"]["settled"] = False
+        item.pop("reason", None)
+        try:
+            frame = run.guest_frame()
+            if frame not in run.worlds:
+                raise _VisualFailed("canvas_unavailable")
+            session = run.owner(frame)
+            result = b.call("Runtime.evaluate", {
+                "contextId": run.worlds[frame], "returnByValue": True, "timeout": step["timeout_ms"],
+                "expression": """(() => {
+                  const s = JSON.parse(%s);
+                  let el;
+                  try { el = document.querySelector(s.selector) } catch { return {outcome:'refused', reason:'selector_invalid'} }
+                  if (!el) return {outcome:'target missing'};
+                  const r = el.getBoundingClientRect(), css = getComputedStyle(el);
+                  if (el.matches(':disabled') || el.closest('[inert]') || !r.width || !r.height ||
+                      css.visibility !== 'visible' || css.display === 'none') return {outcome:'refused', reason:'target_unavailable'};
+                  el.scrollIntoView({block:'center', inline:'center', behavior:'instant'});
+                  el.focus();
+                  if (s.action === 'click') el.click();
+                  if (s.action === 'type' && (!el.matches('input,textarea') || el.readOnly || el.type === 'password'))
+                    return {outcome:'refused', reason:'target_not_editable'};
+                  if (s.action === 'select') {
+                    if (!el.matches('select') || !Array.from(el.options).some(o=>o.value===s.value && !o.disabled))
+                      return {outcome:'refused', reason:'option_missing'};
+                    el.value = s.value;
+                    el.dispatchEvent(new Event('input',{bubbles:true}));
+                    el.dispatchEvent(new Event('change',{bubbles:true}));
+                  }
+                  return {outcome:'performed'};
+                })()""" % json.dumps(json.dumps(step))}, session)
+            value = result.get("result", {}).get("value")
+            if time.monotonic() >= b.deadline:
+                raise _Timeout()
+            if not isinstance(value, dict) or value.get("outcome") not in ("performed", "target missing", "refused"):
+                raise _VisualFailed("interaction_failed")
+            item.update(value)
+            if item["outcome"] == "performed":
+                if step["action"] == "type":
+                    b.call("Input.insertText", {"text": step["text"]}, session)
+                elif step["action"] == "key":
+                    key = step["key"]
+                    params = {"key": key, "windowsVirtualKeyCode": KEYS[key], "nativeVirtualKeyCode": KEYS[key]}
+                    b.call("Input.dispatchKeyEvent", {"type": "keyDown", **params,
+                           **({"text": "\r"} if key == "Enter" else {"text": " "} if key == " " else {})}, session)
+                    b.call("Input.dispatchKeyEvent", {"type": "keyUp", **params}, session)
+                _observe(run, b.deadline, report)
+                after = (adapter.failures, sum(adapter.denied.values()), run.network_blocked, run.counts["error"])
+                if after != before or report["outcome"] not in ("loaded", "rendered_unconfirmed") or run.limited or adapter.limited:
+                    item.update(outcome="refused", reason="operation_failed")
+            if item["outcome"] != "performed":
+                raise _VisualFailed("interaction_failed")
+        except _Timeout:
+            item.update(outcome="timed out", reason="step_timeout")
+            raise
+        except (_Closed, _Crashed, RuntimeError, _VisualFailed):
+            if item["outcome"] == "performed":
+                item.update(outcome="refused", reason="interaction_failed")
+            raise
+        finally:
+            b.deadline = adapter.deadline = deadline
+    frame = run.guest_frame()
+    route = b.call("Runtime.evaluate", {"contextId": run.worlds[frame], "returnByValue": True,
+                  "expression": "({hash:location.hash.slice(0,201),length:location.hash.length})"},
+                  run.owner(frame))["result"]["value"]
+    if not isinstance(route, dict) or not isinstance(route.get("hash"), str) or route.get("length", 202) > 201:
+        raise _VisualFailed("route_limit")
+    fragment = route["hash"]
+    report["interactions"]["route"] = fragment
+    width, height = report["viewport"]["requested"]
+    report["interactions"]["geometry"] = run.geometry({"hash": fragment, "landmarks": {}}, width, height)
+    report["interactions"]["status"] = "complete"
+
+
+def _finish_interactions(report):
+    evidence = report["interactions"]
+    good = report["outcome"] in ("loaded", "rendered_unconfirmed")
+    if (not good or evidence["overlay"]["truncated"] or report.get("limited") or report.get("blocked")
+            or report.get("denied") or (report.get("network") or {}).get("blocked")
+            or (report.get("counts") or {}).get("error") or evidence["status"] != "complete"
+            or (report.get("cleanup") and not all(report["cleanup"].values()))):
+        evidence["status"] = "incomplete"
+        if good:
+            report["outcome"] = "failed"
+        failed = False
+        for step in evidence["steps"]:
+            if step.get("reason") == "not_run":
+                step["reason"] = "earlier_step_failed" if failed else "inspection_failed"
+                if not failed and report["outcome"] == "timed_out":
+                    step["outcome"] = "timed out"
+            failed |= step["outcome"] != "performed"
+    if len(json.dumps(report).encode()) > VISUAL_OUTPUT_BYTES:
+        evidence["status"] = "incomplete"
+        evidence["overlay"].update(changes=[], truncated=True)
+        report["outcome"] = "failed"
 
 
 def _finish(run, adapter, report):
@@ -1152,8 +1625,13 @@ def _finish(run, adapter, report):
     if report["outcome"] in (None, "timed_out") and readiness["shell_booted"] and not adapter.lifecycle \
             and "reason" not in readiness:
         readiness["reason"] = "lifecycle_not_reported_before_deadline"
-    report["errors"] = run.entries
-    report["counts"] = {**run.counts, "dropped": run.dropped, "guest_reported": adapter.guest_logs}
+    if report["outcome"] == "timed_out" and not readiness["shell_booted"] and "reason" not in readiness:
+        # The renderer started but never loaded the shell (a slow or stuck browser): say so instead of nothing.
+        readiness["reason"] = "shell_not_booted_before_deadline"
+    combined = getattr(run, "prior_entries", []) + run.entries
+    report["errors"] = combined[:MAX_ENTRIES]
+    dropped = run.dropped + max(0, len(combined) - MAX_ENTRIES)
+    report["counts"] = {**run.counts, "dropped": dropped, "guest_reported": adapter.guest_logs}
     report["blocked"] = dict(adapter.refused)
     report["limited"] = {**getattr(run, "limited", {}), **getattr(adapter, "limited", {})}
     if report["limited"]:
@@ -1166,3 +1644,37 @@ def _finish(run, adapter, report):
         report["sandbox_events"] = run.events[:MAX_ENTRIES]
     if run.host_notices:
         report["host_notices"] = [{"text": text, "count": count} for text, count in run.host_notices.items()]
+
+
+def _finish_visual(report, options):
+    visual = report["visual"]
+    cleanup = report.get("cleanup")
+    code = None
+    if report["outcome"] == "timed_out":
+        code = "route_timeout"
+    elif report["outcome"] not in ("loaded", "loaded_with_errors", "rendered_unconfirmed"):
+        code = ((report.get("error") or report.get("unavailable") or {}).get("code")
+                or report["readiness"].get("reason", "route_failed"))
+    elif visual["status"] != "complete":
+        code = "route_failed"
+    elif report.get("limited"):
+        code = "inspection_limit"
+    elif cleanup and not all(cleanup.values()):
+        code = "cleanup_incomplete"
+    elif len(json.dumps(report).encode("utf-8")) > VISUAL_OUTPUT_BYTES:
+        code = "output_limit"
+    if code:
+        visual["status"] = "incomplete" if code == "route_timeout" else "failed"
+        visual["error"] = {"code": code, "message": "Visual evidence is incomplete; no images returned"}
+        first = True
+        for route in visual["routes"]:
+            route["screenshot"] = None
+            if route["status"] != "complete":
+                error = visual["error"] if first else {"code": "route_not_run", "message": "An earlier route failed"}
+                route.update(status=visual["status"] if first else "incomplete", error=error)
+                first = False
+        if report["outcome"] in ("loaded", "loaded_with_errors", "rendered_unconfirmed"):
+            report["outcome"] = "failed"
+    elif options["screenshot"]:
+        report["limitations"] = [item for item in report["limitations"] if not item.startswith("no_pixels_captured:")]
+        report["limitations"].append("pixels_are_unredacted: screenshots contain this Space's rendered content; share only with authority")

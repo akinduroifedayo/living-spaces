@@ -111,10 +111,18 @@ export function spaceLoader(resolver) {
   document.addEventListener('click', event => {
     const anchor = event.target?.closest?.('a[href]')
     const href = anchor?.getAttribute('href')
-    if (!href?.startsWith('#') || event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-    if (anchor.target && anchor.target !== '_self') return
+    if (!href || event.defaultPrevented || event.button > 0) return
+    if (href.startsWith('#')) {
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      if (anchor.target && anchor.target !== '_self') return
+      event.preventDefault()
+      window.location.hash = href.slice(1)
+      return
+    }
+    if (/^\s*javascript:/i.test(href) || anchor.hasAttribute('download')) return
     event.preventDefault()
-    window.location.hash = href.slice(1)
+    if (!event.isTrusted || !port) return
+    send('link.open', { url: href }).catch(error => pushLog('warn', [`Link not opened: ${error.message}`]))
   })
   let port = null
   let closed = false
@@ -123,6 +131,8 @@ export function spaceLoader(resolver) {
   const listeners = { change: new Set(), run: new Set(), bot: new Set() }
   const logQueue = []
   let dropped = 0
+  let faults = 0
+  let reportedFaults = 0
   let unconfirmed = 0
   let lifecycle = null
   let reportedLifecycle = null
@@ -137,11 +147,11 @@ export function spaceLoader(resolver) {
       Object.assign(this, error)
     }
   }
-  const send = (op, args) => new Promise((resolve, reject) => {
+  const send = (op, args, requestId) => new Promise((resolve, reject) => {
     if (closed) return reject(new SpaceError({ code: 'session_invalid', message: 'Space session is closed' }))
     const id = ++seq
-    pending.set(id, { resolve, reject })
-    port.postMessage({ v: 1, id, op, args })
+    pending.set(id, { resolve, reject, op })
+    port.postMessage({ v: 1, id, op, args, ...(requestId ? { request_id: requestId } : {}) })
   })
   const responseBlob = reply => {
     if (closed) throw new SpaceError({ code: 'session_invalid', message: 'Space session is closed' })
@@ -186,12 +196,12 @@ export function spaceLoader(resolver) {
       original(...parts)
     }
   }
-  window.addEventListener('error', e => pushLog('error', [e.error || `${e.message} @${e.filename}:${e.lineno}`]))
-  window.addEventListener('unhandledrejection', e => pushLog('error', ['unhandled rejection:', e.reason]))
+  window.addEventListener('error', e => { faults++; pushLog('error', [e.error || `${e.message} @${e.filename}:${e.lineno}`]) })
+  window.addEventListener('unhandledrejection', e => { faults++; pushLog('error', ['unhandled rejection:', e.reason]) })
   document.addEventListener('securitypolicyviolation', e => pushLog('warn', [`blocked by sandbox policy: ${e.effectiveDirective} ${e.blockedURI}`]))
   const logTimer = setInterval(() => {
     if (!port || closed || logInFlight || logsDenied) return
-    if (!logQueue.length && dropped === reportedDropped && unconfirmed === reportedUnconfirmed && lifecycle === reportedLifecycle) return
+    if (!logQueue.length && dropped === reportedDropped && unconfirmed === reportedUnconfirmed && faults === reportedFaults && lifecycle === reportedLifecycle) return
     const entries = logQueue.splice(0)
     const overflow = dropped > reportedDropped
     if (overflow) {
@@ -201,9 +211,16 @@ export function spaceLoader(resolver) {
     const originals = entries.length - Number(overflow)
     const args = { entries, dropped, unconfirmed }
     if (lifecycle !== reportedLifecycle) args.lifecycle = lifecycle
+    if (faults !== reportedFaults) args.faults = faults
     logInFlight = true
     send('log', args).then(result => {
-      if (result.throttled || (result.stored === 0 && entries.length)) {
+      if (result.throttled) {
+        // Throttling is backpressure, not loss: resend these entries first; anything past the queue bound is a real drop.
+        logQueue.unshift(...entries.slice(0, originals))
+        if (logQueue.length > 50) { dropped += logQueue.length - 50; logQueue.length = 50 }
+        return
+      }
+      if (result.stored === 0 && entries.length) {
         dropped += originals
         return
       }
@@ -211,6 +228,7 @@ export function spaceLoader(resolver) {
       reportedDropped = args.dropped
       reportedUnconfirmed = args.unconfirmed
       if (args.lifecycle) reportedLifecycle = args.lifecycle
+      if (args.faults !== undefined) reportedFaults = args.faults
     }).catch(error => {
       // The host refused Diagnostics for this session; retrying cannot succeed.
       if (error?.code === 'not_granted') { logsDenied = true; logQueue.length = 0; return }
@@ -220,7 +238,17 @@ export function spaceLoader(resolver) {
   }, 510)
   const api = {
     meta: null,
+    drafts: {
+      get: key => send('draft.get', key),
+      put: args => send('draft.put', args),
+      delete: key => send('draft.delete', key)
+    },
+    editor: {
+      save: ({ request_id, ...args }) => send('editor.save', args, request_id),
+      outcome: args => send('outcome.get', args)
+    },
     query: async (collection, options = {}) => (await send('data.query', { ...options, collection })).records,
+    queryPage: (collection, options = {}) => send('data.query', { ...options, collection, page: true }),
     get: (collection, id) => send('data.get', { collection, id }),
     put: (collection, id, data, { baseRev, merge } = {}) => send('data.put', { collection, id, data, base_rev: baseRev, merge }),
     delete: (collection, id, { baseRev } = {}) => send('data.delete', { collection, id, base_rev: baseRev }),
@@ -228,6 +256,7 @@ export function spaceLoader(resolver) {
     ask: (text, { activationId = crypto.randomUUID(), records = [] } = {}) => send('bot.request', { activation_id: activationId, text, records }),
     refresh: () => send('refresh', {}),
     runs: () => send('runs.list', {}),
+    freshness: () => send('freshness', {}),
     net: {
       fetch: (url, { method, headers, body, as } = {}) => send('net.fetch', Object.fromEntries(
         Object.entries({ url, method, headers, body, as }).filter(([, value]) => value !== undefined)
@@ -404,7 +433,8 @@ export function spaceLoader(resolver) {
       const request = pending.get(message.id)
       if (!request) return
       pending.delete(message.id)
-      message.ok ? request.resolve(message.result) : request.reject(new SpaceError(message.error))
+      const confirmed = message.ok && (request.op !== 'editor.save' || !message.outcome || ['success', 'confirmed'].includes(message.outcome.status))
+      confirmed ? request.resolve(message.result) : request.reject(new SpaceError({ ...(request.op === 'editor.save' ? { message: 'Save outcome unknown' } : {}), ...message.error, ...(message.outcome ? { outcome: message.outcome } : {}) }))
     }
     boot(e.data.bundle, e.data.grants).then(() => {
       lifecycle = 'loaded'

@@ -46,6 +46,9 @@ PARAMS = {
     "spaces_write_files": {"space": SID, "files": {"app.js": "export const value = 2"},
                            "summary": "Update value", "base_rev": 2},
     "spaces_edit_file": {"space": SID, "path": "app.js", "old": "1", "new": "2", "summary": "Fix value"},
+    "spaces_read_files": {"space": SID, "paths": ["app.js", "index.html"]},
+    "spaces_edit_files": {"space": SID, "base_rev": 2, "summary": "Fix values",
+                          "edits": [{"path": "app.js", "old": "1", "new": "2"}]},
     "spaces_query": {"space": SID, "collection": "papers", "where": {"status": "reading"}, "limit": 7},
     "spaces_write_records": {"space": SID, "ops": [{"op": "put", "collection": "papers", "id": "demo",
                                                      "data": {"notes": "Demo note"}, "base_rev": 3}]},
@@ -61,6 +64,7 @@ PARAMS = {
 TARGETS = {
     "spaces_list": "list_spaces", "spaces_get": "get_space", "spaces_create": "create_space",
     "spaces_read_file": "read_file", "spaces_write_files": "write_files", "spaces_edit_file": "edit_file",
+    "spaces_read_files": "read_files", "spaces_edit_files": "edit_files",
     "spaces_query": "query", "spaces_write_records": "batch", "spaces_read_logs": "read_logs",
     "spaces_inspect": "inspect", "spaces_revisions": "list_revisions", "spaces_restore": "restore_revision",
     "spaces_refresh": "start_refresh", "spaces_schedule_upkeep": "schedule_upkeep", "spaces_upkeep": "get_upkeep",
@@ -79,11 +83,14 @@ class AdapterCase(unittest.TestCase):
         self.addCleanup(self.env.stop)
         self.core = types.ModuleType("living_spaces_core")
         self.core.SpacesError = SpacesError
+        self.core.bridge = types.SimpleNamespace(native_refresh=lambda sid, start: start())
         returns = {
             "resolve_space": SID, "list_spaces": [DETAIL.copy()], "get_space": DETAIL.copy(),
             "create_space": DETAIL.copy(), "read_file": {"path": "app.js", "text": "value = 2", "rev": 2},
             "list_files": [{"path": "index.html"}, {"path": "app.js"}, {"path": "vendor/preact.mjs"}],
             "write_files": {"rev": 3}, "edit_file": {"rev": 3}, "list_revisions": [{"rev": 2}],
+            "read_files": {"space": SID, "rev": 2, "results": [{"path": "app.js", "ok": True, "result": {"path": "app.js", "text": "value = 2", "rev": 2}}]},
+            "edit_files": {"rev": 3},
             "restore_revision": {"rev": 3}, "query": {"records": [], "total": 0, "seq": 8},
             "batch": {"results": [{"id": "demo", "rev": 4}], "seq": 9}, "read_logs": [{"level": "error", "msg": "Demo"}],
             "list_grants": [{"capability": "net", "status": "requested", "scope": {},
@@ -142,7 +149,7 @@ class ToolTests(AdapterCase):
         self.assertCountEqual(manifest["provides_tools"], registered)
 
     def test_registration_and_skill(self):
-        self.assertEqual(set(self.tools), set(PARAMS) | {"spaces_bind_maintainer"})
+        self.assertEqual(set(self.tools), set(PARAMS) | {"spaces_bind_maintainer", "spaces_retention"})
         for name, tool in self.tools.items():
             with self.subTest(name=name):
                 self.assertEqual(tool["toolset"], "living_spaces")
@@ -266,27 +273,19 @@ class ToolTests(AdapterCase):
         self.tool("spaces_read_file", {"space": SID, "path": "space.json"})
         self.core.read_file.assert_called_once_with(SID, "space.json")
 
-    def test_static_warnings_help_repair_the_project(self):
-        self.core.bundle.return_value = {"manifest": MANIFEST, "files": [
-            {"path": "index.html", "text": "<main>Library</main>"},
-            {"path": "app.js", "text": "import './missing.js'; fetch('https://example.org')"}]}
-        result = self.tool("spaces_create", {**PARAMS["spaces_create"], "files": {
-            "app.js": "import './missing.js'; fetch('https://example.org')"}})["result"]
-        self.assertTrue(any("missing.js" in warning for warning in result["warnings"]))
-        self.assertTrue(any("network access" in warning for warning in result["warnings"]))
-        self.core.bundle.return_value = {"manifest": MANIFEST, "files": [{"path": "app.js", "text": ""}]}
-        result = self.tool("spaces_create")["result"]
-        self.assertTrue(any("Entry file" in warning for warning in result["warnings"]))
-
-    def test_deleted_dependency_warns_on_unchanged_importer(self):
-        self.core.bundle.return_value = {"manifest": MANIFEST, "files": [
-            {"path": "index.html", "text": '<script type="module" src="./app.js"></script>'},
-            {"path": "app.js", "text": "import './views/library.js'"}]}
-        reply = self.tool("spaces_write_files", {"space": SID, "files": {"views/library.js": None},
-                                                 "summary": "Remove view", "base_rev": 2})
-        self.assertTrue(reply["ok"])
-        self.assertTrue(any("library.js" in warning for warning in reply["result"]["warnings"]))
-        self.core.bundle.assert_called_once_with(SID, rev=3)
+    def test_core_diagnostics_reach_every_write_result(self):
+        found = {"code": "import.unresolved", "path": "app.js", "line": 1, "column": 8, "ref": "./missing.js",
+                 "target": "missing.js", "message": "app.js:1:8: import './missing.js' does not resolve. [import.unresolved]"}
+        report = {"warnings": [found["message"]], "diagnostics": [found]}
+        self.core.create_space.return_value = {**DETAIL, **report}
+        self.core.write_files.return_value = {"rev": 3, **report}
+        self.core.edit_file.return_value = {"rev": 3, **report}
+        self.core.restore_revision.return_value = {"rev": 3, **report}
+        for name in ("spaces_create", "spaces_write_files", "spaces_edit_file", "spaces_restore"):
+            result = self.tool(name)["result"]
+            self.assertIn(found["message"], result["warnings"], name)
+            self.assertEqual(result["diagnostics"], [found], name)
+        self.core.bundle.assert_any_call(SID, rev=3)
 
     def test_invalid_arguments_are_json_errors(self):
         cases = [("spaces_get", {}), ("spaces_create", {**PARAMS["spaces_create"], "description": 4}),
@@ -321,7 +320,7 @@ def tool_success(name):
         self.assertTrue(reply["ok"], reply)
         target = getattr(self.core, TARGETS[name])
         target.assert_called_once()
-        if name in ("spaces_list", "spaces_read_file", "spaces_query", "spaces_write_records",
+        if name in ("spaces_list", "spaces_read_file", "spaces_read_files", "spaces_query", "spaces_write_records",
                     "spaces_revisions", "spaces_refresh", "spaces_schedule_upkeep", "spaces_upkeep", "spaces_inspect"):
             self.assertEqual(reply, {"ok": True, "result": target.return_value})
         elif name == "spaces_read_logs":
@@ -417,7 +416,7 @@ class RestTests(AdapterCase):
                 self.core.dispatch.side_effect = error
                 response = self.request("POST", f"/spaces/{SID}/bridge", json=body)
                 self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.json(), {"ok": False, "error": error.to_dict()})
+                self.assertEqual(response.json(), {"ok": False, "error": error.to_dict(), "outcome": {"status": "rejected"}})
         self.core.dispatch.side_effect = None
         self.core.dispatch.return_value = {"ok": False, "error": {"code": "session_invalid", "message": "Closed"}}
         self.assertEqual(self.request("POST", f"/spaces/{SID}/bridge", json=body).json(), self.core.dispatch.return_value)

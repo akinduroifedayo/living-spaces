@@ -175,22 +175,126 @@ test('script failure reports failed with its existing loader message even after 
   assert.equal(report.args.dropped, 12)
 })
 
-test('throttled batches retain lifecycle and cumulative dropped counts until acknowledged', async () => {
+test('uncaught errors after load report a cumulative fault count; handled console errors do not', async () => {
+  const script = { attributes: [{ name: 'type', value: 'module' }], type: 'module', textContent: 'export {}', remove() {} }
+  const f = loaderFixture([{ path: 'index.html', mime: 'text/html', text: '<main>Demo</main>' }], [script])
+  await tick()
+  f.document.body.children.at(-1).onload()
+  await tick()
+  f.timers[0].fn()
+  assert.equal(f.messages.at(-1).args.lifecycle, 'loaded')
+  assert.equal('faults' in f.messages.at(-1).args, false)
+  reply(f, f.messages.at(-1), { stored: 0 })
+  await tick()
+  vm.runInContext('console.error("handled validation error")', f.context)
+  f.timers[0].fn()
+  assert.equal('faults' in f.messages.at(-1).args, false, 'console.error alone is not a fault')
+  reply(f, f.messages.at(-1), { stored: 1 })
+  await tick()
+  f.events.get('error')({ error: new Error('render crashed'), message: 'render crashed', filename: 'app.js', lineno: 3 })
+  f.events.get('unhandledrejection')({ reason: 'lost promise' })
+  f.timers[0].fn()
+  const report = f.messages.at(-1)
+  assert.equal(report.args.faults, 2)
+  assert.equal(report.args.entries.length, 2)
+  reply(f, report, { stored: 2 })
+  await tick()
+  const sent = f.messages.length
+  f.timers[0].fn()
+  assert.equal(f.messages.length, sent, 'an acknowledged fault count is not resent')
+})
+
+test('throttled batches are resent with their entries, lifecycle and fault count, and are not counted as dropped', async () => {
+  const f = loaderFixture()
+  await tick()
+  f.timers[0].fn()
+  reply(f, f.messages.at(-1), { stored: f.messages.at(-1).args.entries.length })
+  await tick()
+  f.events.get('error')({ message: 'Public demo failure', filename: 'demo.js', lineno: 1 })
+  f.timers[0].fn()
+  const first = f.messages.at(-1)
+  assert.equal(first.args.faults, 1)
+  reply(f, first, { stored: 0, throttled: true })
+  await tick()
+  vm.runInContext('console.log("later entry")', f.context)
+  f.timers[0].fn()
+  const retry = f.messages.at(-1)
+  assert.notEqual(retry.id, first.id)
+  assert.deepEqual(retry.args.entries.slice(0, first.args.entries.length), first.args.entries)
+  assert.equal(retry.args.entries.at(-1).msg, 'later entry')
+  assert.equal(retry.args.dropped, 0)
+  assert.equal(retry.args.faults, 1)
+  assert.ok(!retry.args.entries.some(entry => entry.msg.startsWith('Space log overflow')))
+  reply(f, retry, { stored: retry.args.entries.length })
+  await tick()
+  const sent = f.messages.length
+  f.timers[0].fn()
+  assert.equal(f.messages.length, sent, 'an acknowledged retry is not resent')
+})
+
+test('a throttled first batch resends its unacknowledged lifecycle and entries', async () => {
   const f = loaderFixture()
   await tick()
   f.timers[0].fn()
   const first = f.messages.at(-1)
+  assert.equal(first.args.lifecycle, 'failed')
   reply(f, first, { stored: 0, throttled: true })
   await tick()
   f.timers[0].fn()
   const retry = f.messages.at(-1)
+  assert.notEqual(retry.id, first.id)
   assert.equal(retry.args.lifecycle, 'failed')
-  assert.equal(retry.args.dropped, first.args.entries.length)
-  assert.equal(retry.args.unconfirmed, 0)
+  assert.deepEqual(retry.args.entries, first.args.entries)
+  assert.equal(retry.args.dropped, 0)
   reply(f, retry, { stored: retry.args.entries.length })
   await tick()
+  const sent = f.messages.length
   f.timers[0].fn()
-  assert.equal(f.messages.length, 2)
+  assert.equal(f.messages.length, sent, 'an acknowledged lifecycle is not resent')
+})
+
+test('repeated throttling of an overflowing batch never requeues the marker or inflates the drop count', async () => {
+  const f = loaderFixture()
+  await tick()
+  f.timers[0].fn()
+  reply(f, f.messages.at(-1), { stored: f.messages.at(-1).args.entries.length })
+  await tick()
+  vm.runInContext('for (let i = 0; i < 60; i++) console.log("n", i)', f.context)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    f.timers[0].fn()
+    const batch = f.messages.at(-1)
+    assert.equal(batch.args.entries.length, 50)
+    assert.equal(batch.args.entries.filter(entry => entry.msg.startsWith('Space log overflow')).length, 1)
+    assert.equal(batch.args.entries.at(-1).msg, 'Space log overflow: dropped 11 entries')
+    assert.equal(batch.args.entries[0].msg, 'n 0')
+    assert.equal(batch.args.dropped, 11)
+    if (attempt < 2) reply(f, batch, { stored: 0, throttled: true })
+    else reply(f, batch, { stored: batch.args.entries.length })
+    await tick()
+  }
+  const sent = f.messages.length
+  f.timers[0].fn()
+  assert.equal(f.messages.length, sent)
+})
+
+test('requeued throttled entries stay within the fifty-entry queue and count only real drops', async () => {
+  const f = loaderFixture()
+  await tick()
+  f.timers[0].fn()
+  reply(f, f.messages.at(-1), { stored: f.messages.at(-1).args.entries.length })
+  await tick()
+  vm.runInContext('for (let i = 0; i < 30; i++) console.log("a", i)', f.context)
+  f.timers[0].fn()
+  const first = f.messages.at(-1)
+  vm.runInContext('for (let i = 0; i < 30; i++) console.log("b", i)', f.context)
+  reply(f, first, { stored: 0, throttled: true })
+  await tick()
+  f.timers[0].fn()
+  const retry = f.messages.at(-1)
+  assert.equal(retry.args.entries.length, 50)
+  assert.equal(retry.args.entries[0].msg, 'a 0')
+  assert.equal(retry.args.entries.at(-1).msg, 'Space log overflow: dropped 11 entries')
+  assert.equal(retry.args.dropped, 11)
 })
 
 test('failed sends report unconfirmed entries separately from known drops and bound in-flight batches', async () => {
@@ -236,4 +340,45 @@ test('a transient log failure still retries', async () => {
   f.timers[0].fn()
   assert.equal(f.messages.length, 2)
   assert.equal(f.messages[1].op, 'log')
+})
+
+function anchorClick(f, href, extra = {}) {
+  let prevented = false
+  const anchor = { target: extra.target || '', getAttribute: name => name === 'href' ? href : null, hasAttribute: name => name === 'download' && !!extra.download }
+  const event = { isTrusted: extra.isTrusted ?? true, target: { closest: () => anchor }, button: extra.button ?? 0, defaultPrevented: !!extra.defaultPrevented, preventDefault() { prevented = true; this.defaultPrevented = true } }
+  f.events.get('click')(event)
+  return prevented
+}
+test('activating an external source link keeps the Space in place and asks the host to open it', () => {
+  const f = loaderFixture()
+  for (const href of ['https://example.com/source', 'http://example.com/', 'file:///etc/hosts', 'data:text/plain,demo', 'relative/page.html']) {
+    assert.equal(anchorClick(f, href), true, `${href} never navigates the Space`)
+  }
+  assert.equal(anchorClick(f, 'https://example.com/new-tab', { target: '_blank' }), true)
+  assert.deepEqual(f.messages.map(m => [m.op, m.args]), [
+    ['link.open', { url: 'https://example.com/source' }], ['link.open', { url: 'http://example.com/' }],
+    ['link.open', { url: 'file:///etc/hosts' }], ['link.open', { url: 'data:text/plain,demo' }],
+    ['link.open', { url: 'relative/page.html' }], ['link.open', { url: 'https://example.com/new-tab' }]
+  ])
+})
+test('fragment, script, download and app-handled links keep their existing behaviour', () => {
+  const f = loaderFixture()
+  f.context.window.location = { hash: '' }
+  assert.equal(anchorClick(f, '#/library'), true)
+  assert.equal(f.context.window.location.hash, '/library')
+  assert.equal(anchorClick(f, 'javascript:void(0)'), false)
+  assert.equal(anchorClick(f, 'https://example.com/file.csv', { download: true }), false)
+  assert.equal(anchorClick(f, 'https://example.com/', { defaultPrevented: true }), false)
+  assert.equal(anchorClick(f, 'https://example.com/', { button: 1 }), false)
+  assert.equal(anchorClick(f, 'https://example.com/scripted', { isTrusted: false }), true, 'a scripted click neither navigates nor asks the host')
+  assert.deepEqual(f.messages.map(m => m.op), [])
+})
+test('a refused link is recorded in Space diagnostics instead of an unhandled rejection', async () => {
+  const f = loaderFixture()
+  anchorClick(f, 'file:///etc/hosts')
+  f.port.onmessage({ data: { v: 1, id: f.messages[0].id, ok: false, error: { code: 'invalid', message: 'Only https links can be opened' } } })
+  await tick()
+  f.timers[0].fn()
+  const log = f.messages.find(m => m.op === 'log')
+  assert.ok(log.args.entries.some(entry => entry.level === 'warn' && /Link not opened: Only https links can be opened/.test(entry.msg)))
 })

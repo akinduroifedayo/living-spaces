@@ -599,3 +599,244 @@ test('public cron metadata does not establish a catch-up execution guarantee', a
     assert.doesNotMatch(document.body.textContent, /it runs once when it wakes|Missed runs aren't replayed/)
   } finally { await cleanup() }
 })
+
+function q03RefreshContext(refresh) {
+  const calls = []
+  return { calls, rest: async (path, request) => {
+    calls.push({ path, request })
+    if (path.endsWith('/refresh')) return refresh()
+    if (path.endsWith('/sessions')) return { session: 'q03-session', head_rev: 2, grants: [] }
+    if (path.endsWith('/bundle')) return { rev: 2 }
+    return { closed: true }
+  } }
+}
+for (const thrown of [false, true]) {
+  test(`Q03 mounted Refresh preserves structured unknown ${thrown ? 'exception' : 'reply'}`, async () => {
+    setup(); data.detail = space()
+    const reply = { ok: false, error: { code: 'ambiguous', message: 'Unconfirmed synthetic refresh' }, outcome: { status: 'unknown' } }
+    const ctx = q03RefreshContext(() => {
+      if (thrown) throw Object.assign(new Error(reply.error.message), { body: reply })
+      return reply
+    })
+    try {
+      await render(SpaceView, { ctx, sid: 'demo-space' })
+      await click('Refresh now')
+      const status = document.querySelector('.ls-save[role="status"]')
+      assert.match(status.textContent, /Refresh outcome unknown/)
+      assert.doesNotMatch(status.textContent, /Refresh failed|Refresh succeeded|Refresh undefined/)
+      assert.equal(ctx.calls.filter(call => call.path.endsWith('/refresh')).length, 1)
+    } finally { await cleanup() }
+  })
+}
+for (const kind of ['success', 'rejected', 'busy']) {
+  test(`Q03 mounted Refresh retains factual ${kind} feedback`, async () => {
+    setup(); data.detail = space()
+    const ctx = q03RefreshContext(() => {
+      if (kind === 'success') return { id: 'q03-run', status: 'succeeded', changed: {} }
+      throw Object.assign(new Error(kind === 'busy' ? 'Store busy' : 'Permission denied'), {
+        body: { error: { code: kind === 'busy' ? 'blocked' : 'not_granted' }, outcome: { status: kind } }
+      })
+    })
+    try {
+      await render(SpaceView, { ctx, sid: 'demo-space' })
+      await click('Refresh now')
+      const status = document.querySelector('.ls-save').textContent
+      assert.match(status, kind === 'success' ? /Refresh succeeded/ : kind === 'busy' ? /Refresh busy/ : /Refresh failed/)
+      assert.doesNotMatch(status, /outcome unknown/)
+      assert.equal(ctx.calls.filter(call => call.path.endsWith('/refresh')).length, 1)
+    } finally { await cleanup() }
+  })
+}
+for (const mode of ['unchanged', 'replacement', 'revocation', 'closed']) {
+  test(`Q03 mounted pending Refresh binds delivery to ${mode} origin`, async () => {
+    setup(); data.detail = space()
+    const pending = Promise.withResolvers()
+    const ctx = q03RefreshContext(() => pending.promise)
+    let unmounted = false
+    try {
+      await render(SpaceView, { ctx, sid: 'demo-space' })
+      await click('Refresh now')
+      await click('Refreshing…')
+      assert.equal(ctx.calls.filter(call => call.path.endsWith('/refresh')).length, 1)
+      if (mode === 'replacement') await render(SpaceView, { ctx, sid: 'other-space' })
+      if (mode === 'revocation') {
+        data.detail = space({ grants: [{ capability: 'net', status: 'revoked' }] })
+        await render(SpaceView, { ctx, sid: 'demo-space' })
+      }
+      if (mode === 'closed') { await cleanup(); unmounted = true }
+      await act(async () => pending.resolve({ id: 'q03-old-run', status: 'succeeded', changed: {} }))
+      if (mode === 'unchanged') assert.match(document.querySelector('.ls-save').textContent, /Refresh succeeded/)
+      else assert.doesNotMatch(document.body.textContent, /Refresh succeeded|q03-old-run/)
+      assert.equal(ctx.calls.filter(call => call.path.endsWith('/refresh')).length, 1)
+    } finally { pending.resolve({ status: 'succeeded', changed: {} }); if (!unmounted) await cleanup() }
+  })
+}
+
+async function withRealQueries(run) {
+  const { QueryClient, QueryClientProvider, useQuery, useQueryClient } = require('@tanstack/react-query')
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const original = { useQuery: sdk.useQuery, useQueryClient: sdk.useQueryClient, navigate: sdk.host.navigate }
+  const routes = []
+  sdk.useQuery = useQuery; sdk.useQueryClient = useQueryClient; sdk.host.navigate = route => routes.push(route)
+  const mount = (component, props) => render(QueryClientProvider, { client, children: React.createElement(component, props) })
+  try { await run({ client, mount, routes }) } finally { await cleanup(); client.clear(); Object.assign(sdk, { useQuery: original.useQuery, useQueryClient: original.useQueryClient }); sdk.host.navigate = original.navigate }
+}
+const settle = ms => act(async () => new Promise(resolve => setTimeout(resolve, ms)))
+const sessionReply = path => path.endsWith('/sessions') ? { session: 'demo', head_rev: 2, grants: [] } : path.endsWith('/bundle') ? { rev: 2 } : null
+
+for (const scopeKey of [null, 'profile-a']) {
+  test(`deleting a Space removes it from the Spaces list even when an older list request settles later (scope ${scopeKey})`, async () => {
+    setup()
+    await withRealQueries(async ({ client, mount, routes }) => {
+      const listKey = ['living-spaces', scopeKey, 'spaces']
+      const before = { spaces: [space({ status: 'archived' }), space({ id: 'kept', name: 'Kept' })] }
+      client.setQueryData(listKey, before)
+      let releaseOld
+      client.fetchQuery({ queryKey: listKey, queryFn: () => new Promise(resolve => { releaseOld = () => resolve(before) }), staleTime: 0 }).catch(() => {})
+      const deleted = []
+      const ctx = { rest: async (path, request) => {
+        if (request?.method === 'DELETE') { deleted.push(path); return {} }
+        return sessionReply(path) || (path === '/spaces/demo-space' ? space({ status: 'archived' }) : {})
+      } }
+      await mount(SpaceView, { ctx, sid: 'demo-space', scopeKey })
+      await settle(20)
+      await click('Delete…'); await click('Delete Space')
+      await settle(10)
+      releaseOld()
+      await settle(20)
+      assert.equal(deleted.length, 1)
+      assert.deepEqual(routes, ['/spaces'])
+      assert.deepEqual(client.getQueryData(listKey).spaces.map(row => row.id), ['kept'], 'a pre-delete list response resurrected the deleted Space')
+    })
+  })
+}
+
+test('a failed delete leaves the Spaces list and the route unchanged', async () => {
+  setup()
+  await withRealQueries(async ({ client, mount, routes }) => {
+    const listKey = ['living-spaces', null, 'spaces']
+    client.setQueryData(listKey, { spaces: [space({ status: 'archived' })] })
+    const ctx = { rest: async (path, request) => {
+      if (request?.method === 'DELETE') throw { error: { code: 'conflict', message: 'Synthetic delete refusal' } }
+      return sessionReply(path) || (path === '/spaces/demo-space' ? space({ status: 'archived' }) : {})
+    } }
+    await mount(SpaceView, { ctx, sid: 'demo-space' })
+    await settle(20)
+    await click('Delete…'); await click('Delete Space')
+    await settle(20)
+    assert.deepEqual(routes, [])
+    assert.deepEqual(client.getQueryData(listKey).spaces.map(row => row.id), ['demo-space'])
+  })
+})
+
+test('opening History shows the current stored record count, not the cached one', async () => {
+  setup()
+  await withRealQueries(async ({ client, mount }) => {
+    const storage = count => ({ categories: { records: { count, bytes: count * 34 } }, limits: [], warnings: [] })
+    let stored = 1
+    const ctx = { rest: async path => sessionReply(path) || (path === '/spaces/demo-space' ? space({ storage: storage(stored) }) : []) }
+    await mount(SpaceView, { ctx, sid: 'demo-space' })
+    await settle(20)
+    stored = 2   // a note saved inside the canvas; the 2 s detail poll has not run yet
+    await click('History')
+    await settle(50)
+    assert.match(document.querySelector('section[aria-label="Storage"]').textContent, /records: 2 · 68 bytes/)
+  })
+})
+
+for (const [label, before, after, run] of [
+  ['pin', { pinned: false }, { pinned: true }, async () => { await click('Pin Space') }],
+  ['restore', { status: 'archived' }, { status: 'active' }, async () => { await click('Restore Space') }],
+  ['archive', { status: 'active' }, { status: 'archived' }, async () => { await click('Archive Space…'); await click('Archive Space') }]
+]) {
+  test(`${label} updates the cached Spaces list row, even when an older list request settles later`, async () => {
+    setup()
+    const menu = { content: sdk.DropdownMenuContent, item: sdk.DropdownMenuItem }
+    sdk.DropdownMenuContent = ({ children }) => React.createElement('div', null, children)
+    sdk.DropdownMenuItem = ({ children, onSelect }) => React.createElement('button', { type: 'button', onClick: onSelect }, children)
+    try {
+    await withRealQueries(async ({ client, mount }) => {
+      const listKey = ['living-spaces', null, 'spaces']
+      const row = state => ({ ...space(state), status: state.status || 'active', pinned: !!state.pinned })
+      const stale = { spaces: [row(before), { ...space(), id: 'kept', name: 'Kept' }] }
+      client.setQueryData(listKey, stale)
+      let releaseOld, current = row(before), listCalls = 0
+      // the first list request is the older in-flight one; later calls read the server, as the index's own query does
+      client.fetchQuery({ queryKey: listKey, queryFn: () => listCalls++ === 0 ? new Promise(resolve => { releaseOld = () => resolve(stale) }) : Promise.resolve({ spaces: [current, stale.spaces[1]] }), staleTime: 0 }).catch(() => {})
+      const ctx = { rest: async (path, request) => {
+        if (request?.method === 'POST' && /\/(pin|archive|unarchive)$/.test(path)) { current = row(after); return {} }
+        return sessionReply(path) || (path === '/spaces/demo-space' ? current : path === '/spaces' ? { spaces: [current, stale.spaces[1]] } : {})
+      } }
+      await mount(SpaceView, { ctx, sid: 'demo-space' })
+      await settle(30)
+      await run()
+      await settle(20)
+      releaseOld()
+      await settle(30)
+      const cached = client.getQueryData(listKey).spaces.find(entry => entry.id === 'demo-space')
+      for (const [key, value] of Object.entries(after)) assert.equal(cached[key], value, `${label}: list row ${key} is stale`)
+      assert.equal(client.getQueryData(listKey).spaces.length, 2)
+    })
+    } finally { sdk.DropdownMenuContent = menu.content; sdk.DropdownMenuItem = menu.item }
+  })
+}
+
+test('a failed detail refresh after pin does not overwrite a newer Spaces list row', async () => {
+  setup()
+  const menu = { content: sdk.DropdownMenuContent, item: sdk.DropdownMenuItem }
+  sdk.DropdownMenuContent = ({ children }) => React.createElement('div', null, children)
+  sdk.DropdownMenuItem = ({ children, onSelect }) => React.createElement('button', { type: 'button', onClick: onSelect }, children)
+  try {
+    await withRealQueries(async ({ client, mount }) => {
+      const listKey = ['living-spaces', null, 'spaces']
+      let failDetail = false
+      const ctx = { rest: async (path, request) => {
+        if (request?.method === 'POST' && path.endsWith('/pin')) { failDetail = true; client.setQueryData(listKey, { spaces: [{ ...space(), pinned: true }] }); return {} }
+        if (path === '/spaces/demo-space') { if (failDetail) throw { error: { code: 'unavailable', message: 'Synthetic detail outage' } }; return { ...space(), pinned: false } }
+        return sessionReply(path) || {}
+      } }
+      client.setQueryData(listKey, { spaces: [{ ...space(), pinned: false }] })
+      await mount(SpaceView, { ctx, sid: 'demo-space' })
+      await settle(30)
+      await click('Pin Space')
+      await settle(30)
+      assert.equal(client.getQueryData(listKey).spaces[0].pinned, true, 'stale detail from a failed refetch overwrote the newer list row')
+    })
+  } finally { sdk.DropdownMenuContent = menu.content; sdk.DropdownMenuItem = menu.item }
+})
+
+test('a failed detail refresh after pin still ends on the server list, not an older or cancelled one', async () => {
+  setup()
+  const menu = { content: sdk.DropdownMenuContent, item: sdk.DropdownMenuItem }
+  sdk.DropdownMenuContent = ({ children }) => React.createElement('div', null, children)
+  sdk.DropdownMenuItem = ({ children, onSelect }) => React.createElement('button', { type: 'button', onClick: onSelect }, children)
+  try {
+    await withRealQueries(async ({ client, mount }) => {
+      const listKey = ['living-spaces', null, 'spaces']
+      let pinned = false, failDetail = false
+      client.setQueryData(listKey, { spaces: [{ ...space(), pinned: false }] })
+      // Every list request stays pending until released. The first is the one already in flight before the pin; it answers
+      // with whatever the server holds when it is released, i.e. the newer pinned row.
+      const pending = []
+      const listRequest = () => new Promise(resolve => pending.push(() => resolve({ spaces: [{ ...space(), pinned }] })))
+      client.fetchQuery({ queryKey: listKey, queryFn: listRequest, staleTime: 0 }).catch(() => {})
+      client.setQueryDefaults(listKey, { queryFn: listRequest })
+      const ctx = { rest: async (path, request) => {
+        if (request?.method === 'POST' && path.endsWith('/pin')) { pinned = true; failDetail = true; return {} }
+        if (path === '/spaces/demo-space') { if (failDetail) throw { error: { code: 'unavailable', message: 'Synthetic detail outage' } }; return { ...space(), pinned: false } }
+        if (path === '/spaces') return { spaces: [{ ...space(), pinned }] }
+        return sessionReply(path) || {}
+      } }
+      await mount(SpaceView, { ctx, sid: 'demo-space' })
+      await settle(30)
+      await click('Pin Space')
+      await settle(10)
+      assert.ok(pending.length >= 1, 'the original list request was not in flight')
+      pending[0]()                       // the original request answers late
+      await settle(20)
+      while (pending.length > 1) { pending.splice(1, 1)[0](); await settle(10) }   // then any replacement the action scheduled
+      await settle(20)
+      assert.equal(client.getQueryData(listKey).spaces[0].pinned, true, 'the list ended on a stale or cancelled result')
+    })
+  } finally { sdk.DropdownMenuContent = menu.content; sdk.DropdownMenuItem = menu.item }
+})

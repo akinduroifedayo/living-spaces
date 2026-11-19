@@ -5,6 +5,8 @@ import re
 import sqlite3
 
 from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -14,7 +16,7 @@ from .errors import SpacesError
 
 PACKAGE = Path(__file__).resolve().parents[1]
 KINDS = ("agent", "feed")
-ACTIONS = ("pause", "resume", "run", "remove")
+ACTIONS = ("pause", "resume", "run", "remove", "recover")
 ONE_SHOT_LIMIT = 5
 AGENT_MIN_MINUTES = 15
 AGENT_PROMPT_LIMIT = 8000
@@ -291,16 +293,95 @@ def _owned_jobs(sid, link, jobs, *, claim=None):
     return [job for job in jobs if job["job_id"] in (linked_id, claimed_id) or job.get("name") in names]
 
 
-def _read(sid):
+@dataclass
+class _Projection:
+    """One public read's native job listing. Only summary() consults it; authority paths always list fresh."""
+    relevant: bool
+    listed: dict | None = None
+    error: SpacesError | None = None
+
+    def listing(self):
+        if self.listed is None and self.error is None:
+            try:
+                self.listed = _jobs()
+            except SpacesError as exc:
+                self.error = exc
+        if self.error is not None:
+            raise self.error
+        return self.listed
+
+
+_PROJECTION: ContextVar[_Projection | None] = ContextVar("living_spaces_upkeep_projection", default=None)
+
+
+def _relevant(sids):
+    """Whether any Space has native state worth a cron list: a link, a retained claim or an unsettled operation."""
+    if sids is None:
+        return True
+    sids = list(sids)
+    if not sids:
+        return False
+    marks = ",".join("?" * len(sids))
+    with db.read() as conn:
+        return conn.execute(
+            f"SELECT 1 FROM upkeep_links WHERE space IN ({marks}) UNION ALL "
+            f"SELECT 1 FROM refresh_claims WHERE space IN ({marks}) UNION ALL "
+            f"SELECT 1 FROM maintenance_operations WHERE space IN ({marks}) AND phase!='retired' LIMIT 1",
+            (*sids, *sids, *sids)).fetchone() is not None
+
+
+@contextmanager
+def read_projection(sids=None):
+    """Share one native listing across the summaries of one public read.
+
+    `sids` names every Space the read will summarize; when none has relevant native state, no list runs and
+    summaries are None. `None` means a single-Space read that always lists, so detail keeps orphan discovery.
+    """
+    token = _PROJECTION.set(_Projection(_relevant(sids)))
+    try:
+        yield
+    finally:
+        _PROJECTION.reset(token)
+
+
+def _read(sid, projection=None):
     with db.read() as conn:
         _space(conn, sid)
         link = _link(conn, sid)
+        saved = conn.execute("SELECT recovery_settings FROM maintenance_spaces WHERE space=?", (sid,)).fetchone()
+        operations = [dict(row) for row in conn.execute(
+            "SELECT o.command AS action,o.cron_job_id,o.phase FROM maintenance_operations o "
+            "JOIN maintenance_spaces m ON m.space=o.space AND m.incarnation=o.incarnation "
+            "WHERE o.space=? AND o.phase!='retired' "
+            "AND o.command IN ('schedule','pause','resume','run','remove','refresh') "
+            "ORDER BY o.created_at,o.token", (sid,))]
     result = {"link": link, "job": None, "executions": [], "one_shots": [], "orphan_jobs": [], "missing": False,
-              "error": None, "unavailable": dict(UNAVAILABLE)}
+              "error": None, "unavailable": dict(UNAVAILABLE), "recovery": None, "recovery_aid": None}
+    if saved and saved["recovery_settings"]:
+        result["recovery_aid"] = {"label": "Recovery settings aid", "authoritative": False,
+                                  "settings": json.loads(saved["recovery_settings"])}
+    # A run whose native reply was recorded as background is the normal in-flight case: its reply is durable and
+    # a later Run joins and settles it from the native last-run stamp. Only operations without a durable native
+    # confirmation are uncertain, and only those raise the recovery barrier.
+    in_flight = [op for op in operations if op["phase"] == "background" and op["action"] in ("run", "refresh")]
+    operations = [op for op in operations if op not in in_flight]
+    if in_flight:
+        result["in_flight"] = in_flight
+    if operations:
+        result["recovery"] = {
+            "state": "unknown", "operations": operations,
+            "cause": "A native upkeep request has no durable SQLite confirmation. The process may have stopped "
+                     "between the native effect and the local update; the request may still be in flight.",
+            "options": "Check the native jobs below. You can pause future work or confirm recovery to remove "
+                       "Space-owned jobs and clear the barrier after verified absence. Already-running work may finish. "
+                       "No run will be replayed. Recreating upkeep is a separate request using the saved settings aid.",
+            "evidence": "Native inventory can confirm current presence and enabled state, not an uncertain model run's outcome.",
+        }
     try:
-        listed = _jobs()
+        listed = projection.listing() if projection is not None else _jobs()
     except SpacesError as exc:
         result["error"] = exc.message
+        result["native_error"] = {**exc.to_dict(), "retryable": True}
         return result
     jobs = _owned_jobs(sid, link, listed["jobs"])
     result["gateway_running"] = listed.get("gateway_running")
@@ -321,7 +402,18 @@ def get_upkeep(sid):
 
 
 def summary(sid):
-    state = _read(sid)
+    projection = _PROJECTION.get()
+    if projection is None:
+        state = _read(sid)
+    elif not projection.relevant:
+        return None
+    else:
+        state = _read(sid, projection)
+    if state["recovery"]:
+        return {"cron_job_id": state["link"]["cron_job_id"] if state["link"] else None,
+                "kind": state["link"]["kind"] if state["link"] else None,
+                "enabled": None, "state": "unknown", "next_run_at": None, "missing": state["missing"],
+                "recovery": state["recovery"]}
     if state["link"] is None:
         return ({"cron_job_id": None, "kind": None, "enabled": None, "state": "recovery",
                  "next_run_at": None, "missing": False, "orphan_jobs": state["orphan_jobs"]}
@@ -353,7 +445,8 @@ def schedule_upkeep(sid, *, kind, cadence, timezone, prompt=None, actor):
     else:
         mode = {"prompt": None, "script": _shim(sid).name, "no_agent": True}
     _scheduling_allowed()
-    with maintenance.control(sid, "schedule", actor=actor, kind=kind) as op, maintenance.transaction(op) as conn:
+    settings = dict(kind=kind, cadence=cadence, timezone=timezone, prompt=prompt)
+    with maintenance.control(sid, "schedule", actor=actor, kind=kind, settings=settings) as op, maintenance.transaction(op) as conn:
         space = _space(conn, sid)
         if space["status"] == "archived":
             raise SpacesError("archived", "Unarchive the Space before scheduling upkeep")
@@ -517,9 +610,35 @@ def _run_now(sid, jid, *, claim, on_reply=None):
     return native
 
 
-def upkeep_action(sid, action, *, actor):
+def _recover_upkeep(sid, *, actor, confirm):
+    if confirm != sid:
+        raise SpacesError("invalid", "Confirm recovery for this Space before removing its native upkeep jobs.",
+                          reason="recovery_confirmation_required")
+    try:
+        # Observe actual authority before any recovery mutation, including a retry.
+        _jobs()
+        try:
+            result = upkeep_action(sid, "remove", actor=actor)
+        except SpacesError as exc:
+            if exc.code != "not_found":
+                raise
+            result = get_upkeep(sid)
+        if result["error"]:
+            raise SpacesError("blocked", result["error"], reason="cron_unavailable")
+        return result
+    except SpacesError as exc:
+        if exc.code != "blocked":
+            raise
+        raise SpacesError("blocked", "Recovery could not verify native upkeep. Retry when Hermes cron is available. "
+                          "Nothing was recreated or replayed.", reason="upkeep_recovery_unavailable", retryable=True,
+                          original=exc.to_dict()) from exc
+
+
+def upkeep_action(sid, action, *, actor, confirm=None):
     if action not in ACTIONS:
-        raise SpacesError("invalid", "action must be pause, resume, run or remove")
+        raise SpacesError("invalid", "action must be pause, resume, run, remove or recover")
+    if action == "recover":
+        return _recover_upkeep(sid, actor=actor, confirm=confirm)
     if action in ("resume", "run"):
         _scheduling_allowed()
     if action == "run":

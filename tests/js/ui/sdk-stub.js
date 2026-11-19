@@ -1,6 +1,8 @@
 import React from 'react'
 const h = React.createElement
 const cache = new Map()
+export const queryClientCalls = []
+export function useQueryClient() { return { cancelQueries: async () => {}, setQueryData: (queryKey, update) => queryClientCalls.push({ setQueryData: queryKey, update }), invalidateQueries: filters => queryClientCalls.push({ invalidateQueries: filters.queryKey }) } }
 export function resetQueries() { cache.clear() }
 export async function settleQueries() { await Promise.all([...cache.values()].map(q => q.promise)) }
 export function useQuery({ queryKey, queryFn, enabled = true }) {

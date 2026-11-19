@@ -1,0 +1,8 @@
+{
+ "label": "PUBLIC SYNTHETIC FIXTURE - Q19 budgets",
+ "budgets": {
+  "groceries": 100,
+  "transport": 30,
+  "dining": 40
+ }
+}

@@ -40,8 +40,10 @@ class PackagedApiTests(unittest.TestCase):
                 rows = tools.spaces_query(core, {'space': sid, 'collection': 'notes'}, 'Demo')['records']
                 self.assertEqual(rows[0]['data'], {'note': 'Public note'})
                 self.assertEqual(len(tools.spaces_list(core, {}, 'Demo')), 1)
-                remote = tools.spaces_write_files(core, {'space': sid, 'files': {'app.js': "const u = 'https://example.org/data.json'"}, 'summary': 'Add remote URL'}, 'Demo')
-                self.assertIn('Network URLs in app.js are blocked at runtime; use space.net.fetch for public HTTPS', remote['warnings'])
+                inert = tools.spaces_write_files(core, {'space': sid, 'files': {'app.js': "const u = 'https://example.org/data.json'"}, 'summary': 'Add URL text'}, 'Demo')
+                self.assertEqual(inert['warnings'], [])
+                remote = tools.spaces_write_files(core, {'space': sid, 'files': {'app.js': "await fetch('https://example.org/data.json')"}, 'summary': 'Add direct fetch'}, 'Demo')
+                self.assertEqual([d['code'] for d in remote['diagnostics']], ['net.direct_call'])
 
     def test_loose_rest_adapter_uses_real_public_core(self):
         (ROOT / '.run').mkdir(exist_ok=True)

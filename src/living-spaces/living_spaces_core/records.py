@@ -1,9 +1,12 @@
 """Authoritative records with optimistic concurrency and an ordered change cursor."""
+import hashlib
 import json
 import secrets
 
 from . import db, limits
-from .errors import SpacesError
+from .errors import CODES, SpacesError
+
+CODES["cursor_expired"] = 409
 
 
 def _record(row):
@@ -135,14 +138,89 @@ def _select(rows, *, where=None, order=None, limit=500, offset=0):
     return rows[offset:offset + limit], len(rows)
 
 
-def query(sid, collection, *, where=None, order=None, limit=500, offset=0):
-    _query_args(collection, where, order, limit, offset)
+class _Query:
+    """Validated query options and the shared live/passive page contract. Cursors are untrusted hints."""
+
+    def __init__(self, collection, *, where=None, order=None, limit=500, offset=0, page=False, cursor=None):
+        _query_args(collection, where, order, limit, offset)
+        if type(page) is not bool:
+            raise SpacesError("invalid", "page must be a boolean")
+        if cursor is not None and not page:
+            raise SpacesError("invalid", "cursor requires page=true")
+        self.where, self.order, self.limit, self.offset = where, order, limit, offset
+        self.page = page
+        self.cursor = None
+        self.fingerprint = None
+        if not page:
+            return
+        if not 1 <= limit <= 500:
+            raise SpacesError("invalid", "Page limit must be between 1 and 500")
+        try:
+            canonical = json.dumps({"collection": collection, "where": where or {}, "order": order,
+                                    "limit": limit}, sort_keys=True, ensure_ascii=False,
+                                   allow_nan=False, separators=(",", ":"))
+            self.fingerprint = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        except (TypeError, ValueError, UnicodeError, RecursionError) as exc:
+            raise SpacesError("invalid", "Expected canonical JSON query options") from exc
+        if cursor is None:
+            return
+        if not isinstance(cursor, dict) or set(cursor) != {"v", "space", "created_at", "seq", "offset", "query"}:
+            raise SpacesError("invalid", "Invalid cursor fields")
+        limits.object_json(cursor)
+        if type(cursor["v"]) is not int or type(cursor["created_at"]) not in (int, float):
+            raise SpacesError("invalid", "Invalid cursor stamp")
+        limits.identifier(cursor["space"], "space")
+        limits.integer(cursor["seq"], "cursor seq")
+        limits.integer(cursor["offset"], "cursor offset")
+        if cursor["query"] != self.fingerprint:
+            raise SpacesError("invalid", "Cursor query options do not match")
+        if offset != 0:
+            raise SpacesError("invalid", "offset must be zero or omitted with a cursor")
+        self.cursor = cursor.copy()
+
+    def result(self, sid, created_at, seq, select):
+        """Use a stamp and selector from the same read transaction; expire before selecting any records."""
+        offset = self.offset
+        if self.cursor is not None:
+            cursor = self.cursor
+            if cursor["space"] != sid:
+                raise SpacesError("invalid", "Cursor belongs to another Space")
+            reason = ("version" if cursor["v"] != 1 else
+                      "recreated" if cursor["created_at"] != created_at else
+                      "changed" if cursor["seq"] != seq else None)
+            if reason:
+                raise SpacesError("cursor_expired", "Cursor expired; discard prior pages and restart",
+                                  restart_required=True, reason=reason)
+            offset = cursor["offset"]
+        selected, total = select(where=self.where, order=self.order, limit=self.limit, offset=offset)
+        result = {"records": selected, "total": total, "seq": seq}
+        if self.page:
+            next_offset = offset + len(selected)
+            has_more = next_offset < total
+            result.update(has_more=has_more,
+                          next_cursor={"v": 1, "space": sid, "created_at": created_at, "seq": seq,
+                                       "offset": next_offset, "query": self.fingerprint} if has_more else None)
+        return result
+
+
+def query(sid, collection, *, where=None, order=None, limit=500, offset=0, page=False, cursor=None):
+    """Read one live page. With page=true, unchanged Space incarnation/sequence permits continuation.
+
+    Any same-Space record change expires the next request; a commit after this snapshot affects the next read.
+    No rows are retained across requests and there is no wall-clock expiry. A nonzero start enumerates a suffix.
+    Ordering keeps data/source null fallback, then updated_at for absent values, with ID ties reversed for '-'.
+    """
+    request = _Query(collection, where=where, order=order, limit=limit, offset=offset, page=page, cursor=cursor)
     with db.read() as conn:
-        db.space(conn, sid)
-        rows = [_record(row) for row in conn.execute("SELECT * FROM records WHERE space=? AND collection=? ORDER BY id",
-                                                    (sid, collection))]
-        page, total = _select(rows, where=where, order=order, limit=limit, offset=offset)
-        return {"records": page, "total": total, "seq": _seq(conn, sid)}
+        space = db.space(conn, sid)
+        seq = _seq(conn, sid)
+
+        def select(**options):
+            rows = [_record(row) for row in conn.execute(
+                "SELECT * FROM records WHERE space=? AND collection=? ORDER BY id", (sid, collection))]
+            return _select(rows, **options)
+
+        return request.result(sid, space["created_at"], seq, select)
 
 
 def _batch(conn, sid, ops, *, actor):

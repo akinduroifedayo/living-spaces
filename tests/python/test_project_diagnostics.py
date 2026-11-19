@@ -1,0 +1,437 @@
+import importlib.util
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+ROOT = Path(__file__).resolve().parents[2]
+PACKAGE = ROOT / "src/living-spaces"
+WEATHER = PACKAGE / "skills/build-space/references/weather-window"
+INDEX = '<!doctype html><main id="app"></main><script type="module" src="./app.js"></script>'
+
+
+def codes(result, path=None):
+    return [d["code"] for d in result["diagnostics"] if path is None or d["path"] == path]
+
+
+def network(result):
+    return [d for d in result["diagnostics"] if d["code"].startswith("net.")]
+
+
+class ProjectDiagnosticsTests(unittest.TestCase):
+    def setUp(self):
+        (ROOT / ".run").mkdir(exist_ok=True)
+        home = tempfile.TemporaryDirectory(dir=ROOT / ".run")
+        self.addCleanup(home.cleanup)
+        env = patch.dict(os.environ, {"HERMES_HOME": home.name, "LIVING_SPACES_DB": str(Path(home.name) / "spaces.db")})
+        env.start()
+        self.addCleanup(env.stop)
+        spec = importlib.util.spec_from_file_location("diagnostics_tools", PACKAGE / "__init__.py",
+                                                      submodule_search_locations=[str(PACKAGE)])
+        assert spec is not None and spec.loader is not None
+        self.tools = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = self.tools
+        spec.loader.exec_module(self.tools)
+        self.core = self.tools._core.load_core()
+
+    def create(self, files, name="Diagnostics Demo", **extra):
+        return self.tools.spaces_create(self.core, {"name": name, "files": files, "libraries": [], **extra}, "Demo")
+
+    def write(self, sid, files, summary="Change"):
+        return self.tools.spaces_write_files(self.core, {"space": sid, "files": files, "summary": summary}, "Demo")
+
+    def edit(self, sid, path, old, new):
+        return self.tools.spaces_edit_file(self.core, {"space": sid, "path": path, "old": old, "new": new,
+                                                       "summary": "Edit"}, "Demo")
+
+    def test_mediated_fetch_is_not_a_network_warning_on_create_and_edit(self):
+        app = ("const response = await space.net.fetch('https://api.open-meteo.com/v1/forecast', {as: 'json'});\n"
+               "const again = await window.space.net.fetch(url, {as: 'json'});\n"
+               "const third = await window.space?.net?.fetch(url);\n"
+               "const net = window.space.net; await net.fetch(url);\n")
+        created = self.create({"index.html": INDEX, "app.js": app})
+        self.assertEqual(network(created), [], created["warnings"])
+        edited = self.edit(created["space"], "app.js", "{as: 'json'});\nconst again", "{as: 'text'});\nconst again")
+        self.assertEqual(network(edited), [], edited["warnings"])
+
+    def test_inert_url_text_is_not_a_network_warning(self):
+        app = ("const source = 'https://open-meteo.com/';\n"
+               "// fetch('https://example.org') is described here, not called\n"
+               "/* new WebSocket('wss://example.org') */\n"
+               "const label = `Data from https://example.org at ${new Date().getFullYear()}`;\n"
+               "const pattern = /fetch\\(/;\n"
+               "const help = \"call fetch(url) in a standalone page\";\n")
+        html = ('<!doctype html><main><a href="https://open-meteo.com/" target="_blank">Open-Meteo</a>'
+                '<p>See https://example.org for terms.</p><!-- <script src="https://cdn.example/x.js"></script> -->'
+                '</main><script type="module" src="./app.js"></script>')
+        created = self.create({"index.html": html, "app.js": app, "styles.css": "/* url(https://cdn.example/a.png) */ body{color:#123}"})
+        self.assertEqual(network(created), [], created["warnings"])
+        self.assertFalse(any("Network URLs" in w or "network access" in w for w in created["warnings"]), created["warnings"])
+
+    def test_svg_namespaces_are_inert_but_svg_remote_loads_warn(self):
+        app = "const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');\n"
+        html = ('<!doctype html><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+                '<circle r="4"/></svg><script type="module" src="./app.js"></script>')
+        created = self.create({"index.html": html, "app.js": app})
+        self.assertEqual(network(created), [], created["warnings"])
+        remote = self.write(created["space"], {"index.html": html.replace('<circle r="4"/>', '<image href="https://example.org/a.png"/>')})
+        self.assertEqual(codes(remote, "index.html"), ["net.remote_resource"], remote["warnings"])
+
+    def test_direct_network_misuse_still_warns_with_code_and_location(self):
+        app = ("const a = await fetch('https://example.org/data.json');\n"
+               "const socket = new WebSocket('wss://example.org');\n"
+               "const xhr = new XMLHttpRequest();\n"
+               "const events = new EventSource('/stream');\n"
+               "navigator.sendBeacon('https://example.org/b');\n"
+               "await window.fetch('https://example.org');\n"
+               "await space.net.fetch(fetch(url));\n")
+        created = self.create({"index.html": INDEX, "app.js": app})
+        found = [(d["code"], d["line"]) for d in network(created)]
+        self.assertEqual(found, [("net.direct_call", n) for n in (1, 2, 3, 4, 5, 6, 7)], created["warnings"])
+        self.assertTrue(all(w.startswith("app.js:") for w in created["warnings"] if "[net." in w), created["warnings"])
+
+    def test_a_local_binding_named_fetch_never_hides_a_bare_call(self):
+        for name, app in {
+            "nested const": "function helper(){ const fetch = value => value; return fetch(1); }\nfetch(url);\n",
+            "loop binding": "for (let fetch of []) { use(fetch); }\nfetch(url);\n",
+            "named function expression": "const helper = async function fetch() {};\nfetch(url);\n",
+            "function in template": "`${function fetch(){}}`;\nfetch(url);\n",
+            "alias of the global": "var fetch = window.fetch.bind(window);\nfetch(url);\n",
+            "module const": "const fetch = u => u;\nfetch(url);\n",
+            "exported function": "export function fetch(u) { return u; }\nfetch(url);\n",
+        }.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertIn(("net.direct_call", 2), [(d["code"], d["line"]) for d in network(created)], created["warnings"])
+
+    def test_trunk_caught_loads_stay_caught(self):
+        for name, (app, code) in {
+            "fetch then a block (ASI)": ("fetch(url)\n{ const x = 1; }\n", "net.direct_call"),
+            "fetch then a block inside a function": ("function go() {\n  fetch(url)\n  { const x = 1; }\n}\n", "net.direct_call"),
+            "bound bare sendBeacon": ("const sendBeacon = navigator.sendBeacon.bind(navigator);\nsendBeacon('/log');\n", "net.direct_call"),
+            "stylesheet link href": ("const link = document.createElement('link');\nlink.rel = 'stylesheet';\nlink.href = 'https://example.org/a.css';\ndocument.head.append(link);\n", "net.remote_resource"),
+        }.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertIn(code, [d["code"] for d in network(created)], created["warnings"])
+
+    def test_calls_are_never_excused_by_guessing_the_surrounding_syntax(self):
+        for name, app in {
+            "after multiplication": "const n = 2 * fetch(u);\n",
+            "yield star": "function* g() { yield * fetch(u); }\n",
+            "beacon after multiplication": "const n = 2 * sendBeacon('/log');\n",
+            "after a property named class": "const o = {class: true};\nfunction go() {\n  fetch(u)\n  { const a = 1; }\n}\n",
+            "class field initializer": "class A { x = fetch(u); }\n",
+            "class static block": "class A { static { fetch(u); } }\n",
+            "arrow body": "const go = () => { fetch(u) };\n",
+        }.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertIn("net.direct_call", [d["code"] for d in network(created)], created["warnings"])
+
+    def test_remote_href_is_reported_whatever_element_holds_it(self):
+        app = ("let a = document.createElement('a');\na = document.querySelector('link');\n"
+               "a.rel = 'stylesheet';\na.href = 'https://example.org/a.css';\ndocument.head.append(a);\n")
+        created = self.create({"index.html": INDEX, "app.js": app})
+        self.assertIn(("net.remote_resource", 4), [(d["code"], d["line"]) for d in network(created)], created["warnings"])
+        compared = self.create({"index.html": INDEX, "app.js": "if (location.href == 'https://example.org/') go();\n"}, name="Compare")
+        self.assertEqual(network(compared), [], compared["warnings"])
+
+    def test_global_receivers_the_scanner_cannot_name_still_warn(self):
+        for name, app in {"optional chain": "window?.fetch(u);\n", "parenthesized": "(window).fetch(u);\n",
+                          "call result": "getWindow().fetch(u);\n", "parenthesized socket": "new (window).WebSocket(u);\n"}.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertIn("net.direct_call", [d["code"] for d in network(created)], created["warnings"])
+        mediated = self.create({"index.html": INDEX, "app.js": "await space?.net?.fetch(u);\n"}, name="Optional Mediated")
+        self.assertEqual(network(mediated), [], mediated["warnings"])
+
+    def test_only_the_supported_space_net_spelling_is_exempt(self):
+        for name, app in {"classic this": None, "top": "top.fetch(u);\n", "parent": "parent.fetch(u);\n",
+                          "default view": "document.defaultView.fetch(u);\n",
+                          "member socket": "new window.WebSocket(u);\n"}.items():
+            with self.subTest(name):
+                files = ({"index.html": "<!doctype html><script>this.fetch(u);</script>"} if app is None
+                         else {"index.html": INDEX, "app.js": app})
+                created = self.create(files, name=name.title())
+                self.assertIn("net.direct_call", [d["code"] for d in network(created)], created["warnings"])
+
+    def test_constant_remote_dynamic_import_warns(self):
+        for name, spec in {"template": "`https://example.org/a.js`", "parens": "('https://example.org/a.js')"}.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": f"import({spec});\n"}, name=name.title())
+                self.assertEqual(codes(created, "app.js"), ["net.remote_import"], created["warnings"])
+
+    def test_remote_href_through_parens_or_a_constant_template_warns(self):
+        for name, value in {"parens": "('https://example.org/a.css')", "template": "`https://example.org/a.css`"}.items():
+            with self.subTest(name):
+                app = f"const link = document.createElement('link');\nlink.rel = 'stylesheet';\nlink.href = {value};\n"
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertIn(("net.remote_resource", 3), [(d["code"], d["line"]) for d in network(created)], created["warnings"])
+        interpolated = self.create({"index.html": INDEX, "app.js": "img.src = `${base}/a.png`;\n"}, name="Interpolated")
+        self.assertEqual(network(interpolated), [], interpolated["warnings"])
+
+    def test_remote_src_or_href_warns_whatever_follows_the_constant(self):
+        tails = {"newline": "\nconst after = 1;\n", "end of file": "", "concatenation": " + name;\n",
+                 "bracket continuation": "\n[1].forEach(f);\n", "paren continuation": "\n(f)();\n"}
+        for prop in ("href", "src"):
+            for name, tail in tails.items():
+                with self.subTest(prop=prop, tail=name):
+                    app = f"const el = document.createElement('link');\nel.{prop} = 'https://example.org/a.css'{tail}"
+                    created = self.create({"index.html": INDEX, "app.js": app}, name=f"{prop} {name}".title())
+                    self.assertIn(("net.remote_resource", 2), [(d["code"], d["line"]) for d in network(created)], created["warnings"])
+                    written = self.write(created["space"], {"app.js": app + "\n"})
+                    self.assertIn("net.remote_resource", [d["code"] for d in network(written)], written["warnings"])
+
+    def test_semicolonless_remote_href_keeps_its_located_warning_on_create_write_and_restore(self):
+        app = ("const link=document.createElement('link');\nlink.rel='stylesheet';\ndocument.head.append(link);\n"
+               "link.href = 'https://example.org/a.css'\nconst after = 1;\n")
+        where = lambda result: [(d["code"], d["path"], d["line"], d["column"], d["ref"]) for d in network(result)]
+        expected = [("net.remote_resource", "app.js", 4, 6, "https://example.org/a.css")]
+        created = self.create({"index.html": INDEX, "app.js": app}, name="Semicolonless")
+        self.assertEqual(where(created), expected, created["warnings"])
+        sid = created["space"]
+        quiet = self.write(sid, {"app.js": "const after = 1;\n"})
+        self.assertEqual(where(quiet), [], quiet["warnings"])
+        written = self.write(sid, {"app.js": app})
+        self.assertEqual(where(written), expected, written["warnings"])
+        restored = self.tools.spaces_restore(self.core, {"space": sid, "rev": 1}, "Demo")
+        self.assertEqual(where(restored), expected, restored)
+        for name, rhs in {"semicolon": "'https://example.org/a.css';", "grouped": "('https://example.org/a.css')",
+                          "newline plus suffix": "'https://example.org/'\n  + name", "src": None}.items():
+            with self.subTest(name):
+                line = "link.src = 'https://example.org/a.js'" if rhs is None else f"link.href = {rhs}"
+                result = self.create({"index.html": INDEX, "app.js": f"const link = make();\n{line}\nconst after = 1;\n"}, name=name.title())
+                self.assertEqual([(d["code"], d["line"]) for d in network(result)], [("net.remote_resource", 2)], result["warnings"])
+
+    def test_round10_remote_loads_warn_on_create_write_and_restore(self):
+        cases = {"interpolated src": ("app.js", "obj.src=`https://e.org/${name}`;\n", 1, 5),
+                 "interpolated href": ("app.js", "obj.href=`https://e.org/${name}`;\n", 1, 5),
+                 "leading space": ("app.js", "img.src=' https://example.org/logo.png'\n", 1, 5),
+                 "standalone svg": ("image.svg", '<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.org/logo.png"/></svg>', 1, 41)}
+        for name, (path, source, line, column) in cases.items():
+            with self.subTest(name):
+                where = lambda result: [(d["code"], d["path"], d["line"], d["column"]) for d in network(result)]
+                expected = [("net.remote_resource", path, line, column)]
+                created = self.create({"index.html": INDEX, "app.js": "", path: source}, name=name.title())
+                self.assertEqual(where(created), expected, created["warnings"])
+                quiet = self.write(created["space"], {path: ""})
+                self.assertEqual(where(quiet), [], quiet["warnings"])
+                written = self.write(created["space"], {path: source})
+                self.assertEqual(where(written), expected, written["warnings"])
+                restored = self.tools.spaces_restore(self.core, {"space": created["space"], "rev": 1}, "Demo")
+                self.assertEqual(where(restored), expected, restored)
+        for name, app in {"local template": "img.src = `${base}/a.png`;\n", "inert template": "const t = `see https://x.org ${n}`;\n",
+                          "comparison": "if (img.src == ' https://e.org/a') go();\n"}.items():
+            with self.subTest(control=name):
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertEqual(network(created), [], created["warnings"])
+        svg = self.create({"index.html": INDEX, "app.js": "", "mark.svg": '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><use href="#a"/></svg>'}, name="Inert Svg")
+        self.assertEqual(network(svg), [], svg["warnings"])
+
+    def test_classic_script_static_import_of_a_missing_file_still_warns_as_on_trunk(self):
+        created = self.create({"index.html": "<!doctype html><script>import './static.js';</script>", "static.js": "export default 1;\n"}, name="Classic Static")
+        self.assertEqual(codes(created, "index.html"), [], created["warnings"])
+        removed = self.write(created["space"], {"static.js": None})
+        self.assertIn("import.unresolved", codes(removed, "index.html"), removed["warnings"])
+
+    def test_bracket_and_grouped_space_net_spellings_are_mediated(self):
+        for app in ("space['net'].fetch(u);\n", "(space.net).fetch(u);\n", "window.space[\"net\"].fetch(u);\n"):
+            with self.subTest(app):
+                created = self.create({"index.html": INDEX, "app.js": app}, name="Mediated Spelling")
+                self.assertEqual(network(created), [], created["warnings"])
+        self.assertIn("net.direct_call", codes(self.create({"index.html": INDEX, "app.js": "(window).fetch(u);\n"}, name="Grouped Window"), "app.js"))
+
+    def test_dynamic_import_specifier_followed_by_a_newline_warns(self):
+        created = self.create({"index.html": INDEX, "app.js": "import('https://example.org/a.js'\n);\n"}, name="Import Newline")
+        self.assertEqual(codes(created, "app.js"), ["net.remote_import"], created["warnings"])
+        partial = self.create({"index.html": INDEX, "app.js": "import('https://example.org/' + name);\n"}, name="Import Partial")
+        self.assertEqual(codes(partial, "app.js"), [], partial["warnings"])
+
+    def test_legacy_javascript_types_are_scanned(self):
+        for kind in ("text/ecmascript", "application/ecmascript", "text/javascript1.5", "text/javascript; charset=utf-8"):
+            with self.subTest(kind):
+                html = f'<!doctype html><script type="{kind}">fetch(u);</script>'
+                created = self.create({"index.html": html}, name=kind.replace("/", " ").title())
+                self.assertEqual(codes(created, "index.html"), ["net.direct_call"], created["warnings"])
+        data = self.create({"index.html": '<!doctype html><script type="application/json">{"fetch(": 1}</script>'}, name="Json Data")
+        self.assertEqual(network(data), [], data["warnings"])
+
+    def test_classic_script_dynamic_import_is_validated_across_revisions(self):
+        html = "<!doctype html><script>import('./dep.js');</script>"
+        created = self.create({"index.html": html, "dep.js": "export default 1;\n"})
+        self.assertEqual(codes(created, "index.html"), [], created["warnings"])
+        removed = self.write(created["space"], {"dep.js": None})
+        self.assertIn("import.unresolved", codes(removed, "index.html"), removed["warnings"])
+        remote = self.write(created["space"], {"index.html": "<!doctype html><script>import('https://cdn.example/x.js');</script>"})
+        self.assertIn("net.remote_import", codes(remote, "index.html"), remote["warnings"])
+
+    def test_unsupported_receivers_named_fetch_warn_as_on_trunk(self):
+        # Accepted cost: only space.net.fetch is exempt. A helper object's fetch() warns, as trunk did.
+        created = self.create({"index.html": INDEX, "app.js": "client.fetch(source);\n"})
+        self.assertEqual(codes(created, "app.js"), ["net.direct_call"], created["warnings"])
+
+    def test_function_declarations_named_fetch_are_not_calls(self):
+        for name, app in {"declaration": "function fetch(url) { return url; }\n"}.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": app}, name=name.title())
+                self.assertEqual(network(created), [], created["warnings"])
+
+    def test_division_after_a_member_call_or_template_is_not_a_regex(self):
+        for name, first in {"member named if": "const n = obj.if(a) / 2;", "template": "const t = `2` / 2;"}.items():
+            with self.subTest(name):
+                created = self.create({"index.html": INDEX, "app.js": first + "\nfetch(url);\nimport './missing.js';\n"}, name=name.title())
+                self.assertEqual(sorted(codes(created, "app.js")), ["import.unresolved", "net.direct_call"], created["warnings"])
+
+    def test_a_comment_inside_css_import_does_not_hide_the_remote_load(self):
+        css = ('@import /* hey */ "https://example.org/a.css";\n'
+               'p { background: url(/* hey */"https://example.org/b.png"); }\n'
+               'p { content: "/* not a comment */ url(https://x.example/y.png)"; }\n')
+        created = self.create({"index.html": INDEX, "styles.css": css})
+        self.assertEqual([(d["code"], d["line"]) for d in network(created)], [("net.remote_resource", 1), ("net.remote_resource", 2)], created["warnings"])
+
+    def test_repeated_comments_before_an_import_string_do_not_hide_it(self):
+        created = self.create({"index.html": INDEX, "styles.css": "@import " + "/**/ " * 20 + '"https://example.org/a.css";\n'})
+        self.assertEqual([d["code"] for d in network(created)], ["net.remote_resource"], created["warnings"])
+
+    def test_deep_templates_keep_token_text_small(self):
+        from living_spaces_core import diagnostics
+        source = "`a${" * 8000 + "1" + "}`" * 8000
+        self.assertLess(sum(len(t.text) for t in diagnostics.tokens(source)), 4 * len(source))
+
+    def test_many_css_strings_scan_in_linear_time(self):
+        import time
+        from living_spaces_core import diagnostics
+        source = 'p{content:"x"}' * 16000
+        start = time.perf_counter()
+        diagnostics.scan("styles.css", source)
+        self.assertLess(time.perf_counter() - start, 1.0)
+
+    def test_inline_event_handlers_are_code(self):
+        html = '<!doctype html><button onclick="fetch(\'https://example.org/data\')">Load</button><a title="fetch(x)">t</a>'
+        created = self.create({"index.html": html})
+        self.assertEqual(codes(created, "index.html"), ["net.direct_call"], created["warnings"])
+
+    def test_css_strings_and_regex_after_control_parens_are_inert(self):
+        created = self.create({"index.html": INDEX, "app.js": "if (ready) /fetch(url)/.test(text);\nconst half = (a) / 2;\n",
+                               "styles.css": 'p::before { content: "url(https://example.org/logo.png)"; }\n'
+                                             "a::after { content: '@import \"https://x.example/a.css\"'; }"})
+        self.assertEqual(network(created), [], created["warnings"])
+
+    def test_deeply_nested_templates_do_not_crash_saves(self):
+        source = "const t = " + "`a${" * 1100 + "1" + "}`" * 1100 + ";\nfetch(u);\n"
+        created = self.create({"index.html": INDEX, "app.js": source})
+        self.assertEqual(codes(created, "app.js"), ["net.direct_call"], created["warnings"])
+
+    def test_remote_imports_scripts_and_styles_warn(self):
+        html = ('<!doctype html><link rel="stylesheet" href="https://cdn.example/a.css">'
+                '<script src="https://cdn.example/lib.js"></script><script type="module" src="./app.js"></script>')
+        created = self.create({"index.html": html, "app.js": "import confetti from 'https://esm.sh/confetti';\n",
+                               "styles.css": "@import url('https://fonts.example/f.css');\nbody{background:url(https://cdn.example/b.png)}"})
+        self.assertEqual(sorted(codes(created, "index.html")), ["net.remote_resource", "net.remote_resource"], created["warnings"])
+        self.assertEqual(codes(created, "app.js"), ["net.remote_import"], created["warnings"])
+        self.assertEqual(sorted(codes(created, "styles.css")), ["net.remote_resource", "net.remote_resource"], created["warnings"])
+
+    def test_edit_from_mediated_to_direct_and_back(self):
+        created = self.create({"index.html": INDEX, "app.js": "await space.net.fetch(url);\n"})
+        self.assertEqual(network(created), [])
+        direct = self.edit(created["space"], "app.js", "space.net.fetch", "fetch")
+        self.assertEqual(codes(direct, "app.js"), ["net.direct_call"], direct["warnings"])
+        back = self.edit(created["space"], "app.js", "await fetch", "await space.net.fetch")
+        self.assertEqual(network(back), [], back["warnings"])
+
+    def test_missing_import_is_reported_with_code_and_target(self):
+        created = self.create({"index.html": INDEX, "app.js": "import { list } from './views/missing.js';\n"})
+        [found] = [d for d in created["diagnostics"] if d["code"] == "import.unresolved"]
+        self.assertEqual((found["path"], found["line"], found["ref"], found["target"]),
+                         ("app.js", 1, "./views/missing.js", "views/missing.js"))
+        self.assertIn("views/missing.js", " ".join(created["warnings"]))
+
+    def test_unchanged_importer_broken_by_edited_dependency(self):
+        files = {"index.html": INDEX, "app.js": "import { Library } from './views/library.js';\nLibrary();\n",
+                 "views/library.js": "import { row } from './row.js';\nexport const Library = () => row();\n",
+                 "views/row.js": "export const row = () => 1;\n"}
+        created = self.create(files)
+        self.assertEqual([d for d in created["diagnostics"] if d["code"].startswith("import.")], [], created["warnings"])
+        sid = created["space"]
+        edited = self.edit(sid, "views/library.js", "'./row.js'", "'./rows.js'")
+        broken = [(d["path"], d["ref"]) for d in edited["diagnostics"] if d["code"] == "import.unresolved"]
+        self.assertEqual(broken, [("views/library.js", "./rows.js")], edited["warnings"])
+        renamed = self.write(sid, {"views/library.js": None, "views/catalog.js": "export const Library = () => 2;\n"})
+        broken = [(d["path"], d["ref"]) for d in renamed["diagnostics"] if d["code"] == "import.unresolved"]
+        self.assertEqual(broken, [("app.js", "./views/library.js")], renamed["warnings"])
+        restored = self.tools.spaces_restore(self.core, {"space": sid, "rev": 2}, "Demo")
+        broken = [(d["path"], d["ref"]) for d in restored["diagnostics"] if d["code"] == "import.unresolved"]
+        self.assertEqual(broken, [("views/library.js", "./rows.js")], restored)
+
+    def test_bare_import_needs_a_manifest_entry_and_manifest_targets_must_exist(self):
+        created = self.create({"index.html": INDEX, "app.js": "import { h } from 'preact';\n"})
+        self.assertEqual(codes(created, "app.js"), ["import.bare_unmapped"], created["warnings"])
+        mapped = self.create({"index.html": INDEX, "app.js": "import { h } from 'preact';\n"}, name="Mapped",
+                             manifest={"entry": "index.html", "imports": {"preact": "vendor/preact.mjs"}})
+        self.assertEqual([d["code"] for d in mapped["diagnostics"] if d["code"].startswith("import.")],
+                         ["import.alias_target_missing"], mapped["warnings"])
+
+    def test_warning_strings_are_derived_from_diagnostics(self):
+        created = self.create({"index.html": INDEX, "app.js": "fetch(u)\nimport './gone.js'\n"})
+        static = [d["message"] for d in created["diagnostics"]]
+        self.assertEqual([w for w in created["warnings"] if "[" in w and "]" in w], static)
+        self.assertTrue(all(d["code"] in d["message"] for d in created["diagnostics"]))
+
+    def test_weather_reference_saves_without_false_warnings(self):
+        files = {p.name: p.read_text() for p in WEATHER.iterdir() if p.suffix in (".html", ".js", ".css", ".json")}
+        created = self.create(files, name="Weather Window")
+        self.assertEqual(created["diagnostics"], [], created["warnings"])
+        app = files["app.js"]
+        self.assertIn("space.net.fetch(", app)
+        self.assertIn("response.json", app)
+        self.assertNotIn("response.json()", app)
+        self.assertNotIn("meta.network", app)
+        self.assertIn("not_granted", app)
+        self.assertIn("forecasts", json.loads(files["space.json"])["data"]["collections"])
+        self.assertIn("space.put('forecasts'", app)
+        edited = self.edit(created["space"], "app.js", "{as:'json'}", "{as: 'json'}")
+        self.assertEqual(edited["diagnostics"], [], edited["warnings"])
+
+
+PARITY_SOURCES = [
+    "import { h } from 'preact'; export { x } from '../x.js?v=1'; import './side.js#x';",
+    "const x = import('./detail.js'); const y = import('./' + name + '.js');",
+    "const text = \"import('./unchanged.js')\"; // import('./comment.js')\n/* import './block.js' */",
+    "const t = `result: ${await import(\"./view.mjs\")} and ${`nested ${import('./deep.js')}`}`;",
+    "const r = /from '.\\/regex.js'/; const d = a / b; import def, * as ns from \"./named.js\";",
+    "export * from './all.js'\nexport default 1\nobj.import('./member.js'); import.meta.url;",
+]
+
+
+class LoaderParityTests(unittest.TestCase):
+    def test_module_refs_match_the_imports_the_loader_rewrites(self):
+        script = ("import { projectResolver } from './src/guest/loader.mjs';"
+                  "const r = projectResolver(); const out = [];"
+                  "for (const s of JSON.parse(process.argv[1])) {"
+                  "  const seen = []; globalThis.__spaceImport = null;"
+                  "  const code = r.rewriteImports('views/main.js', s);"
+                  "  for (const m of code.matchAll(/\"https:\\/\\/space\\.invalid\\/([^\"]+)\"/g)) seen.push(m[1]);"
+                  "  const dynamic = (code.match(/__spaceImport/g) || []).length;"
+                  "  out.push({seen: seen.sort(), dynamic}); }"
+                  "console.log(JSON.stringify(out));")
+        run = subprocess.run(["node", "--input-type=module", "-e", script, json.dumps(PARITY_SOURCES)],
+                             cwd=ROOT, text=True, capture_output=True, check=True)
+        spec = importlib.util.spec_from_file_location("parity_diagnostics", PACKAGE / "living_spaces_core/diagnostics.py")
+        assert spec is not None and spec.loader is not None
+        diagnostics = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(diagnostics)
+        for source, loader in zip(PARITY_SOURCES, json.loads(run.stdout)):
+            refs = [ref.spec for ref in diagnostics.scan("views/main.js", source).refs if ref.spec.startswith((".", "/"))]
+            checked = {diagnostics.resolve("views/main.js", spec) for spec in refs}
+            literal_dynamic = {diagnostics.resolve("views/main.js", spec) for spec in refs
+                               if f"import('{spec}')" in source or f'import("{spec}")' in source}
+            self.assertEqual(checked - literal_dynamic, set(loader["seen"]), source)
+            self.assertLessEqual(len(literal_dynamic), loader["dynamic"], source)
+
+if __name__ == "__main__":
+    unittest.main()

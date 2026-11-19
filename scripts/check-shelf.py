@@ -13,16 +13,31 @@ from urllib.parse import urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
+FONTS = {
+    "newsreader": "Newsreader",
+    "bricolage-grotesque": "Bricolage Grotesque",
+    "jetbrains-mono": "JetBrains Mono",
+}
+LATIN_RANGE = ("U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,"
+               "U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,"
+               "U+2212,U+2215,U+FEFF,U+FFFD")
 LIBRARIES = {
     "htm": ("htm", "Apache-2.0", {"vendor/htm.mjs": "dist/htm.mjs"}),
     "lucide": ("lucide", "ISC AND MIT", {
         "vendor/lucide.mjs": "dist/esm/lucide.mjs (bundled with esbuild)",
     }),
+    "plot": ("@observablehq/plot", "ISC", {f"vendor/plot.mjs": "dist/plot.js + d3 7.9.2 ESM modules (bundled and minified with esbuild)"}),
+    "markdown": ("marked", "MIT AND Apache-2.0", {f"vendor/markdown.mjs": "lib/marked.esm.js + dompurify dist/purify.es.mjs + scripts/vendor/markdown-entry.mjs (bundled and minified with esbuild)"}),
     **{f"font:{font}": (f"@fontsource/{font}", "OFL-1.1", {
         f"vendor/fonts/{font}.css": "latin-400.css + latin-700.css (adapted relative URLs)",
         **{f"vendor/fonts/{font}-latin-{weight}-normal.woff2":
            f"files/{font}-latin-{weight}-normal.woff2" for weight in (400, 700)},
     }) for font in ("inter", "dm-sans")},
+    **{f"font:{font}": (f"@fontsource/{font}", "OFL-1.1", {
+        f"vendor/fonts/{font}.css": "latin-400.css + latin-700.css + unicode.json (adapted relative URLs)",
+        **{f"vendor/fonts/{font}-latin-{weight}-normal.woff2":
+           f"files/{font}-latin-{weight}-normal.woff2" for weight in (400, 700)},
+    }) for font in FONTS},
 }
 
 
@@ -142,6 +157,27 @@ def check_shelf(runtime):
         require(len(raw) == metadata["bytes"], f"Byte count mismatch: {relative}")
         require(hashlib.sha256(raw).hexdigest() == metadata["sha256"], f"SHA-256 mismatch: {relative}")
         total += len(raw)
+    for font, family in FONTS.items():
+        library = shelf["libraries"][f"font:{font}"]
+        source = sources[f"@fontsource/{font}"]
+        require(library["version"] == "5.3.0", f"Incorrect font version: {font}")
+        require(source["url"] == f"https://registry.npmjs.org/@fontsource/{font}/-/{font}-5.3.0.tgz",
+                f"Incorrect official font source: {font}")
+        require(sum(files[path]["bytes"] for path in library["files"]) <= 1024 * 1024,
+                f"Font family exceeds 1 MiB including license: {font}")
+        css = paths[f"vendor/fonts/{font}.css"].read_text(encoding="utf-8")
+        faces = re.findall(r"@font-face\s*\{([^{}]+)\}", css)
+        require(len(faces) == 2 and not re.sub(r"@font-face\s*\{[^{}]+\}", "", css).strip(),
+                f"Font CSS must contain exactly two faces: {font}")
+        for face, weight in zip(faces, (400, 700)):
+            declarations = [part.strip().split(":", 1) for part in face.split(";") if part.strip()]
+            require(all(len(part) == 2 for part in declarations), f"Invalid font CSS: {font}")
+            properties = {key.strip(): value.strip() for key, value in declarations}
+            require(len(properties) == len(declarations) and properties == {
+                "font-family": f"'{family}'", "font-style": "normal", "font-display": "swap",
+                "font-weight": str(weight), "unicode-range": LATIN_RANGE,
+                "src": f"url('./{font}-latin-{weight}-normal.woff2') format('woff2')",
+            }, f"Font CSS must declare its family, Latin coverage, weight and local WOFF2: {font}")
     return len(files), total
 
 

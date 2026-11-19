@@ -74,8 +74,41 @@ body { --space-font: 'DM Sans', system-ui, sans-serif; }
 
 Paths above assume an app-level `styles.css` and the optional font library.
 Do not point at a file that was never included. For other alphabets, bundle the
-needed glyph coverage and test long labels. This kit includes no downloaded
-custom display fonts or generated hero art.
+needed glyph coverage and test long labels. The default kit loads no custom
+display fonts or generated hero art.
+
+## Try the optional font shelf
+
+Open `font-shelf.html` beside this file for reading, heading and technical-text
+specimens. The page loads the adjacent shelf CSS, not the kit's default styles.
+Its system-font comparisons omit the bundled family explicitly. They are examples,
+not proof of actual platform font loading.
+
+| Library key | Family | Use | Fallback stack |
+| --- | --- | --- | --- |
+| `font:newsreader` | Newsreader | Reading text | `'Newsreader', Georgia, serif` |
+| `font:bricolage-grotesque` | Bricolage Grotesque | Expressive headings | `'Bricolage Grotesque', system-ui, sans-serif` |
+| `font:jetbrains-mono` | JetBrains Mono | Code and technical text | `'JetBrains Mono', ui-monospace, monospace` |
+
+Request the matching key in `libraries`, then link its CSS from your app:
+
+```html
+<link rel="stylesheet" href="vendor/fonts/newsreader.css">
+<style>
+  article { font-family: 'Newsreader', Georgia, serif; }
+</style>
+```
+
+Paths above assume an entry at the project root. Each group includes static Latin
+WOFF2 files in normal style at weights 400 and 700, CSS with relative URLs, and
+its full OFL-1.1 license. No font family is applied automatically. Other scripts
+and missing files use your fallback stack and the platform's available fonts.
+Italic faces, variable axes and non-Latin subsets are not included.
+
+To use the complete specimen in a Space, request all three keys, copy
+`font-shelf.html` as `kit/font-shelf.html`, and set `entry` to that path. To test missing-font fallback,
+remove a stylesheet or its WOFF2 files from a disposable copy. Requesting no new
+font key copies no new optional font files. Existing Spaces are not upgraded.
 
 ## Compose and override
 
@@ -127,6 +160,9 @@ revision:
   blocked in this revision. Planned open-network and file-by-reference support
   are not qualified capabilities here. Inspect the actual tool schema before
   using a file-reference descriptor; the existing binary fallback is `{b64,mime}`.
+- Collections larger than one page use `space.queryPage(collection, {limit, cursor})`,
+  which returns `{records, has_more, next_cursor}`. A `cursor_expired` error means
+  the data changed: restart from the first page rather than showing a partial list.
 - No storage API, parent-frame access or arbitrary bot tool call is added by this
   kit. Saved content belongs in records; a selected tile can be ordinary UI state.
 

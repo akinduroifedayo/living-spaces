@@ -16,7 +16,7 @@ function createInspector() {
   let wake = null
   let refused = 0
   const notify = () => { if (wake) { const w = wake; wake = null; w() } }
-  const call = (op, args) => new Promise(resolve => {
+  const call = (op, args, _transfer, requestId) => new Promise(resolve => {
     if (queue.length >= MAX_QUEUE) {
       refused++
       resolve({ ok: false, error: { code: 'limit', message: 'Inspection bridge queue is full' } })
@@ -24,7 +24,10 @@ function createInspector() {
     }
     const id = ++seq
     pending.set(id, resolve)
-    queue.push({ id, op, args })
+    // Editor saves carry the app's own request id so outcome.get reconciles the same receipt as in Desktop.
+    const rid = op === 'editor.save' ? requestId
+      : ['data.put', 'data.delete', 'data.batch'].includes(op) ? `inspect_write_${id}` : undefined
+    queue.push({ id, op, args, ...(rid ? { request_id: rid } : {}) })
     notify()
   })
   return {

@@ -1,8 +1,9 @@
 """Public operations shared by tools, the loose REST module and cron scripts."""
 from . import db, errors, projects, records, grants, sessions, logs, limits, migrations, bridge, runs, upkeep
+from .storage import storage_summary, propose_retention, execute_retention
 from .errors import SpacesError
 from .projects import (create_space, resolve_space, list_spaces, get_space, read_file,
-                       list_files, write_files, edit_file, list_revisions,
+                       list_files, read_files, write_files, edit_file, edit_files, list_revisions,
                        restore_revision, bundle, set_status, delete_space,
                        touch_opened, set_pinned)
 from .records import query, batch, changes_since

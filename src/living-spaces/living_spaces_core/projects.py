@@ -1,13 +1,14 @@
 """Content-addressed projects and immutable code history, separate from records."""
 import base64
 import hashlib
+from collections import Counter
 import json
 import mimetypes
 import re
 import unicodedata
 from pathlib import Path
 
-from . import db, grants, limits, migrations, records, runs, upkeep
+from . import db, diagnostics, grants, limits, migrations, records, runs, upkeep
 from .errors import SpacesError
 
 RUNTIME = Path(__file__).parent.parent / "runtime"
@@ -24,6 +25,10 @@ _LIBRARIES = {
 }
 _ACCENTS = {"blue", "green", "amber", "purple", "teal", "rose", "orange", "grey"}
 _THEME_PRESETS = {"editorial", "terminal", "playful", "minimal", "data", "journal", "game"}
+READ_FILES_MAX = 20
+READ_FILE_BYTES = 256 * 1024
+READ_TOTAL_BYTES = 1024 * 1024
+EDIT_FILES_MAX = 100
 
 
 def _manifest(value, name, description):
@@ -117,7 +122,7 @@ def _input_files(files, manifest):
     return prepared, manifest if manifest is not None else extracted
 
 
-def _libraries(files, manifest, libraries, warnings, existing=()):
+def _libraries(files, manifest, libraries, found, existing=()):
     if not isinstance(libraries, (tuple, list)):
         raise SpacesError("invalid", "libraries must be an array")
     for library in libraries:
@@ -128,7 +133,7 @@ def _libraries(files, manifest, libraries, warnings, existing=()):
             source = RUNTIME / path
             if not source.is_file():
                 if path.startswith("kit/"):
-                    warnings.append(f"Bundled file is not available yet: {path}")
+                    found.append(diagnostics.diagnostic("library.file_unavailable", ref=path))
                     continue
                 raise SpacesError("blocked", f"Bundled library file is unavailable: {path}", reason="no_handler")
             if path not in files and path not in existing:
@@ -167,30 +172,10 @@ def _store_files(conn, existing, changed):
     return files
 
 
-def _warnings(conn, manifest, files):
-    warnings = []
-    if manifest["entry"] not in files:
-        warnings.append(f"Entry file is missing: {manifest['entry']}")
-    for name, path in manifest["imports"].items():
-        if path not in files:
-            warnings.append(f"Unresolved import {name}: {path}")
-    for path, sha in files.items():
-        if not path.endswith((".js", ".mjs", ".html", ".css")):
-            continue
-        content = conn.execute("SELECT content FROM blobs WHERE sha=?", (sha,)).fetchone()[0].decode("utf-8", errors="replace")
-        if re.search(r"https?://(?!www\.w3\.org/)", content):
-            warnings.append(f"Network URLs in {path} are blocked at runtime; use space.net.fetch for public HTTPS")
-        for target in re.findall(r'''(?:from\s*|import\s*|import\s*\(\s*)["'](\.[^"']+)["']''', content):
-            parts = list(Path(path).parent.parts)
-            for segment in target.split("/"):
-                if segment == "..":
-                    if parts:
-                        parts.pop()
-                elif segment not in ("", "."):
-                    parts.append(segment)
-            if "/".join(parts) not in files:
-                warnings.append(f"Unresolved relative import in {path}: {target}")
-    return warnings
+def _diagnose(conn, manifest, files, found=()):
+    load = lambda sha: conn.execute("SELECT content FROM blobs WHERE sha=?", (sha,)).fetchone()[0]
+    found = [*found, *diagnostics.diagnose(manifest, files, load)]
+    return {"diagnostics": found, "warnings": [d["message"] for d in found]}
 
 
 def _save_revision(conn, space, manifest, files, *, kind, author, summary, restored_from=None):
@@ -215,8 +200,8 @@ def create_space(name, *, description="", owner, files=None, manifest=None, libr
     if any(value is None for value in changed.values()):
         raise SpacesError("invalid", "New project files cannot be null")
     normalized = _manifest(supplied if supplied is not None else {}, name, description)
-    warnings = []
-    _libraries(changed, normalized, libraries, warnings)
+    found = []
+    _libraries(changed, normalized, libraries, found)
     slug = re.sub(r"[^a-z0-9]+", "-", unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()).strip("-")[:48].rstrip("-")
     if len(slug) < 2:
         slug = (slug + "-space") if slug else "space"
@@ -232,15 +217,12 @@ def create_space(name, *, description="", owner, files=None, manifest=None, libr
         from . import maintenance
         maintenance.create_identity(conn, sid)
         grants._seed(conn, sid, normalized, author)
+        stored = {}
         if changed or supplied is not None or libraries:
             stored = _store_files(conn, {}, changed)
             _save_revision(conn, db.space(conn, sid), normalized, stored, kind="create", author=author, summary=summary)
-            warnings += _warnings(conn, normalized, stored)
-        else:
-            warnings.append(f"Entry file is missing: {normalized['entry']}")
-    result = get_space(sid)
-    result["warnings"] = warnings
-    return result
+        report = _diagnose(conn, normalized, stored, found)
+    return {**get_space(sid), **report}
 
 
 def _resolve(conn, ref):
@@ -281,21 +263,36 @@ def list_spaces(include_archived=True):
         raise SpacesError("invalid", "include_archived must be a boolean")
     with db.read() as conn:
         rows = [dict(row) for row in conn.execute("SELECT * FROM spaces WHERE (? OR status!='archived') ORDER BY pinned DESC,updated_at DESC,id", (include_archived,))]
-    return [_summary(row) for row in rows]
+    with upkeep.read_projection([row["id"] for row in rows]):
+        return [_summary(row) for row in rows]
+
+
+def _head_manifest(conn, sid):
+    """The head revision's manifest, without decoding its file map."""
+    space = db.space(conn, sid)
+    if space["head_rev"] == 0:
+        return _manifest({}, space["name"], space["description"])
+    row = conn.execute("SELECT manifest FROM revisions WHERE space=? AND rev=?", (sid, space["head_rev"])).fetchone()
+    if row is None:
+        raise SpacesError("not_found", "Revision not found")
+    return json.loads(row["manifest"])
 
 
 def get_space(sid):
     with db.read() as conn:
         space = dict(db.space(conn, sid))
-        manifest = _revision(conn, sid)["manifest"]
+        manifest = _head_manifest(conn, sid)
         collections = {row["collection"]: row["n"] for row in conn.execute("SELECT collection,count(*) AS n FROM records WHERE space=? GROUP BY collection", (sid,))}
         for collection in manifest.get("data", {}).get("collections", {}):
             collections.setdefault(collection, 0)
         grant_rows = [grants._grant(row) for row in conn.execute("SELECT * FROM grants WHERE space=? ORDER BY capability", (sid,))]
+        from .storage import _summary as storage_summary
+        storage = storage_summary(conn, sid)
         errors = conn.execute("SELECT count(*) FROM logs WHERE space=? AND level='error' AND at>=?", (sid, db.now() - 86400)).fetchone()[0]
-    result = _summary(space)
+    with upkeep.read_projection():
+        result = _summary(space)
     result.update(manifest=manifest, grants=grant_rows, recent_runs=runs.list_runs(sid, limit=10),
-                  data_version=space["data_version"], collections=collections, error_count_24h=errors)
+                  data_version=space["data_version"], collections=collections, error_count_24h=errors, storage=storage)
     return result
 
 
@@ -328,7 +325,52 @@ def list_files(sid, rev=None):
                 for path, sha in sorted(revision["files"].items())]
 
 
-def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=()):
+def read_files(sid, paths):
+    """Read one head snapshot, with bounded content and an outcome for every path."""
+    if not isinstance(paths, list) or not paths:
+        raise SpacesError("invalid", "paths must be a nonempty array")
+    limits.check(len(paths), READ_FILES_MAX, "read paths")
+    results, used = [], 0
+    with db.read() as conn:
+        revision = _revision(conn, sid)
+        for path in paths:
+            try:
+                limits.path(path)
+                if path == "space.json":
+                    raw = limits.dumps(revision["manifest"]).encode("utf-8")
+                    sha = hashlib.sha256(raw).hexdigest()
+                else:
+                    sha = revision["files"].get(path)
+                    if sha is None:
+                        raise SpacesError("not_found", "File not found")
+                    size = conn.execute("SELECT size FROM blobs WHERE sha=?", (sha,)).fetchone()[0]
+                    limits.check(size, READ_FILE_BYTES, "read file bytes")
+                    raw = conn.execute("SELECT content FROM blobs WHERE sha=?", (sha,)).fetchone()[0]
+                limits.check(len(raw), READ_FILE_BYTES, "read file bytes")
+                content = _content(raw)
+                size = len(next(iter(content.values())).encode("utf-8"))
+                limits.check(used + size, READ_TOTAL_BYTES, "read content bytes")
+                used += size
+                result = {"path": path, **content, "size": len(raw), "sha": sha, "rev": revision["rev"]}
+                results.append({"path": path, "ok": True, "result": result})
+            except SpacesError as exc:
+                results.append({"path": path, "ok": False, "error": exc.to_dict()})
+    return {"space": sid, "rev": revision["rev"], "results": results}
+
+
+def _introduced(found, baseline):
+    identity = lambda d: (d["code"], d["path"], d.get("ref"), d.get("target"))
+    remaining = Counter(identity(d) for d in baseline)
+    introduced = []
+    for d in found:
+        if remaining[identity(d)]:
+            remaining[identity(d)] -= 1
+        else:
+            introduced.append(d)
+    return introduced
+
+
+def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=(), *, validate=False):
     space = db.space(conn, sid, writable=True)
     if base_rev is not None:
         limits.integer(base_rev, "base_rev")
@@ -336,8 +378,8 @@ def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=()
             raise SpacesError("conflict", "Project revision changed", current={"head_rev": space["head_rev"]})
     old = _revision(conn, sid)
     manifest = _manifest(supplied if supplied is not None else old["manifest"], space["name"], space["description"])
-    warnings = []
-    _libraries(changed, manifest, libraries, warnings, existing=old["files"])
+    found = []
+    _libraries(changed, manifest, libraries, found, existing=old["files"])
     version = manifest["data"]["version"]
     if version < space["data_version"]:
         raise SpacesError("incompatible", "Project requires an older data version", from_version=space["data_version"], to_version=version)
@@ -347,10 +389,18 @@ def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=()
     conn.execute("SAVEPOINT revision_write")
     try:
         stored = _store_files(conn, old["files"], changed)
+        report = _diagnose(conn, manifest, stored, found) if validate else None
+        if report:
+            # A batch is rejected only for diagnostics it introduces. Warnings already present at the base head
+            # are reported, not blocking; identity ignores line/column because edits shift positions.
+            introduced = _introduced(report["diagnostics"], _diagnose(conn, old["manifest"], old["files"])["diagnostics"])
+            if introduced:
+                raise SpacesError("invalid", "Batch candidate failed project validation",
+                                  diagnostics=introduced, warnings=[d["message"] for d in introduced])
         if version > space["data_version"]:
             migrations.apply(conn, sid, space["data_version"], version, manifest["data"].get("migrations", []), actor=author)
         info = _save_revision(conn, space, manifest, stored, kind="edit" if space["head_rev"] else "create", author=author, summary=summary)
-        info["warnings"] = warnings + _warnings(conn, manifest, stored)
+        info.update(report if report is not None else _diagnose(conn, manifest, stored, found))
     except Exception as exc:
         conn.execute("ROLLBACK TO revision_write")
         conn.execute("RELEASE revision_write")
@@ -402,10 +452,84 @@ def edit_file(sid, path, *, old, new, author, summary, base_rev=None):
     return info
 
 
-def list_revisions(sid):
+def edit_files(sid, *, edits, base_rev, author, summary):
+    """Apply ordered exact replacements to one candidate and publish all or none."""
+    if not isinstance(edits, list) or not edits:
+        raise SpacesError("invalid", "edits must be a nonempty array")
+    limits.check(len(edits), EDIT_FILES_MAX, "project edits")
+    limits.text(author, "author")
+    limits.text(summary, "summary", nonempty=False)
+    index, path, indexes, news = 0, None, {}, {}
+    with db.write() as conn:
+        try:
+            path = edits[0].get("path") if isinstance(edits[0], dict) else None
+            limits.integer(base_rev, "base_rev")
+            space = db.space(conn, sid, writable=True)
+            if base_rev != space["head_rev"]:
+                raise SpacesError("conflict", "Project revision changed", current={"head_rev": space["head_rev"]})
+            revision, candidate = _revision(conn, sid), {}
+            for index, edit in enumerate(edits):
+                path = edit.get("path") if isinstance(edit, dict) else None
+                if not isinstance(edit, dict) or set(edit) != {"path", "old", "new"}:
+                    raise SpacesError("invalid", "Each edit requires exactly path, old and new")
+                limits.path(path)
+                old, new = edit["old"], edit["new"]
+                if not isinstance(old, str) or not old or not isinstance(new, str):
+                    raise SpacesError("invalid", "old must be nonempty text and new must be text")
+                if path in candidate:
+                    raw = candidate[path]
+                elif path == "space.json":
+                    raw = limits.dumps(revision["manifest"]).encode("utf-8")
+                else:
+                    sha = revision["files"].get(path)
+                    if sha is None:
+                        raise SpacesError("not_found", "File not found")
+                    raw = conn.execute("SELECT content FROM blobs WHERE sha=?", (sha,)).fetchone()[0]
+                try:
+                    text = raw.decode("utf-8")
+                except UnicodeError as exc:
+                    raise SpacesError("invalid", "Cannot edit a binary file") from exc
+                if text.count(old) != 1:
+                    raise SpacesError("invalid", "old must occur exactly once")
+                try:
+                    raw = text.replace(old, new, 1).encode("utf-8")
+                except UnicodeError as exc:
+                    raise SpacesError("invalid", "Replacement must be valid UTF-8") from exc
+                limits.check(len(raw), limits.FILE_BYTES, "file bytes")
+                candidate[path], indexes[path] = raw, index
+                news.setdefault(path, []).append((index, old, new))
+            # Attribute manifest parsing, normalization and migration failures to its last edit.
+            if "space.json" in indexes:
+                index, path = indexes["space.json"], "space.json"
+            changed, supplied = _input_files(candidate, None)
+            info, error = _write(conn, sid, changed, supplied, author, summary, base_rev, validate=True)
+            if error:
+                raise error
+            return info
+        except SpacesError as exc:
+            for diagnostic in exc.extra.get("diagnostics", []):
+                affected = diagnostic["path"]
+                if affected in indexes or diagnostic.get("target") in indexes:
+                    path = affected if affected in indexes else diagnostic["target"]
+                    # Name the last edit to that file that introduced the reference (present in its replacement,
+                    # absent from what it replaced, so a no-op edit is never blamed), else the file's last edit.
+                    ref = diagnostic.get("ref")
+                    index = next((i for i, before, after in reversed(news.get(path, []))
+                                  if ref and ref in after and ref not in before), indexes[path])
+                    break
+            raise SpacesError(exc.code, exc.message, **{**exc.extra, "edit_index": index, "path": path}) from exc
+
+
+def list_revisions(sid, *, files=True):
+    if type(files) is not bool:
+        raise SpacesError("invalid", "files must be a boolean")
     with db.read() as conn:
         db.space(conn, sid)
-        return [_revision(conn, sid, row[0]) for row in conn.execute("SELECT rev FROM revisions WHERE space=? ORDER BY rev DESC", (sid,))]
+        if files:
+            return [_revision(conn, sid, row[0]) for row in conn.execute("SELECT rev FROM revisions WHERE space=? ORDER BY rev DESC", (sid,))]
+        rows = conn.execute("SELECT space,rev,parent_rev,kind,restored_from,manifest,author,summary,created_at "
+                            "FROM revisions WHERE space=? ORDER BY rev DESC", (sid,))
+        return [dict(row, manifest=json.loads(row["manifest"])) for row in rows]
 
 
 def restore_revision(sid, rev, *, author):
@@ -419,7 +543,7 @@ def restore_revision(sid, rev, *, author):
                               from_version=space["data_version"], to_version=version)
         result = _save_revision(conn, space, target["manifest"], target["files"], kind="restore", author=author,
                                 summary=f"Restored revision {rev}", restored_from=rev)
-        result["warnings"] = _warnings(conn, target["manifest"], target["files"])
+        result.update(_diagnose(conn, target["manifest"], target["files"]))
         return result
 
 
@@ -430,7 +554,9 @@ def bundle(sid, rev=None):
         files = [{"path": path, "mime": mimetypes.guess_type(path)[0] or "application/octet-stream",
                   **_content(conn.execute("SELECT content FROM blobs WHERE sha=?", (sha,)).fetchone()[0])}
                  for path, sha in sorted(revision["files"].items())]
-    return {"space": _summary(space), "rev": revision["rev"], "manifest": revision["manifest"], "files": files}
+    with upkeep.read_projection():
+        summary = _summary(space)
+    return {"space": summary, "rev": revision["rev"], "manifest": revision["manifest"], "files": files}
 
 
 def set_status(sid, status, *, actor):

@@ -1,6 +1,6 @@
 // src/desktop/plugin.src.js
 import { ROUTES_AREA, SIDEBAR_NAV_AREA, TRANSCRIPT_DIRECTIVE_AREA, ErrorState as ErrorState6, host as host4, useQuery as useQuery6 } from "@hermes/plugin-sdk";
-import { useEffect as useEffect3, useState as useState7 } from "react";
+import { useEffect as useEffect4, useState as useState7 } from "react";
 import { jsx as jsx7, jsxs as jsxs7 } from "react/jsx-runtime";
 
 // src/desktop/ui/index.jsx
@@ -24,7 +24,7 @@ var ACCENTS = { blue: "#0053fd", green: "#55a583", amber: "#e0a06c", purple: "#9
 var accentColor = (accent) => Object.hasOwn(ACCENTS, accent) ? ACCENTS[accent] : ACCENTS.blue;
 var iconName = (icon) => typeof icon === "string" && /^[a-z][a-z0-9-]{0,63}$/.test(icon) ? icon : "layers";
 var PILLS = {
-  ready: { label: "Ready", icon: "check", border: "solid" },
+  ready: { label: "Available", icon: "check", border: "solid" },
   building: { label: "Building", icon: "tools", border: "dashed" },
   updating: { label: "Updating", icon: "refresh", border: "solid" },
   failed: { label: "Failed", icon: "error", border: "solid" },
@@ -50,6 +50,10 @@ function spaceStatus(space, frame = false) {
   if (space.attention?.kind) return space.attention.kind;
   if (["failed", "blocked"].includes(space.freshness?.last_attempt_status)) return space.freshness.last_attempt_status;
   return "ready";
+}
+function statusDimensions(space, { guest = "unknown", write = null, hostError = false } = {}) {
+  const host5 = hostError ? "unavailable" : space.status === "archived" ? "archived" : space.status === "building" || !space.head_rev ? "building" : "available";
+  return { host: host5, guest, save: write?.status || "idle", freshness: space.freshness, appDomain: "unknown" };
 }
 function needsAttention(space) {
   return space.status !== "archived" && ["failed", "blocked", "crashed"].includes(spaceStatus(space, true));
@@ -127,9 +131,19 @@ var PROMPTS = [
   "Build Research Desk: an overview, a searchable library and a reading queue. Keep my notes and reading status.",
   "Build a weekly fitness planner with a progress chart. Refresh it every Monday."
 ];
+function dataVersionCompatibility(current, target) {
+  if (!Number.isInteger(current) || current <= 0 || !Number.isInteger(target) || target <= 0) return "unknown";
+  return current === target ? "compatible" : "incompatible";
+}
+function revisionCompatibility(space, revision) {
+  return dataVersionCompatibility(space.data_version, revision?.manifest?.data?.version);
+}
+function recoveryCompatibility(space, point) {
+  return dataVersionCompatibility(space.data_version, point.data_version);
+}
 function restoreCopy(space, rev) {
   const kept = space.head_rev > rev + 1 ? `Revisions ${rev + 1}\u2013${space.head_rev} stay in history.` : `Revision ${space.head_rev} stays in history.`;
-  return `Restore revision ${rev}? This brings back the Space's earlier code as a new revision ${space.head_rev + 1}. ${kept} Your records, notes and statuses stay as they are now.`;
+  return `Restore revision ${rev}? This brings back the Space's earlier code as a new revision ${space.head_rev + 1}. ${kept} Your records, notes and statuses stay as they are now. Migration undo and data downgrades are not supported.`;
 }
 function errorText(error) {
   let detail = error?.error || error?.body?.error || error;
@@ -426,12 +440,12 @@ function SpacesIndex({ ctx, scopeKey = null }) {
 }
 
 // src/desktop/ui/space.jsx
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery5 } from "@hermes/plugin-sdk";
-import { useEffect as useEffect2, useLayoutEffect, useRef as useRef4, useState as useState6 } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery5, useQueryClient } from "@hermes/plugin-sdk";
+import { useEffect as useEffect3, useLayoutEffect, useMemo, useRef as useRef5, useState as useState6 } from "react";
 
 // src/desktop/ui/history.jsx
 import { Badge as Badge2, EmptyState as EmptyState2, ErrorState as ErrorState2, Skeleton as Skeleton2, Tabs, TabsList, TabsTrigger, useQuery as useQuery2 } from "@hermes/plugin-sdk";
-import { useState as useState3 } from "react";
+import { useEffect, useRef as useRef2, useState as useState3 } from "react";
 import { Fragment as Fragment3, jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
 function RunRow({ run }) {
   const duration = run.ended_at != null && run.started_at != null ? `${Math.max(0, run.ended_at - run.started_at).toFixed(1)} s` : run.status === "queued" ? "Not started" : run.status === "running" ? "In progress" : "No duration reported";
@@ -455,19 +469,46 @@ function RunRow({ run }) {
   ] });
 }
 function RevisionRow({ revision, space, onRestore }) {
+  const compatibility = revisionCompatibility(space, revision);
   return /* @__PURE__ */ jsxs3("article", { className: "ls-row", children: [
     /* @__PURE__ */ jsxs3("div", { className: "ls-row-top", children: [
       /* @__PURE__ */ jsxs3("strong", { children: [
         "Revision ",
         revision.rev
       ] }),
-      revision.rev === space.head_rev ? /* @__PURE__ */ jsx3(Badge2, { variant: "outline", children: "Current" }) : /* @__PURE__ */ jsx3(Action, { onClick: () => onRestore(revision.rev), children: "Restore\u2026" })
+      revision.rev === space.head_rev ? /* @__PURE__ */ jsx3(Badge2, { variant: "outline", children: "Current" }) : compatibility !== "incompatible" && /* @__PURE__ */ jsx3(Action, { onClick: () => onRestore(revision.rev), children: "Restore\u2026" })
     ] }),
     /* @__PURE__ */ jsx3("p", { className: "ls-secondary", children: /* @__PURE__ */ jsx3(Time, { at: revision.created_at }) }),
     /* @__PURE__ */ jsxs3("p", { children: [
       revision.author,
       " \xB7 ",
       revision.summary
+    ] }),
+    /* @__PURE__ */ jsxs3("p", { className: "ls-secondary", children: [
+      "Compatibility: ",
+      compatibility === "incompatible" ? `incompatible. Current data version ${space.data_version}; target data version ${revision.manifest.data.version}. Cross-version code restore is not supported.` : compatibility === "compatible" ? `compatible with current data version ${space.data_version}.` : "unknown. The backend will check data versions before restoring code."
+    ] })
+  ] });
+}
+function RecoveryPointRow({ point, space }) {
+  const compatibility = recoveryCompatibility(space, point);
+  return /* @__PURE__ */ jsxs3("article", { className: "ls-row", "data-testid": `recovery-point-${point.id}`, children: [
+    /* @__PURE__ */ jsxs3("strong", { children: [
+      "Recovery point ",
+      point.id
+    ] }),
+    /* @__PURE__ */ jsx3("p", { children: point.reason }),
+    /* @__PURE__ */ jsxs3("p", { className: "ls-secondary", children: [
+      /* @__PURE__ */ jsx3(Time, { at: point.created_at }),
+      " \xB7 Code revision ",
+      point.head_rev
+    ] }),
+    /* @__PURE__ */ jsxs3("p", { children: [
+      "Compatibility: ",
+      compatibility,
+      ". ",
+      compatibility === "incompatible" ? `Current data version ${space.data_version}; point data version ${point.data_version}. Cross-version restore is not supported.` : compatibility === "compatible" ? `Same data version ${space.data_version}. Use code revision history below for code-only restore.` : "Data-version compatibility cannot be established.",
+      " Data restore is not supported here. Migration undo and data downgrades are not supported. Current records, notes and statuses stay as they are."
     ] })
   ] });
 }
@@ -477,21 +518,168 @@ function HistorySheet({ ctx, scopeKey = null, space, onClose, onChanged, initial
   const base = spacePath(space.id);
   const runs = useQuery2({ queryKey: ["living-spaces", scopeKey, space.id, "runs"], queryFn: () => ctx.rest(`${base}/runs`), refetchInterval: 2e3 });
   const revisions = useQuery2({ queryKey: ["living-spaces", scopeKey, space.id, "revisions"], queryFn: () => ctx.rest(`${base}/revisions`), refetchInterval: 2e3 });
+  const points = useQuery2({ queryKey: ["living-spaces", scopeKey, space.id, "recovery-points"], queryFn: () => ctx.rest(`${base}/recovery-points`), refetchInterval: 2e3 });
   const query = tab === "runs" ? runs : revisions;
+  const restoreCompatibility = revisionCompatibility(space, revisions.data?.find((row) => row.rev === restore));
   return /* @__PURE__ */ jsxs3(Fragment3, { children: [
     /* @__PURE__ */ jsxs3(Drawer, { title: "History & revisions", description: `History and code revisions for ${space.name}`, onClose, returnFocus, children: [
+      /* @__PURE__ */ jsx3(StorageSection, { ctx, space, onChanged }, `${scopeKey}:${space.id}`),
       /* @__PURE__ */ jsx3(Tabs, { value: tab, onValueChange: setTab, className: "ls-tabs", children: /* @__PURE__ */ jsxs3(TabsList, { "aria-label": "History & revisions", children: [
         /* @__PURE__ */ jsx3(TabsTrigger, { id: "ls-runs-tab", "aria-controls": "ls-runs-panel", value: "runs", children: "Run history" }),
         /* @__PURE__ */ jsx3(TabsTrigger, { id: "ls-revisions-tab", "aria-controls": "ls-revisions-panel", value: "revisions", children: "Revisions" })
       ] }) }),
       /* @__PURE__ */ jsxs3("div", { role: "tabpanel", tabIndex: 0, id: `ls-${tab === "runs" ? "runs" : "revisions"}-panel`, "aria-labelledby": `ls-${tab === "runs" ? "runs" : "revisions"}-tab`, children: [
-        tab === "revisions" && /* @__PURE__ */ jsx3("p", { className: "ls-secondary", children: "Restoring code does not rewind records. Your records, notes and statuses stay as they are now." }),
+        tab === "revisions" && /* @__PURE__ */ jsxs3(Fragment3, { children: [
+          /* @__PURE__ */ jsx3("p", { className: "ls-secondary", children: "Restoring code does not rewind records. Your records, notes and statuses stay as they are now. Migration undo and data downgrades are not supported." }),
+          /* @__PURE__ */ jsxs3("section", { "aria-label": "Recovery points", children: [
+            /* @__PURE__ */ jsx3("h3", { children: "Recovery points" }),
+            points.error ? /* @__PURE__ */ jsx3(ErrorState2, { title: "Recovery points could not be loaded", description: errorText(points.error), children: /* @__PURE__ */ jsx3(Action, { onClick: () => points.refetch(), children: "Try again" }) }) : points.isLoading ? /* @__PURE__ */ jsx3(Skeleton2, { style: { height: 80 } }) : !points.data?.length ? /* @__PURE__ */ jsx3("p", { className: "ls-secondary", children: "No recovery points recorded." }) : points.data.map((point) => /* @__PURE__ */ jsx3(RecoveryPointRow, { point, space }, point.id))
+          ] }),
+          /* @__PURE__ */ jsx3("h3", { children: "Code revisions" })
+        ] }),
         query.error ? /* @__PURE__ */ jsx3(ErrorState2, { title: "History could not be loaded", description: errorText(query.error), children: /* @__PURE__ */ jsx3(Action, { onClick: () => query.refetch(), children: "Try again" }) }) : query.isLoading ? /* @__PURE__ */ jsx3(Skeleton2, { style: { height: 180 } }) : !query.data?.length ? /* @__PURE__ */ jsx3(EmptyState2, { title: tab === "runs" ? "No refresh runs yet." : "No revisions yet." }) : query.data.map((row) => tab === "runs" ? /* @__PURE__ */ jsx3(RunRow, { run: row }, row.id) : /* @__PURE__ */ jsx3(RevisionRow, { revision: row, space, onRestore: setRestore }, row.rev))
       ] })
     ] }),
-    restore != null && /* @__PURE__ */ jsx3(DecisionDialog, { title: `Restore revision ${restore}?`, description: restoreCopy(space, restore), confirmLabel: "Restore as new revision", onClose: () => setRestore(null), onConfirm: async () => {
+    restore != null && restoreCompatibility !== "incompatible" && /* @__PURE__ */ jsx3(DecisionDialog, { danger: true, title: `Restore revision ${restore}?`, description: restoreCopy(space, restore), confirmLabel: "Restore as new revision", onClose: () => setRestore(null), onConfirm: async () => {
       await ctx.rest(`${base}/revisions/${restore}/restore`, { method: "POST" });
       await revisions.refetch();
+      await onChanged();
+    } })
+  ] });
+}
+function StorageNotice({ storage, onReview }) {
+  if (!storage?.warnings?.length) return null;
+  return /* @__PURE__ */ jsxs3("div", { role: "status", children: [
+    /* @__PURE__ */ jsx3("strong", { children: "Storage approaching a limit" }),
+    storage.warnings.map((row) => /* @__PURE__ */ jsxs3("p", { children: [
+      row.resource,
+      ": ",
+      row.used,
+      " / ",
+      row.limit
+    ] }, row.resource)),
+    onReview && /* @__PURE__ */ jsx3(Action, { onClick: onReview, children: "Review storage" })
+  ] });
+}
+function StorageSection({ ctx, space, onChanged }) {
+  const [categories, setCategories] = useState3(["revisions", "logs", "runs"]);
+  const [before, setBefore] = useState3(() => new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10));
+  const [proposal, setProposal] = useState3(null);
+  const [confirming, setConfirming] = useState3(false);
+  const [busy, setBusy] = useState3(false);
+  const [error, setError] = useState3("");
+  const [receipt, setReceipt] = useState3(null);
+  const lifetime = useRef2(null);
+  useEffect(() => {
+    const current = { active: true };
+    lifetime.current = current;
+    return () => {
+      current.active = false;
+    };
+  }, [ctx, space.id]);
+  const storage = space.storage;
+  if (!storage) return null;
+  const base = spacePath(space.id);
+  const reset = () => {
+    setProposal(null);
+    setReceipt(null);
+    setError("");
+  };
+  async function preview() {
+    if (busy) return;
+    const request = lifetime.current;
+    setBusy(true);
+    reset();
+    try {
+      const result = await ctx.rest(`${base}/retention/propose`, { method: "POST", body: { scope: { categories, before: (/* @__PURE__ */ new Date(`${before}T00:00:00Z`)).getTime() / 1e3 } } });
+      if (request?.active) setProposal(result);
+    } catch (failure2) {
+      if (request?.active) setError(errorText(failure2));
+    } finally {
+      if (request?.active) setBusy(false);
+    }
+  }
+  return /* @__PURE__ */ jsxs3("section", { "aria-label": "Storage", children: [
+    /* @__PURE__ */ jsx3("h3", { children: "Storage" }),
+    /* @__PURE__ */ jsx3(StorageNotice, { storage }),
+    /* @__PURE__ */ jsx3("ul", { children: Object.entries(storage.categories).map(([name, row]) => /* @__PURE__ */ jsxs3("li", { children: [
+      name,
+      ": ",
+      row.count,
+      " \xB7 ",
+      row.bytes,
+      " bytes",
+      row.fields != null && ` \xB7 ${row.fields} source fields`,
+      row.source_details != null && ` \xB7 ${row.source_details} source run details`
+    ] }, name)) }),
+    /* @__PURE__ */ jsxs3("p", { className: "ls-secondary", children: [
+      storage.bytes_basis,
+      " Native history is native-owned, excluded from these counts and never deleted here. No automatic cleanup is scheduled."
+    ] }),
+    /* @__PURE__ */ jsxs3("details", { children: [
+      /* @__PURE__ */ jsx3("summary", { children: "Propose cleanup" }),
+      /* @__PURE__ */ jsx3("p", { children: "Choose categories and a cutoff. Preview lists the exact items to remove and protected work. This does not delete anything." }),
+      /* @__PURE__ */ jsxs3("fieldset", { disabled: busy, children: [
+        /* @__PURE__ */ jsx3("legend", { children: "Categories to review" }),
+        ["revisions", "records", "logs", "runs"].map((name) => /* @__PURE__ */ jsxs3("label", { children: [
+          /* @__PURE__ */ jsx3("input", { type: "checkbox", checked: categories.includes(name), onChange: (event) => {
+            reset();
+            setCategories(event.target.checked ? [...categories, name] : categories.filter((value) => value !== name));
+          } }),
+          name,
+          " "
+        ] }, name)),
+        /* @__PURE__ */ jsxs3("label", { children: [
+          "Older than UTC date ",
+          /* @__PURE__ */ jsx3("input", { type: "date", value: before, onChange: (event) => {
+            reset();
+            setBefore(event.target.value);
+          } })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsx3(Action, { disabled: busy || !categories.length || !before, "aria-busy": busy, onClick: preview, children: "Preview cleanup" }),
+      error && /* @__PURE__ */ jsx3("p", { role: "alert", children: error }),
+      receipt && /* @__PURE__ */ jsxs3("p", { role: "status", children: [
+        "Cleanup completed for ",
+        receipt.proposal_id,
+        ". Audit receipt ",
+        receipt.audit_id,
+        "."
+      ] }),
+      proposal && /* @__PURE__ */ jsxs3("div", { children: [
+        /* @__PURE__ */ jsxs3("p", { children: [
+          "Proposal ",
+          /* @__PURE__ */ jsx3("code", { style: { overflowWrap: "anywhere" }, children: proposal.id })
+        ] }),
+        proposal.truncated.length > 0 && /* @__PURE__ */ jsxs3("p", { children: [
+          "Bounded batch. More items remain in ",
+          proposal.truncated.join(", "),
+          ". Review a new proposal after this batch."
+        ] }),
+        ["remove", "protected"].map((kind) => /* @__PURE__ */ jsxs3("div", { children: [
+          /* @__PURE__ */ jsx3("h4", { children: kind === "remove" ? "Would remove" : "Protected, kept" }),
+          Object.entries(proposal[kind]).map(([name, rows]) => /* @__PURE__ */ jsxs3("details", { children: [
+            /* @__PURE__ */ jsxs3("summary", { children: [
+              name,
+              ": ",
+              rows.length
+            ] }),
+            /* @__PURE__ */ jsx3("ul", { children: rows.map((row, index) => /* @__PURE__ */ jsxs3("li", { style: { overflowWrap: "anywhere" }, children: [
+              row.collection ? `${row.collection}/` : "",
+              row.id ?? row.rev ?? row.sha,
+              row.reason ? ` \xB7 ${row.reason}` : ""
+            ] }, index)) })
+          ] }, name))
+        ] }, kind)),
+        /* @__PURE__ */ jsx3(Action, { danger: true, disabled: !Object.values(proposal.remove).some((rows) => rows.length), onClick: () => setConfirming(true), children: "Review deletion\u2026" })
+      ] })
+    ] }),
+    confirming && proposal && /* @__PURE__ */ jsx3(DecisionDialog, { danger: true, title: "Execute retention proposal?", description: `Permanently delete only the listed items in ${space.name} for proposal ${proposal.id}. Protected work and native history stay. Any changed state requires a new preview.`, confirmLabel: /* @__PURE__ */ jsx3("span", { style: { overflowWrap: "anywhere", whiteSpace: "normal" }, children: `Delete ${proposal.id}` }), onClose: () => setConfirming(false), onConfirm: async () => {
+      const request = lifetime.current;
+      const result = await ctx.rest(`${base}/retention/execute`, { method: "POST", body: { scope: proposal.scope, proposal_id: proposal.id, confirm: proposal.confirmation } });
+      if (!request?.active) return;
+      setReceipt(result);
+      setProposal(null);
       await onChanged();
     } })
   ] });
@@ -499,7 +687,7 @@ function HistorySheet({ ctx, scopeKey = null, space, onClose, onChanged, initial
 
 // src/desktop/ui/permissions.jsx
 import { ErrorState as ErrorState3, Skeleton as Skeleton3, useQuery as useQuery3 } from "@hermes/plugin-sdk";
-import { useRef as useRef2, useState as useState4 } from "react";
+import { useRef as useRef3, useState as useState4 } from "react";
 import { Fragment as Fragment4, jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
 var NET_DESCRIPTION = "This Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.";
 var NET_OFF_DESCRIPTION = "This Space can't load content from or send data to the internet through Internet access.";
@@ -632,7 +820,7 @@ function PermissionsSheet({ ctx, scopeKey = null, space, onClose, onChanged, ret
   const busy = !!pending;
   const [feedback, setFeedback] = useState4("");
   const [error, setError] = useState4("");
-  const lock = useRef2(false);
+  const lock = useRef3(false);
   async function decide(grant, decision) {
     if (decision === "revoke" && grant.capability !== "net") {
       setRevoke(grant);
@@ -687,7 +875,7 @@ function PermissionsSheet({ ctx, scopeKey = null, space, onClose, onChanged, ret
 
 // src/desktop/ui/upkeep.jsx
 import { ErrorState as ErrorState4, Skeleton as Skeleton4, useQuery as useQuery4 } from "@hermes/plugin-sdk";
-import { useEffect, useRef as useRef3, useState as useState5 } from "react";
+import { useEffect as useEffect2, useRef as useRef4, useState as useState5 } from "react";
 import { Fragment as Fragment5, jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
 function UpkeepCost({ job, expanded = false, unavailable }) {
   if (job?.uses_model === false) return /* @__PURE__ */ jsx5("p", { children: "Refreshes from public sources. No model calls." });
@@ -729,8 +917,8 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
   const [fullError, setFullError] = useState5(false);
   const [fullPrompt, setFullPrompt] = useState5(false);
   const [visible, setVisible] = useState5(() => typeof document === "undefined" || !document.hidden);
-  const lock = useRef3(false);
-  const feedbackNode = useRef3(null);
+  const lock = useRef4(false);
+  const feedbackNode = useRef4(null);
   const query = useQuery4({
     queryKey: ["living-spaces", scopeKey, space.id, "upkeep"],
     queryFn: () => ctx.rest(`${base}/upkeep`),
@@ -742,19 +930,21 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
   const link = data?.link;
   const job = data?.job;
   const orphans = data?.orphan_jobs || [];
-  const hasRecovery = orphans.length > 0 || !!data?.one_shots?.length;
+  const uncertain = !!data?.recovery;
+  const aid = data?.recovery_aid?.settings;
+  const hasRecovery = uncertain || orphans.length > 0 || !!data?.one_shots?.length;
   const ownedJobs = (state) => [state?.job, ...state?.orphan_jobs || [], ...state?.one_shots || []].filter(Boolean);
   const archived = space.status === "archived";
   const running = isRunning(data);
   const unavailable = !!data?.error || !!query.error || !!link && !job && !data?.missing;
   const blocked = archived || unavailable || !!busy;
   const cleanupBlocked = !data || unavailable || !!busy || archived && !hasRecovery;
-  useEffect(() => {
+  useEffect2(() => {
     const update = () => setVisible(!document.hidden);
     document.addEventListener("visibilitychange", update);
     return () => document.removeEventListener("visibilitychange", update);
   }, []);
-  useEffect(() => {
+  useEffect2(() => {
     if (data || query.error) {
       setSlow(false);
       return;
@@ -762,20 +952,20 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
     const timer = setTimeout(() => setSlow(true), 8e3);
     return () => clearTimeout(timer);
   }, [!!data, !!query.error]);
-  useEffect(() => {
+  useEffect2(() => {
     if (!recentAction) return;
     const timer = setTimeout(() => setRecentAction(0), 6e4);
     return () => clearTimeout(timer);
   }, [recentAction]);
-  useEffect(() => {
+  useEffect2(() => {
     if (!feedback || busy) return;
     const timer = setTimeout(() => setFeedback(""), 8e3);
     return () => clearTimeout(timer);
   }, [feedback, busy]);
   async function act(action) {
     if (lock.current) return;
-    if ((["pause", "remove"].includes(action) ? cleanupBlocked : blocked) || action === "run" && running) {
-      if (action === "remove") throw new Error("Upkeep is unavailable. Reload the native state before removing it.");
+    if ((["pause", "remove", "recover"].includes(action) ? cleanupBlocked : blocked || uncertain) || action === "run" && running) {
+      if (["remove", "recover"].includes(action)) throw new Error("Upkeep is unavailable. Reload the native state before removing it.");
       return;
     }
     lock.current = true;
@@ -785,7 +975,7 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
     setFeedback(action === "run" ? "Starting\u2026" : "Working\u2026");
     setRecentAction(Date.now());
     try {
-      const response = await ctx.rest(`${base}/upkeep`, { method: "POST", body: { action } });
+      const response = await ctx.rest(`${base}/upkeep`, { method: "POST", body: { action, ...action === "recover" ? { confirm: space.id } : {} } });
       if (action === "run" && response?.dispatch?.job?.execution_success === false) throw new Error(response.dispatch.job.execution_error || "Hermes reports that this execution failed.");
       refreshRequested = true;
       const [current] = await Promise.all([query.refetch(), onChanged?.()]);
@@ -793,14 +983,14 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
       if (!current?.data || response?.error) throw new Error("Hermes has not confirmed the requested state.");
       const currentJobs = ownedJobs(current.data);
       const returnedJobs = ownedJobs(response);
-      if (action === "pause" && (currentJobs.some((target) => target.enabled !== false) || returnedJobs.some((target) => target.enabled !== false) || [...ownedJobs(data), ...returnedJobs].some((target) => !currentJobs.some((job2) => job2.id === target.id && job2.enabled === false))) || action === "resume" && current.data.job?.enabled !== true || action === "remove" && (current.data.link || response?.link || currentJobs.length || returnedJobs.length)) throw new Error("Hermes has not confirmed the requested state.");
+      if (action === "pause" && (currentJobs.some((target) => target.enabled !== false) || returnedJobs.some((target) => target.enabled !== false) || [...ownedJobs(data), ...returnedJobs].some((target) => !currentJobs.some((job2) => job2.id === target.id && job2.enabled === false))) || action === "resume" && current.data.job?.enabled !== true || ["remove", "recover"].includes(action) && (current.data.link || response?.link || currentJobs.length || returnedJobs.length) || action === "recover" && (current.data.recovery || response?.recovery)) throw new Error("Hermes has not confirmed the requested state.");
       const next = toSeconds(current?.data?.job?.next_run_at);
-      setFeedback(action === "run" ? "Run requested. Execution and delivery are not confirmed by this request; review the last-result metadata below." : action === "pause" ? "Paused. Future runs stop until you resume. Already-running work may finish." : action === "resume" ? `Resumed.${next != null ? ` Next run ${absolute(next)}.` : ""}` : `Upkeep removed. ${space.name} is unchanged.`);
+      setFeedback(action === "recover" ? "Recovery verified. Native upkeep jobs are absent. No run was replayed. Use the settings aid for a separate scheduling request." : action === "pause" && current.data.recovery ? "Native jobs are paused. The earlier action remains uncertain. Confirm recovery to clear the barrier." : action === "run" ? "Run requested. Execution and delivery are not confirmed by this request; review the last-result metadata below." : action === "pause" ? "Paused. Future runs stop until you resume. Already-running work may finish." : action === "resume" ? `Resumed.${next != null ? ` Next run ${absolute(next)}.` : ""}` : `Upkeep removed. ${space.name} is unchanged.`);
     } catch (e) {
       setFeedback("");
       setError(`${action === "run" ? "Couldn't start the run." : action === "pause" ? "Couldn't pause upkeep." : action === "resume" ? "Couldn't resume upkeep." : "Couldn't remove upkeep."} ${errorText(e)} Review the current native state before trying again.`);
       if (!refreshRequested) await query.refetch();
-      if (action === "remove") throw e;
+      if (["remove", "recover"].includes(action)) throw e;
     } finally {
       lock.current = false;
       setBusy(null);
@@ -822,12 +1012,37 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
     query.error && /* @__PURE__ */ jsx5(Banner, { title: `Showing the last loaded state${query.dataUpdatedAt ? ` from ${relative(query.dataUpdatedAt / 1e3)}` : ""}.`, actions: /* @__PURE__ */ jsx5(Action, { onClick: () => query.refetch(), children: "Try again" }), children: errorText(query.error) }),
     data.error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: "Hermes cron is unavailable", children: errorText(data.error) }),
     data.warning && /* @__PURE__ */ jsx5(Banner, { kind: "blocked", title: "Hermes cron notice", children: data.warning }),
+    aid && /* @__PURE__ */ jsxs5("section", { className: "ls-section", "aria-label": "Recovery settings aid", children: [
+      /* @__PURE__ */ jsx5("h3", { children: "Recovery settings aid" }),
+      /* @__PURE__ */ jsx5("p", { children: "Last requested settings only. These do not describe the current native schedule or enabled state. Hermes cron remains authoritative." }),
+      /* @__PURE__ */ jsx5("dl", { className: "ls-facts", children: ["kind", "cadence", "timezone", "prompt"].map((key) => /* @__PURE__ */ jsxs5("div", { children: [
+        /* @__PURE__ */ jsx5("dt", { children: key }),
+        /* @__PURE__ */ jsx5("dd", { children: aid[key] ?? "None" })
+      ] }, key)) }),
+      /* @__PURE__ */ jsx5(CopyPrompt, { text: `${space.owner}, review these last requested upkeep settings for ${space.name} and confirm before scheduling again: ${JSON.stringify(aid)}`, label: "Copy recovery settings" })
+    ] }),
     archived && /* @__PURE__ */ jsxs5("p", { children: [
       "Run and Resume are unavailable while this Space is archived. ",
       hasRecovery && "Use Pause or Remove to clean up recovery jobs. ",
       "Already-running work may finish."
     ] }),
-    !link ? hasRecovery ? /* @__PURE__ */ jsx5(Banner, { kind: "blocked", title: "No primary upkeep link", children: "Space-owned jobs below may still run. Pause or remove them before scheduling upkeep again." }) : /* @__PURE__ */ jsxs5(Fragment5, { children: [
+    uncertain ? /* @__PURE__ */ jsxs5(Banner, { kind: "blocked", title: "Upkeep outcome unknown", children: [
+      /* @__PURE__ */ jsx5("p", { children: data.recovery.cause }),
+      /* @__PURE__ */ jsxs5("p", { children: [
+        "Uncertain action: ",
+        data.recovery.operations.map((op) => op.action).join(", ")
+      ] }),
+      /* @__PURE__ */ jsx5("p", { children: data.recovery.options }),
+      /* @__PURE__ */ jsx5("p", { children: data.recovery.evidence }),
+      job && /* @__PURE__ */ jsxs5("p", { children: [
+        "Native inventory currently shows job ",
+        /* @__PURE__ */ jsx5("code", { children: job.id }),
+        ", ",
+        job.enabled === true ? "enabled" : job.enabled === false ? "disabled" : "enabled state unknown",
+        ". This does not confirm the earlier effect."
+      ] }),
+      /* @__PURE__ */ jsx5(Action, { primary: true, "aria-disabled": cleanupBlocked, onClick: () => !cleanupBlocked && setConfirm("recover"), children: "Recover upkeep" })
+    ] }) : !link ? hasRecovery ? /* @__PURE__ */ jsx5(Banner, { kind: "blocked", title: "No primary upkeep link", children: "Space-owned jobs below may still run. Pause or remove them before scheduling upkeep again." }) : /* @__PURE__ */ jsxs5(Fragment5, { children: [
       /* @__PURE__ */ jsx5("h3", { children: "No upkeep yet" }),
       /* @__PURE__ */ jsxs5("p", { children: [
         "This Space isn't updated automatically. Ask ",
@@ -903,7 +1118,7 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
       error && /* @__PURE__ */ jsx5(Banner, { kind: "failed", title: error }),
       job?.uses_model === true && job.prompt && !data?.unavailable?.prompt && /* @__PURE__ */ jsx5("div", { className: "ls-section", children: /* @__PURE__ */ jsx5(Action, { "aria-expanded": fullPrompt, "aria-controls": "ls-upkeep-prompt", onClick: () => setFullPrompt(!fullPrompt), children: fullPrompt ? "Show less" : "Show full prompt" }) }),
       job?.last_error && ["failed", "error"].includes(job.last_status) && /* @__PURE__ */ jsxs5(Banner, { kind: "failed", title: `Last run failed${lastAt != null ? ` ${absolute(lastAt)}` : ""}`, actions: /* @__PURE__ */ jsxs5(Fragment5, { children: [
-        /* @__PURE__ */ jsx5(Action, { "aria-disabled": blocked || running, onClick: () => act("run"), children: "Run now" }),
+        !uncertain && /* @__PURE__ */ jsx5(Action, { "aria-disabled": blocked || running, onClick: () => act("run"), children: "Run now" }),
         !data?.unavailable?.executions && /* @__PURE__ */ jsx5(Action, { onClick: () => document.getElementById("ls-upkeep-executions")?.focus(), children: "View history" })
       ] }), children: [
         /* @__PURE__ */ jsx5("p", { id: "ls-upkeep-error", className: fullError ? "" : "ls-clamp-three", children: job.last_error }),
@@ -920,7 +1135,7 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
         /* @__PURE__ */ jsx5(Executions, { executions: data.one_shots.flatMap((shot) => shot.executions || []), unavailable: data.unavailable?.executions })
       ] })
     ] }),
-    confirm && /* @__PURE__ */ jsx5(DecisionDialog, { danger: true, successFocus: feedbackNode, title: `Remove upkeep for ${space.name}?`, description: "This deletes this Space's linked job, unlinked upkeep jobs and Refresh now jobs. Future runs stop, but already-running work may finish. The Space and its data are kept.", cancelLabel: "Keep upkeep", confirmLabel: "Remove", onClose: () => setConfirm(false), onConfirm: () => act("remove") })
+    confirm && /* @__PURE__ */ jsx5(DecisionDialog, { danger: true, successFocus: feedbackNode, title: `${confirm === "recover" ? "Recover" : "Remove"} upkeep for ${space.name}?`, description: `This checks native state and deletes this Space's linked job, unlinked upkeep jobs and Refresh now jobs. Future runs stop, but already-running work may finish. The Space and its data are kept. ${confirm === "recover" ? "No run will be replayed. Settings remain an aid for a separate scheduling request." : ""}`, cancelLabel: "Keep upkeep", confirmLabel: confirm === "recover" ? "Confirm recovery" : "Remove", onClose: () => setConfirm(false), onConfirm: () => act(confirm === "recover" ? "recover" : "remove") })
   ] });
 }
 
@@ -1172,9 +1387,226 @@ function createBotActions({ host: host5, backend, post, onStatus, isActive, user
   };
 }
 
+// src/desktop/sandbox/index.js
+var BRIDGE_VERSION = 1;
+var OP_GRANT = Object.freeze({
+  meta: null,
+  "net.fetch": "net",
+  "data.query": "data",
+  "data.get": "data",
+  "data.put": "data",
+  "data.delete": "data",
+  "data.batch": "data",
+  "draft.get": "data",
+  "draft.put": "data",
+  "draft.delete": "data",
+  "editor.save": "data",
+  "outcome.get": "data",
+  "bot.request": null,
+  "link.open": null,
+  refresh: null,
+  "runs.list": null,
+  freshness: null,
+  log: "logs"
+});
+var MAX_REQUEST_SIZE = 1024 * 1024;
+var MAX_LINK_LENGTH = 2048;
+var SECRET_PARAM = /^(access_token|id_token|refresh_token|token|api[-_]?key|apikey|secret|client_secret|password|passwd|pwd|auth|authorization|sessionid|sig|signature|x-amz-signature|x-amz-credential|x-amz-security-token|x-goog-signature|x-goog-credential)$/i;
+function linkTarget(value) {
+  const refuse = (reason) => ({ ok: false, reason });
+  if (typeof value !== "string" || !value) return refuse("The link has no destination");
+  if (value.length > MAX_LINK_LENGTH) return refuse(`Links longer than ${MAX_LINK_LENGTH} characters are not opened`);
+  if (/[\s\x00-\x1f\x7f]/.test(value)) return refuse("The link contains spaces or control characters");
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return refuse("The link is not a complete web address");
+  }
+  if (url.protocol !== "https:") return refuse("Only https links can be opened");
+  if (url.username || url.password) return refuse("Links containing sign-in details are not opened");
+  const host5 = url.hostname;
+  const labels = host5.split(".");
+  if (labels.length < 2 || !labels.every(Boolean) || host5.startsWith("[") || /^[\d.]+$/.test(host5) || /(^|\.)(localhost|local|internal|home\.arpa)$/i.test(host5)) {
+    return refuse("Only public website addresses can be opened");
+  }
+  const keys = [...url.searchParams.keys(), ...[...url.hash.matchAll(/(?:^#|[?&;/])([^=?&;/#]+)=/g)].map((match) => match[1])];
+  if (keys.some((key) => {
+    try {
+      return SECRET_PARAM.test(decodeURIComponent(key));
+    } catch {
+      return true;
+    }
+  })) {
+    return refuse("Links carrying access tokens or signatures are not opened");
+  }
+  return { ok: true, url: url.href, host: host5 };
+}
+function requestError(message) {
+  if (!message || typeof message !== "object" || Array.isArray(message)) return { code: "invalid", message: "request must be an object" };
+  if (message.v !== BRIDGE_VERSION) return { code: "invalid", message: "unsupported bridge version" };
+  if (!Number.isSafeInteger(message.id)) return { code: "invalid", message: "id must be an integer" };
+  if (typeof message.op !== "string") return { code: "invalid", message: "op must be a string" };
+  if (message.op === "editor.save" && (typeof message.request_id !== "string" || !/^[A-Za-z0-9_.:-]{1,128}$/.test(message.request_id))) return { code: "invalid", message: "Editor saves require a request_id" };
+  if (!message.args || typeof message.args !== "object" || Array.isArray(message.args)) return { code: "invalid", message: "args must be an object" };
+  try {
+    const actual = new TextEncoder().encode(JSON.stringify(message)).byteLength;
+    if (actual > MAX_REQUEST_SIZE) return { code: "limit", message: "request exceeds 1 MB", limit: MAX_REQUEST_SIZE, actual };
+  } catch {
+    return { code: "invalid", message: "request is not JSON serializable" };
+  }
+  return null;
+}
+function checkGrant(op, grants) {
+  if (!Object.hasOwn(OP_GRANT, op)) return { code: "not_granted", message: `Operation isn't available: ${op}` };
+  const capability = OP_GRANT[op];
+  if (capability === null) return null;
+  if (grants.some((g) => typeof g === "string" ? g === capability : g.capability === capability && g.status === "granted")) return null;
+  return { code: "not_granted", message: `Approve ${capability} in Permissions`, capability };
+}
+function parseBundle(value) {
+  const sandbox = value?.sandbox;
+  if (!sandbox || typeof sandbox !== "object" || Array.isArray(sandbox) || Object.keys(sandbox).length !== 2 || !Object.hasOwn(sandbox, "format") || !Object.hasOwn(sandbox, "shell_srcdoc") || sandbox.format !== 1 || typeof sandbox.shell_srcdoc !== "string" || !sandbox.shell_srcdoc.trim()) {
+    throw new Error("Living Spaces Desktop and backend are incompatible. Reinstall Living Spaces to load the packaged sandbox.");
+  }
+  const { space, rev, manifest, files } = value;
+  return { project: { space, rev, manifest, files }, document: sandbox.shell_srcdoc };
+}
+function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
+} }) {
+  const { project, document: shellDocument } = parseBundle(bundle);
+  const channel = new MessageChannel();
+  const port = channel.port1;
+  let frame;
+  let state = "created";
+  let lastLog = -Infinity;
+  let overflowReported = false;
+  let faults = 0;
+  const overflow = () => {
+    if (overflowReported) return;
+    overflowReported = true;
+    onEvent({ kind: "log-overflow" });
+  };
+  const stop = () => {
+    if (state === "closed") return;
+    state = "closed";
+    frame?.removeEventListener("load", onLoad);
+    port.onmessage = null;
+    port.close();
+    channel.port2.close();
+    window.removeEventListener("message", onShellMessage);
+  };
+  const reloaded = () => {
+    if (state !== "booted") return;
+    stop();
+    onEvent({ kind: "reloaded" });
+  };
+  function onShellMessage(e) {
+    if (e.source === frame.contentWindow && e.data?.v === 1 && e.data.type === "space-reloaded") reloaded();
+  }
+  function onLoad() {
+    if (state === "closed") return;
+    if (state === "booted") return reloaded();
+    state = "booted";
+    frame.contentWindow.postMessage({ type: "space-boot", v: 1, bundle: project, grants }, "*", [channel.port2]);
+    onEvent({ kind: "booted" });
+  }
+  port.onmessage = async (e) => {
+    if (state !== "booted") return;
+    const m = e.data;
+    const reply = (body) => {
+      if (state === "booted" && Number.isSafeInteger(m?.id)) port.postMessage({ v: 1, id: m.id, ...body });
+    };
+    const reject = (error) => {
+      const op = typeof m?.op === "string" ? m.op : null;
+      onEvent({ kind: "denied", op, reason: error.message });
+      if (["data.put", "data.delete", "data.batch"].includes(op)) onEvent({ kind: "write-rejected", op, error });
+      reply({ ok: false, error });
+    };
+    const invalid = requestError(m);
+    if (invalid) return reject(invalid);
+    const denied = checkGrant(m.op, grants);
+    if (denied) return reject(denied);
+    let args = m.args;
+    if (m.op === "log") {
+      if (args.lifecycle !== void 0 && !["loaded", "failed"].includes(args.lifecycle) || ["dropped", "unconfirmed", "faults"].some((key) => args[key] !== void 0 && (!Number.isSafeInteger(args[key]) || args[key] < 0))) {
+        return reject({ code: "invalid", message: "Invalid log metadata" });
+      }
+      if (!Array.isArray(args.entries) || Array.from(args.entries).some((entry) => !entry || typeof entry.level !== "string" || typeof entry.msg !== "string")) {
+        return reject({ code: "invalid", message: "Invalid log entries" });
+      }
+      if (args.entries.length > 50) return reject({ code: "limit", message: "Log batch exceeds 50 entries", limit: 50, actual: args.entries.length });
+      const oversized = args.entries.find((entry) => entry.msg.length > 4e3);
+      if (oversized) return reject({ code: "limit", message: "Log message exceeds 4000 characters", limit: 4e3, actual: oversized.msg.length });
+      if (args.entries.some((entry) => entry.level === "warn" && entry.msg.startsWith("Space log overflow:"))) overflow();
+      const now = performance.now();
+      if (now - lastLog < 500) {
+        reply({ ok: true, result: { stored: 0, throttled: true } });
+        return;
+      }
+      if (args.faults > faults) {
+        faults = args.faults;
+        onEvent({ kind: "fault", count: faults });
+      }
+      lastLog = now;
+      args = { entries: args.entries };
+      for (const key of ["lifecycle", "dropped", "unconfirmed"]) if (m.args[key] !== void 0) args[key] = m.args[key];
+    }
+    try {
+      const result = m.op === "editor.save" ? await call(m.op, args, void 0, m.request_id) : await call(m.op, args);
+      const revoked = checkGrant(m.op, grants);
+      if (revoked && result.ok) reject(revoked);
+      else reply(result);
+    } catch (error) {
+      onEvent({ kind: "error", message: String(error.message || error) });
+      reply({ ok: false, error: { code: error.code || "blocked", message: String(error.message || error) } });
+    }
+  };
+  try {
+    frame = document.createElement("iframe");
+    frame.setAttribute("sandbox", "allow-scripts");
+    frame.setAttribute("referrerpolicy", "no-referrer");
+    frame.style.cssText = "border:0;width:100%;height:100%;display:block;background:transparent";
+    frame.title = `Space: ${project.space.name}`;
+    window.addEventListener("message", onShellMessage);
+    frame.addEventListener("load", onLoad);
+    frame.srcdoc = shellDocument;
+    container.append(frame);
+  } catch (error) {
+    stop();
+    frame?.remove();
+    throw error;
+  }
+  return {
+    postEvent(event, payload) {
+      if (state !== "booted") return;
+      if (event === "data.changed" && checkGrant("data.query", grants)) return;
+      port.postMessage({ v: 1, type: "event", event, payload });
+      if (event === "session.closed") stop();
+    },
+    destroy() {
+      stop();
+      frame.remove();
+    }
+  };
+}
+
 // src/desktop/ui/session.mjs
 var errorCode = (error) => [error?.error?.code, error?.body?.error?.code, error?.message, String(error)].filter(Boolean).join(" ");
-function createSpaceSession({ rest, backend, sid, container, mount, onEvent, host: host5, onAction = () => {
+var freezeDraft = (value) => {
+  if (value && typeof value === "object") {
+    Object.values(value).forEach(freezeDraft);
+    Object.freeze(value);
+  }
+  return value;
+};
+var requestId = () => "write_" + Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, "0")).join("");
+var desktopOs = null;
+function bindDesktopOs(os) {
+  desktopOs = os ?? null;
+}
+var hasActivation = () => globalThis.navigator?.userActivation?.isActive === true;
+function createSpaceSession({ rest, backend, sid, container, mount, onEvent, host: host5, os = desktopOs, userActivation = hasActivation, onAction = () => {
 }, onWrite = () => {
 }, onCloseError = (error) => console.warn("Space session cleanup failed", error) }) {
   const base = spacePath(sid);
@@ -1195,9 +1627,12 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
   let closePromise = null;
   let nextWrite = 0;
   let pendingWrites = 0;
+  let editorWrite = null;
   const failures = /* @__PURE__ */ new Map();
   const retries = /* @__PURE__ */ new Map();
-  const publish = (event) => onWrite(failures.values().next().value || (pendingWrites ? { status: "saving" } : event));
+  const publish = (event) => {
+    if (!closed && active()) onWrite(failures.values().next().value || (pendingWrites ? { status: "saving" } : event));
+  };
   const actions = host5 ? createBotActions({
     host: host5,
     backend: scope,
@@ -1209,6 +1644,46 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
       mounted?.postEvent?.("bot.status", status);
     }
   }) : null;
+  const linkNotice = `living-spaces:link:${sid}`;
+  let linkGeneration = null;
+  const showNotice = (input, label, run) => {
+    const generation = linkGeneration = {};
+    const action = run && { label, onClick: () => {
+      if (linkGeneration === generation && !closed && active()) run();
+    } };
+    host5.notify({ id: linkNotice, ...input, action });
+  };
+  const openLink = (args) => {
+    if (!userActivation()) return { ok: false, error: { code: "blocked", message: "Links open only from a click in the Space. Nothing was opened." } };
+    if (!args || Object.keys(args).length !== 1 || typeof args.url !== "string") return { ok: false, error: { code: "invalid", message: "A link request needs exactly one url" } };
+    if (typeof os?.openExternal !== "function" || typeof host5?.notify !== "function") return { ok: false, error: { code: "blocked", message: "This Desktop cannot open links from a Space" } };
+    const target = linkTarget(args.url);
+    if (!target.ok) {
+      showNotice({ kind: "warning", title: "Link not opened", message: target.reason });
+      return { ok: false, error: { code: "invalid", message: target.reason } };
+    }
+    showNotice({
+      kind: "info",
+      title: `Open ${target.host} in your browser?`,
+      message: target.url,
+      detail: "This Space asked to open the link above outside Hermes.",
+      durationMs: 15e3
+    }, "Open link", async () => {
+      const handoff = linkGeneration = {};
+      const opened = await os.openExternal(target.url).catch(() => false);
+      if (opened === true || linkGeneration !== handoff || closed || !active()) return;
+      showNotice({
+        kind: "error",
+        title: "Your browser could not open this link",
+        message: target.url,
+        detail: "Nothing was opened. Copy the link to open it yourself."
+      }, "Copy link", () => {
+        os.writeClipboard?.(target.url)?.catch?.(() => {
+        });
+      });
+    });
+    return { ok: true, result: { status: "confirming", url: target.url, host: target.host } };
+  };
   const close = () => {
     if (!session) return Promise.resolve();
     closePromise ??= (async () => {
@@ -1236,16 +1711,59 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     });
     return closePromise;
   };
-  const call = async (op, args, retryToken) => {
-    if (closed || !active()) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
+  const invalidSession = () => ({ ok: false, error: { code: "session_invalid", message: "This Space session is closed" } });
+  const send = async (body) => {
+    try {
+      return await scopedRequest(`${base}/bridge`, { method: "POST", body });
+    } catch (error) {
+      const reply = error?.body || error;
+      if (reply?.outcome?.status) return reply;
+      return { ok: false, error: { code: "unavailable", message: error.message || String(error) }, outcome: { status: "unknown" } };
+    }
+  };
+  const finishWrite = (attempt, reply, lookup = false) => {
+    const certainty = reply?.outcome?.status;
+    const saved = reply?.ok === true && (certainty == null || ["success", "confirmed"].includes(certainty)) && (!lookup || ["success", "confirmed"].includes(certainty));
+    const status = certainty === "unknown" || lookup && !saved ? "unknown" : saved ? "saved" : certainty !== "busy" && reply?.error?.code === "conflict" ? "conflict" : "failed";
+    attempt.unknown = status === "unknown";
+    if (saved) attempt.confirmed = reply;
+    const retry = (next) => {
+      if (closed || !active()) return Promise.resolve(invalidSession());
+      if (retries.has(attempt.token)) return retries.get(attempt.token);
+      let current = attempt;
+      while (current.next) current = current.next;
+      if (current.confirmed) return Promise.resolve(current.confirmed);
+      const promise = (current.unknown ? reconcile(current) : call(current.op, next || current.args, current.token, void 0, current)).finally(() => retries.delete(attempt.token));
+      retries.set(attempt.token, promise);
+      return promise;
+    };
+    const event = { ...attempt.op === "editor.save" ? { editorManaged: true } : {}, status, token: attempt.token, op: attempt.op, args: attempt.args, reply, at: Date.now() / 1e3, retry };
+    editorWrite = event.editorManaged ? attempt : null;
+    if (saved || event.editorManaged) failures.delete(attempt.token);
+    else failures.set(attempt.token, event);
+    publish(event);
+  };
+  const reconcile = async (attempt) => {
+    if (closed || !active()) return invalidSession();
+    pendingWrites++;
+    const reply = await send({ session: attempt.session, op: "outcome.get", args: { request_id: attempt.request_id } });
+    pendingWrites--;
+    if (closed || !active()) return invalidSession();
+    finishWrite(attempt, reply, true);
+    return reply;
+  };
+  const call = async (op, args, retryToken, editorRequestId, supersedes) => {
+    if (closed || !active()) return invalidSession();
+    if (op === "link.open") return openLink(args);
     if (op === "bot.request") {
       if (!actions) return { ok: false, error: { code: "blocked", message: "Native bot actions are unavailable" } };
       const result = await actions.request(args);
-      if (closed || !active()) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
+      if (closed || !active()) return invalidSession();
       return { ok: true, result };
     }
-    const writing = ["data.put", "data.delete", "data.batch"].includes(op);
-    if (writing && retryToken == null) {
+    const writing = ["data.put", "data.delete", "data.batch", "editor.save"].includes(op);
+    let attempt;
+    if (writing) {
       args = structuredClone(args);
       const identify = (put) => {
         if (put.id == null) {
@@ -1253,38 +1771,25 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
           put.base_rev = 0;
         }
       };
-      if (op === "data.put") identify(args);
-      if (op === "data.batch" && Array.isArray(args.ops)) args.ops.forEach((item) => {
+      if (retryToken == null && op === "data.put") identify(args);
+      if (retryToken == null && op === "data.batch" && Array.isArray(args.ops)) args.ops.forEach((item) => {
         if (item?.op === "put") identify(item);
       });
-    }
-    const token = retryToken ?? ++nextWrite;
-    if (writing) {
+      attempt = { token: retryToken ?? ++nextWrite, op, args: freezeDraft(args), session, request_id: op === "editor.save" ? editorRequestId : requestId(), unknown: false };
+      if (supersedes) supersedes.next = attempt;
       pendingWrites++;
       publish({ status: "saving", op, args });
     }
-    let reply;
-    let unknown = false;
-    try {
-      reply = await scopedRequest(`${base}/bridge`, { method: "POST", body: { session, op, args } });
-    } catch (error) {
-      unknown = true;
-      reply = { ok: false, error: { code: "unavailable", message: error.message || String(error) } };
-    }
-    if (closed || !active()) return { ok: false, error: { code: "session_invalid", message: "This Space session is closed" } };
-    if (writing) {
-      pendingWrites--;
-      const retry = (next) => {
-        if (retries.has(token)) return retries.get(token);
-        const promise = call(op, next || args, token).finally(() => retries.delete(token));
-        retries.set(token, promise);
-        return promise;
-      };
-      unknown ||= failures.get(token)?.status === "unknown";
-      const event = { status: reply.ok ? "saved" : reply.error?.code === "conflict" ? "conflict" : unknown ? "unknown" : "failed", token, op, args, reply, at: Date.now() / 1e3, retry };
-      if (reply.ok) failures.delete(token);
-      else failures.set(token, event);
-      publish(event);
+    const reply = await send({ session, op, args, ...attempt ? { request_id: attempt.request_id } : {} });
+    if (writing) pendingWrites--;
+    if (closed || !active()) return invalidSession();
+    if (attempt) finishWrite(attempt, reply);
+    else if (editorWrite && args.editor === editorWrite.args.editor && args.schema === editorWrite.args.schema && args.collection === editorWrite.args.collection && args.id === editorWrite.args.id) {
+      if (op === "outcome.get" && args.request_id === editorWrite.request_id) finishWrite(editorWrite, reply, true);
+      else if (op === "draft.delete" && reply.ok) {
+        editorWrite = null;
+        publish(null);
+      }
     }
     return reply;
   };
@@ -1342,170 +1847,10 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
   };
 }
 
-// src/desktop/sandbox/index.js
-var BRIDGE_VERSION = 1;
-var OP_GRANT = Object.freeze({
-  meta: null,
-  "net.fetch": "net",
-  "data.query": "data",
-  "data.get": "data",
-  "data.put": "data",
-  "data.delete": "data",
-  "data.batch": "data",
-  "bot.request": null,
-  refresh: null,
-  "runs.list": null,
-  log: "logs"
-});
-var MAX_REQUEST_SIZE = 1024 * 1024;
-function requestError(message) {
-  if (!message || typeof message !== "object" || Array.isArray(message)) return { code: "invalid", message: "request must be an object" };
-  if (message.v !== BRIDGE_VERSION) return { code: "invalid", message: "unsupported bridge version" };
-  if (!Number.isSafeInteger(message.id)) return { code: "invalid", message: "id must be an integer" };
-  if (typeof message.op !== "string") return { code: "invalid", message: "op must be a string" };
-  if (!message.args || typeof message.args !== "object" || Array.isArray(message.args)) return { code: "invalid", message: "args must be an object" };
-  try {
-    const actual = new TextEncoder().encode(JSON.stringify(message)).byteLength;
-    if (actual > MAX_REQUEST_SIZE) return { code: "limit", message: "request exceeds 1 MB", limit: MAX_REQUEST_SIZE, actual };
-  } catch {
-    return { code: "invalid", message: "request is not JSON serializable" };
-  }
-  return null;
-}
-function checkGrant(op, grants) {
-  if (!Object.hasOwn(OP_GRANT, op)) return { code: "not_granted", message: `Operation isn't available: ${op}` };
-  const capability = OP_GRANT[op];
-  if (capability === null) return null;
-  if (grants.some((g) => typeof g === "string" ? g === capability : g.capability === capability && g.status === "granted")) return null;
-  return { code: "not_granted", message: `Approve ${capability} in Permissions`, capability };
-}
-function parseBundle(value) {
-  const sandbox = value?.sandbox;
-  if (!sandbox || typeof sandbox !== "object" || Array.isArray(sandbox) || Object.keys(sandbox).length !== 2 || !Object.hasOwn(sandbox, "format") || !Object.hasOwn(sandbox, "shell_srcdoc") || sandbox.format !== 1 || typeof sandbox.shell_srcdoc !== "string" || !sandbox.shell_srcdoc.trim()) {
-    throw new Error("Living Spaces Desktop and backend are incompatible. Reinstall Living Spaces to load the packaged sandbox.");
-  }
-  const { space, rev, manifest, files } = value;
-  return { project: { space, rev, manifest, files }, document: sandbox.shell_srcdoc };
-}
-function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
-} }) {
-  const { project, document: shellDocument } = parseBundle(bundle);
-  const channel = new MessageChannel();
-  const port = channel.port1;
-  let frame;
-  let state = "created";
-  let lastLog = -Infinity;
-  let overflowReported = false;
-  const overflow = () => {
-    if (overflowReported) return;
-    overflowReported = true;
-    onEvent({ kind: "log-overflow" });
-  };
-  const stop = () => {
-    if (state === "closed") return;
-    state = "closed";
-    frame?.removeEventListener("load", onLoad);
-    port.onmessage = null;
-    port.close();
-    channel.port2.close();
-    window.removeEventListener("message", onShellMessage);
-  };
-  const reloaded = () => {
-    if (state !== "booted") return;
-    stop();
-    onEvent({ kind: "reloaded" });
-  };
-  function onShellMessage(e) {
-    if (e.source === frame.contentWindow && e.data?.v === 1 && e.data.type === "space-reloaded") reloaded();
-  }
-  function onLoad() {
-    if (state === "closed") return;
-    if (state === "booted") return reloaded();
-    state = "booted";
-    frame.contentWindow.postMessage({ type: "space-boot", v: 1, bundle: project, grants }, "*", [channel.port2]);
-    onEvent({ kind: "booted" });
-  }
-  port.onmessage = async (e) => {
-    if (state !== "booted") return;
-    const m = e.data;
-    const reply = (body) => {
-      if (state === "booted" && Number.isSafeInteger(m?.id)) port.postMessage({ v: 1, id: m.id, ...body });
-    };
-    const reject = (error) => {
-      const op = typeof m?.op === "string" ? m.op : null;
-      onEvent({ kind: "denied", op, reason: error.message });
-      if (["data.put", "data.delete", "data.batch"].includes(op)) onEvent({ kind: "write-rejected", op, error });
-      reply({ ok: false, error });
-    };
-    const invalid = requestError(m);
-    if (invalid) return reject(invalid);
-    const denied = checkGrant(m.op, grants);
-    if (denied) return reject(denied);
-    let args = m.args;
-    if (m.op === "log") {
-      if (args.lifecycle !== void 0 && !["loaded", "failed"].includes(args.lifecycle) || ["dropped", "unconfirmed"].some((key) => args[key] !== void 0 && (!Number.isSafeInteger(args[key]) || args[key] < 0))) {
-        return reject({ code: "invalid", message: "Invalid log metadata" });
-      }
-      if (!Array.isArray(args.entries) || Array.from(args.entries).some((entry) => !entry || typeof entry.level !== "string" || typeof entry.msg !== "string")) {
-        return reject({ code: "invalid", message: "Invalid log entries" });
-      }
-      if (args.entries.length > 50) return reject({ code: "limit", message: "Log batch exceeds 50 entries", limit: 50, actual: args.entries.length });
-      const oversized = args.entries.find((entry) => entry.msg.length > 4e3);
-      if (oversized) return reject({ code: "limit", message: "Log message exceeds 4000 characters", limit: 4e3, actual: oversized.msg.length });
-      if (args.entries.some((entry) => entry.level === "warn" && entry.msg.startsWith("Space log overflow:"))) overflow();
-      const now = performance.now();
-      if (now - lastLog < 500) {
-        overflow();
-        reply({ ok: true, result: { stored: 0, throttled: true } });
-        return;
-      }
-      lastLog = now;
-      args = { entries: args.entries };
-      for (const key of ["lifecycle", "dropped", "unconfirmed"]) if (m.args[key] !== void 0) args[key] = m.args[key];
-    }
-    try {
-      const result = await call(m.op, args);
-      const revoked = checkGrant(m.op, grants);
-      if (revoked && result.ok) reject(revoked);
-      else reply(result);
-    } catch (error) {
-      onEvent({ kind: "error", message: String(error.message || error) });
-      reply({ ok: false, error: { code: error.code || "blocked", message: String(error.message || error) } });
-    }
-  };
-  try {
-    frame = document.createElement("iframe");
-    frame.setAttribute("sandbox", "allow-scripts");
-    frame.setAttribute("referrerpolicy", "no-referrer");
-    frame.style.cssText = "border:0;width:100%;height:100%;display:block;background:transparent";
-    frame.title = `Space: ${project.space.name}`;
-    window.addEventListener("message", onShellMessage);
-    frame.addEventListener("load", onLoad);
-    frame.srcdoc = shellDocument;
-    container.append(frame);
-  } catch (error) {
-    stop();
-    frame?.remove();
-    throw error;
-  }
-  return {
-    postEvent(event, payload) {
-      if (state !== "booted") return;
-      if (event === "data.changed" && checkGrant("data.query", grants)) return;
-      port.postMessage({ v: 1, type: "event", event, payload });
-      if (event === "session.closed") stop();
-    },
-    destroy() {
-      stop();
-      frame.remove();
-    }
-  };
-}
-
 // src/desktop/ui/space.jsx
 import { Fragment as Fragment6, jsx as jsx6, jsxs as jsxs6 } from "react/jsx-runtime";
 function useHeaderMode(hasSpace) {
-  const frame = useRef4(null);
+  const frame = useRef5(null);
   const [mode, setMode] = useState6("narrow");
   useLayoutEffect(() => {
     const element = frame.current;
@@ -1533,6 +1878,7 @@ function SaveStatus({ write, announcement }) {
 }
 function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
   if (!write || !["failed", "unknown", "conflict"].includes(write.status)) return null;
+  if (write.editorManaged) return /* @__PURE__ */ jsx6(Banner, { kind: write.status === "conflict" ? "conflict" : "failed", title: write.status === "unknown" ? "Save outcome unknown" : write.status === "conflict" ? "Changes conflict" : "Not saved", children: "Your draft is preserved. Continue in the app editor to resolve this save." });
   const current = write.reply?.error?.current;
   const canKeep = write.op === "data.put" && current?.rev != null;
   return /* @__PURE__ */ jsx6(
@@ -1553,15 +1899,17 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
   );
 }
 function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
-  const { connectionId, profile } = scope || { connectionId: host2.state.connectionId.get(), profile: host2.state.profile.get() };
+  const { connectionId, profile } = useMemo(() => scope || { connectionId: host2.state.connectionId.get(), profile: host2.state.profile.get() }, [scope, ctx, scopeKey, sid]);
   const base = spacePath(sid);
+  const queryClient = useQueryClient();
   const detail = useQuery5({ queryKey: ["living-spaces", scopeKey, sid, "detail"], queryFn: () => ctx.rest(base), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "dataUpdatedAt"] });
   const space = detail.data;
   const [frame, headerMode] = useHeaderMode(!!space);
   const [sheet, setSheet] = useState6(null);
   const [confirmation, setConfirmation] = useState6(null);
   const [reload, setReload] = useState6(0);
-  const [crash, setCrash] = useState6(null);
+  const [guest, setGuest] = useState6({ status: "unknown", diagnostic: null });
+  const crash = guest.diagnostic;
   const [ignoredCrashRev, setIgnoredCrashRev] = useState6(null);
   const [write, setWrite] = useState6(null);
   const [announcement, setAnnouncement] = useState6("");
@@ -1569,14 +1917,15 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const [botAction, setBotAction] = useState6(null);
   const [refreshPending, setRefreshPending] = useState6(false);
   const [ready, setReady] = useState6(false);
-  const refreshLock = useRef4(false);
-  const actionLock = useRef4(false);
-  const content = useRef4(null);
-  const overflow = useRef4(null);
-  const confirmationTrigger = useRef4(null);
-  const controller = useRef4(null);
-  const cursor = useRef4(0);
-  const seenRun = useRef4(null);
+  const refreshLock = useRef5(null);
+  const refreshLifetime = useRef5(null);
+  const actionLock = useRef5(false);
+  const content = useRef5(null);
+  const overflow = useRef5(null);
+  const confirmationTrigger = useRef5(null);
+  const controller = useRef5(null);
+  const cursor = useRef5(0);
+  const seenRun = useRef5(null);
   const grantsKey = JSON.stringify(space?.grants || []);
   const hasData = space?.grants?.some((grant) => grant.capability === "data" && grant.status === "granted") === true;
   const building = !space || space.status === "building" || !space.head_rev;
@@ -1585,7 +1934,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const status = crash || remoteCrash ? "crashed" : space ? spaceStatus(ignoredCrashRev === space.head_rev ? { ...space, attention: null } : space, true) : "building";
   const lastRun = space?.recent_runs?.[0];
   const runKey = JSON.stringify(lastRun || null);
-  useEffect2(() => {
+  useEffect3(() => {
     let disposed = false;
     ctx.rest(`${base}/opened`, { method: "POST" }).catch((e) => {
       if (!disposed) setActionError(`Could not mark this Space as opened. ${errorText(e)}`);
@@ -1594,38 +1943,60 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
       disposed = true;
     };
   }, [ctx, base]);
-  useEffect2(() => {
+  useLayoutEffect(() => {
+    const lifetime = { active: true };
+    refreshLifetime.current = lifetime;
+    return () => {
+      lifetime.active = false;
+      if (refreshLock.current?.lifetime === lifetime) {
+        refreshLock.current = null;
+        setRefreshPending(false);
+        setAnnouncement("");
+      }
+    };
+  }, [ctx, openingSessionRest, connectionId, profile, scopeKey, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
+  useEffect3(() => {
     if (building || archived || crash || remoteCrash || !content.current) return;
     let disposed = false;
-    let errors = 0;
     cursor.current = 0;
     setReady(false);
+    setGuest({ status: "starting", diagnostic: null });
     setBotAction(null);
+    const current = () => !disposed && host2.state.connectionId.get() === connectionId && host2.state.profile.get() === profile;
+    const fail = (message) => setGuest({ status: "failed", diagnostic: diagnosticText(message || "The guest could not be loaded.") });
     const backend = { connectionId, profile };
     const session = createSpaceSession({
       backend,
       host: host2,
-      onAction: (event) => !disposed && setBotAction(event),
+      onAction: (event) => current() && setBotAction(event),
       rest: openingSessionRest || ((path, options) => ctx.rest(path, options)),
       sid,
       container: content.current,
-      mount: mountSpace,
-      onWrite: (event) => !disposed && setWrite(event),
+      mount: (container, options) => mountSpace(container, { ...options, call: async (op, args) => {
+        const reply = await options.call(op, args);
+        if (current() && op === "log" && reply?.ok === true) {
+          if (args.lifecycle === "failed") fail("The guest reported a load or runtime failure. Review this Space's diagnostic log for details.");
+          if (args.lifecycle === "loaded") setGuest((value) => ["failed", "faulted"].includes(value.status) ? value : { status: "loaded", diagnostic: null });
+        }
+        return reply;
+      } }),
+      onWrite: (event) => current() && setWrite(event),
       onEvent: (event) => {
-        if (disposed) return;
+        if (!current()) return;
         if (event.kind === "reloaded") setReload((n) => n + 1);
         if (event.kind === "booted") setReady(true);
         if (event.kind === "denied") setAnnouncement("A Space request was denied. Review Permissions for access details.");
         if (event.kind === "log-overflow") setAnnouncement("Some diagnostic entries were dropped because the log limit was reached.");
-        if (event.kind === "error" && (event.fatal || event.phase === "load" || /load|entry|boot/i.test(event.message || "") || ++errors >= 3)) setCrash(diagnosticText(`${event.message || event.error || "Repeated runtime errors"}${event.location || event.filename ? `
-Location: ${event.location || event.filename}` : ""}`));
+        if (event.kind === "fault") setGuest((value) => value.status === "failed" ? value : { status: "faulted", diagnostic: null });
       }
     });
     controller.current = session;
     session.ready.then(() => {
-      if (!disposed) setReady(true);
+      if (current()) setReady(true);
     }).catch((e) => {
-      if (!disposed) setCrash(diagnosticText(errorText(e)));
+      if (disposed) return;
+      if (current()) fail(errorText(e));
+      else setActionError(errorText(e));
     });
     return () => {
       disposed = true;
@@ -1634,9 +2005,9 @@ Location: ${event.location || event.filename}` : ""}`));
       session.destroy().catch((e) => host2.notifyError(e, "A Space session could not be closed after retries."));
       if (controller.current === session) controller.current = null;
     };
-  }, [ctx, openingSessionRest, connectionId, profile, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
+  }, [ctx, openingSessionRest, connectionId, profile, scopeKey, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
   const changes = useQuery5({ queryKey: ["living-spaces", scopeKey, sid, "changes", space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 });
-  useEffect2(() => {
+  useEffect3(() => {
     if (!hasData || !ready || !changes.data || !controller.current) return;
     const page = advanceCursor(cursor.current, changes.data);
     if (page.changes.length) {
@@ -1644,38 +2015,72 @@ Location: ${event.location || event.filename}` : ""}`));
       cursor.current = page.seq;
     }
   }, [hasData, ready, changes.data, changes.dataUpdatedAt]);
-  useEffect2(() => {
+  useEffect3(() => {
     if (!lastRun) return;
     if (ready) controller.current?.postEvent("run.updated", lastRun);
     if (seenRun.current && seenRun.current !== runKey && !inFlight(lastRun.status)) setAnnouncement(lastRun.status === "succeeded" ? `Refresh succeeded: ${runResult(lastRun)}` : `Refresh ${lastRun.status}: ${runResult(lastRun)}`);
     seenRun.current = runKey;
   }, [runKey, ready]);
-  useEffect2(() => {
-    if (crash && space?.head_rev) {
-      setCrash(null);
-    }
-  }, [space?.head_rev]);
+  useLayoutEffect(() => {
+    setGuest({ status: "unknown", diagnostic: null });
+    setIgnoredCrashRev(null);
+  }, [connectionId, profile, scopeKey, sid, space?.head_rev]);
   async function refresh() {
     if (refreshLock.current || refreshPending || status === "updating" || inFlight(lastRun?.status) || refreshReason(space)) return;
-    refreshLock.current = true;
+    const request = { lifetime: refreshLifetime.current, controller: controller.current };
+    const current = () => request.lifetime?.active && refreshLifetime.current === request.lifetime && controller.current === request.controller && host2.state.connectionId.get() === connectionId && host2.state.profile.get() === profile;
+    if (!current()) return;
+    refreshLock.current = request;
     setRefreshPending(true);
     setActionError("");
     setAnnouncement("Refreshing\u2026");
     try {
-      const run = await ctx.rest(`${base}/refresh`, { method: "POST" });
-      if (run?.kind === "cron") setAnnouncement("Refresh started in Hermes");
-      else {
-        controller.current?.postEvent("run.updated", run);
-        if (!inFlight(run.status)) setAnnouncement(`Refresh ${run.status}: ${runResult(run)}`);
+      let reply;
+      try {
+        reply = await ctx.rest(`${base}/refresh`, { method: "POST" });
+      } catch (error) {
+        reply = error?.body || error;
+        if (!reply?.outcome?.status) reply = { outcome: { status: "unknown" } };
       }
-      await detail.refetch();
-    } catch (e) {
-      setActionError(errorText(e));
-      setAnnouncement("Refresh failed");
+      if (!current()) return;
+      const certainty = reply?.outcome?.status;
+      if (certainty === "unknown") {
+        setAnnouncement("Refresh outcome unknown");
+        return;
+      }
+      if (certainty === "busy" || certainty === "rejected") {
+        setActionError(errorText(reply.error || reply));
+        setAnnouncement(certainty === "busy" ? "Refresh busy" : "Refresh failed");
+        return;
+      }
+      const run = reply?.result || reply;
+      if (reply?.ok === false || !run?.id && run?.kind !== "cron") {
+        setAnnouncement("Refresh outcome unknown");
+        return;
+      }
+      if (run.kind === "cron") setAnnouncement("Refresh started in Hermes");
+      else {
+        request.controller?.postEvent("run.updated", run);
+        if (!inFlight(run.status) && run.status) setAnnouncement(`Refresh ${run.status}: ${runResult(run)}`);
+      }
+      await detail.refetch().catch((error) => {
+        if (current()) setActionError(errorText(error));
+      });
     } finally {
-      refreshLock.current = false;
-      setRefreshPending(false);
+      if (refreshLock.current === request) {
+        refreshLock.current = null;
+        setRefreshPending(false);
+      }
     }
+  }
+  const listKey = ["living-spaces", scopeKey, "spaces"];
+  const fresh = (result) => result?.status === "success" ? result.data : null;
+  async function syncList(fresh2) {
+    if (fresh2) {
+      await queryClient.cancelQueries({ queryKey: listKey });
+      queryClient.setQueryData(listKey, (list) => list?.spaces ? { ...list, spaces: list.spaces.map((row) => row.id === sid ? Object.fromEntries(Object.keys(row).map((key) => [key, key in fresh2 ? fresh2[key] : row[key]])) : row) } : list);
+    }
+    queryClient.invalidateQueries({ queryKey: listKey, refetchType: "all" });
   }
   async function act(path, body) {
     if (actionLock.current) return;
@@ -1683,7 +2088,7 @@ Location: ${event.location || event.filename}` : ""}`));
     setActionError("");
     try {
       await ctx.rest(`${base}/${path}`, { method: "POST", ...body ? { body } : {} });
-      await detail.refetch();
+      await syncList(fresh(await detail.refetch()));
     } catch (e) {
       setActionError(errorText(e));
     } finally {
@@ -1694,6 +2099,7 @@ Location: ${event.location || event.filename}` : ""}`));
     /* @__PURE__ */ jsx6(Action, { onClick: () => detail.refetch(), children: "Try again" }),
     /* @__PURE__ */ jsx6(Action, { onClick: () => host2.navigate("/spaces"), children: "Spaces" })
   ] }) : /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 400 } }) });
+  const dimensions = statusDimensions(space, { guest: remoteCrash ? "failed" : guest.status, write });
   const upkeep = space.upkeep;
   const busy = refreshPending || inFlight(lastRun?.status) || status === "updating";
   const reason = refreshReason(space);
@@ -1708,12 +2114,15 @@ Location: ${event.location || event.filename}` : ""}`));
     } };
   };
   const openSheet = (kind, tab) => setSheet({ kind, tab, returnFocus: opener() });
-  const openHistory = (tab) => openSheet("history", tab || "runs");
+  const openHistory = (tab) => {
+    detail.refetch();
+    openSheet("history", tab || "runs");
+  };
   const askConfirmation = (kind) => {
     confirmationTrigger.current = opener();
     setConfirmation(kind);
   };
-  const crashMessage = diagnosticText(crash || space.attention?.message || "The Space hit repeated runtime errors.");
+  const crashMessage = diagnosticText(crash || space.attention?.message || "The guest reported a fatal error.");
   return /* @__PURE__ */ jsxs6("div", { ref: frame, className: "ls-frame", "data-header-mode": headerMode, "data-testid": "space-view", children: [
     /* @__PURE__ */ jsxs6("header", { className: "ls-framebar", children: [
       /* @__PURE__ */ jsx6(Action, { icon: "chevron-left", onClick: () => host2.navigate("/spaces"), children: "Spaces" }),
@@ -1722,7 +2131,11 @@ Location: ${event.location || event.filename}` : ""}`));
         /* @__PURE__ */ jsxs6("div", { children: [
           /* @__PURE__ */ jsxs6("div", { className: "ls-name-row", children: [
             /* @__PURE__ */ jsx6("h1", { children: space.name }),
-            /* @__PURE__ */ jsx6(StatusPill, { status })
+            /* @__PURE__ */ jsxs6("span", { children: [
+              "Host ",
+              /* @__PURE__ */ jsx6(StatusPill, { status: dimensions.host === "available" ? "ready" : dimensions.host })
+            ] }),
+            !["ready", dimensions.host].includes(status) && /* @__PURE__ */ jsx6(StatusPill, { status })
           ] }),
           /* @__PURE__ */ jsxs6("div", { className: "ls-frame-meta", children: [
             /* @__PURE__ */ jsx6(OwnerChip, { owner: space.owner }),
@@ -1757,6 +2170,14 @@ Location: ${event.location || event.filename}` : ""}`));
         ] })
       ] })
     ] }),
+    /* @__PURE__ */ jsxs6("p", { className: "ls-secondary", role: "status", "aria-live": "polite", children: [
+      "Guest runtime: ",
+      dimensions.guest,
+      ". App readiness: ",
+      dimensions.appDomain,
+      "."
+    ] }),
+    /* @__PURE__ */ jsx6(StorageNotice, { storage: space.storage, onReview: () => openHistory() }),
     botAction && /* @__PURE__ */ jsxs6(Banner, { kind: ["failed", "offline", "unknown"].includes(botAction.status) ? "failed" : void 0, title: `Bot request: ${botAction.status}`, actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
       /* @__PURE__ */ jsx6(Action, { onClick: () => controller.current?.checkAction(), children: "Check bot status" }),
       botAction.activationId && ["unknown", "failed", "offline"].includes(botAction.status) && /* @__PURE__ */ jsx6(Action, { onClick: () => controller.current?.retryAction(), children: "Retry same request" })
@@ -1764,6 +2185,7 @@ Location: ${event.location || event.filename}` : ""}`));
       /* @__PURE__ */ jsx6("span", { role: "status", "aria-live": "polite", children: botAction.message }),
       botAction.answer && /* @__PURE__ */ jsx6("p", { children: botAction.answer })
     ] }),
+    guest.status === "faulted" && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "This Space hit an uncaught error", children: /* @__PURE__ */ jsx6("span", { role: "status", children: "It is still open and may keep working. Saved records are unaffected. Review this Space's diagnostic log for details." }) }),
     actionError && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: actionError }),
     detail.error && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "Space status could not be refreshed. You're seeing the last loaded state.", actions: /* @__PURE__ */ jsx6(Action, { onClick: () => detail.refetch(), children: "Try again" }), children: errorText(detail.error) }),
     changes.error && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "Live record updates are delayed. Your displayed data may be out of date.", actions: /* @__PURE__ */ jsx6(Action, { onClick: () => changes.refetch(), children: "Retry live updates" }), children: errorText(changes.error) }),
@@ -1793,13 +2215,13 @@ Location: ${event.location || event.filename}` : ""}`));
       /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 100 } }),
       /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 180 } })
     ] }) : status === "crashed" ? /* @__PURE__ */ jsxs6("div", { className: "ls-crash", children: [
-      /* @__PURE__ */ jsx6(ErrorState5, { title: `${space.name} stopped working`, description: "The Space hit an error and was stopped. Your records are safe and weren't changed by the crash." }),
+      /* @__PURE__ */ jsx6(ErrorState5, { title: `${space.name} stopped working`, description: "The guest hit an error and was stopped. Already-written records remain; stopping the guest does not undo changes. Check the save status for any pending change." }),
       /* @__PURE__ */ jsx6("pre", { className: "ls-diagnostic", children: `Revision ${space.head_rev}
 ${crashMessage}
 Logged to this Space only. Common credential values redacted.` }),
       /* @__PURE__ */ jsxs6("div", { className: "ls-actions", children: [
         /* @__PURE__ */ jsx6(Action, { primary: true, onClick: () => {
-          setCrash(null);
+          setGuest({ status: "unknown", diagnostic: null });
           setIgnoredCrashRev(space.head_rev);
           setReload((n) => n + 1);
         }, children: "Reload Space" }),
@@ -1824,10 +2246,13 @@ Logged to this Space only. Common credential values redacted.` }),
     confirmation && /* @__PURE__ */ jsx6(DecisionDialog, { returnFocus: confirmationTrigger.current, danger: true, title: confirmation === "delete" ? `Delete ${space.name}?` : `Archive ${space.name}?`, description: confirmation === "delete" ? "Delete removes this Space, all its records and revisions permanently and stops future upkeep. Already-running work may finish. Exported copies aren't recalled." : "Archiving pauses future upkeep. Already-running work may finish. Your records and revisions are kept. Restoring this Space does not resume upkeep.", confirmLabel: confirmation === "delete" ? "Delete Space" : "Archive Space", onClose: () => setConfirmation(null), onConfirm: async () => {
       if (confirmation === "delete") {
         await ctx.rest(`${base}?confirm=${encodeURIComponent(sid)}`, { method: "DELETE" });
+        await queryClient.cancelQueries({ queryKey: ["living-spaces", scopeKey, "spaces"] });
+        queryClient.setQueryData(["living-spaces", scopeKey, "spaces"], (list) => list?.spaces ? { ...list, spaces: list.spaces.filter((row) => row.id !== sid) } : list);
+        queryClient.invalidateQueries({ queryKey: ["living-spaces", scopeKey, "spaces"] });
         host2.navigate("/spaces");
       } else {
         await ctx.rest(`${base}/archive`, { method: "POST" });
-        await detail.refetch();
+        await syncList(fresh(await detail.refetch()));
       }
     } })
   ] });
@@ -1846,19 +2271,19 @@ var styles = `
 .ls-pill{display:inline-flex;gap:5px;align-items:center;min-height:22px;padding:2px 8px!important;border:1px solid var(--ls-line);border-radius:999px!important;background:transparent!important;color:var(--ui-text-primary)!important;font-size:12px!important;font-weight:500}.ls-pill.ls-ready,.ls-pill.ls-succeeded,.ls-pill.ls-granted{color:var(--ls-good)!important}.ls-pill.ls-failed,.ls-pill.ls-crashed{color:var(--ls-danger)!important;border-color:currentColor}.ls-pill.ls-blocked,.ls-pill.ls-requested{color:var(--ls-warning)!important}.ls-pill.ls-updating{color:var(--ui-accent-lit,var(--ui-accent))!important}.ls-action{min-height:32px!important;border-radius:8px!important;padding:0 12px!important;font-size:13px!important}.ls-action[aria-disabled=true]{opacity:.55;cursor:not-allowed}.ls-danger{color:var(--ls-danger)!important;border:1px solid color-mix(in srgb,var(--ls-danger) 55%,var(--ls-line))!important}.ls-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}.ls-footer{font-size:12px;color:var(--ui-text-secondary);margin-top:22px!important}.ls-empty{max-width:780px;margin:55px auto}.ls-empty-tiles{display:flex;gap:12px;justify-content:center}.ls-empty .ls-prompt{margin-top:12px}.ls-prompt{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--ls-line);border-radius:8px;background:var(--ls-surface);font-size:13px}.ls-prompt q{flex:1;user-select:text;overflow-wrap:anywhere}.ls-prompt button{min-height:28px}.ls-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .ls-frame{height:100%;display:flex;flex-direction:column}.ls-framebar{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--ls-line);background:var(--ui-bg-primary)}.ls-identity{display:flex;align-items:center;gap:10px;min-width:0;flex:1}.ls-identity>div{min-width:0}.ls-name-row{display:flex;align-items:center;gap:8px}.ls-name-row h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px}.ls-name-row .ls-pill{flex:none}.ls-frame-meta{font-size:12px;color:var(--ui-text-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.ls-frame-actions{display:flex;align-items:center;gap:6px;flex:none;flex-wrap:wrap}.ls-save{font-size:12px;display:inline-flex;gap:5px;align-items:center;max-width:220px}.ls-save:empty{width:0}.ls-content{display:flex;flex:1;min-height:420px;flex-direction:column;padding:12px;gap:8px}.ls-sandbox{flex:1;min-height:380px;border:1px solid var(--ls-line);border-radius:12px;overflow:hidden;position:relative}.ls-mount{height:100%;min-height:380px}.ls-stale{filter:saturate(.7)}.ls-banner{display:flex;gap:10px;padding:14px 22px;border-bottom:1px solid var(--ls-line);background:var(--ui-bg-secondary);font-size:13px}.ls-banner.ls-failed,.ls-banner.ls-crashed,.ls-banner.ls-conflict{border-color:color-mix(in srgb,var(--ls-danger) 45%,var(--ls-line));background:color-mix(in srgb,var(--ls-danger) 8%,var(--ui-bg-primary))}.ls-banner.ls-blocked{border-color:var(--ls-warning)}.ls-crash{max-width:620px;padding:40px 24px;margin:auto}.ls-diagnostic{max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;background:var(--ui-bg-secondary);border:1px solid var(--ls-line);font:12px/1.5 var(--font-mono,monospace)}.ls-building{padding:40px;display:grid;gap:16px}
 .ls-sheet{position:fixed!important;top:0!important;right:0!important;left:auto!important;bottom:0!important;transform:none!important;translate:none!important;width:min(460px,100vw)!important;max-width:460px!important;max-height:100dvh!important;height:100dvh!important;border-radius:0!important;background:var(--ui-bg-elevated,var(--ui-surface-background,Canvas))!important;animation:none!important}.ls-sheet-body{display:flex!important;flex-direction:column!important;height:100%;max-height:100dvh!important;padding:0!important;gap:0!important;overflow:hidden!important}.ls-sheet-header{display:flex!important;flex-direction:row!important;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--ls-line);flex:none}.ls-sheet-scroll{padding:18px 16px;overflow:auto;min-height:0;flex:1}.ls-disclosure{margin:8px 0!important;font-size:12px;line-height:1.55;max-width:60ch}.ls-internet .ls-row-top{min-height:56px}.ls-internet>.ls-secondary{font-size:12px;max-width:60ch}.ls-switch-value{display:flex;gap:8px;align-items:center}.ls-switch{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:40px;padding:0;border:0;background:none;cursor:pointer;flex:none}.ls-switch-track{display:block;width:40px;height:24px;border-radius:999px;border:1px solid var(--ui-stroke-secondary);background:var(--ui-stroke-secondary);position:relative}.ls-switch-thumb{position:absolute;left:2px;top:2px;width:18px;height:18px;border-radius:50%;background:var(--ui-text-primary);transition:transform 120ms ease-out}.ls-switch[aria-checked=true] .ls-switch-track{background:var(--ui-accent);border-color:var(--ui-accent)}.ls-switch[aria-checked=true] .ls-switch-thumb{transform:translateX(16px);background:var(--ui-text-on-accent,#fff)}.ls-switch[aria-disabled=true]{cursor:not-allowed}.ls-upkeep-prompt{margin:16px 0}.ls-upkeep-prompt h3,.ls-sheet h3{font-size:13px;font-weight:600;margin:0}.ls-upkeep-prompt p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}.ls-clamp-six,.ls-clamp-three{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}.ls-clamp-three{-webkit-line-clamp:3}.ls-upkeep-note{font-size:12px}.ls-upkeep-actions>.ls-danger{margin-left:auto}.ls-upkeep-feedback{font-size:12px;margin:12px 0;outline-offset:2px}.ls-section{margin:0 0 22px}.ls-section-title{font-size:12px!important;font-weight:600!important;letter-spacing:.025em;margin:4px 0 12px!important}.ls-grant,.ls-row{padding:12px;border:1px solid var(--ls-line);border-radius:8px;margin-bottom:12px}.ls-row-top{display:flex;align-items:center;gap:8px;justify-content:space-between}.ls-row-top>strong{display:flex;gap:8px;align-items:center}.ls-pending{background:color-mix(in srgb,var(--ls-warning) 6%,var(--ls-surface))}.ls-audit{padding-left:18px;font-size:12px}.ls-tabs{margin-bottom:16px}.ls-confirm{max-width:520px!important}.ls-compare{display:grid;gap:12px}.ls-directive{padding:14px;border:1px solid var(--ui-stroke-secondary);border-radius:12px;max-width:440px;background:var(--ui-bg-card,var(--ui-bg-secondary));display:grid;gap:10px}.ls-spin{animation:ls-spin 1s linear infinite}@keyframes ls-spin{to{transform:rotate(360deg)}}
-.ls-frame:not([data-header-mode=wide]) .ls-wide-only{display:none!important}.ls-frame:not([data-header-mode=wide]) .ls-framebar{flex-wrap:wrap}.ls-frame:not([data-header-mode=wide]) .ls-frame-actions{width:100%;justify-content:flex-end}.ls-frame:not([data-header-mode=wide]) .ls-save{margin-right:auto}.ls-frame[data-header-mode=narrow] .ls-identity{flex-basis:100%}.ls-frame[data-header-mode=narrow] .ls-upkeep-action{display:none}.ls-frame[data-header-mode=narrow] .ls-frame-actions .ls-action:not(.ls-overflow){padding:0 8px!important}.ls-frame[data-header-mode=narrow] .ls-save{max-width:100%;flex-basis:100%}.ls-frame[data-header-mode=narrow] .ls-save:empty{display:none}.ls-frame-actions .ls-overflow{width:32px;height:32px;min-width:32px;padding:0!important;flex:none}
+.ls-frame:not([data-header-mode=wide]) .ls-wide-only{display:none!important}.ls-frame:not([data-header-mode=wide]) .ls-framebar{flex-wrap:wrap}.ls-frame:not([data-header-mode=wide]) .ls-framebar{position:static}.ls-frame:not([data-header-mode=wide]) .ls-frame-actions{width:100%;justify-content:flex-end}.ls-frame:not([data-header-mode=wide]) .ls-save{margin-right:auto}.ls-frame[data-header-mode=narrow] .ls-identity{flex-basis:100%}.ls-frame[data-header-mode=narrow] .ls-upkeep-action{display:none}.ls-frame[data-header-mode=narrow] .ls-frame-actions .ls-action:not(.ls-overflow){padding:0 8px!important}.ls-frame[data-header-mode=narrow] .ls-save{max-width:100%;flex-basis:100%}.ls-frame[data-header-mode=narrow] .ls-save:empty{display:none}.ls-frame-actions .ls-overflow{width:32px;height:32px;min-width:32px;padding:0!important;flex:none}
 @media(max-width:899px){.ls-page{padding:20px 16px}.ls-content{padding:12px}.ls-page-heading{flex-wrap:wrap;gap:4px}.ls-sort{width:100%}.ls-sheet{width:min(460px,100vw)!important}}@media(max-width:359px){.ls-internet .ls-row-top{flex-wrap:wrap}.ls-internet .ls-switch-value{width:100%}}@media(prefers-reduced-motion:reduce){.ls-spin{animation:none}.ls-root *,.ls-sheet *,.ls-confirm *{transition:none!important;animation:none!important}}@media(forced-colors:active){.ls-pill,.ls-card,.ls-tile,.ls-action{border:1px solid CanvasText!important}.ls-switch-track{border:1px solid ButtonText!important;background:Canvas!important}.ls-switch-thumb{background:ButtonText!important}.ls-switch[aria-checked=true] .ls-switch-track{background:Highlight!important}.ls-switch[aria-checked=true] .ls-switch-thumb{background:HighlightText!important}}
 `;
 
 // src/desktop/ui/context.jsx
 import { host as host3, useValue } from "@hermes/plugin-sdk";
-import { useMemo } from "react";
+import { useMemo as useMemo2 } from "react";
 var currentScope = () => JSON.stringify([host3.state.connectionId.get(), host3.state.profile.get()]);
 function useScopedContext(ctx) {
   const connectionId = useValue(host3.state.connectionId);
   const profile = useValue(host3.state.profile);
   const scopeKey = JSON.stringify([connectionId, profile]);
-  return useMemo(() => ({
+  return useMemo2(() => ({
     ctx: { ...ctx, rest: scopedRest((path, options) => ctx.rest(path, options), currentScope, scopeKey) },
     scopeKey,
     scope: { connectionId, profile },
@@ -1870,7 +2295,7 @@ function useScopedContext(ctx) {
 function SpacesPage({ ctx }) {
   const scoped = useScopedContext(ctx);
   const [hash, setHash] = useState7(() => typeof location === "undefined" ? "" : location.hash);
-  useEffect3(() => {
+  useEffect4(() => {
     const changed = () => setHash(location.hash);
     window.addEventListener("hashchange", changed);
     return () => window.removeEventListener("hashchange", changed);
@@ -1892,6 +2317,7 @@ var plugin_src_default = {
   id: "living-spaces",
   name: "Spaces",
   register(ctx) {
+    bindDesktopOs(ctx.os);
     ctx.registerMany([
       { id: "page", area: ROUTES_AREA, data: { path: "/spaces" }, render: () => jsx7(SpacesPage, { ctx }) },
       { id: "nav", area: SIDEBAR_NAV_AREA, order: 60, data: { path: "/spaces", label: "Spaces", codicon: "layers" } },

@@ -11,7 +11,7 @@ export const ACCENTS = { blue: '#0053fd', green: '#55a583', amber: '#e0a06c', pu
 export const accentColor = accent => Object.hasOwn(ACCENTS, accent) ? ACCENTS[accent] : ACCENTS.blue
 export const iconName = icon => typeof icon === 'string' && /^[a-z][a-z0-9-]{0,63}$/.test(icon) ? icon : 'layers'
 export const PILLS = {
-  ready: { label: 'Ready', icon: 'check', border: 'solid' },
+  ready: { label: 'Available', icon: 'check', border: 'solid' },
   building: { label: 'Building', icon: 'tools', border: 'dashed' },
   updating: { label: 'Updating', icon: 'refresh', border: 'solid' },
   failed: { label: 'Failed', icon: 'error', border: 'solid' },
@@ -37,6 +37,10 @@ export function spaceStatus(space, frame = false) {
   if (space.attention?.kind) return space.attention.kind
   if (['failed', 'blocked'].includes(space.freshness?.last_attempt_status)) return space.freshness.last_attempt_status
   return 'ready'
+}
+export function statusDimensions(space, { guest = 'unknown', write = null, hostError = false } = {}) {
+  const host = hostError ? 'unavailable' : space.status === 'archived' ? 'archived' : space.status === 'building' || !space.head_rev ? 'building' : 'available'
+  return { host, guest, save: write?.status || 'idle', freshness: space.freshness, appDomain: 'unknown' }
 }
 export function needsAttention(space) {
   return space.status !== 'archived' && ['failed', 'blocked', 'crashed'].includes(spaceStatus(space, true))
@@ -117,9 +121,19 @@ export const PROMPTS = [
   'Build Research Desk: an overview, a searchable library and a reading queue. Keep my notes and reading status.',
   'Build a weekly fitness planner with a progress chart. Refresh it every Monday.'
 ]
+function dataVersionCompatibility(current, target) {
+  if (!Number.isInteger(current) || current <= 0 || !Number.isInteger(target) || target <= 0) return 'unknown'
+  return current === target ? 'compatible' : 'incompatible'
+}
+export function revisionCompatibility(space, revision) {
+  return dataVersionCompatibility(space.data_version, revision?.manifest?.data?.version)
+}
+export function recoveryCompatibility(space, point) {
+  return dataVersionCompatibility(space.data_version, point.data_version)
+}
 export function restoreCopy(space, rev) {
   const kept = space.head_rev > rev + 1 ? `Revisions ${rev + 1}–${space.head_rev} stay in history.` : `Revision ${space.head_rev} stays in history.`
-  return `Restore revision ${rev}? This brings back the Space's earlier code as a new revision ${space.head_rev + 1}. ${kept} Your records, notes and statuses stay as they are now.`
+  return `Restore revision ${rev}? This brings back the Space's earlier code as a new revision ${space.head_rev + 1}. ${kept} Your records, notes and statuses stay as they are now. Migration undo and data downgrades are not supported.`
 }
 export function errorText(error) {
   let detail = error?.error || error?.body?.error || error

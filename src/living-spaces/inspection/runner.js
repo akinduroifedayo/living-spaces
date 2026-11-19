@@ -9,9 +9,16 @@
     "data.put": "data",
     "data.delete": "data",
     "data.batch": "data",
+    "draft.get": "data",
+    "draft.put": "data",
+    "draft.delete": "data",
+    "editor.save": "data",
+    "outcome.get": "data",
     "bot.request": null,
+    "link.open": null,
     refresh: null,
     "runs.list": null,
+    freshness: null,
     log: "logs"
   });
   var MAX_REQUEST_SIZE = 1024 * 1024;
@@ -20,6 +27,7 @@
     if (message.v !== BRIDGE_VERSION) return { code: "invalid", message: "unsupported bridge version" };
     if (!Number.isSafeInteger(message.id)) return { code: "invalid", message: "id must be an integer" };
     if (typeof message.op !== "string") return { code: "invalid", message: "op must be a string" };
+    if (message.op === "editor.save" && (typeof message.request_id !== "string" || !/^[A-Za-z0-9_.:-]{1,128}$/.test(message.request_id))) return { code: "invalid", message: "Editor saves require a request_id" };
     if (!message.args || typeof message.args !== "object" || Array.isArray(message.args)) return { code: "invalid", message: "args must be an object" };
     try {
       const actual = new TextEncoder().encode(JSON.stringify(message)).byteLength;
@@ -53,6 +61,7 @@
     let state = "created";
     let lastLog = -Infinity;
     let overflowReported = false;
+    let faults = 0;
     const overflow = () => {
       if (overflowReported) return;
       overflowReported = true;
@@ -100,7 +109,7 @@
       if (denied) return reject(denied);
       let args = m.args;
       if (m.op === "log") {
-        if (args.lifecycle !== void 0 && !["loaded", "failed"].includes(args.lifecycle) || ["dropped", "unconfirmed"].some((key) => args[key] !== void 0 && (!Number.isSafeInteger(args[key]) || args[key] < 0))) {
+        if (args.lifecycle !== void 0 && !["loaded", "failed"].includes(args.lifecycle) || ["dropped", "unconfirmed", "faults"].some((key) => args[key] !== void 0 && (!Number.isSafeInteger(args[key]) || args[key] < 0))) {
           return reject({ code: "invalid", message: "Invalid log metadata" });
         }
         if (!Array.isArray(args.entries) || Array.from(args.entries).some((entry) => !entry || typeof entry.level !== "string" || typeof entry.msg !== "string")) {
@@ -112,16 +121,19 @@
         if (args.entries.some((entry) => entry.level === "warn" && entry.msg.startsWith("Space log overflow:"))) overflow();
         const now = performance.now();
         if (now - lastLog < 500) {
-          overflow();
           reply({ ok: true, result: { stored: 0, throttled: true } });
           return;
+        }
+        if (args.faults > faults) {
+          faults = args.faults;
+          onEvent({ kind: "fault", count: faults });
         }
         lastLog = now;
         args = { entries: args.entries };
         for (const key of ["lifecycle", "dropped", "unconfirmed"]) if (m.args[key] !== void 0) args[key] = m.args[key];
       }
       try {
-        const result = await call(m.op, args);
+        const result = m.op === "editor.save" ? await call(m.op, args, void 0, m.request_id) : await call(m.op, args);
         const revoked = checkGrant(m.op, grants);
         if (revoked && result.ok) reject(revoked);
         else reply(result);
@@ -176,7 +188,7 @@
         w();
       }
     };
-    const call = (op, args) => new Promise((resolve) => {
+    const call = (op, args, _transfer, requestId) => new Promise((resolve) => {
       if (queue.length >= MAX_QUEUE) {
         refused++;
         resolve({ ok: false, error: { code: "limit", message: "Inspection bridge queue is full" } });
@@ -184,7 +196,8 @@
       }
       const id = ++seq;
       pending.set(id, resolve);
-      queue.push({ id, op, args });
+      const rid = op === "editor.save" ? requestId : ["data.put", "data.delete", "data.batch"].includes(op) ? `inspect_write_${id}` : void 0;
+      queue.push({ id, op, args, ...rid ? { request_id: rid } : {} });
       notify();
     });
     return {
