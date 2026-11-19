@@ -269,8 +269,10 @@ class Run:
         time.sleep(3)
         if self.gw:
             r = row(self.gw["pid"])
+            now = set(listeners_of(self.gw["pid"])); s["gateway_listeners"] = dict(at_discovery=self.gw["listeners"], at_shutdown=sorted(now))
+            # still holds every listener it had at discovery; the gateway may open more loopback listeners while it runs
             same = bool(r and r["started"] == self.gw["started"] and has_env(self.gw["pid"], "HERMES_HOME", self.home)
-                        and set(listeners_of(self.gw["pid"])) == set(self.gw["listeners"]))
+                        and set(self.gw["listeners"]) <= now)
             if same:   # the detached gateway this run identified, re-proven: one TERM, never a group signal or KILL
                 os.kill(self.gw["pid"], signal.SIGTERM); deadline = time.monotonic() + 30
                 while time.monotonic() < deadline and (row(self.gw["pid"]) or {}).get("started") == self.gw["started"]: time.sleep(0.5)
