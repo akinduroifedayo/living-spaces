@@ -1,6 +1,40 @@
 # Living Spaces
 
-An open canvas for your bots in Hermes Desktop. Ask in chat and your bot builds dashboards, trackers, mini-apps and visual pieces in a Spaces tab. Each Space keeps its data, and you change it by asking.
+**Build an app in chat. Come back to it in Hermes Desktop.**
+
+Living Spaces gives your Hermes bot a place to build things you can use again: a reading desk, a weather dashboard, or a little game. Open a Space from chat or the **Spaces** tab. When you want a change, ask in the same chat.
+
+[Install Living Spaces](#install) · [See what you can build](#see-what-you-can-build)
+
+[![Research Desk in Hermes Desktop, with a paper feed, reading queue, and shortlist](docs/design/premium-pass/qualification-addendum-20261111/a-live-research-desk-desktop.png)](docs/design/premium-pass/qualification-addendum-20261111/a-live-research-desk-desktop.png)
+
+*Research Desk in Hermes Desktop. Save papers to a reading queue and keep a shortlist for later.*
+
+## Make your first Space
+
+After [installing](#install), start a Hermes chat with Living Spaces enabled and try:
+
+> Build a reading desk with a searchable library and a reading queue. Use sample papers so I can try it right away.
+
+1. Select **Open Space** in the bot's reply.
+2. Add a paper to your queue. Leave the Space and reopen it from **Spaces** to find your saved queue.
+3. In the same chat, ask for a change, such as a filter for papers you have finished.
+
+What the bot builds depends on your request and model, so your Space will look different from the examples below.
+
+## See what you can build
+
+### Sky Window
+
+A week of daily temperature ranges and rain chances, with a tab for each city you follow. This screenshot shows an earlier public forecast.
+
+[![Sky Window showing seven daily temperature ranges and rain chances for Chicago](docs/design/premium-pass/qualification-addendum-20261111/a-live-sky-week-desktop.png)](docs/design/premium-pass/qualification-addendum-20261111/a-live-sky-week-desktop.png)
+
+### Pair Play
+
+A quiet memory game: flip two cards at a time and find all six pairs while the board tracks your turns.
+
+[![Pair Play with twelve face-down cards and a round tracker](docs/design/premium-pass/qualification-addendum-20261111/a-live-pair-play-desktop.png)](docs/design/premium-pass/qualification-addendum-20261111/a-live-pair-play-desktop.png)
 
 ## Requirements
 
@@ -38,9 +72,13 @@ Then enable the Desktop switch described above. The plugin lives in `src/living-
 
 The [package README](src/living-spaces/README.md) explains usage, saved data, upkeep, and removal.
 
-## Repository documentation
+## For contributors
 
-The [specification](docs/spec/SPEC.md) and [amendments](docs/spec/AMENDMENTS.md) record scope. The [current release status](docs/evidence/R1-STATUS.md) summarizes the proven Desktop core loop, native-cron upkeep, design and packaging results. Interim build logs, saved chat traces and selected probe dumps remain in Git history rather than the current tree.
+- [Plugin guide](src/living-spaces/README.md): data, upkeep, and removal.
+- [Contributing guide](AGENTS.md): source layout, builds, and checks.
+- [Specification](docs/spec/SPEC.md) and [amendments](docs/spec/AMENDMENTS.md): product scope.
+- [Desktop verification](docs/verification/DESKTOP.md): run the note-save and reopen check.
+- [Release status](docs/evidence/R1-STATUS.md): see what has been tested.
 
 ## License
 
