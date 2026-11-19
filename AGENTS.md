@@ -64,7 +64,7 @@ python3 scripts/check-shelf.py
 
 For host UI work, also run `node tests/js/ui/render-smoke.mjs`. It expects the Hermes Desktop React dependencies under the current home directory's `.hermes/hermes-agent/apps/desktop/node_modules`. Its `SKIP` result is not a pass. It renders with a stub SDK and does not prove real Desktop behavior.
 
-Unit tests, headless browser tests, packaged-plugin checks, and native Desktop journeys prove different things. Exercise the affected real journey when claiming native behavior. Keep synthetic data labeled. Never infer visual correctness from logs alone.
+Unit tests, headless browser tests, packaged-plugin checks, and native Desktop journeys prove different things. Exercise the affected real journey when claiming native behavior. To drive a real isolated Desktop journey, follow [Desktop verification](docs/verification/DESKTOP.md) and run `tools/verify-desktop/affected.py` to see which journeys a change affects. Keep synthetic data labeled. Never infer visual correctness from logs alone.
 
 ## Work safely and finish clearly
 
