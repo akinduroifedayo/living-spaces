@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3
+
+- Inspect saved Spaces with screenshots, interaction checks, and clearer diagnostics when a view fails to load.
+- Save and recover editor drafts. Read or edit multiple Space files in one tool call.
+- Page through large record sets and see when individual sources last refreshed.
+- See what uses storage and preview retention changes before applying them.
+- Recover from uncertain upkeep runs without replaying edits. Keep the Spaces list current after pinning, archiving, restoring, or deleting a Space.
+- Build with offline charting, Markdown, fonts, motion, and accessible controls. The README now shows three example Spaces.
+
 ## 0.1.2
 
 ### New and fixed
