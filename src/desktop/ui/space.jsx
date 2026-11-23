@@ -4,7 +4,7 @@ import { Action, Answer, Banner, CopyPrompt, DecisionDialog, Drawer, Icon, Owner
 import { HistorySheet, StorageNotice } from './history.jsx'
 import { PermissionsSheet } from './permissions.jsx'
 import { UpkeepSheet } from './upkeep.jsx'
-import { advanceCursor, botBanner, botDismissed, botDismissKey, diagnosticText, errorText, headerFacts, inFlight, refreshReason, runResult, spacePath, spaceStatus, statusDimensions } from './model.mjs'
+import { advanceCursor, botBanner, botDismissed, botDismissKey, diagnosticText, dismissBot, errorText, headerFacts, inFlight, parseBotDismissal, refreshReason, runResult, spacePath, spaceStatus, statusDimensions } from './model.mjs'
 import { createSpaceSession } from './session.mjs'
 import { mountSpace } from '../sandbox/index.js'
 
@@ -44,15 +44,20 @@ function BotBanner({ action, storageKey, controller }) {
   const answerId = useId()
   const key = botDismissKey(action)
   const [stored, setStored] = useState(() => ({ storageKey, value: readDismissed(storageKey) }))
-  const dismissedKey = stored.storageKey === storageKey ? stored.value : readDismissed(storageKey)
+  const record = parseBotDismissal(stored.storageKey === storageKey ? stored.value : readDismissed(storageKey))
   const [dismissedAction, setDismissedAction] = useState(null)
   const [expandedFor, setExpandedFor] = useState(null)
   const identity = key ?? action
-  const banner = botBanner(action, { dismissed: key ? botDismissed(action, dismissedKey) : dismissedAction === action, expanded: expandedFor === identity })
+  // The stored record hides passive republishes; the in-memory action covers the status on screen,
+  // which a user-initiated status would otherwise keep showing.
+  const banner = botBanner(action, { dismissed: dismissedAction === action || (!!key && botDismissed(action, record)), expanded: expandedFor === identity })
   if (!banner) return null
   const dismiss = () => {
-    if (key) { writeDismissed(storageKey, key); setStored({ storageKey, value: key }) }
-    else setDismissedAction(action)
+    setDismissedAction(action)
+    if (!key) return
+    const value = JSON.stringify(dismissBot(record, action))
+    writeDismissed(storageKey, value)
+    setStored({ storageKey, value })
   }
   return <Banner kind={banner.tone} title={banner.title} actions={<>
     {banner.collapsible && <Action aria-expanded={banner.expanded} aria-controls={answerId} onClick={() => setExpandedFor(banner.expanded ? null : identity)}>{banner.expanded ? 'Hide answer' : 'Show answer'}</Action>}

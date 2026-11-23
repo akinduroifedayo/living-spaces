@@ -149,10 +149,23 @@ function statusDimensions(space, { guest = "unknown", write = null, hostError = 
 var BOT_RETRY = ["unknown", "failed", "offline"];
 var BOT_SETTLED = ["completed", "failed", "offline", "unknown"];
 var botDismissKey = (action) => action?.activationId ? `${action.activationId}:${action.status}` : null;
-function botDismissed(action, stored) {
-  const key = botDismissKey(action);
-  if (!key || typeof stored !== "string") return false;
-  return stored === key || stored.startsWith(`${action.activationId}:`) && ["offline", "unknown"].includes(action.status);
+function parseBotDismissal(value) {
+  let record;
+  try {
+    record = JSON.parse(value);
+  } catch {
+    return null;
+  }
+  if (typeof record?.id !== "string" || !Array.isArray(record.statuses) || !record.statuses.every((status) => typeof status === "string")) return null;
+  return { id: record.id, statuses: record.statuses };
+}
+function botDismissed(action, record) {
+  if (!action?.activationId || action.userInitiated === true || record?.id !== action.activationId) return false;
+  return record.statuses.includes(action.status) || ["offline", "unknown"].includes(action.status);
+}
+function dismissBot(record, action) {
+  const statuses = record?.id === action.activationId ? record.statuses : [];
+  return { id: action.activationId, statuses: [.../* @__PURE__ */ new Set([...statuses, action.status])] };
 }
 function botBanner(action, { dismissed = false, expanded = false } = {}) {
   if (!action || dismissed) return null;
@@ -1760,6 +1773,15 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
   const publish = (event) => {
     if (!closed && active()) onWrite(failures.values().next().value || (pendingWrites ? { status: "saving" } : event));
   };
+  let userCalls = 0;
+  const byUser = async (work) => {
+    userCalls++;
+    try {
+      return await work();
+    } finally {
+      userCalls--;
+    }
+  };
   const actions = host5 ? createBotActions({
     host: host5,
     backend: scope,
@@ -1767,7 +1789,7 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     post: (operation, body) => scopedRequest(`${base}/actions/${operation}`, { method: "POST", body: { ...body, session } }),
     onStatus: (status) => {
       if (closed) return;
-      onAction(status);
+      onAction(userCalls ? { ...status, userInitiated: true } : status);
       mounted?.postEvent?.("bot.status", status);
     }
   }) : null;
@@ -1884,7 +1906,7 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     if (op === "link.open") return openLink(args);
     if (op === "bot.request") {
       if (!actions) return { ok: false, error: { code: "blocked", message: "Native bot actions are unavailable" } };
-      const result = await actions.request(args);
+      const result = await byUser(() => actions.request(args));
       if (closed || !active()) return invalidSession();
       return { ok: true, result };
     }
@@ -1952,13 +1974,13 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
   return {
     ready,
     checkAction() {
-      return actions?.check();
+      return actions && byUser(() => actions.check());
     },
     openLink(url) {
       return openLink({ url });
     },
     retryAction() {
-      return actions?.retry();
+      return actions && byUser(() => actions.retry());
     },
     dismissWrite(token) {
       failures.delete(token);
@@ -2018,17 +2040,18 @@ function BotBanner({ action, storageKey, controller }) {
   const answerId = useId();
   const key = botDismissKey(action);
   const [stored, setStored] = useState6(() => ({ storageKey, value: readDismissed(storageKey) }));
-  const dismissedKey = stored.storageKey === storageKey ? stored.value : readDismissed(storageKey);
+  const record = parseBotDismissal(stored.storageKey === storageKey ? stored.value : readDismissed(storageKey));
   const [dismissedAction, setDismissedAction] = useState6(null);
   const [expandedFor, setExpandedFor] = useState6(null);
   const identity = key ?? action;
-  const banner = botBanner(action, { dismissed: key ? botDismissed(action, dismissedKey) : dismissedAction === action, expanded: expandedFor === identity });
+  const banner = botBanner(action, { dismissed: dismissedAction === action || !!key && botDismissed(action, record), expanded: expandedFor === identity });
   if (!banner) return null;
   const dismiss = () => {
-    if (key) {
-      writeDismissed(storageKey, key);
-      setStored({ storageKey, value: key });
-    } else setDismissedAction(action);
+    setDismissedAction(action);
+    if (!key) return;
+    const value = JSON.stringify(dismissBot(record, action));
+    writeDismissed(storageKey, value);
+    setStored({ storageKey, value });
   };
   return /* @__PURE__ */ jsxs6(Banner, { kind: banner.tone, title: banner.title, actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
     banner.collapsible && /* @__PURE__ */ jsx6(Action, { "aria-expanded": banner.expanded, "aria-controls": answerId, onClick: () => setExpandedFor(banner.expanded ? null : identity), children: banner.expanded ? "Hide answer" : "Show answer" }),

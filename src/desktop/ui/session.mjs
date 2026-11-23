@@ -34,11 +34,15 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
   const failures = new Map()
   const retries = new Map()
   const publish = event => { if (!closed && active()) onWrite(failures.values().next().value || (pendingWrites ? { status: 'saving' } : event)) }
+  // Statuses published while the user's own bot call runs are marked for the host banner, so a
+  // dismissal can never hide what the user just caused. The guest sees the status unchanged.
+  let userCalls = 0
+  const byUser = async work => { userCalls++; try { return await work() } finally { userCalls-- } }
   const actions = host ? createBotActions({ host, backend: scope, isActive: () => !closed && active(),
     post: (operation, body) => scopedRequest(`${base}/actions/${operation}`, { method: 'POST', body: { ...body, session } }),
     onStatus: status => {
       if (closed) return
-      onAction(status)
+      onAction(userCalls ? { ...status, userInitiated: true } : status)
       mounted?.postEvent?.('bot.status', status)
     }
   }) : null
@@ -140,7 +144,7 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     if (op === 'link.open') return openLink(args)
     if (op === 'bot.request') {
       if (!actions) return { ok: false, error: { code: 'blocked', message: 'Native bot actions are unavailable' } }
-      const result = await actions.request(args)
+      const result = await byUser(() => actions.request(args))
       if (closed || !active()) return invalidSession()
       return { ok: true, result }
     }
@@ -201,9 +205,9 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
   })()
   return {
     ready,
-    checkAction() { return actions?.check() },
+    checkAction() { return actions && byUser(() => actions.check()) },
     openLink(url) { return openLink({ url }) },
-    retryAction() { return actions?.retry() },
+    retryAction() { return actions && byUser(() => actions.retry()) },
     dismissWrite(token) { failures.delete(token); publish(null) },
     postEvent(event, payload) { if (!closed && active()) mounted?.postEvent?.(event, payload) },
     destroy() {

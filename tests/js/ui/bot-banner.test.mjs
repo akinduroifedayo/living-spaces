@@ -164,7 +164,7 @@ test('Dismiss hides the answer across re-render and reopen of the same activatio
     await publish(controller, completed())
     await click('Dismiss')
     assert.doesNotMatch(text(), /Bot request/)
-    assert.equal(localStorage.getItem('living-spaces:bot-dismissed:demo-backend:demo-profile:demo-space'), 'click-1:completed')
+    assert.deepEqual(JSON.parse(localStorage.getItem('living-spaces:bot-dismissed:demo-backend:demo-profile:demo-space')), { id: 'click-1', statuses: ['completed'] })
     await publish(controller, completed())
     await act(async () => view.render(React.createElement(SpaceView, props())))
     assert.doesNotMatch(text(), /Bot request/)
@@ -199,13 +199,50 @@ test('a dismissed activation stays hidden when reopen can only report it offline
   } finally { await unmount() }
 })
 test('botDismissed treats unobservable statuses as the dismissed activation, other outcomes as new', () => {
-  assert.equal(model.botDismissed({ activationId: 'a', status: 'completed' }, 'a:completed'), true)
-  assert.equal(model.botDismissed({ activationId: 'a', status: 'offline' }, 'a:completed'), true)
-  assert.equal(model.botDismissed({ activationId: 'a', status: 'unknown' }, 'a:failed'), true)
-  assert.equal(model.botDismissed({ activationId: 'a', status: 'failed' }, 'a:completed'), false)
-  assert.equal(model.botDismissed({ activationId: 'ab', status: 'offline' }, 'a:completed'), false)
+  const record = (id, ...statuses) => ({ id, statuses })
+  assert.equal(model.botDismissed({ activationId: 'a', status: 'completed' }, record('a', 'completed')), true)
+  assert.equal(model.botDismissed({ activationId: 'a', status: 'offline' }, record('a', 'completed')), true)
+  assert.equal(model.botDismissed({ activationId: 'a', status: 'unknown' }, record('a', 'failed')), true)
+  assert.equal(model.botDismissed({ activationId: 'a', status: 'failed' }, record('a', 'completed')), false)
+  assert.equal(model.botDismissed({ activationId: 'ab', status: 'offline' }, record('a', 'completed')), false)
+  assert.equal(model.botDismissed({ activationId: 'a', status: 'offline' }, record('ab', 'completed')), false)
   assert.equal(model.botDismissed({ activationId: 'a', status: 'offline' }, null), false)
-  assert.equal(model.botDismissed({ status: 'offline' }, 'a:completed'), false)
+  assert.equal(model.botDismissed({ status: 'offline' }, record('a', 'completed')), false)
+  assert.equal(model.botDismissed({ activationId: 'a', status: 'offline', userInitiated: true }, record('a', 'completed', 'offline')), false)
+  assert.equal(model.botDismissed({ activationId: 'a', status: 'completed', userInitiated: true }, record('a', 'completed')), false)
+})
+test('parseBotDismissal accepts only an activation record and dismissBot accumulates statuses', () => {
+  assert.deepEqual(model.parseBotDismissal('{"id":"a","statuses":["completed"]}'), { id: 'a', statuses: ['completed'] })
+  for (const value of [null, '', 'a:completed', '{', '{"id":1,"statuses":[]}', '{"id":"a"}', '{"id":"a","statuses":[1]}', '"a"', 'null']) {
+    assert.equal(model.parseBotDismissal(value), null, String(value))
+  }
+  const first = model.dismissBot(null, { activationId: 'a', status: 'completed' })
+  assert.deepEqual(first, { id: 'a', statuses: ['completed'] })
+  assert.deepEqual(model.dismissBot(first, { activationId: 'a', status: 'offline' }), { id: 'a', statuses: ['completed', 'offline'] })
+  assert.deepEqual(model.dismissBot(first, { activationId: 'a', status: 'completed' }), first)
+  assert.deepEqual(model.dismissBot(first, { activationId: 'b', status: 'failed' }), { id: 'b', statuses: ['failed'] })
+})
+test('a status the user just caused shows even for a dismissed activation, and its dismissal keeps the earlier one', async () => {
+  fresh()
+  let controller = await mount()
+  try {
+    await publish(controller, completed())
+    await click('Dismiss')
+    const offline = { activationId: 'click-1', status: 'offline', message: 'The exact maintaining profile route is unavailable or ambiguous. No automatic resend.' }
+    await publish(controller, { ...offline, userInitiated: true })
+    assert.match(text(), /Bot request: offline/)
+    assert.ok(button('Retry same request'))
+    assert.ok(button('Check bot status'))
+    await click('Dismiss')
+    assert.doesNotMatch(text(), /Bot request/)
+    assert.deepEqual(JSON.parse(localStorage.getItem('living-spaces:bot-dismissed:demo-backend:demo-profile:demo-space')), { id: 'click-1', statuses: ['completed', 'offline'] })
+    await unmount()
+    controller = await mount()
+    await publish(controller, completed())
+    assert.doesNotMatch(text(), /Bot request/)
+    await publish(controller, offline)
+    assert.doesNotMatch(text(), /Bot request/)
+  } finally { await unmount() }
 })
 test('a dismissal that storage refused wins over an older stored one after reopen', async () => {
   fresh()
@@ -307,4 +344,48 @@ test('session openLink routes answer links through the guarded link path', async
   assert.match(notices.at(-1).title, /example\.com/)
   assert.equal(controller.openLink('javascript:alert(1)').ok, false)
   await controller.destroy()
+})
+
+test('session marks statuses from the guest bot request as user-initiated, never the guest event or restore', async () => {
+  const route = { connectionId: 'conn', profile: 'owner', targetProfile: 'owner', mode: 'local' }
+  const previous = { activation_id: 'A', input_id: 'input-A', admission_id: 'admission-A', settled: true,
+    target: { route, profile_id: 'native-owner', session_id: 'canonical' }, text: 'previous request' }
+  const actions = [], events = [], posts = []
+  let mounted
+  const host = { state: { connectionId: { get: () => 'conn' }, profile: { get: () => 'owner' } },
+    profileRoutes: async () => [], retainProfile: async () => () => {}, requestProfile: async method => { throw new Error(`Unexpected RPC ${method}`) } }
+  const rest = async (path, options) => {
+    if (path.endsWith('/sessions')) return { session: 's', head_rev: 1, grants: [] }
+    if (path.endsWith('/bundle')) return { rev: 1 }
+    if (path.endsWith('/actions/context')) return { maintainer: { profile_id: 'native-owner', stored_session_id: 'canonical' }, action: structuredClone(previous) }
+    if (options?.method === 'DELETE') return { closed: true }
+    posts.push(path)
+    throw new Error(`Unexpected request ${path}`)
+  }
+  const navigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+  Object.defineProperty(globalThis, 'navigator', { value: { userActivation: { isActive: true } }, configurable: true, writable: true })
+  const controller = realSession({ sid: 'demo-space', backend: route, host, rest, container: {}, onEvent() {}, onAction: value => actions.push(value),
+    mount: (_container, options) => { mounted = options; return { destroy() {}, postEvent: (event, payload) => events.push([event, payload]) } } })
+  try {
+    await controller.ready
+    for (let n = 0; n < 50 && !actions.length; n++) await new Promise(resolve => setTimeout(resolve, 0))
+    const restored = actions.splice(0)
+    assert.equal(restored.length, 1)
+    assert.equal(restored[0].status, 'offline')
+    assert.equal(restored[0].activationId, 'A')
+    assert.equal('userInitiated' in restored[0], false)
+    events.length = 0
+    const reply = await mounted.call('bot.request', { activation_id: 'B', text: 'A new question', records: [] })
+    assert.equal(reply.result.activationId, 'A')
+    assert.equal(reply.result.status, 'offline')
+    assert.ok(actions.length > 0)
+    assert.ok(actions.every(value => value.userInitiated === true))
+    assert.deepEqual(events.map(([event]) => event), actions.map(() => 'bot.status'))
+    assert.ok(events.every(([, payload]) => !('userInitiated' in payload)))
+    assert.deepEqual(posts, [])
+  } finally {
+    await controller.destroy()
+    if (navigator) Object.defineProperty(globalThis, 'navigator', navigator)
+    else delete globalThis.navigator
+  }
 })

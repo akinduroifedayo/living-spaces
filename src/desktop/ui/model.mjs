@@ -46,13 +46,24 @@ export function statusDimensions(space, { guest = 'unknown', write = null, hostE
 const BOT_RETRY = ['unknown', 'failed', 'offline']
 const BOT_SETTLED = ['completed', 'failed', 'offline', 'unknown']
 export const botDismissKey = action => action?.activationId ? `${action.activationId}:${action.status}` : null
-// A dismissed activation stays hidden at the status it was dismissed in, and through offline/unknown,
+// A dismissal is { id, statuses }: one activation and every status the user dismissed it in.
+// Anything else, including the earlier 'id:status' string form, is no dismissal.
+export function parseBotDismissal(value) {
+  let record
+  try { record = JSON.parse(value) } catch { return null }
+  if (typeof record?.id !== 'string' || !Array.isArray(record.statuses) || !record.statuses.every(status => typeof status === 'string')) return null
+  return { id: record.id, statuses: record.statuses }
+}
+// A dismissed activation stays hidden at the statuses it was dismissed in, and through offline/unknown,
 // which only mean the outcome could not be observed (restore() reports them when a route is down).
-// A different observed outcome for the same activation is new information and shows again.
-export function botDismissed(action, stored) {
-  const key = botDismissKey(action)
-  if (!key || typeof stored !== 'string') return false
-  return stored === key || (stored.startsWith(`${action.activationId}:`) && ['offline', 'unknown'].includes(action.status))
+// A different observed outcome is new information, and a status the user just caused always shows.
+export function botDismissed(action, record) {
+  if (!action?.activationId || action.userInitiated === true || record?.id !== action.activationId) return false
+  return record.statuses.includes(action.status) || ['offline', 'unknown'].includes(action.status)
+}
+export function dismissBot(record, action) {
+  const statuses = record?.id === action.activationId ? record.statuses : []
+  return { id: action.activationId, statuses: [...new Set([...statuses, action.status])] }
 }
 export function botBanner(action, { dismissed = false, expanded = false } = {}) {
   if (!action || dismissed) return null
