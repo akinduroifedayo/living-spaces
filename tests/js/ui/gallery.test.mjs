@@ -343,3 +343,13 @@ test('narrow and compact islands keep every control, as icons with their accessi
     assert.equal(window.getComputedStyle(document.querySelector('.ls-frame-meta-text')).position, 'absolute', 'the phrase text is kept for assistive tech while the dot stays visible')
   } finally { style.remove(); await cleanup() }
 })
+
+test('floating surfaces are tinted from the opaque system canvas colour so text keeps contrast over any Space', () => {
+  const { styles } = load(resolve(root, 'src/desktop/ui/styles.js'))
+  const token = name => Number(styles.match(new RegExp(`--${name}:color-mix\\(in srgb,Canvas (\\d+)%,transparent\\)`))?.[1])
+  assert.ok(token('ls-glass') >= 75, 'islands')
+  assert.ok(token('ls-glass-strong') >= 90, 'notices float over arbitrary content and need a near-opaque surface')
+  assert.match(styles, /\.ls-banner\{[^}]*background:var\(--ls-glass-strong\)/)
+  assert.match(styles, /\.ls-notice-pill\{[^}]*background:var\(--ls-glass-strong\)/)
+  assert.doesNotMatch(styles, /ui-bg-elevated[^;]*\) 70%,transparent/, 'no glass mixed from a translucent host token')
+})
