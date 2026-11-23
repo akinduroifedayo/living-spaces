@@ -205,15 +205,13 @@ export function refreshReason(space) {
   if (spaceStatus(space) === 'blocked') return space.attention?.message || 'Refresh is blocked. Review Permissions.'
   return ''
 }
-// The Refresh line in Details. A Space with no refresh handler is not broken: many are kept current by their own
-// sync or by chat. Say who keeps it current when the backend recorded it, and never word the absence as a fault.
+// The Refresh line in Details. A Space with no refresh handler is not broken, so the absence is never worded as a
+// fault. The backend records only the latest change, not who will keep the Space current, so this states the
+// absence neutrally and names no ongoing updater.
 export function refreshFact(space) {
   const reason = refreshReason(space)
   if (space.manifest?.upkeep || space.status === 'archived') return reason || 'Use Refresh now in the top bar.'
-  const [kind, ...rest] = String(space.activity?.actor || '').split(':')
-  const name = rest.join(':').trim()
-  if (kind === 'upkeep' && name && name !== 'schedule') return `Kept current by ${name}. Living Spaces has no refresh of its own to run.`
-  return 'Updated in chat or in the Space itself. There is no refresh to run.'
+  return 'This Space has no refresh of its own. It changes when you, chat or a connected source update it.'
 }
 export function runResult(run) {
   if (run.status === 'failed') return run.error || 'Refresh failed'

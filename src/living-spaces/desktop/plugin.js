@@ -301,10 +301,7 @@ function refreshReason(space) {
 function refreshFact(space) {
   const reason = refreshReason(space);
   if (space.manifest?.upkeep || space.status === "archived") return reason || "Use Refresh now in the top bar.";
-  const [kind, ...rest] = String(space.activity?.actor || "").split(":");
-  const name = rest.join(":").trim();
-  if (kind === "upkeep" && name && name !== "schedule") return `Kept current by ${name}. Living Spaces has no refresh of its own to run.`;
-  return "Updated in chat or in the Space itself. There is no refresh to run.";
+  return "This Space has no refresh of its own. It changes when you, chat or a connected source update it.";
 }
 function runResult(run) {
   if (run.status === "failed") return run.error || "Refresh failed";
@@ -2945,7 +2942,7 @@ Logged to this Space only. Common credential values redacted.` }),
 
 // src/desktop/ui/styles.js
 var styles = `
-.ls-root,.ls-sheet,.ls-confirm{--ls-ease-out:cubic-bezier(.23,1,.32,1);--ls-glass:color-mix(in srgb,Canvas 78%,transparent);--ls-glass-strong:color-mix(in srgb,Canvas 92%,transparent);--ls-ease-drawer:cubic-bezier(.32,.72,0,1);--ls-island-shadow:0 0 0 1px rgba(20,20,24,.07),0 1px 0 rgba(255,255,255,.9) inset,0 10px 30px -10px rgba(20,20,24,.25);font:14px/1.5 var(--font-sans,system-ui,sans-serif);color:var(--ui-text-primary);--ls-surface:var(--ui-bg-card,var(--ui-bg-secondary));--ls-line:var(--ui-stroke-secondary);--ls-danger:var(--ui-text-danger,var(--destructive,var(--color-destructive,#cf2d56)));--ls-warning:var(--ui-text-warning,var(--ui-text-primary));--ls-good:var(--ui-text-success,var(--ui-text-primary))}
+.ls-root,.ls-sheet,.ls-confirm{--ls-ease-out:cubic-bezier(.23,1,.32,1);--ls-glass:color-mix(in srgb,Canvas 78%,transparent);--ls-glass-strong:color-mix(in srgb,Canvas 92%,transparent);--ls-ease-drawer:cubic-bezier(.32,.72,0,1);--ls-island-shadow:0 0 0 1px rgba(20,20,24,.07),0 1px 0 rgba(255,255,255,.9) inset,0 10px 30px -10px rgba(20,20,24,.25);font:14px/1.5 var(--font-sans,system-ui,sans-serif);color:var(--ui-text-primary);--ls-surface:var(--ui-bg-card,var(--ui-bg-secondary));--ls-line:var(--ui-stroke-secondary);--ls-danger:var(--ui-text-danger,var(--destructive,var(--dt-destructive,#cf2d56)));--ls-warning:var(--ui-text-warning,var(--ui-text-primary));--ls-good:var(--ui-text-success,var(--ui-text-primary))}
 .ls-root{height:100%;min-height:0;overflow:auto;background:var(--ui-bg-primary)}
 .ls-root *,.ls-sheet *,.ls-confirm *{box-sizing:border-box}
 .ls-root :is(button,a,input):focus-visible,.ls-sheet :is(button,a,input):focus-visible,.ls-confirm button:focus-visible{outline:2px solid var(--ui-accent-lit,var(--ui-accent));outline-offset:2px}

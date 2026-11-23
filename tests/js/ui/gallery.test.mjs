@@ -435,16 +435,18 @@ test('a notice republished with a new time keeps the dock minimised; a new notic
 test('the failure tint always resolves: the danger token ends in a literal colour, so a failure notice is never transparent', () => {
   const { styles } = load(resolve(root, 'src/desktop/ui/styles.js'))
   const chain = styles.match(/--ls-danger:([^;]+);/)[1]
-  assert.match(chain, /var\(--color-destructive,#[0-9a-f]{6}\)/i, 'falls back to the host token, then a literal')
+  assert.match(chain, /var\(--dt-destructive,#[0-9a-f]{6}\)/i, 'falls back to the host runtime token (set per mode), then a literal')
   assert.match(styles, /\.ls-banner\.ls-failed[^{]*\{background:color-mix\(in srgb,var\(--ls-danger\) \d+%,var\(--ls-glass-strong\)\)\}/)
 })
 
-test('Details never words a Space without a refresh handler as a fault, and names who keeps it current', () => {
-  const synced = space({ manifest: {}, activity: { kind: 'data', actor: 'upkeep:gbrain-cockpit', at: 1 } })
-  assert.equal(model.refreshFact(synced), 'Kept current by gbrain-cockpit. Living Spaces has no refresh of its own to run.')
-  assert.equal(model.refreshFact(space({ manifest: {}, activity: { kind: 'data', actor: 'agent:Hermes', at: 1 } })), 'Updated in chat or in the Space itself. There is no refresh to run.')
-  assert.equal(model.refreshFact(space({ manifest: {} })), 'Updated in chat or in the Space itself. There is no refresh to run.')
-  for (const value of [synced, space({ manifest: {} })]) assert.doesNotMatch(model.refreshFact(value), /No refresh handler|Ask the owner/)
+test('Details never words a Space without a refresh handler as a fault, and claims no ongoing updater', () => {
+  const neutral = 'This Space has no refresh of its own. It changes when you, chat or a connected source update it.'
+  // A one-off source write leaves activity upkeep:<name> with no handler and no runs: that is not proof of a running sync.
+  for (const actor of ['upkeep:gbrain-cockpit', 'upkeep:schedule', 'agent:Hermes', 'user', undefined]) {
+    const value = space({ manifest: {}, activity: actor ? { kind: 'data', actor, at: 1 } : undefined })
+    assert.equal(model.refreshFact(value), neutral, String(actor))
+    assert.doesNotMatch(model.refreshFact(value), /No refresh handler|Ask the owner|Kept current/)
+  }
   assert.equal(model.refreshFact(space({ manifest: { upkeep: { handler: 'feed' } } })), 'Use Refresh now in the top bar.')
   assert.match(model.refreshFact(space({ status: 'archived', manifest: {} })), /archived/)
   assert.match(model.refreshReason(space({ manifest: {} })), /No refresh handler/, 'the disabled-button reason itself is unchanged')
