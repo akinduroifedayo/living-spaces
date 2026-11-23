@@ -433,8 +433,8 @@ function CopyPrompt({ text, label = "Copy" }) {
     error && /* @__PURE__ */ jsx("span", { role: "alert", children: error })
   ] });
 }
-function Banner({ kind = "info", title, children, actions }) {
-  return /* @__PURE__ */ jsxs("div", { className: `ls-banner ls-${kind}`, role: ALERT_KINDS.includes(kind) ? "alert" : "status", children: [
+function Banner({ kind = "info", title, children, actions, noticeKey }) {
+  return /* @__PURE__ */ jsxs("div", { className: `ls-banner ls-${kind}`, "data-notice": noticeKey, role: ALERT_KINDS.includes(kind) ? "alert" : "status", children: [
     /* @__PURE__ */ jsx(Icon, { name: kind === "info" ? "info" : kind === "storage" ? "database" : "warning" }),
     /* @__PURE__ */ jsxs("div", { children: [
       /* @__PURE__ */ jsx("strong", { children: title }),
@@ -2305,7 +2305,7 @@ function BotBanner({ action, storageKey, controller }) {
   };
   const failed = banner.kind === "failed";
   const canContinue = banner.collapsible && controller.current?.canContinue?.() === true;
-  return /* @__PURE__ */ jsxs6(Banner, { kind: failed ? "failed" : "info", title: /* @__PURE__ */ jsxs6(Fragment6, { children: [
+  return /* @__PURE__ */ jsxs6(Banner, { noticeKey: `bot:${key ?? "current"}:${action.status}`, kind: failed ? "failed" : "info", title: /* @__PURE__ */ jsxs6(Fragment6, { children: [
     banner.label,
     banner.at != null && /* @__PURE__ */ jsxs6(Fragment6, { children: [
       " \xB7 ",
@@ -2486,10 +2486,14 @@ function NoticeDock({ children, minimiseSignal }) {
     const read = () => {
       const notices = [...element.querySelectorAll(".ls-banner")];
       const titles = notices.map((node) => node.querySelector("strong")?.textContent || "");
+      const keys = notices.map((node, index) => node.dataset.notice || titles[index]);
       const next = { count: notices.length, alert: notices.some((node) => node.getAttribute("role") === "alert"), title: titles[0] || "", keys: titles.join("\n") };
       setSummary((current) => current.keys === next.keys && current.count === next.count && current.alert === next.alert ? current : next);
-      if (titles.some((title) => !seen.current.has(title))) setMinimised(false);
-      seen.current = new Set(titles);
+      if (keys.some((key) => !seen.current.has(key))) {
+        if (pill.current && document.activeElement === pill.current) requestAnimationFrame(() => minimiser.current?.focus());
+        setMinimised(false);
+      }
+      seen.current = new Set(keys);
     };
     read();
     if (typeof MutationObserver === "undefined") return;

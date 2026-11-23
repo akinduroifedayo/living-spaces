@@ -50,8 +50,9 @@ export function CopyPrompt({ text, label = 'Copy' }) {
   const [error, setError] = useState('')
   return <div className="ls-prompt"><Icon name="comment-discussion" /><q>{text}</q><CopyButton text={text} label={label} showLabel buttonSize="sm" onCopyError={() => setError('Copy failed. Select and copy the prompt.')} />{error && <span role="alert">{error}</span>}</div>
 }
-export function Banner({ kind = 'info', title, children, actions }) {
-  return <div className={`ls-banner ls-${kind}`} role={ALERT_KINDS.includes(kind) ? 'alert' : 'status'}><Icon name={kind === 'info' ? 'info' : kind === 'storage' ? 'database' : 'warning'} /><div><strong>{title}</strong>{children && <div className="ls-secondary">{children}</div>}{actions && <div className="ls-actions">{actions}</div>}</div></div>
+// `noticeKey` names what the notice is about when its title carries changing words, such as a time.
+export function Banner({ kind = 'info', title, children, actions, noticeKey }) {
+  return <div className={`ls-banner ls-${kind}`} data-notice={noticeKey} role={ALERT_KINDS.includes(kind) ? 'alert' : 'status'}><Icon name={kind === 'info' ? 'info' : kind === 'storage' ? 'database' : 'warning'} /><div><strong>{title}</strong>{children && <div className="ls-secondary">{children}</div>}{actions && <div className="ls-actions">{actions}</div>}</div></div>
 }
 function Spans({ spans, onOpenLink }) {
   return spans.map((span, index) => span.type === 'break' ? <br key={index} />

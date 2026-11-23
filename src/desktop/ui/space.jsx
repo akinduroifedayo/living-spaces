@@ -49,7 +49,8 @@ function BotBanner({ action, storageKey, controller }) {
   }
   const failed = banner.kind === 'failed'
   const canContinue = banner.collapsible && controller.current?.canContinue?.() === true
-  return <Banner kind={failed ? 'failed' : 'info'} title={<>{banner.label}{banner.at != null && <> · <Time at={banner.at} /></>}</>} actions={<>
+  // A passive poll republishes the same status with a new time; it is the same notice, so it must not reopen the dock.
+  return <Banner noticeKey={`bot:${key ?? 'current'}:${action.status}`} kind={failed ? 'failed' : 'info'} title={<>{banner.label}{banner.at != null && <> · <Time at={banner.at} /></>}</>} actions={<>
     {banner.collapsible && <Action aria-expanded={banner.expanded} aria-controls={replyId} onClick={() => setExpandedFor(banner.expanded ? null : identity)}>{banner.expanded ? 'Collapse' : 'Read reply'}</Action>}
     {banner.kind !== 'reply' && <Action onClick={() => controller.current?.checkAction()}>Check status</Action>}
     {banner.canRetry && <Action onClick={() => controller.current?.retryAction()}>Retry same request</Action>}
@@ -122,7 +123,7 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
 // to one compact pill (by its button, Escape, or when the user starts using the canvas) and expands again when a
 // new notice arrives. Only the notices themselves take pointer input; the canvas around them stays usable, and
 // nothing here traps focus.
-function NoticeDock({ children, minimiseSignal }) {
+export function NoticeDock({ children, minimiseSignal }) {
   const dock = useRef(null)
   const list = useRef(null)
   const pill = useRef(null)
@@ -137,11 +138,15 @@ function NoticeDock({ children, minimiseSignal }) {
     const read = () => {
       const notices = [...element.querySelectorAll('.ls-banner')]
       const titles = notices.map(node => node.querySelector('strong')?.textContent || '')
+      const keys = notices.map((node, index) => node.dataset.notice || titles[index])
       const next = { count: notices.length, alert: notices.some(node => node.getAttribute('role') === 'alert'), title: titles[0] || '', keys: titles.join('\n') }
       setSummary(current => current.keys === next.keys && current.count === next.count && current.alert === next.alert ? current : next)
-      // A notice the user has not seen yet brings the dock back.
-      if (titles.some(title => !seen.current.has(title))) setMinimised(false)
-      seen.current = new Set(titles)
+      // A notice the user has not seen yet brings the dock back. Focus on the pill moves with it to the toggle.
+      if (keys.some(key => !seen.current.has(key))) {
+        if (pill.current && document.activeElement === pill.current) requestAnimationFrame(() => minimiser.current?.focus())
+        setMinimised(false)
+      }
+      seen.current = new Set(keys)
     }
     read()
     if (typeof MutationObserver === 'undefined') return

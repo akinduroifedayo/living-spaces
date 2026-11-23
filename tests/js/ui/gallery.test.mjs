@@ -412,3 +412,22 @@ test('at narrow width save feedback stays announced, only its words are visually
   assert.doesNotMatch(styles, /data-header-mode=narrow\] \.ls-save\{display:none/)
   assert.match(styles, /data-header-mode=narrow\] \.ls-save-text\{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect\(0,0,0,0\)/)
 })
+
+test('a notice republished with a new time keeps the dock minimised; a new notice reopens it and keeps focus', async () => {
+  const { NoticeDock } = ui()
+  const { Banner } = load(resolve(root, 'src/desktop/ui/components.jsx'))
+  const dock = (title, key) => React.createElement(NoticeDock, {}, React.createElement(Banner, { title, noticeKey: key }))
+  try {
+    view = createRoot(document.getElementById('root'))
+    await act(async () => view.render(dock('Bot request: busy · 8:13 PM', 'bot:a1:busy')))
+    const toggle = button('Minimise'); toggle.focus()
+    await act(async () => toggle.click()); await wait(10)
+    assert.equal(document.activeElement, document.querySelector('.ls-notice-pill'))
+    await act(async () => view.render(dock('Bot request: busy · 8:14 PM', 'bot:a1:busy'))); await wait(10)
+    assert.equal(document.querySelector('.ls-notice-list').hidden, true, 'same notice, new minute: stays minimised')
+    assert.equal(document.activeElement, document.querySelector('.ls-notice-pill'))
+    await act(async () => view.render(dock('Bot replied · 8:15 PM', 'bot:a1:replied'))); await wait(10)
+    assert.equal(document.querySelector('.ls-notice-list').hidden, false, 'a new status reopens the dock')
+    assert.equal(document.activeElement, button('Minimise'), 'focus moves with the pill to the toggle, never to the body')
+  } finally { await cleanup() }
+})
