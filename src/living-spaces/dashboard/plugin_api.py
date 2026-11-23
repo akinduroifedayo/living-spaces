@@ -23,7 +23,7 @@ _sandbox = importlib.util.module_from_spec(_sandbox_spec)
 _sandbox_spec.loader.exec_module(_sandbox)
 SPACE_ID = re.compile(r"[a-z0-9][a-z0-9-]{1,47}\Z")
 SUMMARY_FIELDS = {"id", "name", "description", "owner", "status", "head_rev", "accent", "icon", "pinned",
-                  "updated_at", "last_opened_at", "freshness", "upkeep", "attention"}
+                  "updated_at", "last_opened_at", "freshness", "activity", "upkeep", "attention"}
 
 
 class SpacesRoute(APIRoute):

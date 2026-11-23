@@ -9,7 +9,7 @@
       "status": "driven",
       "command": "drive.py --out <new dir>",
       "proves": "In a real isolated Desktop: Spaces opens, a note typed into the synthetic notebook saves, shows, survives leave and reopen, and matches the plugin SQLite store.",
-      "paths": ["src/desktop/ui/index.jsx", "src/desktop/ui/space.jsx", "src/desktop/ui/", "src/guest/", "src/living-spaces/guest/",
+      "paths": ["src/desktop/ui/index.jsx", "src/desktop/ui/space.jsx", "src/desktop/ui/", "src/desktop/sandbox/", "src/guest/", "src/living-spaces/guest/",
                 "src/living-spaces/desktop/", "src/living-spaces/desktop_rpc.py", "src/living-spaces/living_spaces_core/"]
     },
     "chat-build-and-refresh": {

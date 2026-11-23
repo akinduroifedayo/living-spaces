@@ -68,15 +68,24 @@ export function dismissBot(record, action) {
 const botKind = status => status === 'completed' ? 'reply' : BOT_RETRY.includes(status) ? 'failed' : 'progress'
 // The host notice for one bot status. Failed kinds carry a one-line reason and never collapse;
 // a reply carries the answer, collapsed to its first sentence until the user reads it.
-export function botBanner(action, { dismissed = false, expanded = false } = {}) {
+// A failed request is titled by what is known about delivery, never by a raw status word. Only an unbound
+// Space is known not to have received it: an offline or unknown status can follow a request that did arrive.
+function failureCopy(action, who) {
+  if (action.reason === 'unbound') return { label: `${who} didn't receive the request`, reason: `No chat is keeping this Space. Ask ${who} in chat to bind it.` }
+  const label = { offline: `Couldn't reach ${who}`, unknown: `Not sure ${who} received the request` }[action.status] || `The request to ${who} failed`
+  return { label, reason: action.message || null }
+}
+export function botBanner(action, { dismissed = false, expanded = false, owner = null } = {}) {
   if (!action || dismissed) return null
   const kind = botKind(action.status)
   const answer = kind === 'reply' && typeof action.answer === 'string' && action.answer.trim() ? action.answer : null
+  const failure = kind === 'failed' ? failureCopy(action, typeof owner === 'string' && owner.trim() ? owner.trim() : 'Hermes') : null
   return {
     status: action.status,
     kind,
-    label: kind === 'reply' ? 'Hermes replied' : kind === 'failed' ? 'Bot request failed' : `Bot request: ${action.status}`,
-    reason: answer ? null : action.message || null,
+    label: kind === 'reply' ? 'Hermes replied' : failure ? failure.label : `Bot request: ${action.status}`,
+    reason: answer ? null : failure ? failure.reason : action.message || null,
+    detail: failure && typeof action.detail === 'string' && action.detail ? action.detail : null,
     summary: answer ? answerSummary(answer) : '',
     answer,
     at: Number.isFinite(action.at) ? action.at : null,
@@ -111,7 +120,7 @@ export function storageNotice(storage, hidden = null) {
   const subject = STORAGE_SUBJECT[row.resource] || String(row.resource).replace(/_bytes$/, '').replace(/_/g, ' ')
   return { pct, key, title: `Storage ${pct}% full`, line: `${amount(row.used)} of ${amount(row.limit)} used by ${subject}. Writes stop at the limit.` }
 }
-export const GUEST_WORDS = { unknown: 'not reported', starting: 'starting', loaded: 'loaded', failed: 'failed', faulted: 'faulted (uncaught error, still running)' }
+export const GUEST_WORDS = { unknown: 'Not reported', starting: 'Starting', loaded: 'Loaded', failed: 'Failed', faulted: 'Faulted (uncaught error, still running)' }
 export const guestWord = state => GUEST_WORDS[state] || String(state)
 export function needsAttention(space) {
   return space.status !== 'archived' && ['failed', 'blocked', 'crashed'].includes(spaceStatus(space, true))
@@ -121,7 +130,7 @@ export function summaryCounts(spaces) {
 }
 export function visibleSpaces(spaces, search, filter) {
   const q = search.trim().toLocaleLowerCase()
-  return spaces.filter(s => filter === 'archived' ? s.status === 'archived' : s.status !== 'archived' && (filter !== 'attention' || needsAttention(s)))
+  return spaces.filter(s => filter === 'archived' ? s.status === 'archived' : s.status !== 'archived' && (filter !== 'attention' || needsAttention(s)) && (filter !== 'pinned' || s.pinned))
     .filter(s => `${s.name} ${s.owner}`.toLocaleLowerCase().includes(q))
     .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || (b.last_opened_at ?? 0) - (a.last_opened_at ?? 0) || b.updated_at - a.updated_at || a.id.localeCompare(b.id))
 }
@@ -134,6 +143,51 @@ export function headerFacts(space) {
   if (f.source_as_of != null && Math.abs(f.source_as_of - f.last_success_at) >= 60) facts.push({ key: 'source', label: 'Source data from', at: f.source_as_of })
   return facts
 }
+// Who an actor string names, in words. Actors are stored as user, app, agent:<name> or upkeep:<name|schedule>.
+// An upkeep actor names its source by id. Show the name a person knows it by when the Space reports one; a
+// Space's own sync job (named by the Space id) has no other name, so it is not repeated back as a slug.
+function sourceName(space, id) {
+  if (id === space.id) return ''
+  const source = (space.freshness?.sources || []).find(item => item?.id === id)
+  return source?.name || source?.label || sourceHost(source?.url) || id
+}
+function actorWords(actor, space = {}) {
+  const [kind, ...rest] = String(actor || '').split(':')
+  const name = kind === 'upkeep' && rest.join(':').trim() !== 'schedule' ? sourceName(space, rest.join(':').trim()) : rest.join(':').trim()
+  if (kind === 'user') return { verb: 'Edited by you' }
+  if (kind === 'app') return { verb: 'Edited in this Space' }
+  if (kind === 'agent') return { verb: name ? `Edited in chat by ${name}` : 'Edited in chat' }
+  if (kind === 'upkeep') return { verb: rest.join(':').trim() === 'schedule' || !rest.join(':').trim() ? 'Refreshed on schedule' : name ? `Synced by ${name}` : 'Synced' }
+  return null
+}
+const sourceHost = url => { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return '' } }
+// The one freshness phrase the Space header shows, worded by what last changed the Space. It never names a
+// source or time the backend did not report; the full set of freshness facts lives in Details.
+export function freshnessPhrase(space) {
+  const f = space.freshness || {}
+  const state = spaceStatus(space, true)
+  if (state === 'archived') return { key: 'archive', label: 'Archived', at: space.archived_at ?? space.updated_at }
+  if (state === 'building') return { key: 'building', label: 'Building the first version' }
+  if (state === 'updating') return { key: 'updating', label: 'Refreshing now…' }
+  // A failed or blocked refresh still says how old the data on screen is: the last good update, when there is one.
+  if (state === 'failed' || state === 'blocked') {
+    const verb = state === 'failed' ? 'Refresh failed' : 'Refresh blocked'
+    return f.last_success_at != null ? { key: state, label: `${verb} · data from`, at: f.last_success_at } : { key: state, label: `${verb} · no successful update yet` }
+  }
+  const activity = space.activity
+  const words = activity && Number.isFinite(activity.at) ? actorWords(activity.actor, space) : null
+  const host = (f.sources || []).map(source => sourceHost(source?.url)).find(Boolean)
+  const refreshed = f.last_success_at != null ? { key: 'success', label: host ? `Refreshed from ${host}` : 'Updated', at: f.last_success_at } : null
+  // A refresh that wrote records also records an upkeep or agent change at about the same moment: prefer the refresh wording.
+  if (words && (!refreshed || activity.at > refreshed.at + 60)) {
+    const verb = activity.kind === 'code' && activity.actor?.startsWith('agent:') ? words.verb.replace('Edited in chat', 'Changed in chat') : words.verb
+    return { key: 'activity', label: verb, at: activity.at }
+  }
+  if (refreshed) return refreshed
+  return { key: 'success', label: f.last_attempt_status === 'failed' || f.last_attempt_status === 'blocked' ? 'No successful update yet' : 'Not refreshed yet' }
+}
+// Which notice kinds are failures: they are announced as alerts and drawn in the danger tone.
+export const ALERT_KINDS = ['failed', 'blocked', 'crashed', 'conflict']
 export function freshnessFacts(space, format) {
   const f = space.freshness || {}
   return [
@@ -166,6 +220,14 @@ export function refreshReason(space) {
   if (!space.manifest?.upkeep) return 'No refresh handler is declared. Ask the owner in chat to add one.'
   if (spaceStatus(space) === 'blocked') return space.attention?.message || 'Refresh is blocked. Review Permissions.'
   return ''
+}
+// The Refresh line in Details. A Space with no refresh handler is not broken, so the absence is never worded as a
+// fault. The backend records only the latest change, not who will keep the Space current, so this states the
+// absence neutrally and names no ongoing updater.
+export function refreshFact(space) {
+  const reason = refreshReason(space)
+  if (space.manifest?.upkeep || space.status === 'archived') return reason || 'Use Refresh now in the top bar.'
+  return 'This Space has no refresh of its own. It changes when you, chat or a connected source update it.'
 }
 export function runResult(run) {
   if (run.status === 'failed') return run.error || 'Refresh failed'
@@ -206,7 +268,9 @@ export function restoreCopy(space, rev) {
   const kept = space.head_rev > rev + 1 ? `Revisions ${rev + 1}–${space.head_rev} stay in history.` : `Revision ${space.head_rev} stays in history.`
   return `Restore revision ${rev}? This brings back the Space's earlier code as a new revision ${space.head_rev + 1}. ${kept} Your records, notes and statuses stay as they are now. Migration undo and data downgrades are not supported.`
 }
-export function errorText(error) {
+// The backend's error object for a failure. The desktop IPC wraps a REST error as
+// "Error invoking remote method 'hermes:api': Error: 423: {json}", so the object is parsed back out of the message.
+function backendError(error) {
   let detail = error?.error || error?.body?.error || error
   if (!detail?.code && typeof detail?.message === 'string') {
     const json = detail.message.indexOf('{')
@@ -214,6 +278,20 @@ export function errorText(error) {
       try { detail = JSON.parse(detail.message.slice(json)).error || detail } catch {}
     }
   }
+  return detail
+}
+const IPC_WRAPPER = /^Error invoking remote method '[^']*': (?:Error: )?/
+// A failure in words for the user, plus the raw text for diagnostics. Never the IPC wrapper in the words.
+export function failureParts(error) {
+  const detail = backendError(error)
+  const raw = diagnosticText(typeof error === 'string' ? error : error?.message || JSON.stringify({ code: detail?.code, reason: detail?.reason, message: detail?.message }))
+  // A structured error contributes only its code, reason and message to diagnostics: other fields may hold credentials.
+  // Strip the wrapper from whichever text wins: a plain or non-JSON failure carries it in its own message.
+  const words = (typeof detail?.message === 'string' && detail.message.trim() ? detail.message.trim() : raw).replace(IPC_WRAPPER, '')
+  return { message: diagnosticText(words), code: detail?.code ?? null, reason: detail?.reason ?? null, raw }
+}
+export function errorText(error) {
+  const detail = backendError(error)
   const message = detail?.message || String(error)
   if (detail?.code === 'incompatible' || /incompatible/.test(message)) {
     const versions = detail.from_version != null && detail.to_version != null ? ` Current data version ${detail.from_version}; target data version ${detail.to_version}.` : ''

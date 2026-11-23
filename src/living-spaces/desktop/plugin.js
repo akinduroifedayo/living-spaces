@@ -9,7 +9,7 @@ import { useState as useState2 } from "react";
 
 // src/desktop/ui/components.jsx
 import { Badge, Button, Codicon, CopyButton, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, fmtDateTime, relativeTime, Tip } from "@hermes/plugin-sdk";
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 // src/desktop/ui/markdown.mjs
 var FENCE = /^\s*```/;
@@ -177,15 +177,22 @@ function dismissBot(record, action) {
   return { id: action.activationId, statuses: [.../* @__PURE__ */ new Set([...statuses, action.status])] };
 }
 var botKind = (status) => status === "completed" ? "reply" : BOT_RETRY.includes(status) ? "failed" : "progress";
-function botBanner(action, { dismissed = false, expanded = false } = {}) {
+function failureCopy(action, who) {
+  if (action.reason === "unbound") return { label: `${who} didn't receive the request`, reason: `No chat is keeping this Space. Ask ${who} in chat to bind it.` };
+  const label = { offline: `Couldn't reach ${who}`, unknown: `Not sure ${who} received the request` }[action.status] || `The request to ${who} failed`;
+  return { label, reason: action.message || null };
+}
+function botBanner(action, { dismissed = false, expanded = false, owner = null } = {}) {
   if (!action || dismissed) return null;
   const kind = botKind(action.status);
   const answer = kind === "reply" && typeof action.answer === "string" && action.answer.trim() ? action.answer : null;
+  const failure2 = kind === "failed" ? failureCopy(action, typeof owner === "string" && owner.trim() ? owner.trim() : "Hermes") : null;
   return {
     status: action.status,
     kind,
-    label: kind === "reply" ? "Hermes replied" : kind === "failed" ? "Bot request failed" : `Bot request: ${action.status}`,
-    reason: answer ? null : action.message || null,
+    label: kind === "reply" ? "Hermes replied" : failure2 ? failure2.label : `Bot request: ${action.status}`,
+    reason: answer ? null : failure2 ? failure2.reason : action.message || null,
+    detail: failure2 && typeof action.detail === "string" && action.detail ? action.detail : null,
     summary: answer ? answerSummary(answer) : "",
     answer,
     at: Number.isFinite(action.at) ? action.at : null,
@@ -202,9 +209,9 @@ function formatBytes(bytes) {
   if (bytes < 1024 * 1024) return `${trimmed(bytes / 1024)} KB`;
   return `${trimmed(bytes / 1024 / 1024)} MB`;
 }
-function storageNotice(storage, hidden = null) {
+function storageNotice(storage2, hidden = null) {
   const percent = (row2) => Math.round(row2.used / row2.limit * 100);
-  const rows = (storage?.warnings || []).filter((row2) => Number.isFinite(row2?.used) && Number.isFinite(row2?.limit) && row2.limit > 0).map((row2) => ({ row: row2, id: `${row2.resource}:${percent(row2)}` }));
+  const rows = (storage2?.warnings || []).filter((row2) => Number.isFinite(row2?.used) && Number.isFinite(row2?.limit) && row2.limit > 0).map((row2) => ({ row: row2, id: `${row2.resource}:${percent(row2)}` }));
   const skip = new Set(String(hidden ?? "").split(","));
   const shown = rows.filter(({ id }) => !skip.has(id)).map(({ row: row2 }) => row2);
   if (!shown.length) return null;
@@ -216,7 +223,7 @@ function storageNotice(storage, hidden = null) {
   const subject = STORAGE_SUBJECT[row.resource] || String(row.resource).replace(/_bytes$/, "").replace(/_/g, " ");
   return { pct, key, title: `Storage ${pct}% full`, line: `${amount(row.used)} of ${amount(row.limit)} used by ${subject}. Writes stop at the limit.` };
 }
-var GUEST_WORDS = { unknown: "not reported", starting: "starting", loaded: "loaded", failed: "failed", faulted: "faulted (uncaught error, still running)" };
+var GUEST_WORDS = { unknown: "Not reported", starting: "Starting", loaded: "Loaded", failed: "Failed", faulted: "Faulted (uncaught error, still running)" };
 var guestWord = (state) => GUEST_WORDS[state] || String(state);
 function needsAttention(space) {
   return space.status !== "archived" && ["failed", "blocked", "crashed"].includes(spaceStatus(space, true));
@@ -226,17 +233,51 @@ function summaryCounts(spaces) {
 }
 function visibleSpaces(spaces, search, filter) {
   const q = search.trim().toLocaleLowerCase();
-  return spaces.filter((s) => filter === "archived" ? s.status === "archived" : s.status !== "archived" && (filter !== "attention" || needsAttention(s))).filter((s) => `${s.name} ${s.owner}`.toLocaleLowerCase().includes(q)).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || (b.last_opened_at ?? 0) - (a.last_opened_at ?? 0) || b.updated_at - a.updated_at || a.id.localeCompare(b.id));
+  return spaces.filter((s) => filter === "archived" ? s.status === "archived" : s.status !== "archived" && (filter !== "attention" || needsAttention(s)) && (filter !== "pinned" || s.pinned)).filter((s) => `${s.name} ${s.owner}`.toLocaleLowerCase().includes(q)).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || (b.last_opened_at ?? 0) - (a.last_opened_at ?? 0) || b.updated_at - a.updated_at || a.id.localeCompare(b.id));
 }
-function headerFacts(space) {
+function sourceName(space, id) {
+  if (id === space.id) return "";
+  const source = (space.freshness?.sources || []).find((item) => item?.id === id);
+  return source?.name || source?.label || sourceHost(source?.url) || id;
+}
+function actorWords(actor, space = {}) {
+  const [kind, ...rest] = String(actor || "").split(":");
+  const name = kind === "upkeep" && rest.join(":").trim() !== "schedule" ? sourceName(space, rest.join(":").trim()) : rest.join(":").trim();
+  if (kind === "user") return { verb: "Edited by you" };
+  if (kind === "app") return { verb: "Edited in this Space" };
+  if (kind === "agent") return { verb: name ? `Edited in chat by ${name}` : "Edited in chat" };
+  if (kind === "upkeep") return { verb: rest.join(":").trim() === "schedule" || !rest.join(":").trim() ? "Refreshed on schedule" : name ? `Synced by ${name}` : "Synced" };
+  return null;
+}
+var sourceHost = (url) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+};
+function freshnessPhrase(space) {
   const f = space.freshness || {};
-  if (space.status === "archived") return [{ key: "archive", label: "Archived", at: space.archived_at ?? space.updated_at }];
-  if (space.status === "building" || !space.head_rev) return [{ key: "building", label: "Building the first version" }];
-  if (f.last_success_at == null) return [{ key: "success", label: ["failed", "blocked"].includes(f.last_attempt_status) ? "No successful update yet" : "Not refreshed yet" }];
-  const facts = [{ key: "success", label: "Updated", at: f.last_success_at }];
-  if (f.source_as_of != null && Math.abs(f.source_as_of - f.last_success_at) >= 60) facts.push({ key: "source", label: "Source data from", at: f.source_as_of });
-  return facts;
+  const state = spaceStatus(space, true);
+  if (state === "archived") return { key: "archive", label: "Archived", at: space.archived_at ?? space.updated_at };
+  if (state === "building") return { key: "building", label: "Building the first version" };
+  if (state === "updating") return { key: "updating", label: "Refreshing now\u2026" };
+  if (state === "failed" || state === "blocked") {
+    const verb = state === "failed" ? "Refresh failed" : "Refresh blocked";
+    return f.last_success_at != null ? { key: state, label: `${verb} \xB7 data from`, at: f.last_success_at } : { key: state, label: `${verb} \xB7 no successful update yet` };
+  }
+  const activity = space.activity;
+  const words = activity && Number.isFinite(activity.at) ? actorWords(activity.actor, space) : null;
+  const host5 = (f.sources || []).map((source) => sourceHost(source?.url)).find(Boolean);
+  const refreshed = f.last_success_at != null ? { key: "success", label: host5 ? `Refreshed from ${host5}` : "Updated", at: f.last_success_at } : null;
+  if (words && (!refreshed || activity.at > refreshed.at + 60)) {
+    const verb = activity.kind === "code" && activity.actor?.startsWith("agent:") ? words.verb.replace("Edited in chat", "Changed in chat") : words.verb;
+    return { key: "activity", label: verb, at: activity.at };
+  }
+  if (refreshed) return refreshed;
+  return { key: "success", label: f.last_attempt_status === "failed" || f.last_attempt_status === "blocked" ? "No successful update yet" : "Not refreshed yet" };
 }
+var ALERT_KINDS = ["failed", "blocked", "crashed", "conflict"];
 function freshnessFacts(space, format) {
   const f = space.freshness || {};
   return [
@@ -268,6 +309,11 @@ function refreshReason(space) {
   if (!space.manifest?.upkeep) return "No refresh handler is declared. Ask the owner in chat to add one.";
   if (spaceStatus(space) === "blocked") return space.attention?.message || "Refresh is blocked. Review Permissions.";
   return "";
+}
+function refreshFact(space) {
+  const reason = refreshReason(space);
+  if (space.manifest?.upkeep || space.status === "archived") return reason || "Use Refresh now in the top bar.";
+  return "This Space has no refresh of its own. It changes when you, chat or a connected source update it.";
 }
 function runResult(run) {
   if (run.status === "failed") return run.error || "Refresh failed";
@@ -308,7 +354,7 @@ function restoreCopy(space, rev) {
   const kept = space.head_rev > rev + 1 ? `Revisions ${rev + 1}\u2013${space.head_rev} stay in history.` : `Revision ${space.head_rev} stays in history.`;
   return `Restore revision ${rev}? This brings back the Space's earlier code as a new revision ${space.head_rev + 1}. ${kept} Your records, notes and statuses stay as they are now. Migration undo and data downgrades are not supported.`;
 }
-function errorText(error) {
+function backendError(error) {
   let detail = error?.error || error?.body?.error || error;
   if (!detail?.code && typeof detail?.message === "string") {
     const json = detail.message.indexOf("{");
@@ -319,6 +365,17 @@ function errorText(error) {
       }
     }
   }
+  return detail;
+}
+var IPC_WRAPPER = /^Error invoking remote method '[^']*': (?:Error: )?/;
+function failureParts(error) {
+  const detail = backendError(error);
+  const raw = diagnosticText(typeof error === "string" ? error : error?.message || JSON.stringify({ code: detail?.code, reason: detail?.reason, message: detail?.message }));
+  const words = (typeof detail?.message === "string" && detail.message.trim() ? detail.message.trim() : raw).replace(IPC_WRAPPER, "");
+  return { message: diagnosticText(words), code: detail?.code ?? null, reason: detail?.reason ?? null, raw };
+}
+function errorText(error) {
+  const detail = backendError(error);
   const message = detail?.message || String(error);
   if (detail?.code === "incompatible" || /incompatible/.test(message)) {
     const versions = detail.from_version != null && detail.to_version != null ? ` Current data version ${detail.from_version}; target data version ${detail.to_version}.` : "";
@@ -351,19 +408,15 @@ function absolute(seconds) {
   const zone = new Intl.DateTimeFormat(void 0, { timeZoneName: "short" }).formatToParts(date).find((p) => p.type === "timeZoneName")?.value || "";
   return `${fmtDateTime.format(date)} ${zone}`.trim();
 }
-function Time({ at, children, relative: asRelative = false }) {
-  if (!absolute(at)) return null;
-  return /* @__PURE__ */ jsx("time", { dateTime: new Date(at * 1e3).toISOString(), title: absolute(at), children: children ?? (asRelative ? relative(at) : absolute(at)) });
+var fmtClock = new Intl.DateTimeFormat(void 0, { timeStyle: "short" });
+function clock(seconds, now = Date.now()) {
+  if (!absolute(seconds)) return "";
+  const date = new Date(seconds * 1e3);
+  return date.toDateString() === new Date(now).toDateString() ? fmtClock.format(date) : absolute(seconds);
 }
-function Freshness({ facts }) {
-  return facts.map((fact, index) => /* @__PURE__ */ jsxs("span", { children: [
-    index > 0 && " \xB7 ",
-    fact.at == null ? fact.label : /* @__PURE__ */ jsxs(Fragment, { children: [
-      fact.label,
-      " ",
-      /* @__PURE__ */ jsx(Time, { at: fact.at, relative: true })
-    ] })
-  ] }, fact.key));
+function Time({ at, children, relative: asRelative = false, short = false }) {
+  if (!absolute(at)) return null;
+  return /* @__PURE__ */ jsx("time", { dateTime: new Date(at * 1e3).toISOString(), title: absolute(at), children: children ?? (asRelative ? relative(at) : short ? clock(at) : absolute(at)) });
 }
 function Icon({ name, spin = false }) {
   return /* @__PURE__ */ jsx(Codicon, { name, "aria-hidden": "true", className: spin ? "ls-spin" : void 0 });
@@ -375,8 +428,20 @@ function StatusPill({ status, label }) {
     label || pill.label
   ] });
 }
+function SpaceIcon({ icon }) {
+  const name = iconName(icon);
+  const [missing, setMissing] = useState(null);
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const element = ref.current?.querySelector(".codicon") || ref.current?.firstElementChild;
+    if (!element || typeof getComputedStyle !== "function") return;
+    const content = getComputedStyle(element, "::before").content;
+    setMissing(content === "none" ? name : null);
+  }, [name]);
+  return /* @__PURE__ */ jsx("span", { ref, className: "ls-icon-slot", children: /* @__PURE__ */ jsx(Icon, { name: missing === name ? "layers" : name }) });
+}
 function SpaceTile({ space, small = false }) {
-  return /* @__PURE__ */ jsx("span", { className: `ls-tile${small ? " ls-tile-small" : ""}`, style: { "--ls-accent": accentColor(space.accent) }, children: /* @__PURE__ */ jsx(Icon, { name: iconName(space.icon) }) });
+  return /* @__PURE__ */ jsx("span", { className: `ls-tile${small ? " ls-tile-small" : ""}`, style: { "--ls-accent": accentColor(space.accent) }, children: /* @__PURE__ */ jsx(SpaceIcon, { icon: space.icon }) });
 }
 function OwnerChip({ owner = "Hermes" }) {
   return /* @__PURE__ */ jsxs("span", { className: "ls-owner", children: [
@@ -402,9 +467,9 @@ function CopyPrompt({ text, label = "Copy" }) {
     error && /* @__PURE__ */ jsx("span", { role: "alert", children: error })
   ] });
 }
-function Banner({ kind = "info", title, children, actions }) {
-  return /* @__PURE__ */ jsxs("div", { className: `ls-banner ls-${kind}`, role: ["failed", "blocked", "crashed", "conflict"].includes(kind) ? "alert" : "status", children: [
-    /* @__PURE__ */ jsx(Icon, { name: kind === "info" ? "info" : "warning" }),
+function Banner({ kind = "info", title, children, actions, noticeKey }) {
+  return /* @__PURE__ */ jsxs("div", { className: `ls-banner ls-${kind}`, "data-notice": noticeKey, role: ALERT_KINDS.includes(kind) ? "alert" : "status", children: [
+    /* @__PURE__ */ jsx(Icon, { name: kind === "info" ? "info" : kind === "storage" ? "database" : "warning" }),
     /* @__PURE__ */ jsxs("div", { children: [
       /* @__PURE__ */ jsx("strong", { children: title }),
       children && /* @__PURE__ */ jsx("div", { className: "ls-secondary", children }),
@@ -425,7 +490,7 @@ function Answer({ text, onOpenLink }) {
     return /* @__PURE__ */ jsx(List, { children: block.items.map((item, n) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx(Spans, { spans: item, onOpenLink }) }, n)) }, index);
   })() : /* @__PURE__ */ jsx("p", { children: /* @__PURE__ */ jsx(Spans, { spans: block.spans, onOpenLink }) }, index));
 }
-function Drawer({ title, description, children, onClose, note, returnFocus }) {
+function Drawer({ title, description, children, onClose, note, returnFocus, heading }) {
   const trigger = useRef(returnFocus || (typeof document === "undefined" ? null : document.activeElement));
   const close = useRef(null);
   return /* @__PURE__ */ jsx(Dialog, { open: true, onOpenChange: (open) => !open && onClose(), children: /* @__PURE__ */ jsxs(
@@ -444,6 +509,7 @@ function Drawer({ title, description, children, onClose, note, returnFocus }) {
       },
       children: [
         /* @__PURE__ */ jsxs(DialogHeader, { className: "ls-sheet-header", children: [
+          heading,
           /* @__PURE__ */ jsx(DialogTitle, { children: title }),
           /* @__PURE__ */ jsxs(Button, { ref: close, onClick: onClose, variant: "ghost", size: "sm", className: "ls-action", children: [
             /* @__PURE__ */ jsx(Icon, { name: "close" }),
@@ -509,12 +575,126 @@ function DecisionDialog({ title, description, confirmLabel, cancelLabel = "Cance
   ) });
 }
 
+// src/desktop/ui/snapshots.mjs
+var PREFIX = "living-spaces:snapshot:";
+var INDEX = "living-spaces:snapshot-index";
+var SNAPSHOT_LIMITS = Object.freeze({ maxChars: 2e5, budgetChars: 12e5, maxEntries: 24, width: 480, minSide: 16, maxSide: 1024 });
+var IMAGE = /^data:image\/(?:webp|png);base64,[A-Za-z0-9+/]+={0,2}$/;
+function encodedSize(image) {
+  let b;
+  try {
+    b = Uint8Array.from(atob(image.slice(image.indexOf(",") + 1, image.indexOf(",") + 49)), (c) => c.charCodeAt(0));
+  } catch {
+    return null;
+  }
+  const ascii = (at, n) => String.fromCharCode(...b.subarray(at, at + n));
+  if (image.startsWith("data:image/png") && b.length >= 24 && b[0] === 137 && ascii(1, 3) === "PNG" && ascii(12, 4) === "IHDR") {
+    const view = new DataView(b.buffer);
+    return { width: view.getUint32(16), height: view.getUint32(20) };
+  }
+  if (!image.startsWith("data:image/webp") || b.length < 30 || ascii(0, 4) !== "RIFF" || ascii(8, 4) !== "WEBP") return null;
+  const chunk = ascii(12, 4);
+  if (chunk === "VP8 " && b[23] === 157 && b[24] === 1 && b[25] === 42) return { width: (b[26] | b[27] << 8) & 16383, height: (b[28] | b[29] << 8) & 16383 };
+  if (chunk === "VP8X") return { width: 1 + (b[24] | b[25] << 8 | b[26] << 16), height: 1 + (b[27] | b[28] << 8 | b[29] << 16) };
+  if (chunk === "VP8L" && b[20] === 47) return { width: 1 + (b[21] | (b[22] & 63) << 8), height: 1 + (b[22] >> 6 | b[23] << 2 | (b[24] & 15) << 10) };
+  return null;
+}
+var side = (value) => Number.isInteger(value) && value >= SNAPSHOT_LIMITS.minSide && value <= SNAPSHOT_LIMITS.maxSide;
+var snapshotKey = (scopeKey, sid) => PREFIX + JSON.stringify([scopeKey ?? null, sid]);
+function parseSnapshot(value) {
+  let snapshot = value;
+  if (typeof value === "string") {
+    try {
+      snapshot = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  if (!snapshot || typeof snapshot !== "object") return null;
+  const { image, width, height, at, rev } = snapshot;
+  if (typeof image !== "string" || image.length > SNAPSHOT_LIMITS.maxChars || !IMAGE.test(image)) return null;
+  if (!side(width) || !side(height) || !Number.isFinite(at) || !(rev == null || Number.isSafeInteger(rev))) return null;
+  const encoded = encodedSize(image);
+  if (!encoded || encoded.width !== width || encoded.height !== height) return null;
+  return { image, width, height, at, rev: rev ?? null };
+}
+var storage = () => {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+};
+var readIndex = (store) => {
+  try {
+    const keys = JSON.parse(store.getItem(INDEX) || "[]");
+    return Array.isArray(keys) ? keys.filter((key) => typeof key === "string" && key.startsWith(PREFIX)) : [];
+  } catch {
+    return [];
+  }
+};
+function readSnapshot(scopeKey, sid, rev) {
+  const store = storage();
+  if (!store) return null;
+  let snapshot;
+  try {
+    snapshot = parseSnapshot(store.getItem(snapshotKey(scopeKey, sid)));
+  } catch {
+    return null;
+  }
+  if (!snapshot || rev != null && snapshot.rev != null && snapshot.rev !== rev) return null;
+  return snapshot;
+}
+function writeSnapshot(scopeKey, sid, value) {
+  const snapshot = parseSnapshot(value);
+  const store = storage();
+  if (!snapshot || !store) return false;
+  const key = snapshotKey(scopeKey, sid);
+  const serialised = JSON.stringify(snapshot);
+  const keys = readIndex(store).filter((entry) => entry !== key);
+  try {
+    const sizes = new Map(keys.map((entry) => [entry, store.getItem(entry)?.length ?? 0]));
+    let total = serialised.length + [...sizes.values()].reduce((sum, size) => sum + size, 0);
+    while (keys.length && (keys.length + 1 > SNAPSHOT_LIMITS.maxEntries || total > SNAPSHOT_LIMITS.budgetChars)) {
+      const oldest = keys.shift();
+      total -= sizes.get(oldest);
+      store.removeItem(oldest);
+    }
+    store.setItem(key, serialised);
+    store.setItem(INDEX, JSON.stringify([...keys, key]));
+    return true;
+  } catch {
+    try {
+      store.removeItem(key);
+    } catch {
+    }
+    return false;
+  }
+}
+function forgetSnapshot(scopeKey, sid) {
+  const store = storage();
+  if (!store) return;
+  const key = snapshotKey(scopeKey, sid);
+  try {
+    store.removeItem(key);
+    store.setItem(INDEX, JSON.stringify(readIndex(store).filter((entry) => entry !== key)));
+  } catch {
+  }
+}
+
 // src/desktop/ui/index.jsx
 import { Fragment as Fragment2, jsx as jsx2, jsxs as jsxs2 } from "react/jsx-runtime";
-function SpaceCard({ space }) {
+function CardPreview({ space, scopeKey = null }) {
+  const snapshot = readSnapshot(scopeKey, space.id, space.head_rev || null);
+  const [failed, setFailed] = useState2(null);
+  const usable = !!snapshot && failed !== snapshot.image;
+  return /* @__PURE__ */ jsx2("div", { className: `ls-thumb${usable ? "" : " ls-thumb-fallback"}`, style: { "--ls-accent": accentColor(space.accent) }, "data-preview": usable ? "snapshot" : "fallback", children: usable ? /* @__PURE__ */ jsx2("img", { src: snapshot.image, width: snapshot.width, height: snapshot.height, alt: "", decoding: "async", draggable: false, onError: () => setFailed(snapshot.image) }) : /* @__PURE__ */ jsx2("span", { className: "ls-thumb-mark", "aria-hidden": "true", children: /* @__PURE__ */ jsx2(SpaceIcon, { icon: space.icon }) }) });
+}
+function SpaceCard({ space, scopeKey = null }) {
   const status = spaceStatus(space);
   const lines = cardLines(space, relative);
   const facts = freshnessFacts(space, absolute);
+  const phrase = freshnessPhrase(space);
   return /* @__PURE__ */ jsxs2(
     "a",
     {
@@ -527,55 +707,64 @@ function SpaceCard({ space }) {
           host.navigate(spaceRoute(space.id));
         }
       },
-      "aria-label": `${space.name}, ${status === "failed" ? "Failed" : status[0].toUpperCase() + status.slice(1)}, owner ${space.owner}. ${lines.join(". ")}. ${facts.map((f) => `${f.label} ${f.value}`).join(". ")}`,
+      "aria-label": `${space.name}, ${status[0].toUpperCase() + status.slice(1)}, owner ${space.owner}. ${lines.filter(Boolean).join(". ")}. ${facts.map((f) => `${f.label} ${f.value}`).join(". ")}${space.pinned ? ". Pinned" : ""}`,
       children: [
-        /* @__PURE__ */ jsxs2("div", { className: "ls-card-top", children: [
-          /* @__PURE__ */ jsx2(SpaceTile, { space }),
-          /* @__PURE__ */ jsxs2("div", { children: [
-            /* @__PURE__ */ jsx2("div", { className: "ls-card-name", children: space.name }),
-            /* @__PURE__ */ jsx2(OwnerChip, { owner: space.owner })
-          ] }),
-          space.pinned ? /* @__PURE__ */ jsxs2("span", { className: "ls-pin", children: [
+        /* @__PURE__ */ jsxs2("div", { className: "ls-card-media", children: [
+          /* @__PURE__ */ jsx2(CardPreview, { space, scopeKey }),
+          status !== "ready" && /* @__PURE__ */ jsx2("span", { className: "ls-card-state", children: /* @__PURE__ */ jsx2(StatusPill, { status }) }),
+          space.pinned ? /* @__PURE__ */ jsxs2("span", { className: "ls-pin", title: "Pinned", children: [
             /* @__PURE__ */ jsx2(Icon, { name: "pinned" }),
             /* @__PURE__ */ jsx2("span", { className: "ls-sr", children: "Pinned" })
           ] }) : null
         ] }),
-        /* @__PURE__ */ jsx2("p", { className: "ls-card-description", children: space.description }),
-        /* @__PURE__ */ jsx2("div", { children: /* @__PURE__ */ jsx2(StatusPill, { status }) }),
-        /* @__PURE__ */ jsxs2("div", { className: "ls-card-freshness", children: [
-          /* @__PURE__ */ jsx2("span", { children: lines[0] }),
-          lines[1] && /* @__PURE__ */ jsx2("span", { className: "ls-secondary", children: lines[1] }),
-          space.status !== "archived" && status !== "building" && /* @__PURE__ */ jsxs2(Fragment2, { children: [
-            space.freshness?.last_attempt_at != null && /* @__PURE__ */ jsxs2("div", { className: "ls-secondary", children: [
-              "Last attempt ",
-              /* @__PURE__ */ jsx2(Time, { at: space.freshness.last_attempt_at, relative: true }),
-              space.freshness.last_attempt_status && ` \xB7 ${space.freshness.last_attempt_status}`
-            ] }),
-            space.freshness?.source_as_of != null && /* @__PURE__ */ jsxs2("div", { className: "ls-secondary", children: [
-              "Source data from ",
-              /* @__PURE__ */ jsx2(Time, { at: space.freshness.source_as_of, relative: true })
-            ] })
+        /* @__PURE__ */ jsxs2("div", { className: "ls-card-caption", children: [
+          /* @__PURE__ */ jsx2(SpaceTile, { space, small: true }),
+          /* @__PURE__ */ jsxs2("div", { className: "ls-card-text", children: [
+            /* @__PURE__ */ jsx2("div", { className: "ls-card-name", children: space.name }),
+            space.description && /* @__PURE__ */ jsx2("p", { className: "ls-card-description", children: space.description }),
+            /* @__PURE__ */ jsx2("div", { className: "ls-card-freshness", children: phrase.at != null ? /* @__PURE__ */ jsxs2(Fragment2, { children: [
+              phrase.label,
+              " \xB7 ",
+              /* @__PURE__ */ jsx2(Time, { at: phrase.at, relative: true })
+            ] }) : phrase.label })
           ] })
         ] })
       ]
     }
   );
 }
-function FirstSpace({ ctx }) {
-  const [notice, setNotice] = useState2("");
+function newChatAction(ctx) {
   const actions = ctx.listActions?.() || [];
-  const action = actions.find((a) => a.id === "session.new") || actions.find((a) => /new.*chat|new.*session/i.test(`${a.id} ${a.label}`));
-  function start() {
-    const result = ctx.runAction?.(action.id);
+  return actions.find((a) => a.id === "session.new") || actions.find((a) => /new.*chat|new.*session/i.test(`${a.id} ${a.label}`));
+}
+function useNewChat(ctx) {
+  const [notice, setNotice] = useState2("");
+  const action = newChatAction(ctx);
+  const start = () => {
+    const result = action && ctx.runAction?.(action.id);
     if (!result?.ok) setNotice("A new chat is unavailable. Copy an example prompt and paste it into a normal Hermes chat.");
-  }
+  };
+  return { action, start, notice };
+}
+function NewSpaceCard({ ctx }) {
+  const { action, start, notice } = useNewChat(ctx);
+  return /* @__PURE__ */ jsx2("div", { role: "listitem", className: "ls-newcard", children: /* @__PURE__ */ jsxs2("div", { children: [
+    /* @__PURE__ */ jsx2(Icon, { name: "comment-discussion" }),
+    /* @__PURE__ */ jsx2("strong", { children: "Build a Space in chat" }),
+    /* @__PURE__ */ jsx2("span", { className: "ls-secondary", children: "Describe it to Hermes. It appears here as Building." }),
+    /* @__PURE__ */ jsx2("div", { className: "ls-actions", children: action ? /* @__PURE__ */ jsx2(Action, { icon: "add", onClick: start, children: "Start a new chat" }) : /* @__PURE__ */ jsx2(CopyPrompt, { text: PROMPTS[0], label: "Copy prompt" }) }),
+    notice && /* @__PURE__ */ jsx2("p", { role: "status", children: notice })
+  ] }) });
+}
+function FirstSpace({ ctx }) {
+  const { action, start, notice } = useNewChat(ctx);
   return /* @__PURE__ */ jsxs2("div", { className: "ls-empty", children: [
     /* @__PURE__ */ jsxs2("div", { className: "ls-empty-tiles", "aria-hidden": "true", children: [
       /* @__PURE__ */ jsx2(SpaceTile, { space: { accent: "blue", icon: "book" } }),
       /* @__PURE__ */ jsx2(SpaceTile, { space: { accent: "green", icon: "calendar" } }),
       /* @__PURE__ */ jsx2(SpaceTile, { space: { accent: "purple", icon: "graph" } })
     ] }),
-    /* @__PURE__ */ jsx2(EmptyState, { title: "Build your first Space in chat", description: "An open canvas for your bots that live in Hermes. Describe what you want in a normal Hermes chat, then open it here." }),
+    /* @__PURE__ */ jsx2(EmptyState, { title: "Build your first Space in chat", description: "A Space is a canvas your bots keep alive. Describe one in a normal Hermes chat and it appears here." }),
     PROMPTS.map((text) => /* @__PURE__ */ jsx2(CopyPrompt, { text }, text)),
     /* @__PURE__ */ jsxs2("div", { className: "ls-actions", children: [
       action ? /* @__PURE__ */ jsx2(Action, { primary: true, icon: "add", onClick: start, children: "Start a new chat" }) : /* @__PURE__ */ jsx2(CopyPrompt, { text: PROMPTS[0], label: "Start a new chat" }),
@@ -592,24 +781,31 @@ function SpacesIndex({ ctx, scopeKey = null }) {
   const spaces = list.data?.spaces || [];
   const counts = summaryCounts(spaces);
   const visible = visibleSpaces(spaces, search, filter);
-  return /* @__PURE__ */ jsxs2("div", { className: "ls-page", "data-testid": "spaces-index", children: [
+  const pinned = spaces.some((s) => s.pinned && s.status !== "archived");
+  const browsing = !search && filter === "all";
+  return /* @__PURE__ */ jsxs2("div", { className: "ls-page ls-gallery", "data-testid": "spaces-index", children: [
     /* @__PURE__ */ jsxs2("div", { className: "ls-page-heading", children: [
-      /* @__PURE__ */ jsx2("h1", { children: "Spaces" }),
-      list.data && /* @__PURE__ */ jsxs2("span", { className: "ls-secondary ls-num", children: [
-        counts.active,
-        " active \xB7 ",
-        counts.attention,
-        " need attention"
-      ] })
+      /* @__PURE__ */ jsxs2("div", { className: "ls-page-title", children: [
+        /* @__PURE__ */ jsx2("h1", { children: "Spaces" }),
+        list.data && /* @__PURE__ */ jsxs2("span", { className: "ls-secondary ls-num", children: [
+          counts.active,
+          " active \xB7 ",
+          counts.attention,
+          " need attention"
+        ] })
+      ] }),
+      list.data && spaces.length > 0 && /* @__PURE__ */ jsx2(SearchField, { value: search, onChange: setSearch, placeholder: "Search Spaces or owner", "aria-label": "Search Spaces or owner", variant: "box", containerClassName: "ls-search" })
     ] }),
     list.error && /* @__PURE__ */ jsx2(ErrorState, { title: "Spaces could not be loaded", description: list.error.message, children: /* @__PURE__ */ jsx2(Action, { onClick: () => list.refetch(), children: "Try again" }) }),
-    list.isLoading ? /* @__PURE__ */ jsx2("div", { className: "ls-grid", "aria-label": "Loading Spaces", children: [1, 2, 3].map((n) => /* @__PURE__ */ jsx2(Skeleton, { style: { height: 240 } }, n)) }) : list.data && !spaces.length ? /* @__PURE__ */ jsx2(FirstSpace, { ctx }) : list.data ? /* @__PURE__ */ jsxs2(Fragment2, { children: [
+    list.isLoading ? /* @__PURE__ */ jsx2("div", { className: "ls-grid", "aria-label": "Loading Spaces", children: [1, 2, 3].map((n) => /* @__PURE__ */ jsx2(Skeleton, { className: "ls-thumb" }, n)) }) : list.data && !spaces.length ? /* @__PURE__ */ jsx2(FirstSpace, { ctx }) : list.data ? /* @__PURE__ */ jsxs2(Fragment2, { children: [
       /* @__PURE__ */ jsxs2("div", { className: "ls-toolbar", children: [
-        /* @__PURE__ */ jsx2(SearchField, { value: search, onChange: setSearch, placeholder: "Search Spaces or owner", "aria-label": "Search Spaces or owner", variant: "box", containerClassName: "ls-search" }),
-        /* @__PURE__ */ jsx2(SegmentedControl, { value: filter, onChange: setFilter, sizing: "content", options: [{ id: "all", label: "All" }, { id: "attention", label: `Needs attention \xB7 ${counts.attention}` }, { id: "archived", label: "Archived" }] }),
-        /* @__PURE__ */ jsx2("span", { className: "ls-sort", children: "Sorted by recently used" })
+        /* @__PURE__ */ jsx2(SegmentedControl, { value: filter, onChange: setFilter, sizing: "content", options: [{ id: "all", label: "Recent" }, ...pinned ? [{ id: "pinned", label: "Pinned" }] : [], { id: "attention", label: `Needs attention \xB7 ${counts.attention}` }, { id: "archived", label: "Archived" }] }),
+        /* @__PURE__ */ jsx2("span", { className: "ls-sort", children: "Pinned first, then recently opened" })
       ] }),
-      visible.length ? /* @__PURE__ */ jsx2("div", { className: "ls-grid", role: "list", "aria-label": "Spaces", children: visible.map((s) => /* @__PURE__ */ jsx2("div", { role: "listitem", children: /* @__PURE__ */ jsx2(SpaceCard, { space: s }) }, s.id)) }) : /* @__PURE__ */ jsx2("div", { role: "status", children: /* @__PURE__ */ jsx2(EmptyState, { title: search ? `No Spaces match \u201C${search}\u201D. Try another name or owner.` : filter === "attention" ? "Nothing needs attention." : "No archived Spaces." }) })
+      visible.length || browsing ? /* @__PURE__ */ jsxs2("div", { className: "ls-grid", role: "list", "aria-label": "Spaces", children: [
+        visible.map((s) => /* @__PURE__ */ jsx2("div", { role: "listitem", children: /* @__PURE__ */ jsx2(SpaceCard, { space: s, scopeKey }) }, s.id)),
+        browsing && /* @__PURE__ */ jsx2(NewSpaceCard, { ctx })
+      ] }) : /* @__PURE__ */ jsx2("div", { role: "status", children: /* @__PURE__ */ jsx2(EmptyState, { title: search ? `No Spaces match \u201C${search}\u201D. Try another name or owner.` : filter === "attention" ? "Nothing needs attention." : filter === "pinned" ? "No pinned Spaces." : "No archived Spaces." }) })
     ] }) : null,
     /* @__PURE__ */ jsx2("p", { className: "ls-footer", children: "Spaces are built and changed in a normal chat. Ask your agent to \u201Cbuild\u2026\u201D, \u201Cchange\u2026\u201D or \u201Ckeep \u2026 current\u201D." })
   ] });
@@ -617,7 +813,7 @@ function SpacesIndex({ ctx, scopeKey = null }) {
 
 // src/desktop/ui/space.jsx
 import { CopyButton as CopyButton2, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery5, useQueryClient } from "@hermes/plugin-sdk";
-import { useEffect as useEffect3, useId, useLayoutEffect, useMemo as useMemo2, useRef as useRef5, useState as useState6 } from "react";
+import { useEffect as useEffect3, useId, useLayoutEffect as useLayoutEffect2, useMemo as useMemo2, useRef as useRef5, useState as useState6 } from "react";
 
 // src/desktop/ui/dismissal.mjs
 var memory = /* @__PURE__ */ new Map();
@@ -743,10 +939,10 @@ function HistorySheet({ ctx, scopeKey = null, space, onClose, onChanged, initial
     } })
   ] });
 }
-function StorageNotice({ storage, onReview, storageKey }) {
+function StorageNotice({ storage: storage2, onReview, storageKey }) {
   const [stored, setStored] = useState3(() => ({ storageKey, value: storageKey ? readDismissed(storageKey) : null }));
   const hidden = !storageKey ? null : stored.storageKey === storageKey ? stored.value : readDismissed(storageKey);
-  const notice = storageNotice(storage, hidden);
+  const notice = storageNotice(storage2, hidden);
   if (!notice) return null;
   const dismiss = () => {
     writeDismissed(storageKey, notice.key);
@@ -776,8 +972,8 @@ function StorageSection({ ctx, space, onChanged }) {
       current.active = false;
     };
   }, [ctx, space.id]);
-  const storage = space.storage;
-  if (!storage) return null;
+  const storage2 = space.storage;
+  if (!storage2) return null;
   const base = spacePath(space.id);
   const reset = () => {
     setProposal(null);
@@ -800,8 +996,8 @@ function StorageSection({ ctx, space, onChanged }) {
   }
   return /* @__PURE__ */ jsxs3("section", { "aria-label": "Storage", children: [
     /* @__PURE__ */ jsx3("h3", { children: "Storage" }),
-    /* @__PURE__ */ jsx3(StorageNotice, { storage }),
-    /* @__PURE__ */ jsx3("ul", { children: Object.entries(storage.categories).map(([name, row]) => /* @__PURE__ */ jsxs3("li", { children: [
+    /* @__PURE__ */ jsx3(StorageNotice, { storage: storage2 }),
+    /* @__PURE__ */ jsx3("ul", { children: Object.entries(storage2.categories).map(([name, row]) => /* @__PURE__ */ jsxs3("li", { children: [
       name,
       ": ",
       row.count,
@@ -812,7 +1008,7 @@ function StorageSection({ ctx, space, onChanged }) {
       row.source_details != null && ` \xB7 ${row.source_details} source run details`
     ] }, name)) }),
     /* @__PURE__ */ jsxs3("p", { className: "ls-secondary", children: [
-      storage.bytes_basis,
+      storage2.bytes_basis,
       " Native history is native-owned, excluded from these counts and never deleted here. No automatic cleanup is scheduled."
     ] }),
     /* @__PURE__ */ jsxs3("details", { children: [
@@ -1476,7 +1672,9 @@ function createBotActions({ host: host5, backend, post, onStatus, isActive, user
     release = null;
     heldRoute = null;
     const status = error.actionStatus || (current ? "unknown" : "offline");
-    return publish(publicStatus(current, status, `${error.message || "Native request unavailable"}. No automatic resend.`));
+    const { message, reason, raw } = failureParts(error?.message || error?.error || error?.body?.error ? error : "Native request unavailable");
+    const words = `${message}${/[.!?]$/.test(message) ? "" : "."} No automatic resend.`;
+    return publish({ ...publicStatus(current, status, words), ...reason ? { reason } : {}, ...raw !== message ? { detail: raw } : {} });
   }
   async function attach(route, sessionId) {
     const resumed = await rpc(route, "session.resume", { session_id: sessionId, omit_messages: true });
@@ -1683,6 +1881,8 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
   let lastLog = -Infinity;
   let overflowReported = false;
   let faults = 0;
+  let snapshotId = 0;
+  const snapshots = /* @__PURE__ */ new Map();
   const overflow = () => {
     if (overflowReported) return;
     overflowReported = true;
@@ -1691,6 +1891,7 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
   const stop = () => {
     if (state === "closed") return;
     state = "closed";
+    for (const settle of snapshots.values()) settle(null);
     frame?.removeEventListener("load", onLoad);
     port.onmessage = null;
     port.close();
@@ -1715,6 +1916,13 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
   port.onmessage = async (e) => {
     if (state !== "booted") return;
     const m = e.data;
+    if (m?.type === "snapshot") {
+      const settle = snapshots.get(m.id);
+      if (!settle) return;
+      const valid = !Array.isArray(m) && m.v === 1 && m.ok === true && typeof m.image === "string" && m.image.length <= 35e4 && /^data:image\/(?:webp|png);base64,[A-Za-z0-9+/]+={0,2}$/.test(m.image) && [m.width, m.height].every((size) => Number.isInteger(size) && size >= 16 && size <= 1024);
+      settle(valid ? { image: m.image, width: m.width, height: m.height } : null);
+      return;
+    }
     const reply = (body) => {
       if (state === "booted" && Number.isSafeInteger(m?.id)) port.postMessage({ v: 1, id: m.id, ...body });
     };
@@ -1779,6 +1987,24 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
     throw error;
   }
   return {
+    snapshot({ width = 640, timeoutMs = 2500 } = {}) {
+      if (state !== "booted" || !Number.isInteger(width) || width < 64 || width > 1024 || !Number.isFinite(timeoutMs) || timeoutMs < 0 || timeoutMs > 2147483647 || snapshotId === Number.MAX_SAFE_INTEGER) return Promise.resolve(null);
+      return new Promise((resolve) => {
+        const id = ++snapshotId;
+        const timer = setTimeout(() => snapshots.get(id)?.(null), timeoutMs);
+        const settle = (result) => {
+          clearTimeout(timer);
+          snapshots.delete(id);
+          resolve(result);
+        };
+        snapshots.set(id, settle);
+        try {
+          port.postMessage({ v: 1, type: "snapshot", id, width });
+        } catch {
+          settle(null);
+        }
+      });
+    },
     postEvent(event, payload) {
       if (state !== "booted") return;
       if (event === "data.changed" && checkGrant("data.query", grants)) return;
@@ -2034,6 +2260,15 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
   })();
   return {
     ready,
+    async snapshot(options) {
+      if (closed || !active() || !mounted) return null;
+      try {
+        const result = await mounted.snapshot(options);
+        return closed || !active() ? null : result;
+      } catch {
+        return null;
+      }
+    },
     checkAction() {
       return actions && byUser(() => actions.check());
     },
@@ -2073,7 +2308,7 @@ import { Fragment as Fragment6, jsx as jsx6, jsxs as jsxs6 } from "react/jsx-run
 function useHeaderMode(hasSpace) {
   const frame = useRef5(null);
   const [mode, setMode] = useState6("narrow");
-  useLayoutEffect(() => {
+  useLayoutEffect2(() => {
     const element = frame.current;
     if (!element || typeof ResizeObserver === "undefined") return;
     const measure = () => {
@@ -2087,7 +2322,7 @@ function useHeaderMode(hasSpace) {
   }, [hasSpace]);
   return [frame, mode];
 }
-function BotBanner({ action, storageKey, controller }) {
+function BotBanner({ action, storageKey, controller, owner }) {
   const replyId = useId();
   const key = botDismissKey(action);
   const [stored, setStored] = useState6(() => ({ storageKey, value: readDismissed(storageKey) }));
@@ -2095,7 +2330,7 @@ function BotBanner({ action, storageKey, controller }) {
   const [dismissedAction, setDismissedAction] = useState6(null);
   const [expandedFor, setExpandedFor] = useState6(null);
   const identity = key ?? action;
-  const banner = botBanner(action, { dismissed: dismissedAction === action || !!key && botDismissed(action, record), expanded: expandedFor === identity });
+  const banner = botBanner(action, { owner, dismissed: dismissedAction === action || !!key && botDismissed(action, record), expanded: expandedFor === identity });
   if (!banner) return null;
   const dismiss = () => {
     setDismissedAction(action);
@@ -2106,19 +2341,21 @@ function BotBanner({ action, storageKey, controller }) {
   };
   const failed = banner.kind === "failed";
   const canContinue = banner.collapsible && controller.current?.canContinue?.() === true;
-  return /* @__PURE__ */ jsxs6(Banner, { kind: failed ? "failed" : "info", title: /* @__PURE__ */ jsxs6(Fragment6, { children: [
+  return /* @__PURE__ */ jsxs6(Banner, { noticeKey: `bot:${key ?? "current"}:${action.status}`, kind: failed ? "failed" : "info", title: /* @__PURE__ */ jsxs6(Fragment6, { children: [
     banner.label,
     banner.at != null && /* @__PURE__ */ jsxs6(Fragment6, { children: [
       " \xB7 ",
-      /* @__PURE__ */ jsx6(Time, { at: banner.at })
+      /* @__PURE__ */ jsx6(Time, { at: banner.at, short: true })
     ] })
   ] }), actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
     banner.collapsible && /* @__PURE__ */ jsx6(Action, { "aria-expanded": banner.expanded, "aria-controls": replyId, onClick: () => setExpandedFor(banner.expanded ? null : identity), children: banner.expanded ? "Collapse" : "Read reply" }),
     banner.kind !== "reply" && /* @__PURE__ */ jsx6(Action, { onClick: () => controller.current?.checkAction(), children: "Check status" }),
     banner.canRetry && /* @__PURE__ */ jsx6(Action, { onClick: () => controller.current?.retryAction(), children: "Retry same request" }),
-    banner.canDismiss && /* @__PURE__ */ jsx6(Action, { "aria-label": banner.kind === "reply" ? "Dismiss reply" : void 0, onClick: dismiss, children: "Dismiss" })
+    banner.canDismiss && /* @__PURE__ */ jsx6(Action, { "aria-label": banner.kind === "reply" ? "Dismiss reply" : void 0, onClick: dismiss, children: "Dismiss" }),
+    banner.detail && /* @__PURE__ */ jsx6(CopyButton2, { text: `${banner.detail}${banner.at != null ? `
+${absolute(banner.at)}` : ""}`, label: "Copy details", showLabel: true, buttonSize: "sm" })
   ] }), children: [
-    banner.reason && /* @__PURE__ */ jsx6("span", { className: "ls-oneline", title: banner.reason, children: banner.reason }),
+    banner.reason && /* @__PURE__ */ jsx6("span", { className: "ls-reason", title: banner.reason, children: banner.reason }),
     banner.collapsible && /* @__PURE__ */ jsxs6(Fragment6, { children: [
       !banner.expanded && /* @__PURE__ */ jsx6("p", { className: "ls-oneline ls-answer-summary", title: banner.summary, children: banner.summary }),
       /* @__PURE__ */ jsx6("div", { id: replyId, className: "ls-collapse", "data-open": banner.expanded, children: /* @__PURE__ */ jsxs6("div", { inert: !banner.expanded || void 0, "aria-hidden": !banner.expanded, children: [
@@ -2131,29 +2368,122 @@ function BotBanner({ action, storageKey, controller }) {
     ] })
   ] });
 }
-function SpaceDetails({ dimensions, onClose, returnFocus }) {
-  return /* @__PURE__ */ jsx6(Drawer, { returnFocus, title: "Space details", onClose, children: /* @__PURE__ */ jsxs6("section", { "aria-label": "Runtime", children: [
-    /* @__PURE__ */ jsx6("h3", { children: "Runtime" }),
-    /* @__PURE__ */ jsxs6("dl", { className: "ls-facts", children: [
-      /* @__PURE__ */ jsxs6("div", { children: [
-        /* @__PURE__ */ jsx6("dt", { children: "Host" }),
-        /* @__PURE__ */ jsx6("dd", { children: PILLS[dimensions.host === "available" ? "ready" : dimensions.host]?.label || dimensions.host })
+var GRANT_WORDS = { net: "Internet", data: "Records", logs: "Diagnostic log", bot: "Bot requests", files: "Files", tools: "Private tools" };
+var sourceHost2 = (url) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+};
+function SpaceDetails({ space, dimensions, upkeepLabel, building, onOpen, onClose, returnFocus }) {
+  const phrase = freshnessPhrase(space);
+  const facts = freshnessFacts(space, absolute);
+  const reason = refreshReason(space);
+  const notice = storageNotice(space.storage);
+  const grants = space.grants || [];
+  const net = grants.find((grant) => grant.capability === "net");
+  const lastRun = space.recent_runs?.[0];
+  const sources = space.freshness?.sources || [];
+  return /* @__PURE__ */ jsxs6(Drawer, { returnFocus, title: "Space details", description: `Freshness, storage, access, history and runtime for ${space.name}`, onClose, heading: /* @__PURE__ */ jsx6(SpaceTile, { space, small: true }), children: [
+    /* @__PURE__ */ jsxs6("section", { "aria-label": "Freshness", className: "ls-detail", children: [
+      /* @__PURE__ */ jsx6("h3", { children: "Freshness" }),
+      /* @__PURE__ */ jsxs6("dl", { className: "ls-facts", children: [
+        /* @__PURE__ */ jsxs6("div", { children: [
+          /* @__PURE__ */ jsx6("dt", { children: "Latest change" }),
+          /* @__PURE__ */ jsxs6("dd", { children: [
+            phrase.label,
+            phrase.at != null && /* @__PURE__ */ jsxs6(Fragment6, { children: [
+              " \xB7 ",
+              /* @__PURE__ */ jsx6(Time, { at: phrase.at })
+            ] })
+          ] })
+        ] }),
+        facts.map((fact) => /* @__PURE__ */ jsxs6("div", { children: [
+          /* @__PURE__ */ jsx6("dt", { children: fact.label }),
+          /* @__PURE__ */ jsx6("dd", { children: fact.value })
+        ] }, fact.key)),
+        sources.map((source) => /* @__PURE__ */ jsxs6("div", { children: [
+          /* @__PURE__ */ jsx6("dt", { children: "Source" }),
+          /* @__PURE__ */ jsx6("dd", { children: [source.id, sourceHost2(source.url), source.failure_reason].filter(Boolean).join(" \xB7 ") })
+        ] }, source.id)),
+        !building && /* @__PURE__ */ jsxs6("div", { children: [
+          /* @__PURE__ */ jsx6("dt", { children: "Refresh" }),
+          /* @__PURE__ */ jsx6("dd", { children: refreshFact(space) })
+        ] }),
+        !building && /* @__PURE__ */ jsxs6("div", { children: [
+          /* @__PURE__ */ jsx6("dt", { children: "Upkeep" }),
+          /* @__PURE__ */ jsx6("dd", { children: upkeepLabel })
+        ] })
       ] }),
-      /* @__PURE__ */ jsxs6("div", { children: [
-        /* @__PURE__ */ jsx6("dt", { children: "Space app" }),
-        /* @__PURE__ */ jsx6("dd", { children: guestWord(dimensions.guest) })
+      !building && /* @__PURE__ */ jsx6("div", { className: "ls-actions", children: /* @__PURE__ */ jsx6(Action, { onClick: () => onOpen("upkeep"), children: "Manage upkeep" }) })
+    ] }),
+    space.storage && /* @__PURE__ */ jsxs6("section", { "aria-label": "Storage use", className: "ls-detail", children: [
+      /* @__PURE__ */ jsx6("h3", { children: "Storage" }),
+      notice ? /* @__PURE__ */ jsxs6(Fragment6, { children: [
+        /* @__PURE__ */ jsx6("p", { children: notice.title }),
+        /* @__PURE__ */ jsx6("p", { className: "ls-secondary", children: notice.line }),
+        /* @__PURE__ */ jsx6("div", { className: "ls-meter", "aria-hidden": "true", children: /* @__PURE__ */ jsx6("i", { style: { width: `${notice.pct}%` } }) })
+      ] }) : /* @__PURE__ */ jsx6("p", { className: "ls-secondary", children: "Within this Space's storage limits." }),
+      /* @__PURE__ */ jsx6("div", { className: "ls-actions", children: /* @__PURE__ */ jsx6(Action, { onClick: () => onOpen("history"), children: "Review storage" }) })
+    ] }),
+    !building && /* @__PURE__ */ jsxs6("section", { "aria-label": "Access", className: "ls-detail", children: [
+      /* @__PURE__ */ jsx6("h3", { children: "Access" }),
+      /* @__PURE__ */ jsxs6("dl", { className: "ls-facts", children: [
+        /* @__PURE__ */ jsxs6("div", { children: [
+          /* @__PURE__ */ jsx6("dt", { children: "Internet" }),
+          /* @__PURE__ */ jsx6("dd", { children: net?.status === "granted" ? "On" : net ? PILLS[net.status]?.label || net.status : "Not requested" })
+        ] }),
+        grants.filter((grant) => grant.capability !== "net").map((grant) => /* @__PURE__ */ jsxs6("div", { children: [
+          /* @__PURE__ */ jsx6("dt", { children: GRANT_WORDS[grant.capability] || grant.capability }),
+          /* @__PURE__ */ jsx6("dd", { children: PILLS[grant.status]?.label || grant.status })
+        ] }, grant.capability))
+      ] }),
+      /* @__PURE__ */ jsx6("div", { className: "ls-actions", children: /* @__PURE__ */ jsx6(Action, { onClick: () => onOpen("permissions"), children: "Manage access" }) })
+    ] }),
+    /* @__PURE__ */ jsxs6("section", { "aria-label": "History", className: "ls-detail", children: [
+      /* @__PURE__ */ jsx6("h3", { children: "History" }),
+      /* @__PURE__ */ jsxs6("dl", { className: "ls-facts", children: [
+        /* @__PURE__ */ jsxs6("div", { children: [
+          /* @__PURE__ */ jsx6("dt", { children: "Revision" }),
+          /* @__PURE__ */ jsx6("dd", { children: space.head_rev || "None yet" })
+        ] }),
+        lastRun && /* @__PURE__ */ jsxs6("div", { children: [
+          /* @__PURE__ */ jsx6("dt", { children: "Last refresh" }),
+          /* @__PURE__ */ jsxs6("dd", { children: [
+            runResult(lastRun),
+            (lastRun.ended_at ?? lastRun.queued_at) != null && /* @__PURE__ */ jsxs6(Fragment6, { children: [
+              " \xB7 ",
+              /* @__PURE__ */ jsx6(Time, { at: lastRun.ended_at ?? lastRun.queued_at })
+            ] })
+          ] })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsx6("div", { className: "ls-actions", children: /* @__PURE__ */ jsx6(Action, { icon: "history", onClick: () => onOpen("history"), children: "Open history" }) })
+    ] }),
+    /* @__PURE__ */ jsxs6("section", { "aria-label": "Runtime", className: "ls-detail", children: [
+      /* @__PURE__ */ jsx6("h3", { children: "Runtime" }),
+      /* @__PURE__ */ jsxs6("dl", { className: "ls-facts", children: [
+        /* @__PURE__ */ jsxs6("div", { children: [
+          /* @__PURE__ */ jsx6("dt", { children: "Host" }),
+          /* @__PURE__ */ jsx6("dd", { children: PILLS[dimensions.host === "available" ? "ready" : dimensions.host]?.label || dimensions.host })
+        ] }),
+        /* @__PURE__ */ jsxs6("div", { children: [
+          /* @__PURE__ */ jsx6("dt", { children: "Space app" }),
+          /* @__PURE__ */ jsx6("dd", { children: guestWord(dimensions.guest) })
+        ] })
       ] })
     ] })
-  ] }) });
+  ] });
 }
 function SaveStatus({ write, announcement }) {
   const labels = { saving: "Saving\u2026", saved: `Saved ${write?.at ? absolute(write.at) : ""}`, failed: "Not saved \u2014 this change was rejected", unknown: "Save outcome unknown \u2014 the change may have been stored", conflict: "Conflict \u2014 this record changed elsewhere" };
-  return /* @__PURE__ */ jsxs6("span", { className: "ls-save", role: "status", "aria-live": "polite", "aria-atomic": "true", children: [
+  return /* @__PURE__ */ jsxs6("span", { className: "ls-save", "data-status": write?.status, role: "status", "aria-live": "polite", "aria-atomic": "true", children: [
     write && /* @__PURE__ */ jsxs6(Fragment6, { children: [
       /* @__PURE__ */ jsx6(Icon, { name: write.status === "saving" ? "refresh" : ["failed", "unknown", "conflict"].includes(write.status) ? "warning" : "check", spin: write.status === "saving" }),
-      labels[write.status]
+      /* @__PURE__ */ jsx6("span", { className: "ls-save-text", children: labels[write.status] })
     ] }),
-    announcement && /* @__PURE__ */ jsx6("span", { children: announcement })
+    announcement && /* @__PURE__ */ jsx6("span", { className: "ls-save-text", children: announcement })
   ] });
 }
 function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
@@ -2178,6 +2508,111 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
     }
   );
 }
+var NOTICE_COLLAPSE_MS = 8e3;
+var pillLabel = ({ count, alerts }) => count === 1 ? alerts ? "1 failed" : "1 notice" : alerts === count ? `${count} failed` : `${count} notices`;
+function NoticeDock({ children, minimiseSignal, collapseAfterMs = NOTICE_COLLAPSE_MS }) {
+  const dock = useRef5(null);
+  const list = useRef5(null);
+  const pill = useRef5(null);
+  const minimiser = useRef5(null);
+  const [minimised, setMinimised] = useState6(false);
+  const [opened, setOpened] = useState6(0);
+  const [hovered, setHovered] = useState6(false);
+  const [focused, setFocused] = useState6(false);
+  const [summary, setSummary] = useState6({ count: 0, alerts: 0, titles: [], keys: "" });
+  const seen = useRef5(/* @__PURE__ */ new Set());
+  const id = useId();
+  useLayoutEffect2(() => {
+    const element = list.current;
+    if (!element) return;
+    const read = () => {
+      const notices = [...element.querySelectorAll(".ls-banner")];
+      const titles = notices.map((node) => node.querySelector("strong")?.textContent || "");
+      const keys = notices.map((node, index) => node.dataset.notice || titles[index]);
+      const next = { count: notices.length, alerts: notices.filter((node) => node.getAttribute("role") === "alert").length, titles, keys: titles.join("\n") };
+      setSummary((current) => current.keys === next.keys && current.count === next.count && current.alerts === next.alerts ? current : next);
+      if (keys.some((key) => !seen.current.has(key))) {
+        if (pill.current && document.activeElement === pill.current) requestAnimationFrame(() => minimiser.current?.focus());
+        setMinimised(false);
+        setOpened((n) => n + 1);
+      }
+      seen.current = new Set(keys);
+      if (!dock.current?.contains(document.activeElement)) setFocused(false);
+    };
+    read();
+    if (typeof MutationObserver === "undefined") return;
+    const observer = new MutationObserver(read);
+    observer.observe(element, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["role"] });
+    return () => observer.disconnect();
+  }, []);
+  useEffect3(() => {
+    if (minimiseSignal) setMinimised(true);
+  }, [minimiseSignal]);
+  const empty = summary.count === 0;
+  useEffect3(() => {
+    if (minimised || empty || hovered || focused || !(collapseAfterMs > 0)) return;
+    const timer = setTimeout(() => setMinimised(true), collapseAfterMs);
+    return () => clearTimeout(timer);
+  }, [minimised, empty, hovered, focused, opened, collapseAfterMs]);
+  const minimise = () => {
+    const inside = dock.current?.contains(document.activeElement);
+    setMinimised(true);
+    if (inside) requestAnimationFrame(() => pill.current?.focus());
+  };
+  const expand = () => {
+    setMinimised(false);
+    setOpened((n) => n + 1);
+    requestAnimationFrame(() => minimiser.current?.focus());
+  };
+  const full = `${pillLabel(summary)}: ${summary.titles.join("; ")}`;
+  return /* @__PURE__ */ jsxs6(
+    "div",
+    {
+      ref: dock,
+      className: "ls-notices",
+      "data-minimised": minimised || void 0,
+      "data-empty": empty || void 0,
+      onPointerEnter: () => setHovered(true),
+      onPointerLeave: () => setHovered(false),
+      onFocus: () => setFocused(true),
+      onBlur: (event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
+      },
+      onKeyDown: (event) => {
+        if (event.key === "Escape" && !minimised && !empty) {
+          event.stopPropagation();
+          minimise();
+        }
+      },
+      children: [
+        minimised && !empty && /* @__PURE__ */ jsxs6(
+          "button",
+          {
+            ref: pill,
+            type: "button",
+            className: `ls-notice-pill${summary.alerts ? " ls-alert" : ""}`,
+            "aria-expanded": "false",
+            "aria-controls": id,
+            "aria-label": `${full}. Show ${summary.count === 1 ? "notice" : "notices"}`,
+            title: summary.titles.join("\n"),
+            onClick: expand,
+            children: [
+              /* @__PURE__ */ jsx6(Icon, { name: summary.alerts ? "warning" : "bell" }),
+              /* @__PURE__ */ jsx6("span", { className: "ls-num", children: pillLabel(summary) })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxs6("div", { id, className: "ls-notice-list", hidden: minimised || void 0, "aria-label": "Space notices", role: "group", children: [
+          !empty && /* @__PURE__ */ jsx6("div", { className: "ls-notice-tools", children: /* @__PURE__ */ jsxs6("button", { ref: minimiser, type: "button", className: "ls-notice-minimise", "aria-expanded": "true", "aria-controls": id, onClick: minimise, children: [
+            /* @__PURE__ */ jsx6(Icon, { name: "chevron-down" }),
+            "Minimise"
+          ] }) }),
+          /* @__PURE__ */ jsx6("div", { ref: list, className: "ls-notice-stack", children })
+        ] })
+      ]
+    }
+  );
+}
 function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const { connectionId, profile } = useMemo2(() => scope || { connectionId: host2.state.connectionId.get(), profile: host2.state.profile.get() }, [scope, ctx, scopeKey, sid]);
   const base = spacePath(sid);
@@ -2197,6 +2632,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const [botAction, setBotAction] = useState6(null);
   const [refreshPending, setRefreshPending] = useState6(false);
   const [ready, setReady] = useState6(false);
+  const [canvasFocus, setCanvasFocus] = useState6(0);
   const refreshLock = useRef5(null);
   const refreshLifetime = useRef5(null);
   const actionLock = useRef5(false);
@@ -2223,7 +2659,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
       disposed = true;
     };
   }, [ctx, base]);
-  useLayoutEffect(() => {
+  useLayoutEffect2(() => {
     const lifetime = { active: true };
     refreshLifetime.current = lifetime;
     return () => {
@@ -2301,10 +2737,55 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
     if (seenRun.current && seenRun.current !== runKey && !inFlight(lastRun.status)) setAnnouncement(lastRun.status === "succeeded" ? `Refresh succeeded: ${runResult(lastRun)}` : `Refresh ${lastRun.status}: ${runResult(lastRun)}`);
     seenRun.current = runKey;
   }, [runKey, ready]);
-  useLayoutEffect(() => {
+  useLayoutEffect2(() => {
     setGuest({ status: "unknown", diagnostic: null });
     setIgnoredCrashRev(null);
   }, [connectionId, profile, scopeKey, sid, space?.head_rev]);
+  const capture = useRef5(null);
+  capture.current = async () => {
+    const session = controller.current;
+    const rev = space?.head_rev;
+    if (!session?.snapshot || !ready || !rev || ["failed", "faulted"].includes(guest.status)) return;
+    const shot = await session.snapshot({ width: SNAPSHOT_LIMITS.width, timeoutMs: 2500 });
+    if (shot && controller.current === session && host2.state.connectionId.get() === connectionId && host2.state.profile.get() === profile) writeSnapshot(scopeKey, sid, { ...shot, at: Date.now() / 1e3, rev });
+  };
+  useEffect3(() => {
+    if (!ready || building || archived || crash || remoteCrash || ["failed", "faulted"].includes(guest.status)) return;
+    const settle = setTimeout(() => capture.current?.(), 2500);
+    const again = setInterval(() => {
+      if (document.visibilityState !== "hidden") capture.current?.();
+    }, 6e4);
+    return () => {
+      clearTimeout(settle);
+      clearInterval(again);
+    };
+  }, [ready, building, archived, crash, remoteCrash, guest.status, space?.head_rev]);
+  useEffect3(() => {
+    const onBlur = () => setTimeout(() => {
+      const active = document.activeElement;
+      if (active?.tagName === "IFRAME" && content.current?.contains(active)) setCanvasFocus((n) => n + 1);
+    }, 0);
+    window.addEventListener("blur", onBlur);
+    return () => window.removeEventListener("blur", onBlur);
+  }, []);
+  const leaving = useRef5(false);
+  const mounted = useRef5(true);
+  useEffect3(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  async function leave() {
+    if (leaving.current) return;
+    leaving.current = true;
+    try {
+      await Promise.race([capture.current?.(), new Promise((resolve) => setTimeout(resolve, 700))]);
+    } catch {
+    }
+    if (!mounted.current || host2.state.connectionId.get() !== connectionId || host2.state.profile.get() !== profile) return;
+    host2.navigate("/spaces");
+  }
   async function refresh() {
     if (refreshLock.current || refreshPending || status === "updating" || inFlight(lastRun?.status) || refreshReason(space)) return;
     const request = { lifetime: refreshLifetime.current, controller: controller.current };
@@ -2403,45 +2884,43 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
     setConfirmation(kind);
   };
   const crashMessage = diagnosticText(crash || space.attention?.message || "The guest reported a fatal error.");
+  const phrase = freshnessPhrase(space);
+  const upkeepLabel = !upkeep ? "None" : upkeep.missing ? "Job missing" : upkeep.enabled === true ? "On" : upkeep.enabled === false ? "Paused" : "Linked";
+  const netOn = space.grants?.some((grant) => grant.capability === "net" && grant.status === "granted");
+  const refreshable = !building && !!space.manifest?.upkeep;
+  const tone = ["failed", "blocked", "crashed"].includes(status) ? "danger" : status === "updating" ? "busy" : phrase.key === "success" && !space.freshness?.last_success_at ? "idle" : "good";
   return /* @__PURE__ */ jsxs6("div", { ref: frame, className: "ls-frame", "data-header-mode": headerMode, "data-testid": "space-view", children: [
     /* @__PURE__ */ jsxs6("header", { className: "ls-framebar", children: [
-      /* @__PURE__ */ jsx6(Action, { icon: "chevron-left", onClick: () => host2.navigate("/spaces"), children: "Spaces" }),
-      /* @__PURE__ */ jsxs6("div", { className: "ls-identity", children: [
-        /* @__PURE__ */ jsx6(SpaceTile, { space, small: true }),
-        /* @__PURE__ */ jsxs6("div", { children: [
-          /* @__PURE__ */ jsxs6("div", { className: "ls-name-row", children: [
-            /* @__PURE__ */ jsx6("h1", { children: space.name }),
-            /* @__PURE__ */ jsxs6("span", { children: [
-              "Host ",
-              /* @__PURE__ */ jsx6(StatusPill, { status: dimensions.host === "available" ? "ready" : dimensions.host })
-            ] }),
-            !["ready", dimensions.host].includes(status) && /* @__PURE__ */ jsx6(StatusPill, { status })
-          ] }),
-          /* @__PURE__ */ jsxs6("div", { className: "ls-frame-meta", children: [
-            /* @__PURE__ */ jsx6(OwnerChip, { owner: space.owner }),
-            /* @__PURE__ */ jsxs6("span", { children: [
-              " \xB7 ",
-              /* @__PURE__ */ jsx6(Freshness, { facts: headerFacts(space) })
-            ] })
-          ] })
+      /* @__PURE__ */ jsxs6("div", { className: "ls-island ls-island-identity", children: [
+        /* @__PURE__ */ jsx6(Action, { className: "ls-action ls-icon-button", icon: "arrow-left", "aria-label": "Back to Spaces", title: "Back to Spaces", onClick: leave }),
+        /* @__PURE__ */ jsxs6("div", { className: "ls-identity", children: [
+          /* @__PURE__ */ jsx6(SpaceTile, { space, small: true }),
+          /* @__PURE__ */ jsx6("h1", { title: space.name, children: space.name }),
+          status !== "ready" && /* @__PURE__ */ jsx6(StatusPill, { status })
         ] })
       ] }),
-      /* @__PURE__ */ jsxs6("div", { className: "ls-frame-actions", children: [
-        /* @__PURE__ */ jsx6(SaveStatus, { write, announcement }),
-        !building && /* @__PURE__ */ jsx6("div", { className: "ls-upkeep-action", children: /* @__PURE__ */ jsx6(Action, { icon: "watch", onClick: () => openSheet("upkeep"), children: !upkeep ? "Upkeep: none" : upkeep.missing ? "Upkeep: job missing" : upkeep.enabled === true ? "Upkeep: on" : upkeep.enabled === false ? "Upkeep: paused" : "Upkeep" }) }),
-        /* @__PURE__ */ jsx6("span", { className: "ls-wide-only", children: /* @__PURE__ */ jsx6(Action, { onClick: () => openHistory(), children: "History" }) }),
-        space.grants?.some((grant) => grant.capability === "net" && grant.status === "granted") && /* @__PURE__ */ jsx6(Action, { icon: "globe", onClick: () => openSheet("permissions"), children: "Internet on" }),
-        !building && /* @__PURE__ */ jsxs6(Fragment6, { children: [
-          /* @__PURE__ */ jsx6(Action, { onClick: () => openSheet("permissions"), children: "Permissions" }),
-          /* @__PURE__ */ jsx6(DisabledReason, { reason, children: /* @__PURE__ */ jsx6(Action, { primary: true, icon: "refresh", "aria-busy": busy, "aria-disabled": !!reason || busy, title: reason || void 0, onClick: refresh, children: busy ? "Refreshing\u2026" : "Refresh now" }) })
+      /* @__PURE__ */ jsxs6("div", { className: "ls-island ls-frame-actions", children: [
+        /* @__PURE__ */ jsxs6("span", { className: "ls-frame-meta", title: phrase.at != null ? `${phrase.label} \xB7 ${absolute(phrase.at)}` : phrase.label, children: [
+          /* @__PURE__ */ jsx6("span", { className: "ls-dot", "data-tone": tone, "aria-hidden": "true" }),
+          /* @__PURE__ */ jsxs6("span", { className: "ls-frame-meta-text", children: [
+            phrase.label,
+            phrase.at != null && /* @__PURE__ */ jsxs6(Fragment6, { children: [
+              " \xB7 ",
+              /* @__PURE__ */ jsx6(Time, { at: phrase.at, relative: true })
+            ] })
+          ] })
         ] }),
+        /* @__PURE__ */ jsx6(SaveStatus, { write, announcement }),
+        netOn && /* @__PURE__ */ jsx6(Action, { className: "ls-action ls-island-button", icon: "globe", title: "Internet access is on. Manage it in Permissions.", onClick: () => openSheet("permissions"), children: /* @__PURE__ */ jsx6("span", { className: "ls-label", children: "Internet on" }) }),
+        refreshable && /* @__PURE__ */ jsx6(DisabledReason, { reason, children: /* @__PURE__ */ jsx6(Action, { className: "ls-action ls-island-button", icon: "refresh", "aria-busy": busy, "aria-disabled": !!reason || busy, title: reason || void 0, onClick: refresh, children: /* @__PURE__ */ jsx6("span", { className: "ls-label", children: busy ? "Refreshing\u2026" : "Refresh now" }) }) }),
+        /* @__PURE__ */ jsx6(Action, { className: "ls-action ls-island-button", icon: "settings", onClick: () => openSheet("details"), children: /* @__PURE__ */ jsx6("span", { className: "ls-label", children: "Details" }) }),
         /* @__PURE__ */ jsxs6(DropdownMenu, { children: [
           /* @__PURE__ */ jsx6(DropdownMenuTrigger, { asChild: true, children: /* @__PURE__ */ jsx6(Action, { ref: overflow, className: "ls-action ls-overflow", "aria-label": "More Space actions", icon: "ellipsis" }) }),
           /* @__PURE__ */ jsxs6(DropdownMenuContent, { align: "end", children: [
-            /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openSheet("details"), children: "Details" }),
-            headerMode !== "wide" && /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openHistory(), children: "History" }),
+            /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openHistory(), children: "History" }),
             !building && /* @__PURE__ */ jsxs6(Fragment6, { children: [
-              headerMode === "narrow" && /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openSheet("upkeep"), children: "Upkeep" }),
+              /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openSheet("upkeep"), children: "Upkeep" }),
+              /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openSheet("permissions"), children: "Permissions" }),
               /* @__PURE__ */ jsx6(DropdownMenuSeparator, {}),
               /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => act("pin", { pinned: !space.pinned }), children: space.pinned ? "Unpin Space" : "Pin Space" }),
               /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => archived ? act("unarchive") : askConfirmation("archive"), children: archived ? "Restore Space" : "Archive Space\u2026" }),
@@ -2451,58 +2930,65 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
         ] })
       ] })
     ] }),
-    /* @__PURE__ */ jsx6(StorageNotice, { storage: space.storage, onReview: () => openHistory(), storageKey: `living-spaces:storage-dismissed:${connectionId}:${profile}:${sid}` }),
-    botAction && /* @__PURE__ */ jsx6(BotBanner, { action: botAction, controller, storageKey: `living-spaces:bot-dismissed:${connectionId}:${profile}:${sid}` }),
-    guest.status === "faulted" && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "This Space hit an uncaught error", children: /* @__PURE__ */ jsx6("span", { role: "status", children: "It is still open and may keep working. Saved records are unaffected. Review this Space's diagnostic log for details." }) }),
-    actionError && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: actionError }),
-    detail.error && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "Space status could not be refreshed. You're seeing the last loaded state.", actions: /* @__PURE__ */ jsx6(Action, { onClick: () => detail.refetch(), children: "Try again" }), children: errorText(detail.error) }),
-    changes.error && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "Live record updates are delayed. Your displayed data may be out of date.", actions: /* @__PURE__ */ jsx6(Action, { onClick: () => changes.refetch(), children: "Retry live updates" }), children: errorText(changes.error) }),
-    /* @__PURE__ */ jsx6(WriteBanner, { write, setWrite, onDismiss: () => controller.current?.dismissWrite(write.token), onCompare: () => openSheet("compare"), onUpdated: () => {
-      controller.current?.dismissWrite(write.token);
-      setReload((n) => n + 1);
-    } }),
-    archived ? /* @__PURE__ */ jsx6(Banner, { title: "This Space is archived. Future upkeep is paused.", actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
-      /* @__PURE__ */ jsx6(Action, { onClick: () => act("unarchive"), children: "Restore Space" }),
-      /* @__PURE__ */ jsx6(Action, { danger: true, onClick: () => askConfirmation("delete"), children: "Delete\u2026" })
-    ] }), children: "Restore it to open the canvas, then resume upkeep separately. Already-running work may finish. Delete removes it and its data permanently." }) : status === "failed" ? /* @__PURE__ */ jsxs6(Banner, { kind: "failed", title: `Refresh failed${space.freshness?.last_attempt_at != null ? ` at ${absolute(space.freshness.last_attempt_at)}` : ""}. ${space.freshness?.last_success_at != null ? `You're seeing data from ${absolute(space.freshness.last_success_at)}.` : "No successful update yet."}`, actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
-      /* @__PURE__ */ jsx6(Action, { onClick: () => openHistory(), children: "View run details" }),
-      /* @__PURE__ */ jsx6(Action, { onClick: refresh, children: "Try again" })
-    ] }), children: [
-      lastRun?.error || space.attention?.message || "The source did not respond.",
-      " Your notes and statuses are unchanged. ",
-      space.freshness?.next_run_at ? `Next automatic try ${absolute(space.freshness.next_run_at)}.` : "No automatic try is scheduled."
-    ] }) : status === "blocked" ? /* @__PURE__ */ jsxs6(Banner, { kind: "blocked", title: `Refresh is blocked: ${space.attention?.message || reason || "Review Permissions"}`, actions: /* @__PURE__ */ jsx6(Action, { onClick: () => openSheet("permissions"), children: "Review permissions" }), children: [
-      "The Space still opens and your data is safe. ",
-      /* @__PURE__ */ jsx6(CopyPrompt, { text: `${space.owner}, ${space.name} is blocked. Please review its last run and help me restore upkeep.` })
-    ] }) : null,
-    /* @__PURE__ */ jsx6("section", { className: "ls-content", "aria-label": "Space content", children: /* @__PURE__ */ jsx6("div", { className: `ls-sandbox${status === "failed" ? " ls-stale" : ""}`, children: building ? /* @__PURE__ */ jsxs6("div", { className: "ls-building", children: [
-      /* @__PURE__ */ jsxs6("p", { role: "status", children: [
-        space.owner,
-        " is building the first version. This opens automatically when it's ready."
-      ] }),
-      /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 100 } }),
-      /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 180 } })
-    ] }) : status === "crashed" ? /* @__PURE__ */ jsxs6("div", { className: "ls-crash", children: [
-      /* @__PURE__ */ jsx6(ErrorState5, { title: `${space.name} stopped working`, description: "The guest hit an error and was stopped. Already-written records remain; stopping the guest does not undo changes. Check the save status for any pending change." }),
-      /* @__PURE__ */ jsx6("pre", { className: "ls-diagnostic", children: `Revision ${space.head_rev}
+    /* @__PURE__ */ jsxs6("section", { className: "ls-content", "aria-label": "Space content", children: [
+      /* @__PURE__ */ jsx6("div", { className: `ls-sandbox${status === "failed" ? " ls-stale" : ""}`, children: building ? /* @__PURE__ */ jsxs6("div", { className: "ls-building", children: [
+        /* @__PURE__ */ jsxs6("p", { role: "status", children: [
+          space.owner,
+          " is building the first version. This opens automatically when it's ready."
+        ] }),
+        /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 100 } }),
+        /* @__PURE__ */ jsx6(Skeleton5, { style: { height: 180 } })
+      ] }) : status === "crashed" ? /* @__PURE__ */ jsxs6("div", { className: "ls-crash", children: [
+        /* @__PURE__ */ jsx6(ErrorState5, { title: `${space.name} stopped working`, description: "The guest hit an error and was stopped. Already-written records remain; stopping the guest does not undo changes. Check the save status for any pending change." }),
+        /* @__PURE__ */ jsx6("pre", { className: "ls-diagnostic", children: `Revision ${space.head_rev}
 ${crashMessage}
 Logged to this Space only. Common credential values redacted.` }),
-      /* @__PURE__ */ jsxs6("div", { className: "ls-actions", children: [
-        /* @__PURE__ */ jsx6(Action, { primary: true, onClick: () => {
-          setGuest({ status: "unknown", diagnostic: null });
-          setIgnoredCrashRev(space.head_rev);
+        /* @__PURE__ */ jsxs6("div", { className: "ls-actions", children: [
+          /* @__PURE__ */ jsx6(Action, { primary: true, onClick: () => {
+            setGuest({ status: "unknown", diagnostic: null });
+            setIgnoredCrashRev(space.head_rev);
+            setReload((n) => n + 1);
+          }, children: "Reload Space" }),
+          /* @__PURE__ */ jsx6(Action, { onClick: () => openHistory("revisions"), children: "Restore revision\u2026" })
+        ] }),
+        /* @__PURE__ */ jsx6(CopyPrompt, { text: `${space.owner}, ${space.name} crashed. Please read its error log and fix it.` }),
+        /* @__PURE__ */ jsxs6("p", { className: "ls-secondary", children: [
+          "Repairs happen in chat. ",
+          space.owner,
+          " can read this error and apply a new revision."
+        ] })
+      ] }) : archived ? /* @__PURE__ */ jsx6("div", { className: "ls-building", children: /* @__PURE__ */ jsx6("p", { children: "Restore Space to open its content. Your records and revisions are kept." }) }) : /* @__PURE__ */ jsx6("div", { ref: content, className: "ls-mount", "data-testid": "space-host" }) }),
+      /* @__PURE__ */ jsxs6(NoticeDock, { minimiseSignal: canvasFocus, children: [
+        /* @__PURE__ */ jsx6(StorageNotice, { storage: space.storage, onReview: () => openHistory(), storageKey: `living-spaces:storage-dismissed:${connectionId}:${profile}:${sid}` }),
+        botAction && /* @__PURE__ */ jsx6(BotBanner, { action: botAction, controller, owner: space.owner, storageKey: `living-spaces:bot-dismissed:${connectionId}:${profile}:${sid}` }),
+        guest.status === "faulted" && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "This Space hit an uncaught error", children: /* @__PURE__ */ jsx6("span", { role: "status", children: "It is still open and may keep working. Saved records are unaffected. Review this Space's diagnostic log for details." }) }),
+        actionError && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: actionError }),
+        detail.error && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "Space status could not be refreshed. You're seeing the last loaded state.", actions: /* @__PURE__ */ jsx6(Action, { onClick: () => detail.refetch(), children: "Try again" }), children: errorText(detail.error) }),
+        changes.error && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "Live record updates are delayed. Your displayed data may be out of date.", actions: /* @__PURE__ */ jsx6(Action, { onClick: () => changes.refetch(), children: "Retry live updates" }), children: errorText(changes.error) }),
+        /* @__PURE__ */ jsx6(WriteBanner, { write, setWrite, onDismiss: () => controller.current?.dismissWrite(write.token), onCompare: () => openSheet("compare"), onUpdated: () => {
+          controller.current?.dismissWrite(write.token);
           setReload((n) => n + 1);
-        }, children: "Reload Space" }),
-        /* @__PURE__ */ jsx6(Action, { onClick: () => openHistory("revisions"), children: "Restore revision\u2026" })
-      ] }),
-      /* @__PURE__ */ jsx6(CopyPrompt, { text: `${space.owner}, ${space.name} crashed. Please read its error log and fix it.` }),
-      /* @__PURE__ */ jsxs6("p", { className: "ls-secondary", children: [
-        "Repairs happen in chat. ",
-        space.owner,
-        " can read this error and apply a new revision."
+        } }),
+        archived ? /* @__PURE__ */ jsx6(Banner, { title: "This Space is archived. Future upkeep is paused.", actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
+          /* @__PURE__ */ jsx6(Action, { onClick: () => act("unarchive"), children: "Restore Space" }),
+          /* @__PURE__ */ jsx6(Action, { danger: true, onClick: () => askConfirmation("delete"), children: "Delete\u2026" })
+        ] }), children: "Restore it to open the canvas, then resume upkeep separately. Already-running work may finish. Delete removes it and its data permanently." }) : status === "failed" ? /* @__PURE__ */ jsxs6(Banner, { kind: "failed", title: `Refresh failed${space.freshness?.last_attempt_at != null ? ` at ${absolute(space.freshness.last_attempt_at)}` : ""}. ${space.freshness?.last_success_at != null ? `You're seeing data from ${absolute(space.freshness.last_success_at)}.` : "No successful update yet."}`, actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
+          /* @__PURE__ */ jsx6(Action, { onClick: () => openHistory(), children: "View run details" }),
+          /* @__PURE__ */ jsx6(Action, { onClick: refresh, children: "Try again" })
+        ] }), children: [
+          lastRun?.error || space.attention?.message || "The source did not respond.",
+          " Your notes and statuses are unchanged. ",
+          space.freshness?.next_run_at ? `Next automatic try ${absolute(space.freshness.next_run_at)}.` : "No automatic try is scheduled."
+        ] }) : status === "blocked" ? /* @__PURE__ */ jsxs6(Banner, { kind: "blocked", title: `Refresh is blocked: ${space.attention?.message || reason || "Review Permissions"}`, actions: /* @__PURE__ */ jsx6(Action, { onClick: () => openSheet("permissions"), children: "Review permissions" }), children: [
+          "The Space still opens and your data is safe. ",
+          /* @__PURE__ */ jsx6(CopyPrompt, { text: `${space.owner}, ${space.name} is blocked. Please review its last run and help me restore upkeep.` })
+        ] }) : null
       ] })
-    ] }) : archived ? /* @__PURE__ */ jsx6("div", { className: "ls-building", children: /* @__PURE__ */ jsx6("p", { children: "Restore Space to open its content. Your records and revisions are kept." }) }) : /* @__PURE__ */ jsx6("div", { ref: content, className: "ls-mount", "data-testid": "space-host" }) }) }),
-    sheet?.kind === "details" && /* @__PURE__ */ jsx6(SpaceDetails, { returnFocus: sheet.returnFocus, dimensions, onClose: () => setSheet(null) }),
+    ] }),
+    sheet?.kind === "details" && /* @__PURE__ */ jsx6(SpaceDetails, { returnFocus: sheet.returnFocus, space, dimensions, upkeepLabel, building, onOpen: (kind) => {
+      if (kind === "history") detail.refetch();
+      setSheet({ kind, tab: kind === "history" ? "runs" : void 0, returnFocus: sheet.returnFocus });
+    }, onClose: () => setSheet(null) }),
     sheet?.kind === "permissions" && /* @__PURE__ */ jsx6(PermissionsSheet, { returnFocus: sheet.returnFocus, ctx, scopeKey, space, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
     sheet?.kind === "history" && /* @__PURE__ */ jsx6(HistorySheet, { returnFocus: sheet.returnFocus, ctx, scopeKey, space, initialTab: sheet.tab, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
     sheet?.kind === "upkeep" && /* @__PURE__ */ jsx6(UpkeepSheet, { returnFocus: sheet.returnFocus, ctx, scopeKey, space, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
@@ -2515,6 +3001,7 @@ Logged to this Space only. Common credential values redacted.` }),
     confirmation && /* @__PURE__ */ jsx6(DecisionDialog, { returnFocus: confirmationTrigger.current, danger: true, title: confirmation === "delete" ? `Delete ${space.name}?` : `Archive ${space.name}?`, description: confirmation === "delete" ? "Delete removes this Space, all its records and revisions permanently and stops future upkeep. Already-running work may finish. Exported copies aren't recalled." : "Archiving pauses future upkeep. Already-running work may finish. Your records and revisions are kept. Restoring this Space does not resume upkeep.", confirmLabel: confirmation === "delete" ? "Delete Space" : "Archive Space", onClose: () => setConfirmation(null), onConfirm: async () => {
       if (confirmation === "delete") {
         await ctx.rest(`${base}?confirm=${encodeURIComponent(sid)}`, { method: "DELETE" });
+        forgetSnapshot(scopeKey, sid);
         await queryClient.cancelQueries({ queryKey: ["living-spaces", scopeKey, "spaces"] });
         queryClient.setQueryData(["living-spaces", scopeKey, "spaces"], (list) => list?.spaces ? { ...list, spaces: list.spaces.filter((row) => row.id !== sid) } : list);
         queryClient.invalidateQueries({ queryKey: ["living-spaces", scopeKey, "spaces"] });
@@ -2529,23 +3016,26 @@ Logged to this Space only. Common credential values redacted.` }),
 
 // src/desktop/ui/styles.js
 var styles = `
-.ls-root,.ls-sheet,.ls-confirm{font:14px/1.5 var(--font-sans,system-ui,sans-serif);color:var(--ui-text-primary);--ls-surface:var(--ui-bg-card,var(--ui-bg-secondary));--ls-line:var(--ui-stroke-secondary);--ls-danger:var(--ui-text-danger,var(--destructive));--ls-warning:var(--ui-text-warning,var(--ui-text-primary));--ls-good:var(--ui-text-success,var(--ui-text-primary))}
+.ls-root,.ls-sheet,.ls-confirm{--ls-ease-out:cubic-bezier(.23,1,.32,1);--ls-glass:color-mix(in srgb,Canvas 78%,transparent);--ls-glass-strong:color-mix(in srgb,Canvas 92%,transparent);--ls-ease-drawer:cubic-bezier(.32,.72,0,1);--ls-island-shadow:0 0 0 1px rgba(20,20,24,.07),0 1px 0 rgba(255,255,255,.9) inset,0 10px 30px -10px rgba(20,20,24,.25);font:14px/1.5 var(--font-sans,system-ui,sans-serif);color:var(--ui-text-primary);--ls-surface:var(--ui-bg-card,var(--ui-bg-secondary));--ls-line:var(--ui-stroke-secondary);--ls-danger:var(--ui-text-danger,var(--destructive,var(--dt-destructive,#cf2d56)));--ls-warning:var(--ui-text-warning,var(--ui-text-primary));--ls-good:var(--ui-text-success,var(--ui-text-primary))}
 .ls-root{height:100%;min-height:0;overflow:auto;background:var(--ui-bg-primary)}
 .ls-root *,.ls-sheet *,.ls-confirm *{box-sizing:border-box}
 .ls-root :is(button,a,input):focus-visible,.ls-sheet :is(button,a,input):focus-visible,.ls-confirm button:focus-visible{outline:2px solid var(--ui-accent-lit,var(--ui-accent));outline-offset:2px}
 .ls-root h1{font-size:20px;font-weight:600;margin:0;letter-spacing:-.01em}.ls-root h2,.ls-sheet h2{font-size:14px;font-weight:600;margin:0}.ls-root p,.ls-sheet p{margin:8px 0}
-.ls-page{padding:20px 28px 40px;max-width:1240px}.ls-page-heading{display:flex;align-items:baseline;gap:16px}.ls-secondary{color:var(--ui-text-secondary)}.ls-num{font-variant-numeric:tabular-nums}.ls-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:16px 0 18px}.ls-search{flex:1;min-width:220px;max-width:380px;min-height:34px;box-shadow:inset 0 1px 2px var(--ui-stroke-tertiary)}.ls-sort{margin-left:auto;font-size:12px;color:var(--ui-text-secondary)}.ls-toolbar button{min-height:32px}
-.ls-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:12px}.ls-card{display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid var(--ls-line);border-radius:12px;background:var(--ls-surface);color:inherit;text-decoration:none;transition:background .15s,border-color .15s}.ls-card:hover{background:color-mix(in srgb,var(--ls-accent) 5%,var(--ls-surface));border-color:color-mix(in srgb,var(--ls-accent) 55%,var(--ls-line))}.ls-card.ls-failed,.ls-card.ls-blocked{border-color:color-mix(in srgb,var(--ls-danger) 40%,var(--ls-line))}.ls-card.ls-archived{opacity:.9}.ls-card-top{display:flex;align-items:flex-start;gap:12px}.ls-card-name{font-weight:600;font-size:14px}.ls-card-description{margin:0!important;min-height:42px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--ui-text-secondary)}.ls-card-freshness{border-top:1px solid var(--ls-line);padding-top:10px;font-size:12px;display:grid;gap:3px}.ls-facts{margin:10px 0;display:grid;gap:8px;font-size:12px}.ls-facts>div{display:grid;grid-template-columns:110px 1fr;gap:10px}.ls-facts dt{color:var(--ui-text-secondary)}.ls-facts dd{margin:0;overflow-wrap:anywhere}
+.ls-page{padding:22px 28px 40px;max-width:1236px;margin:0 auto}.ls-page-heading{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.ls-page-title{display:flex;align-items:baseline;gap:14px;flex:1;min-width:0;flex-wrap:wrap}.ls-gallery h1{font-size:28px;font-weight:600;letter-spacing:-.03em}.ls-secondary{color:var(--ui-text-secondary)}.ls-num{font-variant-numeric:tabular-nums}.ls-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0 16px}.ls-search{width:260px;max-width:100%;min-height:34px;border-radius:10px!important;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-sort{margin-left:auto;font-size:12px;color:var(--ui-text-tertiary,var(--ui-text-secondary))}.ls-toolbar button{min-height:32px}
+.ls-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:22px 18px}.ls-card{display:block;color:inherit;text-decoration:none;border-radius:16px;outline-offset:4px}.ls-card-media{position:relative}.ls-thumb{display:block;aspect-ratio:16/10;width:100%;height:auto;border-radius:14px;overflow:hidden;position:relative;background:var(--ui-bg-secondary);box-shadow:0 0 0 1px var(--ui-stroke-secondary),0 1px 2px rgba(0,0,0,.08);transition:transform 220ms var(--ls-ease-out),box-shadow 220ms var(--ls-ease-out)}.ls-thumb img{display:block;width:100%;height:100%;object-fit:cover;object-position:top left}.ls-thumb-fallback{background:radial-gradient(120% 95% at 0% 0%,color-mix(in srgb,var(--ls-accent) 34%,transparent),transparent 62%),radial-gradient(90% 80% at 100% 100%,color-mix(in srgb,var(--ls-accent) 18%,transparent),transparent 70%),color-mix(in srgb,var(--ls-accent) 7%,var(--ui-bg-secondary))}.ls-thumb-fallback::before{content:'';position:absolute;inset:0;background-image:linear-gradient(color-mix(in srgb,var(--ls-accent) 12%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--ls-accent) 12%,transparent) 1px,transparent 1px);background-size:28px 28px;-webkit-mask-image:radial-gradient(80% 80% at 30% 30%,#000,transparent);mask-image:radial-gradient(80% 80% at 30% 30%,#000,transparent)}.ls-thumb-mark{position:absolute;left:50%;top:50%;translate:-50% -50%;display:grid;place-items:center;width:64px;height:64px;border-radius:18px;color:color-mix(in srgb,var(--ls-accent) 75%,var(--ui-text-primary));background:color-mix(in srgb,var(--ls-accent) 16%,var(--ui-bg-elevated,var(--ui-bg-primary)));box-shadow:0 0 0 1px color-mix(in srgb,var(--ls-accent) 30%,transparent),0 12px 28px -14px color-mix(in srgb,var(--ls-accent) 70%,transparent)}.ls-thumb-mark .codicon{font-size:30px!important}@media(hover:hover) and (pointer:fine){.ls-card:hover .ls-thumb{transform:translateY(-2px);box-shadow:0 0 0 1px var(--ui-stroke-primary,var(--ui-stroke-secondary)),0 14px 30px -12px rgba(0,0,0,.45)}}.ls-card:active .ls-thumb{transform:scale(.99)}.ls-card-state{position:absolute;left:10px;bottom:10px}.ls-card-state .ls-pill{border:0!important;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-pin{position:absolute;right:10px;top:10px;display:grid;place-items:center;width:26px;height:26px;border-radius:999px;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-card-caption{display:flex;align-items:flex-start;gap:10px;padding:12px 2px 0}.ls-card-caption .ls-tile-small{width:26px;height:26px;border-radius:7px;margin-top:1px}.ls-card-caption .ls-tile .codicon{font-size:14px}.ls-card-text{min-width:0;flex:1}.ls-card-name{font-weight:600;font-size:14.5px;letter-spacing:-.012em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ls-card-description{margin:1px 0 0!important;font-size:12.5px;color:var(--ui-text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ls-card-freshness{margin-top:2px;font-size:12px;color:var(--ui-text-tertiary,var(--ui-text-secondary));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ls-card.ls-failed .ls-thumb,.ls-card.ls-blocked .ls-thumb{box-shadow:0 0 0 1px color-mix(in srgb,var(--ls-danger) 55%,var(--ui-stroke-secondary))}.ls-card.ls-archived .ls-thumb{filter:saturate(.4);opacity:.85}.ls-newcard{aspect-ratio:16/10;border-radius:14px;border:1px dashed var(--ui-stroke-primary,var(--ui-stroke-secondary));display:grid;place-items:center;text-align:center;padding:16px;font-size:12.5px}.ls-newcard>div{display:grid;justify-items:center;gap:4px}.ls-newcard strong{font-size:14px;font-weight:600}.ls-newcard>div>.codicon{font-size:20px;color:var(--ui-text-secondary)}.ls-newcard .ls-actions{margin-top:8px;justify-content:center}.ls-newcard .ls-prompt{max-width:260px;text-align:left}.ls-facts{margin:10px 0;display:grid;gap:8px;font-size:13px}.ls-facts>div{display:grid;grid-template-columns:118px 1fr;gap:12px}.ls-facts dt{color:var(--ui-text-secondary)}.ls-facts dd{margin:0;overflow-wrap:anywhere}
 .ls-tile{display:inline-flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;border-radius:10px;border:1px solid color-mix(in srgb,var(--ls-accent) 48%,transparent);background:color-mix(in srgb,var(--ls-accent) 22%,var(--ui-bg-primary));color:color-mix(in srgb,var(--ls-accent) 70%,var(--ui-text-primary))}.ls-tile .codicon{font-size:20px}.ls-tile-small{width:32px;height:32px;border-radius:8px}.ls-owner{display:inline-flex;gap:5px;align-items:center;font-size:12px;color:var(--ui-text-secondary)}.ls-avatar{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:10px;background:var(--ui-bg-quaternary);color:var(--ui-text-primary)}.ls-pin{margin-left:auto}
 .ls-pill{display:inline-flex;gap:5px;align-items:center;min-height:22px;padding:2px 8px!important;border:1px solid var(--ls-line);border-radius:999px!important;background:transparent!important;color:var(--ui-text-primary)!important;font-size:12px!important;font-weight:500}.ls-pill.ls-ready,.ls-pill.ls-succeeded,.ls-pill.ls-granted{color:var(--ls-good)!important}.ls-pill.ls-failed,.ls-pill.ls-crashed{color:var(--ls-danger)!important;border-color:currentColor}.ls-pill.ls-blocked,.ls-pill.ls-requested{color:var(--ls-warning)!important}.ls-pill.ls-updating{color:var(--ui-accent-lit,var(--ui-accent))!important}.ls-action{min-height:32px!important;border-radius:8px!important;padding:0 12px!important;font-size:13px!important}.ls-action[aria-disabled=true]{opacity:.55;cursor:not-allowed}.ls-danger{color:var(--ls-danger)!important;border:1px solid color-mix(in srgb,var(--ls-danger) 55%,var(--ls-line))!important}.ls-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}.ls-footer{font-size:12px;color:var(--ui-text-secondary);margin-top:22px!important}.ls-empty{max-width:780px;margin:55px auto}.ls-empty-tiles{display:flex;gap:12px;justify-content:center}.ls-empty .ls-prompt{margin-top:12px}.ls-prompt{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--ls-line);border-radius:8px;background:var(--ls-surface);font-size:13px}.ls-prompt q{flex:1;user-select:text;overflow-wrap:anywhere}.ls-prompt button{min-height:28px}.ls-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
-.ls-frame{height:100%;display:flex;flex-direction:column}.ls-framebar{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--ls-line);background:var(--ui-bg-primary)}.ls-identity{display:flex;align-items:center;gap:10px;min-width:0;flex:1}.ls-identity>div{min-width:0}.ls-name-row{display:flex;align-items:center;gap:8px}.ls-name-row h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px}.ls-name-row .ls-pill{flex:none}.ls-frame-meta{font-size:12px;color:var(--ui-text-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.ls-frame-actions{display:flex;align-items:center;gap:6px;flex:none;flex-wrap:wrap}.ls-save{font-size:12px;display:inline-flex;gap:5px;align-items:center;max-width:220px}.ls-save:empty{width:0}.ls-content{display:flex;flex:1;min-height:420px;flex-direction:column;padding:12px;gap:8px}.ls-sandbox{flex:1;min-height:380px;border:1px solid var(--ls-line);border-radius:12px;overflow:hidden;position:relative}.ls-mount{height:100%;min-height:380px}.ls-stale{filter:saturate(.7)}.ls-banner{display:flex;gap:10px;padding:14px 22px;border-bottom:1px solid var(--ls-line);background:var(--ui-bg-secondary);font-size:13px}.ls-banner.ls-failed,.ls-banner.ls-crashed,.ls-banner.ls-conflict{border-color:color-mix(in srgb,var(--ls-danger) 45%,var(--ls-line));background:color-mix(in srgb,var(--ls-danger) 8%,var(--ui-bg-primary))}.ls-banner.ls-blocked{border-color:var(--ls-warning)}.ls-crash{max-width:620px;padding:40px 24px;margin:auto}.ls-diagnostic{max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;background:var(--ui-bg-secondary);border:1px solid var(--ls-line);font:12px/1.5 var(--font-mono,monospace)}.ls-building{padding:40px;display:grid;gap:16px}
+.ls-frame{height:100%;display:flex;flex-direction:column;padding:0 8px 8px;min-height:0}.ls-framebar{height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 2px;background:transparent;position:relative;z-index:2}.ls-island{display:flex;align-items:center;gap:2px;height:38px;padding:0 3px;border-radius:12px;min-width:0;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-island-identity{flex:0 1 auto;max-width:55%}.ls-frame-actions{margin-left:auto;flex:0 1 auto}.ls-island .ls-action{min-height:32px!important;height:32px;border:0!important;background:transparent!important;box-shadow:none!important;gap:6px}@media(hover:hover) and (pointer:fine){.ls-island .ls-action:hover{background:var(--ui-control-hover-background,color-mix(in srgb,var(--ui-text-primary) 7%,transparent))!important}}.ls-icon-button,.ls-island .ls-overflow{width:32px;min-width:32px;padding:0!important;justify-content:center}.ls-identity{display:flex;align-items:center;gap:8px;min-width:0;padding:0 10px 0 4px}.ls-identity .ls-tile-small{width:22px;height:22px;border-radius:6px}.ls-identity .ls-tile .codicon{font-size:13px}.ls-identity h1{font-size:14px!important;font-weight:600;letter-spacing:-.012em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.ls-frame-meta{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 10px;font-size:12.5px;color:var(--ui-text-secondary);white-space:nowrap;min-width:0;overflow:hidden}.ls-frame-meta-text{overflow:hidden;text-overflow:ellipsis}.ls-dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--ls-good);box-shadow:0 0 0 3px color-mix(in srgb,var(--ls-good) 18%,transparent)}.ls-dot[data-tone=danger]{background:var(--ls-danger);box-shadow:0 0 0 3px color-mix(in srgb,var(--ls-danger) 18%,transparent)}.ls-dot[data-tone=busy]{background:var(--ui-accent-lit,var(--ui-accent));box-shadow:none}.ls-dot[data-tone=idle]{background:var(--ui-text-tertiary,var(--ui-text-secondary));box-shadow:none}.ls-save{font-size:12px;display:inline-flex;gap:5px;align-items:center;max-width:220px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ls-save:empty{display:none}.ls-save[data-status=saved]{animation:ls-fade-out 400ms ease 2.6s forwards}@keyframes ls-fade-out{to{opacity:0}}.ls-content{position:relative;display:flex;flex:1;min-height:0;flex-direction:column}.ls-sandbox{flex:1;min-height:0;border-radius:14px;overflow:hidden;position:relative;background:var(--ui-bg-primary);box-shadow:0 0 0 1px var(--ui-stroke-secondary),0 2px 8px rgba(0,0,0,.12)}.ls-mount{height:100%;min-height:0}.ls-stale{filter:saturate(.7)}.ls-notices{position:absolute;right:12px;bottom:12px;z-index:3;width:min(400px,calc(100% - 24px));max-height:calc(100% - 24px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;pointer-events:none}.ls-notices[data-empty]{display:none}.ls-notices>*{pointer-events:auto}.ls-notice-list{width:100%;display:flex;flex-direction:column;gap:6px;min-height:0;max-height:100%}.ls-notice-list[hidden]{display:none}.ls-notice-tools{display:flex;justify-content:flex-end}.ls-notice-minimise{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 9px;border:0;border-radius:999px;font:inherit;font-size:11.5px;color:var(--ui-text-secondary);cursor:pointer;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-notice-stack{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:0;overscroll-behavior:contain;border-radius:14px}.ls-notice-pill{display:inline-flex;align-items:center;gap:6px;max-width:100%;height:32px;padding:0 12px 0 10px;white-space:nowrap;transition:opacity 180ms ease,transform 220ms var(--ls-ease-out);border:0;border-radius:999px;font:inherit;font-size:12.5px;font-weight:550;color:var(--ui-text-primary);cursor:pointer;background:var(--ls-glass-strong);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-notice-pill.ls-alert{color:var(--ls-danger);background:color-mix(in srgb,var(--ls-danger) 9%,var(--ls-glass-strong))}@starting-style{.ls-notice-pill{opacity:0;transform:translateY(6px) scale(.96)}}.ls-banner{display:flex;gap:10px;flex:none;padding:12px 14px 12px 12px;border-radius:14px;font-size:13px;color:var(--ui-text-primary);background:var(--ls-glass-strong);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow);transition:transform 260ms var(--ls-ease-out),opacity 200ms ease}@starting-style{.ls-banner{transform:translateY(10px) scale(.98);opacity:0}}.ls-banner>.codicon{margin-top:2px;color:var(--ui-text-secondary)}.ls-banner .ls-actions{margin-top:10px;gap:6px}.ls-banner .ls-action{min-height:28px!important;height:28px;padding:0 10px!important;font-size:12.5px!important}.ls-banner.ls-failed,.ls-banner.ls-crashed,.ls-banner.ls-conflict{background:color-mix(in srgb,var(--ls-danger) 7%,var(--ls-glass-strong))}.ls-banner.ls-failed>.codicon,.ls-banner.ls-crashed>.codicon,.ls-banner.ls-conflict>.codicon,.ls-banner.ls-failed strong{color:var(--ls-danger)}.ls-banner.ls-blocked>.codicon,.ls-banner.ls-storage>.codicon{color:var(--ls-warning)}.ls-crash{max-width:620px;padding:40px 24px;margin:auto;overflow:auto;max-height:100%}.ls-diagnostic{max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;background:var(--ui-bg-secondary);border:1px solid var(--ls-line);font:12px/1.5 var(--font-mono,monospace)}.ls-building{padding:40px;display:grid;gap:16px}
 .ls-sheet{position:fixed!important;top:0!important;right:0!important;left:auto!important;bottom:0!important;transform:none!important;translate:none!important;width:min(460px,100vw)!important;max-width:460px!important;max-height:100dvh!important;height:100dvh!important;border-radius:0!important;background:var(--ui-bg-elevated,var(--ui-surface-background,Canvas))!important;animation:none!important}.ls-sheet-body{display:flex!important;flex-direction:column!important;height:100%;max-height:100dvh!important;padding:0!important;gap:0!important;overflow:hidden!important}.ls-sheet-header{display:flex!important;flex-direction:row!important;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--ls-line);flex:none}.ls-sheet-scroll{padding:18px 16px;overflow:auto;min-height:0;flex:1}.ls-disclosure{margin:8px 0!important;font-size:12px;line-height:1.55;max-width:60ch}.ls-internet .ls-row-top{min-height:56px}.ls-internet>.ls-secondary{font-size:12px;max-width:60ch}.ls-switch-value{display:flex;gap:8px;align-items:center}.ls-switch{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:40px;padding:0;border:0;background:none;cursor:pointer;flex:none}.ls-switch-track{display:block;width:40px;height:24px;border-radius:999px;border:1px solid var(--ui-stroke-secondary);background:var(--ui-stroke-secondary);position:relative}.ls-switch-thumb{position:absolute;left:2px;top:2px;width:18px;height:18px;border-radius:50%;background:var(--ui-text-primary);transition:transform 120ms ease-out}.ls-switch[aria-checked=true] .ls-switch-track{background:var(--ui-accent);border-color:var(--ui-accent)}.ls-switch[aria-checked=true] .ls-switch-thumb{transform:translateX(16px);background:var(--ui-text-on-accent,#fff)}.ls-switch[aria-disabled=true]{cursor:not-allowed}.ls-upkeep-prompt{margin:16px 0}.ls-upkeep-prompt h3,.ls-sheet h3{font-size:13px;font-weight:600;margin:0}.ls-upkeep-prompt p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}.ls-clamp-six,.ls-clamp-three{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}.ls-clamp-three{-webkit-line-clamp:3}.ls-upkeep-note{font-size:12px}.ls-upkeep-actions>.ls-danger{margin-left:auto}.ls-upkeep-feedback{font-size:12px;margin:12px 0;outline-offset:2px}.ls-section{margin:0 0 22px}.ls-section-title{font-size:12px!important;font-weight:600!important;letter-spacing:.025em;margin:4px 0 12px!important}.ls-grant,.ls-row{padding:12px;border:1px solid var(--ls-line);border-radius:8px;margin-bottom:12px}.ls-row-top{display:flex;align-items:center;gap:8px;justify-content:space-between}.ls-row-top>strong{display:flex;gap:8px;align-items:center}.ls-pending{background:color-mix(in srgb,var(--ls-warning) 6%,var(--ls-surface))}.ls-audit{padding-left:18px;font-size:12px}.ls-tabs{margin-bottom:16px}.ls-confirm{max-width:520px!important}.ls-compare{display:grid;gap:12px}.ls-directive{padding:14px;border:1px solid var(--ui-stroke-secondary);border-radius:12px;max-width:440px;background:var(--ui-bg-card,var(--ui-bg-secondary));display:grid;gap:10px}.ls-spin{animation:ls-spin 1s linear infinite}@keyframes ls-spin{to{transform:rotate(360deg)}}
-.ls-frame:not([data-header-mode=wide]) .ls-wide-only{display:none!important}.ls-frame:not([data-header-mode=wide]) .ls-framebar{flex-wrap:wrap}.ls-frame:not([data-header-mode=wide]) .ls-framebar{position:static}.ls-frame:not([data-header-mode=wide]) .ls-frame-actions{width:100%;justify-content:flex-end}.ls-frame:not([data-header-mode=wide]) .ls-save{margin-right:auto}.ls-frame[data-header-mode=narrow] .ls-identity{flex-basis:100%}.ls-frame[data-header-mode=narrow] .ls-upkeep-action{display:none}.ls-frame[data-header-mode=narrow] .ls-frame-actions .ls-action:not(.ls-overflow){padding:0 8px!important}.ls-frame[data-header-mode=narrow] .ls-save{max-width:100%;flex-basis:100%}.ls-frame[data-header-mode=narrow] .ls-save:empty{display:none}.ls-frame-actions .ls-overflow{width:32px;height:32px;min-width:32px;padding:0!important;flex:none}
-@media(max-width:899px){.ls-page{padding:20px 16px}.ls-content{padding:12px}.ls-page-heading{flex-wrap:wrap;gap:4px}.ls-sort{width:100%}.ls-sheet{width:min(460px,100vw)!important}}@media(max-width:359px){.ls-internet .ls-row-top{flex-wrap:wrap}.ls-internet .ls-switch-value{width:100%}}@media(prefers-reduced-motion:reduce){.ls-spin{animation:none}.ls-root *,.ls-sheet *,.ls-confirm *{transition:none!important;animation:none!important}}@media(forced-colors:active){.ls-pill,.ls-card,.ls-tile,.ls-action{border:1px solid CanvasText!important}.ls-switch-track{border:1px solid ButtonText!important;background:Canvas!important}.ls-switch-thumb{background:ButtonText!important}.ls-switch[aria-checked=true] .ls-switch-track{background:Highlight!important}.ls-switch[aria-checked=true] .ls-switch-thumb{background:HighlightText!important}}
-.ls-banner>div{min-width:0;flex:1}.ls-oneline{display:block;margin:4px 0 0!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ls-answer{margin-top:6px;max-height:min(42vh,360px);overflow:auto;overflow-wrap:anywhere;color:var(--ui-text-primary)}.ls-answer :is(p,ul,ol,pre,h5){margin:0 0 6px!important}.ls-answer h5{font-size:inherit}.ls-answer :is(ul,ol){padding-left:20px}.ls-answer pre{white-space:pre-wrap;padding:8px;background:var(--ui-bg-primary);border:1px solid var(--ls-line);font:12px/1.5 var(--font-mono,monospace)}.ls-answer code{font-family:var(--font-mono,monospace)}
+.ls-frame[data-header-mode=compact] .ls-island-button .ls-label,.ls-frame[data-header-mode=narrow] .ls-island-button .ls-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.ls-frame[data-header-mode=compact] .ls-island-button,.ls-frame[data-header-mode=narrow] .ls-island-button{width:32px;min-width:32px;padding:0!important;justify-content:center}.ls-frame[data-header-mode=narrow] .ls-frame-meta{padding:0 8px}.ls-frame[data-header-mode=narrow] .ls-frame-meta-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.ls-frame[data-header-mode=narrow] .ls-island-identity{max-width:none;flex:1}.ls-frame[data-header-mode=narrow] .ls-save{max-width:none;padding:0 4px}.ls-frame[data-header-mode=narrow] .ls-save-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.ls-frame[data-header-mode=narrow]{padding:0 6px 6px}.ls-frame[data-header-mode=narrow] .ls-notices{right:8px;left:8px;bottom:8px;width:auto}
+@media(max-width:899px){.ls-page{padding:20px 16px}.ls-page-heading{gap:8px}}@media(max-width:359px){.ls-internet .ls-row-top{flex-wrap:wrap}.ls-internet .ls-switch-value{width:100%}}@media(prefers-reduced-motion:reduce){.ls-spin{animation:none}.ls-root *,.ls-sheet *,.ls-confirm *{transition:none!important;animation:none!important}}@media(forced-colors:active){.ls-pill,.ls-card,.ls-tile,.ls-action{border:1px solid CanvasText!important}.ls-switch-track{border:1px solid ButtonText!important;background:Canvas!important}.ls-switch-thumb{background:ButtonText!important}.ls-switch[aria-checked=true] .ls-switch-track{background:Highlight!important}.ls-switch[aria-checked=true] .ls-switch-thumb{background:HighlightText!important}}
+.ls-banner>div{min-width:0;flex:1}.ls-oneline{display:block;margin:4px 0 0!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* A notice reason is the instruction itself ("Ask Bjorn in chat to bind it."): two lines before it gives way, never one. */
+.ls-reason{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin:4px 0 0!important;overflow:hidden;overflow-wrap:anywhere}.ls-answer{margin-top:6px;max-height:min(42vh,360px);overflow:auto;overflow-wrap:anywhere;color:var(--ui-text-primary)}.ls-answer :is(p,ul,ol,pre,h5){margin:0 0 6px!important}.ls-answer h5{font-size:inherit}.ls-answer :is(ul,ol){padding-left:20px}.ls-answer pre{white-space:pre-wrap;padding:8px;background:var(--ui-bg-primary);border:1px solid var(--ls-line);font:12px/1.5 var(--font-mono,monospace)}.ls-answer code{font-family:var(--font-mono,monospace)}
 .ls-collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows 240ms cubic-bezier(.23,1,.32,1)}.ls-collapse>div{min-height:0;overflow:hidden;opacity:0;transition:opacity 160ms ease}.ls-collapse[data-open=true]{grid-template-rows:1fr}.ls-collapse[data-open=true]>div{opacity:1;transition:opacity 200ms ease 60ms}
 .ls-meter{height:4px;margin-top:6px;border-radius:4px;background:var(--ls-line);overflow:hidden}.ls-meter>i{display:block;height:100%;background:var(--ls-warning)}
 @media(prefers-reduced-motion:reduce){.ls-root .ls-collapse{transition:none!important}.ls-root .ls-collapse>div{transition:opacity 160ms ease!important}}
+:root.dark :is(.ls-root,.ls-sheet,.ls-confirm),.dark :is(.ls-root,.ls-sheet,.ls-confirm){--ls-island-shadow:0 0 0 1px rgba(255,255,255,.08),0 1px 0 rgba(255,255,255,.06) inset,0 10px 30px -8px rgba(0,0,0,.6)}.ls-sheet{top:8px!important;right:8px!important;bottom:8px!important;height:auto!important;max-height:calc(100dvh - 16px)!important;width:min(400px,calc(100vw - 16px))!important;max-width:400px!important;border-radius:16px!important;box-shadow:var(--ls-island-shadow),0 24px 60px -20px rgba(0,0,0,.45)!important;animation:ls-sheet-in 280ms var(--ls-ease-drawer) both!important}@keyframes ls-sheet-in{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}.ls-sheet-header{gap:10px;padding:14px 14px 12px 18px!important}.ls-sheet-header h2{flex:1}.ls-sheet-header .ls-tile-small{width:24px;height:24px;border-radius:7px}.ls-sheet-header .ls-tile .codicon{font-size:14px}.ls-detail{padding:14px 0;border-bottom:1px solid var(--ls-line)}.ls-detail:first-child{padding-top:0}.ls-detail:last-child{border-bottom:0}.ls-detail h3{font-size:11.5px!important;font-weight:600;letter-spacing:.02em;color:var(--ui-text-secondary);margin:0 0 6px!important}.ls-detail .ls-actions{margin-top:8px}@media(prefers-reduced-motion:reduce){.ls-root .ls-thumb{transition:opacity 160ms ease!important}.ls-root .ls-card:hover .ls-thumb,.ls-root .ls-card:active .ls-thumb{transform:none}.ls-root .ls-banner{transition:opacity 200ms ease!important}@starting-style{.ls-root .ls-banner{transform:none;opacity:0}}.ls-root .ls-notice-pill{transition:opacity 180ms ease!important}@starting-style{.ls-root .ls-notice-pill{transform:none;opacity:0}}.ls-sheet{animation:ls-fade-in 200ms ease both!important}@keyframes ls-fade-in{from{opacity:0}}}@media(max-width:699px){.ls-page{padding:16px}.ls-gallery h1{font-size:24px}.ls-sort{display:none}.ls-search{width:100%}}@media(prefers-reduced-transparency:reduce){.ls-island,.ls-banner,.ls-notice-pill,.ls-notice-minimise,.ls-search,.ls-pin,.ls-card-state .ls-pill{background:Canvas!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}@media(forced-colors:active){.ls-island,.ls-banner,.ls-notice-pill,.ls-thumb{border:1px solid CanvasText}}
 `;
 
 // src/desktop/ui/context.jsx

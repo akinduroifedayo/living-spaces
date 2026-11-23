@@ -244,11 +244,25 @@ def resolve_space(ref):
         return _resolve(conn, ref)
 
 
+def _activity(sid):
+    """Who last changed this Space and when: the newest record change or code revision, by its stored actor."""
+    with db.read() as conn:
+        change = conn.execute("SELECT actor,at FROM changes WHERE space=? ORDER BY seq DESC LIMIT 1", (sid,)).fetchone()
+        revision = conn.execute("SELECT author,created_at FROM revisions WHERE space=? ORDER BY rev DESC LIMIT 1", (sid,)).fetchone()
+    candidates = []
+    if change is not None:
+        candidates.append({"kind": "data", "actor": change["actor"], "at": change["at"]})
+    if revision is not None:
+        candidates.append({"kind": "code", "actor": revision["author"], "at": revision["created_at"]})
+    return max(candidates, key=lambda item: item["at"], default=None)
+
+
 def _summary(row):
     sid = row["id"]
     summary = {key: row[key] for key in ("id", "name", "description", "owner", "status", "head_rev", "accent", "icon", "pinned", "updated_at", "last_opened_at")}
     summary["pinned"] = bool(summary["pinned"])
     summary["freshness"] = runs.freshness(sid)
+    summary["activity"] = _activity(sid)
     summary["upkeep"] = upkeep.summary(sid)
     summary["attention"] = None
     recent = runs.list_runs(sid, limit=1)

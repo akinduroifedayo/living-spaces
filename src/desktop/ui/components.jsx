@@ -1,6 +1,6 @@
 import { Badge, Button, Codicon, CopyButton, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, fmtDateTime, relativeTime, Tip } from '@hermes/plugin-sdk'
-import { useMemo, useRef, useState } from 'react'
-import { accentColor, errorText, iconName, PILLS } from './model.mjs'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { ALERT_KINDS, accentColor, errorText, iconName, PILLS } from './model.mjs'
 import { parseMarkdown } from './markdown.mjs'
 
 export const relative = seconds => relativeTime(seconds * 1000)
@@ -10,9 +10,16 @@ export function absolute(seconds) {
   const zone = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(date).find(p => p.type === 'timeZoneName')?.value || ''
   return `${fmtDateTime.format(date)} ${zone}`.trim()
 }
-export function Time({ at, children, relative: asRelative = false }) {
+const fmtClock = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' })
+// A stamp for a notice title: the time alone when it is today, the full stamp otherwise. The tooltip is always absolute.
+export function clock(seconds, now = Date.now()) {
+  if (!absolute(seconds)) return ''
+  const date = new Date(seconds * 1000)
+  return date.toDateString() === new Date(now).toDateString() ? fmtClock.format(date) : absolute(seconds)
+}
+export function Time({ at, children, relative: asRelative = false, short = false }) {
   if (!absolute(at)) return null
-  return <time dateTime={new Date(at * 1000).toISOString()} title={absolute(at)}>{children ?? (asRelative ? relative(at) : absolute(at))}</time>
+  return <time dateTime={new Date(at * 1000).toISOString()} title={absolute(at)}>{children ?? (asRelative ? relative(at) : short ? clock(at) : absolute(at))}</time>
 }
 export function Freshness({ facts }) {
   return facts.map((fact, index) => <span key={fact.key}>{index > 0 && ' · '}{fact.at == null ? fact.label : <>{fact.label} <Time at={fact.at} relative /></>}</span>)
@@ -22,8 +29,22 @@ export function StatusPill({ status, label }) {
   const pill = PILLS[status] || { label: status, icon: 'info', border: 'solid' }
   return <Badge variant="outline" className={`ls-pill ls-${status}`} style={{ borderStyle: pill.border }}><Icon name={pill.icon} spin={['updating', 'running'].includes(status)} />{label || pill.label}</Badge>
 }
+// A Space names its own icon. A name this host's icon font does not draw renders as nothing, so a Space icon
+// that paints no glyph falls back to the contract's default instead of leaving an empty tile.
+export function SpaceIcon({ icon }) {
+  const name = iconName(icon)
+  const [missing, setMissing] = useState(null)
+  const ref = useRef(null)
+  useLayoutEffect(() => {
+    const element = ref.current?.querySelector('.codicon') || ref.current?.firstElementChild
+    if (!element || typeof getComputedStyle !== 'function') return
+    const content = getComputedStyle(element, '::before').content
+    setMissing(content === 'none' ? name : null)
+  }, [name])
+  return <span ref={ref} className="ls-icon-slot"><Icon name={missing === name ? 'layers' : name} /></span>
+}
 export function SpaceTile({ space, small = false }) {
-  return <span className={`ls-tile${small ? ' ls-tile-small' : ''}`} style={{ '--ls-accent': accentColor(space.accent) }}><Icon name={iconName(space.icon)} /></span>
+  return <span className={`ls-tile${small ? ' ls-tile-small' : ''}`} style={{ '--ls-accent': accentColor(space.accent) }}><SpaceIcon icon={space.icon} /></span>
 }
 export function OwnerChip({ owner = 'Hermes' }) {
   return <span className="ls-owner"><span className="ls-avatar" aria-hidden="true">{owner.slice(0, 1).toUpperCase()}</span><span>{owner}</span></span>
@@ -36,8 +57,9 @@ export function CopyPrompt({ text, label = 'Copy' }) {
   const [error, setError] = useState('')
   return <div className="ls-prompt"><Icon name="comment-discussion" /><q>{text}</q><CopyButton text={text} label={label} showLabel buttonSize="sm" onCopyError={() => setError('Copy failed. Select and copy the prompt.')} />{error && <span role="alert">{error}</span>}</div>
 }
-export function Banner({ kind = 'info', title, children, actions }) {
-  return <div className={`ls-banner ls-${kind}`} role={['failed', 'blocked', 'crashed', 'conflict'].includes(kind) ? 'alert' : 'status'}><Icon name={kind === 'info' ? 'info' : 'warning'} /><div><strong>{title}</strong>{children && <div className="ls-secondary">{children}</div>}{actions && <div className="ls-actions">{actions}</div>}</div></div>
+// `noticeKey` names what the notice is about when its title carries changing words, such as a time.
+export function Banner({ kind = 'info', title, children, actions, noticeKey }) {
+  return <div className={`ls-banner ls-${kind}`} data-notice={noticeKey} role={ALERT_KINDS.includes(kind) ? 'alert' : 'status'}><Icon name={kind === 'info' ? 'info' : kind === 'storage' ? 'database' : 'warning'} /><div><strong>{title}</strong>{children && <div className="ls-secondary">{children}</div>}{actions && <div className="ls-actions">{actions}</div>}</div></div>
 }
 function Spans({ spans, onOpenLink }) {
   return spans.map((span, index) => span.type === 'break' ? <br key={index} />
@@ -55,13 +77,13 @@ export function Answer({ text, onOpenLink }) {
     : block.type === 'list' ? (() => { const List = block.ordered ? 'ol' : 'ul'; return <List key={index}>{block.items.map((item, n) => <li key={n}><Spans spans={item} onOpenLink={onOpenLink} /></li>)}</List> })()
     : <p key={index}><Spans spans={block.spans} onOpenLink={onOpenLink} /></p>)
 }
-export function Drawer({ title, description, children, onClose, note, returnFocus }) {
+export function Drawer({ title, description, children, onClose, note, returnFocus, heading }) {
   const trigger = useRef(returnFocus || (typeof document === 'undefined' ? null : document.activeElement))
   const close = useRef(null)
   return <Dialog open onOpenChange={open => !open && onClose()}><DialogContent className="ls-sheet" bodyClassName="ls-sheet-body" showCloseButton={false}
     onOpenAutoFocus={event => { event.preventDefault(); close.current?.focus() }}
     onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
-    <DialogHeader className="ls-sheet-header"><DialogTitle>{title}</DialogTitle><Button ref={close} onClick={onClose} variant="ghost" size="sm" className="ls-action"><Icon name="close" />Close</Button><DialogDescription className="ls-sr">{description || title}</DialogDescription></DialogHeader>
+    <DialogHeader className="ls-sheet-header">{heading}<DialogTitle>{title}</DialogTitle><Button ref={close} onClick={onClose} variant="ghost" size="sm" className="ls-action"><Icon name="close" />Close</Button><DialogDescription className="ls-sr">{description || title}</DialogDescription></DialogHeader>
     {note}<div className="ls-sheet-scroll">{children}</div>
   </DialogContent></Dialog>
 }

@@ -19,6 +19,8 @@ const { JSDOM } = require('jsdom')
 
 // The session stub records each opened controller so a test can publish bot statuses through the
 // same onAction callback the real session uses, including the republish that restore() performs on open.
+// A failed request is titled by what is known about delivery, naming the Space owner (Hermes in these fixtures).
+const FAILED_TITLE = /^(?:.*?)(The request to Hermes failed|Couldn't reach Hermes|Not sure Hermes received the request|Hermes didn't receive the request)/
 const sessions = []
 const session = { createSpaceSession(options) {
   const controller = { options, links: [], checks: 0, retries: 0, continued: 0, continuable: false, ready: Promise.resolve(), postEvent() {}, destroy: async () => {},
@@ -68,7 +70,7 @@ const props = () => {
 }
 const text = () => document.body.textContent
 // Any bot notice, whichever label its kind uses.
-const NOTICE = /Hermes replied|Bot request/
+const NOTICE = /Hermes replied|Bot request|The request to Hermes failed|Couldn't reach Hermes|Not sure Hermes received|Hermes didn't receive/
 const notice = () => document.querySelector('.ls-banner')
 const region = () => document.querySelector('.ls-collapse')
 // A collapsed reply stays in the DOM so it can animate, but is inert and hidden from assistive tech.
@@ -140,12 +142,14 @@ test('answerSummary is the first sentence of the first prose block, capped at 16
 test('botBanner labels each kind and carries the reply, reason and time', () => {
   assert.equal(model.botBanner(null), null)
   assert.equal(model.botBanner(completed(), { dismissed: true }), null)
-  assert.deepEqual(model.botBanner({ ...completed('click-1', '**Done:**\n\nAll set. More.'), at: 1700000000 }), { status: 'completed', kind: 'reply', label: 'Hermes replied', reason: null, summary: 'All set.', answer: '**Done:**\n\nAll set. More.', at: 1700000000, expanded: false, collapsible: true, canRetry: false, canDismiss: true })
+  assert.deepEqual(model.botBanner({ ...completed('click-1', '**Done:**\n\nAll set. More.'), at: 1700000000 }), { status: 'completed', kind: 'reply', label: 'Hermes replied', reason: null, detail: null, summary: 'All set.', answer: '**Done:**\n\nAll set. More.', at: 1700000000, expanded: false, collapsible: true, canRetry: false, canDismiss: true })
   assert.equal(model.botBanner(completed(), { expanded: true }).expanded, true)
   assert.equal(model.botBanner(completed()).at, null)
   for (const status of ['failed', 'offline', 'unknown']) {
     const banner = model.botBanner({ activationId: 'a', status, message: 'Route unavailable. No automatic resend.', answer: 'stale' }, { expanded: true })
-    assert.deepEqual(banner, { status, kind: 'failed', label: 'Bot request failed', reason: 'Route unavailable. No automatic resend.', summary: '', answer: null, at: null, expanded: false, collapsible: false, canRetry: true, canDismiss: true })
+    const label = who => ({ failed: `The request to ${who} failed`, offline: `Couldn't reach ${who}`, unknown: `Not sure ${who} received the request` })[status]
+    assert.deepEqual(banner, { status, kind: 'failed', label: label('Hermes'), reason: 'Route unavailable. No automatic resend.', detail: null, summary: '', answer: null, at: null, expanded: false, collapsible: false, canRetry: true, canDismiss: true })
+    assert.equal(model.botBanner({ activationId: 'a', status, message: 'm' }, { owner: 'Bjorn' }).label, label('Bjorn'), 'titled by the Space owner')
     assert.equal(model.botBanner({ status, message: 'm' }).canRetry, false)
   }
   for (const status of ['submitted', 'queued', 'busy']) {
@@ -253,7 +257,7 @@ test('Dismiss hides the answer across re-render and reopen of the same activatio
     await publish(controller, completed())
     assert.doesNotMatch(text(), NOTICE)
     await publish(controller, { activationId: 'click-1', status: 'failed', message: 'Native request failed.' })
-    assert.match(text(), /Bot request failed/)
+    assert.match(text(), FAILED_TITLE)
     await publish(controller, completed('click-2', 'Another answer'))
     assert.match(text(), /Hermes replied/)
     assert.match(document.querySelector('.ls-answer-summary').textContent, /Another answer/)
@@ -274,7 +278,7 @@ test('a dismissed activation stays hidden when reopen can only report it offline
     await publish(controller, completed())
     assert.doesNotMatch(text(), NOTICE)
     await publish(controller, { activationId: 'click-2', status: 'offline', message: 'Route unavailable.' })
-    assert.match(text(), /Bot request failed/)
+    assert.match(text(), FAILED_TITLE)
     assert.ok(button('Retry same request'))
   } finally { await unmount() }
 })
@@ -310,7 +314,7 @@ test('a status the user just caused shows even for a dismissed activation, and i
     await click('Dismiss')
     const offline = { activationId: 'click-1', status: 'offline', message: 'The exact maintaining profile route is unavailable or ambiguous. No automatic resend.' }
     await publish(controller, { ...offline, userInitiated: true })
-    assert.match(text(), /Bot request failed/)
+    assert.match(text(), FAILED_TITLE)
     assert.ok(button('Retry same request'))
     assert.ok(button('Check status'))
     await click('Dismiss')
@@ -368,7 +372,7 @@ test('a banner without an activation dismisses in memory only', async () => {
     await unmount()
     controller = await mount()
     await publish(controller, { ...refused })
-    assert.match(text(), /Bot request failed/)
+    assert.match(text(), FAILED_TITLE)
   } finally { await unmount() }
 })
 for (const status of ['failed', 'offline', 'unknown']) {
@@ -379,8 +383,8 @@ for (const status of ['failed', 'offline', 'unknown']) {
       const message = `Status ${status}. No automatic resend.`
       await publish(controller, { activationId: 'click-1', status, message })
       assert.equal(notice().getAttribute('role'), 'alert')
-      assert.match(notice().querySelector('strong').textContent, /^Bot request failed/)
-      const reason = notice().querySelector('.ls-oneline')
+      assert.match(notice().querySelector('strong').textContent, FAILED_TITLE)
+      const reason = notice().querySelector('.ls-reason')
       assert.equal(reason.textContent, message)
       assert.equal(reason.title, message)
       await click('Retry same request')
@@ -516,4 +520,31 @@ test('session Continue in chat opens the maintainer stored session through the h
     assert.equal(controller.continueInChat(), false)
     assert.deepEqual(opened, ['canonical-chat'])
   } finally { await controller.destroy() }
+})
+
+test('an unbound Space names the owner and the fix, keeps the raw error behind Copy details, and stamps the title with time only today', async () => {
+  fresh()
+  const controller = await mount()
+  const raw = `Error invoking remote method 'hermes:api': Error: 423: {"error":{"code":"blocked","message":"No maintaining session is bound. Ask its bot in native chat to bind this Space.","reason":"unbound"}}`
+  const at = Math.floor(Date.now() / 1000)
+  try {
+    await publish(controller, { activationId: 'click-1', status: 'offline', reason: 'unbound', message: 'No maintaining session is bound. Ask its bot in native chat to bind this Space. No automatic resend.', detail: raw, at })
+    const title = notice().querySelector('strong')
+    assert.match(title.textContent, /^Hermes didn't receive the request · /)
+    assert.doesNotMatch(title.textContent, /\d{4}/, 'no date or year in the title today')
+    assert.equal(title.querySelector('time').getAttribute('title').length > title.querySelector('time').textContent.length, true, 'the absolute stamp stays in the tooltip')
+    assert.match(notice().textContent, /No chat is keeping this Space\. Ask Hermes in chat to bind it\./)
+    assert.doesNotMatch(notice().textContent, /Error invoking|hermes:api|423|\{/, 'nothing raw in the visible notice')
+    const copy = [...notice().querySelectorAll('button')].find(node => node.textContent === 'Copy details')
+    assert.ok(copy, 'Copy details is offered')
+    assert.ok(copy.dataset.copy.startsWith(raw), 'the raw error is what gets copied')
+    assert.ok(button('Check status') && button('Dismiss'), 'the actions stay')
+  } finally { await unmount() }
+})
+
+test('a failure reason may wrap to two lines instead of cutting off its instruction', () => {
+  const styles = readFileSync(new URL('../../../src/desktop/ui/styles.js', import.meta.url), 'utf8')
+  const rule = styles.match(/\.ls-reason\{[^}]*\}/)?.[0] || ''
+  assert.match(rule, /-webkit-line-clamp:2/)
+  assert.doesNotMatch(rule, /nowrap/)
 })

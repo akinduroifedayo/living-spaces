@@ -408,6 +408,81 @@ export function spaceLoader(resolver) {
       if (done) await done
     }
   }
+  async function snapshot(width) {
+    if (!Number.isInteger(width) || width < 64 || width > 1024) throw new Error('Invalid snapshot width')
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    if (!(viewportWidth > 0 && viewportHeight > 0)) throw new Error('Snapshot viewport is empty')
+    const height = Math.max(16, Math.min(1024, Math.round(width * viewportHeight / viewportWidth)))
+    const clone = document.documentElement.cloneNode(true)
+    const rules = []
+    for (const sheet of document.styleSheets) {
+      try { rules.push([...sheet.cssRules].map(rule => rule.cssText).join('\n')) } catch {}
+    }
+    for (const node of clone.querySelectorAll('style,link[rel~="stylesheet"],script,meta[http-equiv]')) node.remove()
+    const style = document.createElement('style')
+    style.textContent = rules.join('\n')
+    clone.querySelector('head').append(style)
+
+    const images = document.querySelectorAll('img')
+    clone.querySelectorAll('img').forEach((copy, index) => {
+      const source = images[index]
+      if (!/^(blob:|data:)/.test(source.currentSrc || source.src)) return
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = source.naturalWidth
+        canvas.height = source.naturalHeight
+        canvas.getContext('2d').drawImage(source, 0, 0)
+        const data = canvas.toDataURL()
+        if (!data.startsWith('data:image/')) return
+        copy.removeAttribute('srcset')
+        copy.src = data
+      } catch {}
+    })
+    const canvases = document.querySelectorAll('canvas')
+    clone.querySelectorAll('canvas').forEach((copy, index) => {
+      const source = canvases[index]
+      const image = document.createElement('img')
+      for (const { name, value } of copy.attributes) image.setAttribute(name, value)
+      image.width = source.width
+      image.height = source.height
+      image.src = source.toDataURL()
+      copy.replaceWith(image)
+    })
+    const inputs = document.querySelectorAll('input,textarea,select')
+    clone.querySelectorAll('input,textarea,select').forEach((copy, index) => {
+      const source = inputs[index]
+      copy.setAttribute('value', source.value)
+      if (source.tagName === 'TEXTAREA') copy.textContent = source.value
+      if (source.tagName === 'INPUT') copy.toggleAttribute('checked', source.checked)
+      if (source.tagName === 'SELECT') {
+        for (const [index, option] of [...copy.options].entries()) option.toggleAttribute('selected', source.options[index].selected)
+      }
+    })
+    clone.style.setProperty('position', 'relative', 'important')
+    clone.style.setProperty('left', `${-window.scrollX}px`, 'important')
+    clone.style.setProperty('top', `${-window.scrollY}px`, 'important')
+    clone.style.setProperty('width', `${viewportWidth}px`, 'important')
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('width', viewportWidth)
+    svg.setAttribute('height', viewportHeight)
+    const foreign = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject')
+    foreign.setAttribute('width', viewportWidth)
+    foreign.setAttribute('height', viewportHeight)
+    foreign.append(clone)
+    svg.append(foreign)
+    const raster = new Image()
+    raster.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(svg))
+    await raster.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    canvas.getContext('2d').drawImage(raster, 0, 0, width, height)
+    let image = canvas.toDataURL('image/webp', 0.72)
+    if (!image.startsWith('data:image/webp')) image = canvas.toDataURL('image/png')
+    return { image, width, height }
+  }
+
   window.addEventListener('message', function onBoot(e) {
     if (e.source !== parent || e.data?.type !== 'space-boot' || e.data.v !== 1 || !e.ports[0]) return
     window.removeEventListener('message', onBoot)
@@ -415,6 +490,13 @@ export function spaceLoader(resolver) {
     port.onmessage = event => {
       const message = event.data
       if (message?.v !== 1 || closed) return
+      if (message.type === 'snapshot') {
+        if (!Number.isSafeInteger(message.id)) return
+        const reply = body => { if (!closed) port.postMessage({ v: 1, type: 'snapshot', id: message.id, ...body }) }
+        snapshot(message.width).then(result => reply({ ok: true, ...result }),
+          error => reply({ ok: false, reason: String(error?.message || error || 'Snapshot failed').slice(0, 200) }))
+        return
+      }
       if (message.type === 'event') {
         if (message.event === 'session.closed') {
           closed = true

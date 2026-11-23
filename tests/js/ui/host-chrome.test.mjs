@@ -120,10 +120,10 @@ test('accepted Run now does not claim a worker started before native execution',
 
 for (const [freshness, expected, count] of [
   [{}, 'Not refreshed yet', 0],
-  [{ last_attempt_status: 'failed' }, 'No successful update yet', 0],
+  [{ last_attempt_status: 'failed' }, 'Refresh failed · no successful update yet', 0],
   [{ last_success_at: 1700000000 }, 'Updated', 1],
   [{ last_success_at: 1700000000, source_as_of: 1699999950 }, 'Updated', 1],
-  [{ last_success_at: 1700000000, source_as_of: 1699999940 }, 'Source data from', 2]
+  [{ last_success_at: 1700000000, source_as_of: 1699999940 }, 'Updated', 1]
 ]) {
   test(`frame freshness ${JSON.stringify(freshness)} omits absent facts`, async () => {
     setup()
@@ -138,7 +138,12 @@ for (const [freshness, expected, count] of [
       assert.equal(document.querySelector('.ls-save').textContent, '')
       assert.equal(document.querySelector('.ls-caption'), null)
       assert.doesNotMatch(document.body.textContent, /running in a sandbox|No unsaved changes|Pause upkeep/)
-      assert.match(document.querySelector('.ls-frame-actions').textContent, /Upkeep: none/)
+      // The island holds one phrase; upkeep and the source age are Details facts.
+      assert.doesNotMatch(document.querySelector('.ls-framebar').textContent, /Upkeep|Source data from/)
+      await click('Details')
+      const details = document.querySelector('section[aria-label="Freshness"]').textContent
+      assert.match(details, /UpkeepNone/)
+      assert.equal(/Source data from/.test(details), freshness.source_as_of != null)
     } finally { await cleanup() }
   })
 }
@@ -437,8 +442,8 @@ for (const status of [null, 'requested', 'denied', 'revoked', 'granted']) {
   })
 }
 
-for (const label of ['Permissions', 'Internet on']) {
-  test(`${label} opens existing Permissions and returns focus to its opener`, async () => {
+for (const label of ['Details', 'Internet on']) {
+  test(`${label} leads to existing Permissions and returns focus to its island opener`, async () => {
     setup()
     data.detail = space({ grants: [{ capability: 'net', status: 'granted' }] })
     data.grants = { grants: data.detail.grants }
@@ -450,6 +455,7 @@ for (const label of ['Permissions', 'Internet on']) {
       assert.ok(opener, label)
       opener.focus()
       await click(label)
+      if (label === 'Details') await click('Manage access')
       const dialogs = document.querySelectorAll('[role="dialog"]')
       assert.equal(dialogs.length, 1)
       assert.equal(dialogs[0].querySelector('h2').textContent, 'Permissions · Demo')
@@ -502,13 +508,15 @@ test('revoking Internet in Permissions refreshes Space detail and removes Intern
   } finally { await cleanup() }
 })
 
-for (const [label, title, startWidth, endWidth, hidden] of [
-  ['History', 'History & revisions', 900, 640, true],
-  ['History', 'History & revisions', 1000, 900, false],
-  ['Upkeep: none', 'Upkeep · Demo', 640, 599, true],
-  ['Upkeep: none', 'Upkeep · Demo', 900, 600, false]
+// Island controls collapse to icons at compact and narrow widths but never leave the bar, so a drawer opened
+// from Details, or from one of its manage actions, returns focus to the Details control through any resize.
+for (const [label, title, startWidth, endWidth, hidden, via] of [
+  ['Details', 'History & revisions', 1000, 640, false, 'Open history'],
+  ['Details', 'Space details', 1000, 900, false],
+  ['Details', 'Upkeep · Demo', 900, 599, false, 'Manage upkeep'],
+  ['Details', 'Space details', 640, 599, false]
 ]) {
-  test(`${label} drawer returns focus to ${hidden ? 'overflow when its connected opener is hidden' : 'its still-visible opener'} after panel resize ${startWidth} to ${endWidth}`, async t => {
+  test(`${title} drawer${via ? ` via ${via}` : ''} returns focus to its still-visible ${label} opener after panel resize ${startWidth} to ${endWidth}`, async t => {
     setup()
     data.detail = space()
     data.runs = []
@@ -557,6 +565,7 @@ for (const [label, title, startWidth, endWidth, hidden] of [
       opener.focus()
       assert.equal(document.activeElement, opener)
       await click(label)
+      if (via) await click(via)
       const dialog = document.querySelector('[role="dialog"]')
       assert.ok(dialog)
       assert.equal(dialog.querySelector('h2').textContent, title)
@@ -738,7 +747,8 @@ test('opening History shows the current stored record count, not the cached one'
     await mount(SpaceView, { ctx, sid: 'demo-space' })
     await settle(20)
     stored = 2   // a note saved inside the canvas; the 2 s detail poll has not run yet
-    await click('History')
+    await click('Details')
+    await click('Open history')
     await settle(50)
     assert.match(document.querySelector('section[aria-label="Storage"]').textContent, /records: 2 · 68 bytes/)
   })
