@@ -1683,6 +1683,8 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
   let lastLog = -Infinity;
   let overflowReported = false;
   let faults = 0;
+  let snapshotId = 0;
+  const snapshots = /* @__PURE__ */ new Map();
   const overflow = () => {
     if (overflowReported) return;
     overflowReported = true;
@@ -1691,6 +1693,7 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
   const stop = () => {
     if (state === "closed") return;
     state = "closed";
+    for (const settle of snapshots.values()) settle(null);
     frame?.removeEventListener("load", onLoad);
     port.onmessage = null;
     port.close();
@@ -1715,6 +1718,13 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
   port.onmessage = async (e) => {
     if (state !== "booted") return;
     const m = e.data;
+    if (m?.type === "snapshot") {
+      const settle = snapshots.get(m.id);
+      if (!settle) return;
+      const valid = !Array.isArray(m) && m.v === 1 && m.ok === true && typeof m.image === "string" && m.image.length <= 35e4 && /^data:image\/(?:webp|png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(m.image) && [m.width, m.height].every((size) => Number.isInteger(size) && size >= 16 && size <= 1024);
+      settle(valid ? { image: m.image, width: m.width, height: m.height } : null);
+      return;
+    }
     const reply = (body) => {
       if (state === "booted" && Number.isSafeInteger(m?.id)) port.postMessage({ v: 1, id: m.id, ...body });
     };
@@ -1779,6 +1789,24 @@ function mountSpace(container, { bundle, grants = [], call, onEvent = () => {
     throw error;
   }
   return {
+    snapshot({ width = 640, timeoutMs = 2500 } = {}) {
+      if (state !== "booted" || !Number.isInteger(width) || width < 64 || width > 1024 || !Number.isFinite(timeoutMs) || timeoutMs < 0 || timeoutMs > 2147483647 || snapshotId === Number.MAX_SAFE_INTEGER) return Promise.resolve(null);
+      return new Promise((resolve) => {
+        const id = ++snapshotId;
+        const timer = setTimeout(() => snapshots.get(id)?.(null), timeoutMs);
+        const settle = (result) => {
+          clearTimeout(timer);
+          snapshots.delete(id);
+          resolve(result);
+        };
+        snapshots.set(id, settle);
+        try {
+          port.postMessage({ v: 1, type: "snapshot", id, width });
+        } catch {
+          settle(null);
+        }
+      });
+    },
     postEvent(event, payload) {
       if (state !== "booted") return;
       if (event === "data.changed" && checkGrant("data.query", grants)) return;
@@ -2034,6 +2062,15 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
   })();
   return {
     ready,
+    async snapshot(options) {
+      if (closed || !active() || !mounted) return null;
+      try {
+        const result = await mounted.snapshot(options);
+        return closed || !active() ? null : result;
+      } catch {
+        return null;
+      }
+    },
     checkAction() {
       return actions && byUser(() => actions.check());
     },

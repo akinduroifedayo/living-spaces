@@ -205,6 +205,13 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
   })()
   return {
     ready,
+    async snapshot(options) {
+      if (closed || !active() || !mounted) return null
+      try {
+        const result = await mounted.snapshot(options)
+        return closed || !active() ? null : result
+      } catch { return null }
+    },
     checkAction() { return actions && byUser(() => actions.check()) },
     openLink(url) { return openLink({ url }) },
     canContinue() { return !!actions?.sessionId() && typeof host?.openSession === 'function' },
