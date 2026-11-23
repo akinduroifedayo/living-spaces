@@ -250,7 +250,7 @@ class Run:
         self.capture("after-save"); expect(note in self.guest("#notes")["text"], "note not shown after save")
         expect(any(note in str(x["data"]) for x in self.records("after-save")["records"]), "note not persisted")
         self.phase("save", dict(note=note, visible="Note saved", persisted=True))
-        self.click("header.ls-framebar > button:first-child"); self.wait_text("Verification Notebook", product=True); time.sleep(1); self.capture("after-leave")
+        self.click('header.ls-framebar button[aria-label="Back to Spaces"]'); self.wait_text("Verification Notebook", product=True); time.sleep(1); self.capture("after-leave")
         expect(self.eval('!!document.querySelector(\'[data-testid="spaces-index"]\')'), "did not return to the Spaces index")
         self.click(card); time.sleep(3); self.capture("after-reopen")
         expect(note in self.guest("#notes")["text"], "note not visible after reopen")
