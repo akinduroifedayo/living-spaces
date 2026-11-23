@@ -99,7 +99,8 @@ test('manifest identity falls back without injecting a style or icon', () => {
   assert.equal(m.iconName('book" onclick="bad'), 'layers')
 })
 test('diagnostics bound output and redact common credential values', () => {
-  assert.equal(m.diagnosticText('token=demo-secret Bearer demo-value'), 'token=[redacted] Bearer [redacted]')
+  assert.equal(m.diagnosticText('token=demo-secret Bearer demo-value'), 'token=[redacted]', 'free text is redacted from the first credential to the end')
+  assert.equal(m.diagnosticText('Route unavailable: tokens remaining 5'), 'Route unavailable: tokens remaining 5')
   assert.equal(m.diagnosticText('x'.repeat(4000)).length, 2000)
 })
 

@@ -785,3 +785,45 @@ test('a structured failure copies only its code, reason and message, never other
     assert.doesNotMatch(JSON.stringify(result), /synthetic/)
   } finally { adapter.destroy() }
 })
+
+test('Copy details never carries any part of a credential from a wrapped JSON failure, spaced or not', async () => {
+  const run = async thrown => {
+    const adapter = createBotActions({ host: { retainProfile() {}, profileRoutes: async () => [], requestProfile: async () => ({}) }, backend: { connectionId: 'c', profile: 'p' },
+      post: async () => { throw thrown }, onStatus() {}, isActive: () => true })
+    try { return await adapter.check() } finally { adapter.destroy() }
+  }
+  const wrapper = "Error invoking remote method 'hermes:api': Error: 401: "
+  const credentials = [
+    { password: 'synthetic-pw' }, { password: 'synthetic-pw synthetic-pw-tail' },
+    { token: 'synthetic-token' }, { token: 'synthetic-token synthetic-token-tail' },
+    { api_key: 'synthetic-key' }, { api_key: 'synthetic-key synthetic-key-tail' },
+    { client_secret: 'synthetic-secret synthetic-secret-tail' },
+    { authorization: 'Bearer synthetic-bearer' }, { authorization: 'Bearer synthetic-bearer synthetic-bearer-tail' },
+  ]
+  for (const credential of credentials) {
+    const label = JSON.stringify(credential)
+    const nested = await run(new Error(wrapper + JSON.stringify({ error: { code: 'blocked', message: 'Route unavailable', reason: 'unbound', ...credential } })))
+    assert.equal(nested.message, 'Route unavailable. No automatic resend.', label)
+    assert.equal(nested.detail, `${wrapper}{"error":{"code":"blocked","message":"Route unavailable","reason":"unbound"}}`, label)
+    const topLevel = await run(new Error(wrapper + JSON.stringify({ ...credential, error: { code: 'blocked', message: 'Route unavailable' } })))
+    assert.equal(topLevel.detail, `${wrapper}{"error":{"code":"blocked","message":"Route unavailable"}}`, label)
+    // A body cut short is not JSON, so its free text is masked through the whole quoted value.
+    const truncated = await run(new Error(wrapper + JSON.stringify({ error: { message: 'Route unavailable', ...credential } }).slice(0, -2)))
+    // A credential the backend wrote into its own message is masked in the words and the details alike.
+    const [[key, value]] = Object.entries(credential)
+    const inMessage = await run(new Error(wrapper + JSON.stringify({ error: { code: 'blocked', message: `Rejected ${key}="${value}"` } })))
+    assert.match(inMessage.message, /\[redacted\]/, label)
+    for (const result of [nested, topLevel, truncated, inMessage]) assert.doesNotMatch(JSON.stringify(result), /synthetic/, label)
+  }
+  // Free text cannot mark where a credential ends, so it is redacted from the first credential onward.
+  for (const text of ['authorization: Bearer synthetic-a synthetic-tail', "password='synthetic-a synthetic-tail' rejected", 'Cookie: session=synthetic-a; theme=synthetic-tail', 'Authorization: "Bearer synthetic-a synthetic-tail" rejected',
+    String.raw`password=synthetic-a\synthetic-tail`, "Authorization: Bearer synthetic-a'synthetic-tail", 'Bearer synthetic-a,synthetic-tail', 'password=synthetic-a synthetic-tail',
+    'password=synthetic-a\nsynthetic-tail', 'Cookie: synthetic-a;\r\n synthetic-tail', 'password=' + 'a'.repeat(2500) + ' synthetic-tail',
+    JSON.stringify({ error: { message: 'password="synthetic-a\\"synthetic-tail"' } }), '{"error":{"password":["synthetic-a","synthetic-tail"]',
+    String.raw`{"error":{"pass\u0077ord":"synthetic-a synthetic-tail"}`, String.raw`{"error":{"pass\u0077ord":"synthetic-a synthetic-tail"}} {}`, String.raw`prefix { {"error":{"pass\u0077ord":"synthetic-a synthetic-tail"}}`]) {
+    assert.doesNotMatch(JSON.stringify(await run(new Error(wrapper + text))), /synthetic/, text)
+  }
+  // JSON that is not the backend's error envelope keeps its non-secret diagnostics.
+  const config = await run(new Error(wrapper + 'Invalid configuration: {"expected":"string","path":"settings.refresh"}'))
+  assert.match(config.detail, /settings\.refresh/)
+})
