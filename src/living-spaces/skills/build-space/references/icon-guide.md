@@ -83,6 +83,8 @@ Worked examples (all passed first time on gpt-image-2):
 
 Never retry more than once, change provider, or use a paid fallback to get an icon. A glyph is a finished result.
 
+`image_generate` uses whatever image provider the user has configured, and a generation may cost them a call on it. If the tool is missing, or it errors because no provider is configured, don't generate. Set only `"glyph"` and tell the user in one line that the Space uses a glyph because no image provider is configured.
+
 ## 7. Acceptance checks (the host runs these at save time)
 
 | Check | Rule | Typical cause of failure |

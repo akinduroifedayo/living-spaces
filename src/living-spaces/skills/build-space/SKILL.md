@@ -24,6 +24,7 @@ Preact is the tested default. There is no required house style or kit CSS.
    call `image_generate` with its prompt template, save the image as
    `assets/icon.webp` and set `"icon": {"image": "assets/icon.webp", "glyph": "<kit glyph>"}`.
    If `icon_check.pass` is false, regenerate once; after a second failure stop and keep the glyph.
+   If `image_generate` is unavailable or no image provider is configured, skip generation and set only the glyph.
 
 ## Keep saved data durable
 
