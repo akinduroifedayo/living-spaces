@@ -132,7 +132,7 @@ export function createBotActions({ host, backend, post, onStatus, isActive, user
     release?.(); release = null; heldRoute = null
     const status = error.actionStatus || (current ? 'unknown' : 'offline')
     // The words are the backend's own message, not the transport wrapper; the raw text rides along as detail.
-    const { message, reason, raw } = failureParts(error?.message ? error : 'Native request unavailable')
+    const { message, reason, raw } = failureParts(error?.message || error?.error || error?.body?.error ? error : 'Native request unavailable')
     const words = `${message}${/[.!?]$/.test(message) ? '' : '.'} No automatic resend.`
     return publish({ ...publicStatus(current, status, words), ...(reason ? { reason } : {}), ...(raw !== message ? { detail: raw } : {}) })
   }

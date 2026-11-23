@@ -260,7 +260,7 @@ test('notices float in a dock over the canvas that minimises to a pill and comes
     assert.equal(document.querySelector('.ls-notice-list').hidden, true, 'the expanded notices no longer cover the canvas')
     const pill = document.querySelector('.ls-notice-pill')
     assert.equal(pill.textContent, '1 notice', 'the pill is compact: icon and a short count')
-    assert.match(pill.getAttribute('aria-label'), /^Storage 92% full\. Show notice$/, 'the full title stays the accessible name')
+    assert.equal(pill.getAttribute('aria-label'), '1 notice: Storage 92% full. Show notice', 'the visible label leads the accessible name, then the full title')
     assert.equal(pill.title, 'Storage 92% full')
     assert.equal(pill.getAttribute('aria-expanded'), 'false')
     await act(async () => mounts.at(-1)?.options.onEvent?.({ kind: 'fault', count: 1 }))
@@ -269,7 +269,7 @@ test('notices float in a dock over the canvas that minimises to a pill and comes
     await act(async () => document.querySelector('.ls-notices').dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
     const two = document.querySelector('.ls-notice-pill')
     assert.equal(two.textContent, '2 notices')
-    assert.match(two.getAttribute('aria-label'), /^2 notices: Storage 92% full; This Space hit an uncaught error\. Show notices$/)
+    assert.equal(two.getAttribute('aria-label'), '2 notices: Storage 92% full; This Space hit an uncaught error. Show notices')
     assert.ok(two.classList.contains('ls-alert'), 'a failure in the stack tints the pill')
     await act(async () => two.click())
     assert.equal(document.querySelector('.ls-notice-list').hidden, false)
@@ -561,4 +561,23 @@ test('a notice title shows only the time for today and the full stamp for anothe
   assert.doesNotMatch(clock(today, now), /2026/)
   assert.match(clock(today, now), /\d:\d\d/)
   assert.equal(clock(today - 3 * 86400, now), absolute(today - 3 * 86400))
+})
+
+test('dismissing the focused notice does not leave the remaining notices open for good', async () => {
+  const Dock = ({ both }) => React.createElement(ui().NoticeDock, { collapseAfterMs: 60 },
+    both ? bannerOf('Storage 92% full', 'storage') : null, bannerOf('Hermes didn\'t receive the request', 'bot:a:offline', 'failed'))
+  try {
+    view = createRoot(document.getElementById('root'))
+    await act(async () => view.render(React.createElement(Dock, { both: true })))
+    const first = document.querySelector('.ls-notice-stack .ls-banner button')
+    await act(async () => first.focus())
+    await wait(100)
+    assert.equal(listHidden(), false, 'held open while focus is inside')
+    await act(async () => view.render(React.createElement(Dock, { both: false })))
+    assert.notEqual(document.activeElement, first)
+    await wait(120)
+    assert.equal(listHidden(), true, 'the focus went with the dismissed notice, so the rest collapse')
+    const pill = document.querySelector('.ls-notice-pill')
+    assert.equal(pill.getAttribute('aria-label'), "1 failed: Hermes didn't receive the request. Show notice")
+  } finally { await cleanup() }
 })

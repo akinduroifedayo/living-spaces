@@ -155,6 +155,8 @@ export function NoticeDock({ children, minimiseSignal, collapseAfterMs = NOTICE_
         setOpened(n => n + 1)
       }
       seen.current = new Set(keys)
+      // A dismissed notice can take the focused control with it, and no blur reaches the dock; trust where focus is now.
+      if (!dock.current?.contains(document.activeElement)) setFocused(false)
     }
     read()
     if (typeof MutationObserver === 'undefined') return
@@ -176,7 +178,8 @@ export function NoticeDock({ children, minimiseSignal, collapseAfterMs = NOTICE_
     if (inside) requestAnimationFrame(() => pill.current?.focus())
   }
   const expand = () => { setMinimised(false); setOpened(n => n + 1); requestAnimationFrame(() => minimiser.current?.focus()) }
-  const full = summary.count === 1 ? summary.titles[0] : `${summary.count} notices: ${summary.titles.join('; ')}`
+  // The accessible name starts with the visible label (label-in-name), then carries every full title.
+  const full = `${pillLabel(summary)}: ${summary.titles.join('; ')}`
   return <div ref={dock} className="ls-notices" data-minimised={minimised || undefined} data-empty={empty || undefined}
     onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)}
     onFocus={() => setFocused(true)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false) }}

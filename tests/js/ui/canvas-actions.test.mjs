@@ -757,3 +757,20 @@ test('a failure published to the host carries the backend message, never the IPC
   assert.equal('detail' in simple, false, 'a plain message needs no separate detail')
   assert.equal('reason' in simple, false)
 })
+
+test('a wrapped failure without a JSON body still never shows the IPC wrapper', async () => {
+  const run = async thrown => {
+    const adapter = createBotActions({ host: { retainProfile() {}, profileRoutes: async () => [], requestProfile: async () => ({}) }, backend: { connectionId: 'c', profile: 'p' },
+      post: async () => { throw thrown }, onStatus() {}, isActive: () => true })
+    try { return await adapter.check() } finally { adapter.destroy() }
+  }
+  const plain = await run(new Error("Error invoking remote method 'hermes:api': Error: Route unavailable"))
+  assert.equal(plain.message, 'Route unavailable. No automatic resend.')
+  assert.equal(plain.detail, "Error invoking remote method 'hermes:api': Error: Route unavailable")
+  const brace = await run(new Error("Error invoking remote method 'hermes:api': Error: bad {not json"))
+  assert.equal(brace.message, 'bad {not json. No automatic resend.')
+  const body = await run({ body: { error: { code: 'blocked', reason: 'unbound', message: 'No maintaining session is bound.' } } })
+  assert.equal(body.message, 'No maintaining session is bound. No automatic resend.')
+  assert.equal(body.reason, 'unbound')
+  assert.match(body.detail, /"code":"blocked"/)
+})

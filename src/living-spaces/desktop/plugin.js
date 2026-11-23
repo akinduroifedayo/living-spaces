@@ -369,9 +369,9 @@ function backendError(error) {
 }
 var IPC_WRAPPER = /^Error invoking remote method '[^']*': (?:Error: )?/;
 function failureParts(error) {
-  const raw = diagnosticText(typeof error === "string" ? error : error?.message || String(error));
   const detail = backendError(error);
-  const words = typeof detail?.message === "string" && detail.message.trim() ? detail.message.trim() : raw.replace(IPC_WRAPPER, "");
+  const raw = diagnosticText(typeof error === "string" ? error : error?.message || JSON.stringify(detail ?? error) || String(error));
+  const words = (typeof detail?.message === "string" && detail.message.trim() ? detail.message.trim() : raw).replace(IPC_WRAPPER, "");
   return { message: diagnosticText(words), code: detail?.code ?? null, reason: detail?.reason ?? null, raw };
 }
 function errorText(error) {
@@ -1672,7 +1672,7 @@ function createBotActions({ host: host5, backend, post, onStatus, isActive, user
     release = null;
     heldRoute = null;
     const status = error.actionStatus || (current ? "unknown" : "offline");
-    const { message, reason, raw } = failureParts(error?.message ? error : "Native request unavailable");
+    const { message, reason, raw } = failureParts(error?.message || error?.error || error?.body?.error ? error : "Native request unavailable");
     const words = `${message}${/[.!?]$/.test(message) ? "" : "."} No automatic resend.`;
     return publish({ ...publicStatus(current, status, words), ...reason ? { reason } : {}, ...raw !== message ? { detail: raw } : {} });
   }
@@ -2537,6 +2537,7 @@ function NoticeDock({ children, minimiseSignal, collapseAfterMs = NOTICE_COLLAPS
         setOpened((n) => n + 1);
       }
       seen.current = new Set(keys);
+      if (!dock.current?.contains(document.activeElement)) setFocused(false);
     };
     read();
     if (typeof MutationObserver === "undefined") return;
@@ -2563,7 +2564,7 @@ function NoticeDock({ children, minimiseSignal, collapseAfterMs = NOTICE_COLLAPS
     setOpened((n) => n + 1);
     requestAnimationFrame(() => minimiser.current?.focus());
   };
-  const full = summary.count === 1 ? summary.titles[0] : `${summary.count} notices: ${summary.titles.join("; ")}`;
+  const full = `${pillLabel(summary)}: ${summary.titles.join("; ")}`;
   return /* @__PURE__ */ jsxs6(
     "div",
     {
