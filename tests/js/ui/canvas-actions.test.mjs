@@ -774,3 +774,14 @@ test('a wrapped failure without a JSON body still never shows the IPC wrapper', 
   assert.equal(body.reason, 'unbound')
   assert.match(body.detail, /"code":"blocked"/)
 })
+
+test('a structured failure copies only its code, reason and message, never other fields', async () => {
+  const adapter = createBotActions({ host: { retainProfile() {}, profileRoutes: async () => [], requestProfile: async () => ({}) }, backend: { connectionId: 'c', profile: 'p' },
+    post: async () => { throw { body: { error: { code: 'blocked', reason: 'other', message: 'Route unavailable', password: 'synthetic-first synthetic-tail' } } } }, onStatus() {}, isActive: () => true })
+  try {
+    const result = await adapter.check()
+    assert.equal(result.message, 'Route unavailable. No automatic resend.')
+    assert.equal(result.detail, '{"code":"blocked","reason":"other","message":"Route unavailable"}')
+    assert.doesNotMatch(JSON.stringify(result), /synthetic/)
+  } finally { adapter.destroy() }
+})

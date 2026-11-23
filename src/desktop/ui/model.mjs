@@ -284,7 +284,8 @@ const IPC_WRAPPER = /^Error invoking remote method '[^']*': (?:Error: )?/
 // A failure in words for the user, plus the raw text for diagnostics. Never the IPC wrapper in the words.
 export function failureParts(error) {
   const detail = backendError(error)
-  const raw = diagnosticText(typeof error === 'string' ? error : error?.message || JSON.stringify(detail ?? error) || String(error))
+  const raw = diagnosticText(typeof error === 'string' ? error : error?.message || JSON.stringify({ code: detail?.code, reason: detail?.reason, message: detail?.message }))
+  // A structured error contributes only its code, reason and message to diagnostics: other fields may hold credentials.
   // Strip the wrapper from whichever text wins: a plain or non-JSON failure carries it in its own message.
   const words = (typeof detail?.message === 'string' && detail.message.trim() ? detail.message.trim() : raw).replace(IPC_WRAPPER, '')
   return { message: diagnosticText(words), code: detail?.code ?? null, reason: detail?.reason ?? null, raw }

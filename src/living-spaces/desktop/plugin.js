@@ -370,7 +370,7 @@ function backendError(error) {
 var IPC_WRAPPER = /^Error invoking remote method '[^']*': (?:Error: )?/;
 function failureParts(error) {
   const detail = backendError(error);
-  const raw = diagnosticText(typeof error === "string" ? error : error?.message || JSON.stringify(detail ?? error) || String(error));
+  const raw = diagnosticText(typeof error === "string" ? error : error?.message || JSON.stringify({ code: detail?.code, reason: detail?.reason, message: detail?.message }));
   const words = (typeof detail?.message === "string" && detail.message.trim() ? detail.message.trim() : raw).replace(IPC_WRAPPER, "");
   return { message: diagnosticText(words), code: detail?.code ?? null, reason: detail?.reason ?? null, raw };
 }
