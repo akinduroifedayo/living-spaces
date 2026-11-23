@@ -5,7 +5,7 @@ from .errors import SpacesError
 from .projects import (create_space, resolve_space, list_spaces, get_space, read_file,
                        list_files, read_files, write_files, edit_file, edit_files, list_revisions,
                        restore_revision, bundle, set_status, delete_space,
-                       touch_opened, set_pinned)
+                       touch_opened, set_pinned, icon_check, icon_image)
 from .records import query, batch, changes_since
 from .grants import list_grants, decide, audit_log
 from .sessions import open_session, close_session, require

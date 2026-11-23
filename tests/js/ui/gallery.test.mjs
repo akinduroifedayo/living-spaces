@@ -130,7 +130,10 @@ test('a never-captured Space gets the accent and icon card, never an image', asy
     const preview = document.querySelector('.ls-thumb')
     assert.equal(preview.dataset.preview, 'fallback')
     assert.equal(document.querySelector('.ls-card img'), null)
-    assert.equal(document.querySelector('.ls-thumb-mark [data-icon]').dataset.icon, 'pulse')
+    const mark = document.querySelector('.ls-thumb-mark svg.ls-mark')
+    assert.equal(mark.dataset.mark, 'glyph', 'no image yet: the kit glyph')
+    assert.equal(mark.dataset.glyph, 'pulse')
+    assert.equal(mark.getAttribute('width'), '72')
     assert.match(preview.getAttribute('style'), /--ls-accent/)
   } finally { await cleanup() }
 })
@@ -316,7 +319,8 @@ test('Details holds freshness, storage, access, history and runtime with their m
     await click('Details')
     const dialog = document.querySelector('[role="dialog"]')
     const sections = [...dialog.querySelectorAll('section')].map(node => node.getAttribute('aria-label'))
-    assert.deepEqual(sections, ['Freshness', 'Storage use', 'Access', 'History', 'Runtime'])
+    assert.deepEqual(sections, ['Space', 'Freshness', 'Storage use', 'Access', 'History', 'Runtime'])
+    assert.equal(dialog.querySelector('section[aria-label="Space"] svg.ls-mark').getAttribute('width'), '96', 'the Details hero mark')
     const text = id => dialog.querySelector(`section[aria-label="${id}"]`).textContent
     assert.match(text('Freshness'), /Latest changeRefreshed from earthquake\.usgs\.gov/)
     assert.match(text('Freshness'), /Sourceusgs-bulletins · earthquake\.usgs\.gov/)

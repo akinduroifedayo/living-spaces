@@ -1,19 +1,20 @@
 import { EmptyState, ErrorState, SearchField, SegmentedControl, Skeleton, host, useQuery } from '@hermes/plugin-sdk'
 import { useState } from 'react'
-import { Action, CopyPrompt, Icon, SpaceIcon, SpaceTile, StatusPill, Time, absolute, relative } from './components.jsx'
+import { Action, CopyPrompt, Icon, SpaceMark, SpaceTile, StatusPill, Time, absolute, relative } from './components.jsx'
 import { PROMPTS, accentColor, cardLines, freshnessFacts, freshnessPhrase, spaceRoute, spaceStatus, summaryCounts, visibleSpaces } from './model.mjs'
 import { readSnapshot } from './snapshots.mjs'
+import { ramp } from './marks.mjs'
 
 // The card's picture: the Space's own last snapshot when one was captured for its current code, otherwise
-// a composed accent-and-icon card. Never an empty or broken image: an image that fails to decode falls back.
+// a composed accent card around the Space's mark at 72 px. Never an empty or broken image: an image that fails to decode falls back.
 export function CardPreview({ space, scopeKey = null }) {
   const snapshot = readSnapshot(scopeKey, space.id, space.head_rev || null)
   const [failed, setFailed] = useState(null)
   const usable = !!snapshot && failed !== snapshot.image
-  return <div className={`ls-thumb${usable ? '' : ' ls-thumb-fallback'}`} style={{ '--ls-accent': accentColor(space.accent) }} data-preview={usable ? 'snapshot' : 'fallback'}>
+  return <div className={`ls-thumb${usable ? '' : ' ls-thumb-fallback'}`} style={{ '--ls-accent': accentColor(space.accent), '--ls-mark-glow': ramp(space.accent).bottom }} data-preview={usable ? 'snapshot' : 'fallback'}>
     {usable
       ? <img src={snapshot.image} width={snapshot.width} height={snapshot.height} alt="" decoding="async" draggable={false} onError={() => setFailed(snapshot.image)} />
-      : <span className="ls-thumb-mark" aria-hidden="true"><SpaceIcon icon={space.icon} /></span>}
+      : <span className="ls-thumb-mark" aria-hidden="true"><SpaceMark space={space} size={72} /></span>}
   </div>
 }
 
@@ -29,7 +30,7 @@ export function SpaceCard({ space, scopeKey = null }) {
       {status !== 'ready' && <span className="ls-card-state"><StatusPill status={status} /></span>}
       {space.pinned ? <span className="ls-pin" title="Pinned"><Icon name="pinned" /><span className="ls-sr">Pinned</span></span> : null}
     </div>
-    <div className="ls-card-caption"><SpaceTile space={space} small /><div className="ls-card-text">
+    <div className="ls-card-caption"><SpaceTile space={space} size={40} /><div className="ls-card-text">
       <div className="ls-card-name">{space.name}</div>
       {space.description && <p className="ls-card-description">{space.description}</p>}
       <div className="ls-card-freshness">{phrase.at != null ? <>{phrase.label} · <Time at={phrase.at} relative /></> : phrase.label}</div>
@@ -64,7 +65,7 @@ function NewSpaceCard({ ctx }) {
 
 export function FirstSpace({ ctx }) {
   const { action, start, notice } = useNewChat(ctx)
-  return <div className="ls-empty"><div className="ls-empty-tiles" aria-hidden="true"><SpaceTile space={{ accent: 'blue', icon: 'book' }} /><SpaceTile space={{ accent: 'green', icon: 'calendar' }} /><SpaceTile space={{ accent: 'purple', icon: 'graph' }} /></div>
+  return <div className="ls-empty"><div className="ls-empty-tiles" aria-hidden="true"><SpaceTile space={{ accent: 'blue', icon: 'book' }} /><SpaceTile space={{ accent: 'green', icon: 'calendar' }} /><SpaceTile space={{ accent: 'purple', icon: 'brain' }} /></div>
     <EmptyState title="Build your first Space in chat" description="A Space is a canvas your bots keep alive. Describe one in a normal Hermes chat and it appears here." />
     {PROMPTS.map(text => <CopyPrompt key={text} text={text} />)}
     <div className="ls-actions">{action ? <Action primary icon="add" onClick={start}>Start a new chat</Action> : <CopyPrompt text={PROMPTS[0]} label="Start a new chat" />}<span className="ls-secondary">New Spaces appear here, labelled Building until ready.</span></div>

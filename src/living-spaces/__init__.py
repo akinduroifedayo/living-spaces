@@ -243,8 +243,15 @@ def _change_result(core, sid, info, extra_warnings=()):
                      "Most Spaces should bring their own styles.css. "
                      'The tag is <link rel="stylesheet" href="kit/spaces-kit.css"> '
                      "(adjust the relative path for a nested entry).")
-    return {"space": sid, "rev": rev, "open": _open(sid), "grants_pending": pending, "warnings": warnings,
-            "diagnostics": diagnostics, "notes": notes, "next": NEXT}
+    result = {"space": sid, "rev": rev, "open": _open(sid), "grants_pending": pending, "warnings": warnings,
+              "diagnostics": diagnostics, "notes": notes, "next": NEXT}
+    check = core.icon_check(sid)
+    if check is not None:
+        result["icon_check"] = check
+        if not check["pass"]:
+            warnings.append(f"Icon image failed the checks (attempt {check['attempt']}): {'; '.join(check['fails'])}. "
+                            + check["next"])
+    return result
 
 
 def spaces_list(core, args, owner):

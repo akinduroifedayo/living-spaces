@@ -20,6 +20,10 @@ Preact is the tested default. There is no required house style or kit CSS.
    On `not_found`, explain the absence. Do not create a replacement silently.
 5. For a new app, build the complete initial project in one `spaces_create`.
    Include `space.json` in `files` or pass `manifest`, never both.
+6. Give every new Space an icon: follow [the icon guide](references/icon-guide.md),
+   call `image_generate` with its prompt template, save the image as
+   `assets/icon.webp` and set `"icon": {"image": "assets/icon.webp", "glyph": "<kit glyph>"}`.
+   If `icon_check.pass` is false, regenerate once; after a second failure stop and keep the glyph.
 
 ## Keep saved data durable
 
@@ -122,6 +126,7 @@ not upgrade copied dependencies. Upgrade them explicitly in a revision.
 
 Read only the applicable recipes, keeping this core contract loaded.
 
+- [Space icon guide](references/icon-guide.md) for the generated icon, its prompt template and checks.
 - [Assets and shipped kit APIs](references/assets.md) for file descriptors,
   local libraries, asset resolution, and the exact kit export contracts.
 - [Forms and editors](references/forms.md) for input validation, duplicate

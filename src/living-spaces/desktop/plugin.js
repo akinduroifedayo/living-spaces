@@ -1,15 +1,15 @@
 // src/desktop/plugin.src.js
-import { ROUTES_AREA, SIDEBAR_NAV_AREA, TRANSCRIPT_DIRECTIVE_AREA, ErrorState as ErrorState6, host as host4, useQuery as useQuery6 } from "@hermes/plugin-sdk";
-import { useEffect as useEffect4, useState as useState7 } from "react";
+import { ROUTES_AREA, SIDEBAR_NAV_AREA, TRANSCRIPT_DIRECTIVE_AREA, ErrorState as ErrorState6, host as host4, useQuery as useQuery7 } from "@hermes/plugin-sdk";
+import { useEffect as useEffect4, useMemo as useMemo4, useState as useState7 } from "react";
 import { jsx as jsx7, jsxs as jsxs7 } from "react/jsx-runtime";
 
 // src/desktop/ui/index.jsx
-import { EmptyState, ErrorState, SearchField, SegmentedControl, Skeleton, host, useQuery } from "@hermes/plugin-sdk";
+import { EmptyState, ErrorState, SearchField, SegmentedControl, Skeleton, host, useQuery as useQuery2 } from "@hermes/plugin-sdk";
 import { useState as useState2 } from "react";
 
 // src/desktop/ui/components.jsx
-import { Badge, Button, Codicon, CopyButton, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, fmtDateTime, relativeTime, Tip } from "@hermes/plugin-sdk";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Badge, Button, Codicon, CopyButton, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, fmtDateTime, relativeTime, Tip, useQuery } from "@hermes/plugin-sdk";
+import { createContext, useContext, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 // src/desktop/ui/markdown.mjs
 var FENCE = /^\s*```/;
@@ -122,7 +122,6 @@ function routeSpace(hash) {
 }
 var ACCENTS = { blue: "#0053fd", green: "#55a583", amber: "#e0a06c", purple: "#9e94d5", teal: "#4c9fb0", rose: "#e75e78", orange: "#e08a64", grey: "#8a8a93" };
 var accentColor = (accent) => Object.hasOwn(ACCENTS, accent) ? ACCENTS[accent] : ACCENTS.blue;
-var iconName = (icon) => typeof icon === "string" && /^[a-z][a-z0-9-]{0,63}$/.test(icon) ? icon : "layers";
 var PILLS = {
   ready: { label: "Available", icon: "check", border: "solid" },
   building: { label: "Building", icon: "tools", border: "dashed" },
@@ -418,6 +417,221 @@ function scopedRest(rest, currentScope2, expected) {
   };
 }
 
+// src/desktop/ui/marks.mjs
+var lin = (c) => (c /= 255, c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+var gam = (c) => {
+  c = Math.max(0, Math.min(1, c));
+  return c <= 31308e-7 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
+};
+function hexToOklch(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => lin(parseInt(hex.slice(i, i + 2), 16)));
+  const [l, m, s] = [
+    0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b,
+    0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b,
+    0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b
+  ].map(Math.cbrt);
+  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s, B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, Math.hypot(A, B), (Math.atan2(B, A) * 180 / Math.PI + 360) % 360];
+}
+function oklchToRgb([L, C, h]) {
+  const a = C * Math.cos(h * Math.PI / 180), b = C * Math.sin(h * Math.PI / 180);
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3, m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3, s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s].map(gam);
+}
+var luminance = (rgb) => {
+  const [r, g, b] = rgb.map((c) => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+var contrast = (x, y) => {
+  const [a, b] = [luminance(x), luminance(y)].sort((p, q) => q - p);
+  return (a + 0.05) / (b + 0.05);
+};
+var css = ([L, C, h]) => `oklch(${L.toFixed(3)} ${C.toFixed(3)} ${h.toFixed(1)})`;
+var clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+function ramp(accent, { hueShift = 0 } = {}) {
+  const [L, C, h0] = hexToOklch(ACCENTS[accent] || ACCENTS.blue);
+  const h = h0 + hueShift;
+  const c = C < 0.03 ? Math.min(C, 0.018) : clamp(C * 1.15, 0.11, 0.19);
+  let mid = clamp(L, 0.5, 0.6), top;
+  for (; ; ) {
+    top = [mid + 0.075, c * 0.9, h - 8];
+    if (contrast([1, 1, 1], oklchToRgb(top)) >= 3.05 || mid < 0.4) break;
+    mid -= 0.01;
+  }
+  return {
+    top: css(top),
+    mid: css([mid, c, h]),
+    bottom: css([mid - 0.085, c * 1.08, h + 10]),
+    glyphContrast: contrast([1, 1, 1], oklchToRgb(top))
+  };
+}
+function squirclePath(n = 5, r = 12, steps = 96) {
+  const points = [];
+  for (let i = 0; i < steps; i++) {
+    const t = i / steps * Math.PI * 2, ct = Math.cos(t), st = Math.sin(t);
+    points.push([12 + r * Math.sign(ct) * Math.abs(ct) ** (2 / n), 12 + r * Math.sign(st) * Math.abs(st) ** (2 / n)]);
+  }
+  return "M" + points.map((p) => p.map((v) => v.toFixed(3)).join(" ")).join("L") + "Z";
+}
+var SQUIRCLE = squirclePath();
+var SQUIRCLE_INNER = squirclePath(5, 11.6);
+var KIT = {
+  graph: [
+    { t: 2, s: 1, d: "M7.5 7.5L16.5 9M7.5 7.5L9.5 16.5M16.5 9L9.5 16.5M16.5 9L18 17.5M9.5 16.5L18 17.5" },
+    { t: 1, d: "M7.5 4.5a3 3 0 1 1 0 6a3 3 0 1 1 0-6z" },
+    { t: 1, d: "M16.5 6.5a2.5 2.5 0 1 1 0 5a2.5 2.5 0 1 1 0-5z" },
+    { t: 1, d: "M9.5 12.8a3.7 3.7 0 1 1 0 7.4a3.7 3.7 0 1 1 0-7.4z" },
+    { t: 1, d: "M18 15.5a2 2 0 1 1 0 4a2 2 0 1 1 0-4z" }
+  ],
+  seismo: [{ t: 2, d: "M12 3a9 9 0 1 1 0 18a9 9 0 1 1 0-18z" }, { t: 1, s: 1, d: "M3 12.5h4l2-5.5l3.2 10l2.3-7l1.7 2.5H21" }],
+  plane: [
+    { t: 2, d: "M17.5 3.5a3.5 3.5 0 1 1 0 7a3.5 3.5 0 1 1 0-7z" },
+    { t: 1, d: "M20.2 14.6v-1.7l-6.7-4.2V4.1a1.25 1.25 0 0 0-2.5 0v4.6l-6.7 4.2v1.7l6.7-2.1v4.6l-1.7 1.2v1.3l2.9-.8l2.9.8v-1.3l-1.7-1.2v-4.6z" }
+  ],
+  book: [{ t: 1, d: "M3 5.6c2.7-1.2 5.6-1.1 8.2.5v13.4c-2.6-1.5-5.5-1.6-8.2-.6z" }, { t: 2, d: "M21 5.6c-2.7-1.2-5.6-1.1-8.2.5v13.4c2.6-1.5 5.5-1.6 8.2-.6z" }],
+  weather: [{ t: 2, d: "M15 4a4.6 4.6 0 1 1 0 9.2a4.6 4.6 0 1 1 0-9.2z" }, { t: 1, d: "M7.2 20h9.6a3.9 3.9 0 0 0 .5-7.8A5.4 5.4 0 0 0 7 13.2a3.4 3.4 0 0 0 .2 6.8z" }],
+  dice: [
+    { t: 2, d: "M13 3h5a3 3 0 0 1 3 3v5a3 3 0 0 1-3 3h-5a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3z" },
+    { t: 1, d: "M6 8.5h7a3 3 0 0 1 3 3v6.5a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-6.5a3 3 0 0 1 3-3zM6.8 11a1.3 1.3 0 1 0 0 2.6a1.3 1.3 0 1 0 0-2.6zM9.5 13.5a1.3 1.3 0 1 0 0 2.6a1.3 1.3 0 1 0 0-2.6zM12.2 16a1.3 1.3 0 1 0 0 2.6a1.3 1.3 0 1 0 0-2.6z" }
+  ],
+  coins: [
+    { t: 2, d: "M15 3.5a6 6 0 1 1 0 12a6 6 0 1 1 0-12z" },
+    { t: 1, d: "M9 8.5a6.5 6.5 0 1 1 0 13a6.5 6.5 0 1 1 0-13zM9 10.6a4.4 4.4 0 1 0 0 8.8a4.4 4.4 0 1 0 0-8.8zM9 12.4a2.6 2.6 0 1 1 0 5.2a2.6 2.6 0 1 1 0-5.2z" }
+  ],
+  pulse: [{ t: 2, d: "M12 20.6s-8.4-4.7-8.4-10.6A4.6 4.6 0 0 1 12 7.4A4.6 4.6 0 0 1 20.4 10c0 5.9-8.4 10.6-8.4 10.6z" }, { t: 1, s: 1, d: "M3 12.6h4.6l1.9-3.4l3 6.8l2-3.4H21" }],
+  sprout: [{ t: 1, s: 1, d: "M12 21v-8.5" }, { t: 2, d: "M12 13.5C7.2 13.5 4.4 10.6 4.4 5.6c5 0 7.6 2.9 7.6 7.9z" }, { t: 1, d: "M12 11.6c0-4.8 2.8-7.6 7.6-7.6c0 4.8-2.8 7.6-7.6 7.6z" }],
+  vinyl: [{ t: 2, d: "M12 3a9 9 0 1 1 0 18a9 9 0 1 1 0-18z" }, { t: 1, d: "M12 12V3a9 9 0 0 1 9 9z" }, { t: 1, d: "M12 8.6a3.4 3.4 0 1 1 0 6.8a3.4 3.4 0 1 1 0-6.8zM12 11a1 1 0 1 0 0 2a1 1 0 1 0 0-2z" }],
+  briefcase: [
+    { t: 2, s: 1, d: "M9 7.5V6a1.6 1.6 0 0 1 1.6-1.6h2.8A1.6 1.6 0 0 1 15 6v1.5" },
+    { t: 1, d: "M6 7.5h12a3 3 0 0 1 3 3v6.5a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-6.5a3 3 0 0 1 3-3zM10.6 11.6a.9.9 0 0 0-.9.9v1.6a.9.9 0 0 0 .9.9h2.8a.9.9 0 0 0 .9-.9v-1.6a.9.9 0 0 0-.9-.9z" }
+  ],
+  chart: [{ t: 2, d: "M3.5 19h17v2h-17z" }, { t: 1, d: "M5 12.5a1.5 1.5 0 0 1 3 0V17H5zM10.5 6.5a1.5 1.5 0 0 1 3 0V17h-3zM16 10a1.5 1.5 0 0 1 3 0v7h-3z" }],
+  calendar: [
+    { t: 2, s: 1, d: "M8 3.5v3M16 3.5v3" },
+    { t: 1, d: "M6 5.5h12a3 3 0 0 1 3 3V18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8.5a3 3 0 0 1 3-3zM6 10.5v1.8h2.4v-1.8zM10.8 10.5v1.8h2.4v-1.8zM15.6 10.5v1.8H18v-1.8zM6 15v1.8h2.4V15zM10.8 15v1.8h2.4V15z" }
+  ],
+  pin: [
+    { t: 2, d: "M12 18.5c3.9 0 6.5 1 6.5 1.8S15.9 22 12 22s-6.5-.9-6.5-1.7s2.6-1.8 6.5-1.8z" },
+    { t: 1, d: "M12 2.5a7 7 0 0 1 7 7c0 4.6-5 8.8-7 10.4C10 18.3 5 14.1 5 9.5a7 7 0 0 1 7-7zM12 7a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z" }
+  ],
+  peaks: [{ t: 2, d: "M13.5 20.5L17 9.5l5 11z" }, { t: 1, d: "M2 20.5L9.2 6.2a1 1 0 0 1 1.8 0L18.2 20.5z" }],
+  target: [{ t: 2, d: "M12 3a9 9 0 1 1 0 18a9 9 0 1 1 0-18zM12 5.6a6.4 6.4 0 1 0 0 12.8a6.4 6.4 0 1 0 0-12.8z" }, { t: 1, d: "M12 8a4 4 0 1 1 0 8a4 4 0 1 1 0-8z" }],
+  flask: [{ t: 2, s: 1, d: "M8.5 3.5h7" }, { t: 1, d: "M10 4.5h4v5l5.4 8.4A2 2 0 0 1 17.7 21H6.3a2 2 0 0 1-1.7-3.1L10 9.5z" }],
+  home: [
+    { t: 2, d: "M10 21v-5.5a2 2 0 0 1 4 0V21z" },
+    { t: 1, d: "M12 3.2l8.6 7.3a1 1 0 0 1-.6 1.8H19V19a2 2 0 0 1-2 2h-2.6v-5.5a2.4 2.4 0 0 0-4.8 0V21H7a2 2 0 0 1-2-2v-6.7H4a1 1 0 0 1-.6-1.8z" }
+  ],
+  camera: [
+    { t: 2, d: "M8.6 4h6.8l1.4 2.5H7.2z" },
+    { t: 1, d: "M5.5 6.5h13a2.5 2.5 0 0 1 2.5 2.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18V9a2.5 2.5 0 0 1 2.5-2.5zM12 9.3a4.2 4.2 0 1 0 0 8.4a4.2 4.2 0 1 0 0-8.4z" }
+  ],
+  compass: [{ t: 2, d: "M12 3a9 9 0 1 1 0 18a9 9 0 1 1 0-18z" }, { t: 1, d: "M16.5 7.5l-2.6 6.4l-6.4 2.6l2.6-6.4z" }],
+  chat: [
+    { t: 2, d: "M11 3.5h7.5A2.5 2.5 0 0 1 21 6v4.5a2.5 2.5 0 0 1-2.5 2.5H18v2.2L15.5 13H11z" },
+    { t: 1, d: "M5.5 7.5h8A2.5 2.5 0 0 1 16 10v5a2.5 2.5 0 0 1-2.5 2.5H9.5L6 20.5v-3h-.5A2.5 2.5 0 0 1 3 15v-5a2.5 2.5 0 0 1 2.5-2.5z" }
+  ],
+  shield: [{ t: 1, d: "M12 2.8l7.5 3v5.6c0 4.6-3.2 8.3-7.5 9.8z" }, { t: 2, d: "M12 2.8l-7.5 3v5.6c0 4.6 3.2 8.3 7.5 9.8z" }],
+  bolt: [{ t: 2, d: "M12 3a9 9 0 1 1 0 18a9 9 0 1 1 0-18z" }, { t: 1, d: "M13.2 4.5L7.5 13h4l-1 6.5L16.5 11h-4z" }],
+  key: [
+    { t: 2, s: 1, d: "M12.8 12.2L20 19.4M17 16.4l2-2M19 18.4l1.6-1.6" },
+    { t: 1, d: "M8.5 4a5.5 5.5 0 1 1 0 11a5.5 5.5 0 1 1 0-11zM7.7 7.2a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 1 0 0-3.4z" }
+  ]
+};
+var LEGACY = {
+  brain: "graph",
+  globe: "seismo",
+  "globe-alt": "compass",
+  checklist: "calendar",
+  "graph-line": "chart",
+  heart: "pulse",
+  "device-camera": "camera",
+  beaker: "flask",
+  zap: "bolt",
+  "comment-discussion": "chat",
+  location: "pin",
+  music: "vinyl",
+  game: "dice"
+};
+var glyphKey = (name) => typeof name !== "string" ? null : Object.hasOwn(KIT, name) ? name : Object.hasOwn(LEGACY, name) ? LEGACY[name] : null;
+function fnv(text) {
+  let h = 2166136261;
+  for (const ch of text) {
+    h ^= ch.codePointAt(0);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+function rng(seed) {
+  let s = seed || 1;
+  return () => {
+    s ^= s << 13;
+    s >>>= 0;
+    s ^= s >> 17;
+    s ^= s << 5;
+    s >>>= 0;
+    return s / 4294967296;
+  };
+}
+var PRIM = {
+  circle: () => "M4 0a4 4 0 1 1 0 8a4 4 0 1 1 0-8z",
+  quarter: (r) => ["M0 0H8A8 8 0 0 1 0 8z", "M8 0V8A8 8 0 0 1 0 0z", "M8 8H0A8 8 0 0 1 8 0z", "M0 8V0A8 8 0 0 1 8 8z"][r],
+  half: (r) => ["M0 0H8A4 4 0 0 1 0 0z", "M8 0V8A4 4 0 0 1 8 0z", "M8 8H0A4 4 0 0 1 8 8z", "M0 8V0A4 4 0 0 1 0 8z"][r],
+  square: () => "M2 0h4a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2z",
+  leaf: (r) => r % 2 ? "M8 0v4a4 4 0 0 1-4 4H0V4a4 4 0 0 1 4-4z" : "M0 0h4a4 4 0 0 1 4 4v4H4a4 4 0 0 1-4-4z",
+  tri: (r) => ["M0 0H8L0 8z", "M8 0V8L0 0z", "M8 8H0L8 0z", "M0 8V0L8 8z"][r]
+};
+var PRIM_KEYS = ["circle", "quarter", "quarter", "half", "half", "square", "leaf", "tri"];
+var CELLS = [[3.5, 3.5], [12.5, 3.5], [3.5, 12.5], [12.5, 12.5]];
+function shiftPath(d, dx, dy) {
+  return d.replace(/([MLHVA])([^MLHVAZmlhvacz]*)/g, (all, cmd, args) => {
+    const n = args.trim().split(/[\s,]+/).filter(Boolean).map(Number);
+    if (cmd === "H") return "H" + (n[0] + dx);
+    if (cmd === "V") return "V" + (n[0] + dy);
+    if (cmd === "A") return "A" + [n[0], n[1], n[2], n[3], n[4], n[5] + dx, n[6] + dy].join(" ");
+    const out = [];
+    for (let i = 0; i < n.length; i += 2) out.push(n[i] + dx, n[i + 1] + dy);
+    return cmd + out.join(" ");
+  });
+}
+function sigilOnce(seedText) {
+  const rand = rng(fnv(seedText));
+  const empty = Math.floor(rand() * 5);
+  let primaries = 0;
+  const shapes = CELLS.map(([x, y], i) => {
+    if (i === empty) return null;
+    const key = PRIM_KEYS[Math.floor(rand() * PRIM_KEYS.length)], r = Math.floor(rand() * 4);
+    const t = rand() < 0.62 ? 1 : 2;
+    if (t === 1) primaries++;
+    return { t, d: shiftPath(PRIM[key](r), x, y), cell: i };
+  }).filter(Boolean);
+  if (primaries < 2) shapes.slice(0, 2).forEach((s) => s.t = 1);
+  if (!shapes.some((s) => /A/.test(s.d))) shapes[0].d = shiftPath(PRIM.circle(), ...CELLS.find((_, i) => i !== empty));
+  return { shapes, hueShift: Math.round((rand() - 0.5) * 24) };
+}
+var spansGrid = (shapes) => {
+  const cells = new Set(shapes.map((s) => s.cell));
+  return [[0, 1], [2, 3], [0, 2], [1, 3]].some(([a, b]) => cells.has(a) && cells.has(b));
+};
+function sigil(seedText) {
+  const seed = String(seedText ?? "");
+  for (let n = 0; n < 8; n++) {
+    const out = sigilOnce(n ? `${seed}#${n}` : seed);
+    if (out.shapes.some((s) => s.t === 1) && spansGrid(out.shapes)) return out;
+  }
+  return sigilOnce(seed);
+}
+var ICON_DATA = /^data:image\/(?:webp|png);base64,[A-Za-z0-9+/]+={0,2}$/;
+var ICON_DATA_MAX = 1e6;
+function resolveMark(space, image = null) {
+  if (typeof image === "string" && image.length <= ICON_DATA_MAX && ICON_DATA.test(image)) return { source: "image", image };
+  const key = glyphKey(space?.icon);
+  if (key) return { source: "glyph", key, shapes: KIT[key], hueShift: 0 };
+  return { source: "sigil", ...sigil(space?.id ?? space?.name ?? "") };
+}
+var tierFor = (px) => px <= 18 ? "micro" : px <= 28 ? "small" : px <= 56 ? "medium" : "hero";
+var GLYPH_SCALE = { micro: 0.74, small: 0.7, medium: 0.64, hero: 0.58 };
+var IMAGE_ZOOM = { micro: 1.32, small: 1.22, medium: 1.08, hero: 1 };
+
 // src/desktop/ui/components.jsx
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 var relative = (seconds) => relativeTime(seconds * 1e3);
@@ -447,20 +661,91 @@ function StatusPill({ status, label }) {
     label || pill.label
   ] });
 }
-function SpaceIcon({ icon }) {
-  const name = iconName(icon);
-  const [missing, setMissing] = useState(null);
-  const ref = useRef(null);
-  useLayoutEffect(() => {
-    const element = ref.current?.querySelector(".codicon") || ref.current?.firstElementChild;
-    if (!element || typeof getComputedStyle !== "function") return;
-    const content = getComputedStyle(element, "::before").content;
-    setMissing(content === "none" ? name : null);
-  }, [name]);
-  return /* @__PURE__ */ jsx("span", { ref, className: "ls-icon-slot", children: /* @__PURE__ */ jsx(Icon, { name: missing === name ? "layers" : name }) });
+var IconSource = createContext(null);
+function SpaceMark({ space, size = 40, className = "" }) {
+  const source = useContext(IconSource);
+  const record = space?.icon_image;
+  const wanted = !!(source?.rest && record?.pass && record.sha && space?.id);
+  const query = useQuery({
+    queryKey: ["living-spaces", source?.scopeKey ?? null, space?.id, "icon", record?.sha ?? null],
+    queryFn: () => source.rest(`${spacePath(space.id)}/icon`),
+    enabled: wanted,
+    staleTime: Infinity,
+    retry: false
+  });
+  const [failed, setFailed] = useState(null);
+  const image = wanted && query.data?.sha === record.sha ? query.data.image : null;
+  const mark = resolveMark(space, image && image !== failed ? image : null);
+  const id = `lsm${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
+  const tier = tierFor(size);
+  const r = ramp(space?.accent, { hueShift: mark.hueShift || 0 });
+  const edge = /* @__PURE__ */ jsx("path", { d: SQUIRCLE, fill: "none", style: { stroke: "var(--ls-mark-edge)" }, strokeWidth: Math.max(24 / size, 0.25) });
+  const common = {
+    className: `ls-mark ${className}`.trim(),
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    "aria-hidden": true,
+    "data-mark": mark.source,
+    "data-tier": tier,
+    ...mark.key ? { "data-glyph": mark.key } : {}
+  };
+  if (mark.source === "image") {
+    const z = IMAGE_ZOOM[tier], o = (24 - 24 * z) / 2;
+    return /* @__PURE__ */ jsxs("svg", { ...common, children: [
+      /* @__PURE__ */ jsxs("defs", { children: [
+        /* @__PURE__ */ jsx("clipPath", { id: `${id}c`, children: /* @__PURE__ */ jsx("path", { d: SQUIRCLE }) }),
+        /* @__PURE__ */ jsxs("linearGradient", { id: `${id}l`, x1: ".2", y1: "0", x2: ".8", y2: "1", children: [
+          /* @__PURE__ */ jsx("stop", { offset: "0", stopColor: r.top, stopOpacity: ".55" }),
+          /* @__PURE__ */ jsx("stop", { offset: ".5", stopColor: r.mid, stopOpacity: "0" }),
+          /* @__PURE__ */ jsx("stop", { offset: "1", stopColor: r.bottom, stopOpacity: ".6" })
+        ] }),
+        /* @__PURE__ */ jsxs("radialGradient", { id: `${id}r`, cx: ".28", cy: "0", r: "1", children: [
+          /* @__PURE__ */ jsx("stop", { offset: "0", stopColor: "#fff", stopOpacity: ".16" }),
+          /* @__PURE__ */ jsx("stop", { offset: ".55", stopColor: "#fff", stopOpacity: "0" })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxs("g", { clipPath: `url(#${id}c)`, children: [
+        /* @__PURE__ */ jsx("rect", { width: "24", height: "24", fill: r.mid }),
+        /* @__PURE__ */ jsx("image", { href: mark.image, x: o, y: o, width: 24 * z, height: 24 * z, preserveAspectRatio: "xMidYMid slice", onError: () => setFailed(mark.image) }),
+        tier !== "micro" && /* @__PURE__ */ jsx("path", { d: SQUIRCLE, fill: `url(#${id}l)` }),
+        (tier === "medium" || tier === "hero") && /* @__PURE__ */ jsx("path", { d: SQUIRCLE, fill: `url(#${id}r)` })
+      ] }),
+      edge
+    ] });
+  }
+  const scale = GLYPH_SCALE[tier];
+  return /* @__PURE__ */ jsxs("svg", { ...common, children: [
+    /* @__PURE__ */ jsxs("defs", { children: [
+      /* @__PURE__ */ jsxs("linearGradient", { id: `${id}g`, x1: ".2", y1: "0", x2: ".8", y2: "1", children: [
+        /* @__PURE__ */ jsx("stop", { offset: "0", stopColor: r.top }),
+        /* @__PURE__ */ jsx("stop", { offset: ".55", stopColor: r.mid }),
+        /* @__PURE__ */ jsx("stop", { offset: "1", stopColor: r.bottom })
+      ] }),
+      /* @__PURE__ */ jsxs("linearGradient", { id: `${id}h`, x1: "0", y1: "0", x2: "0", y2: "1", children: [
+        /* @__PURE__ */ jsx("stop", { offset: "0", stopColor: "#fff", stopOpacity: ".55" }),
+        /* @__PURE__ */ jsx("stop", { offset: ".35", stopColor: "#fff", stopOpacity: "0" })
+      ] }),
+      /* @__PURE__ */ jsxs("radialGradient", { id: `${id}r`, cx: ".3", cy: "0", r: "1", children: [
+        /* @__PURE__ */ jsx("stop", { offset: "0", stopColor: "#fff", stopOpacity: ".22" }),
+        /* @__PURE__ */ jsx("stop", { offset: ".6", stopColor: "#fff", stopOpacity: "0" })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsx("path", { d: SQUIRCLE, fill: `url(#${id}g)` }),
+    (tier === "medium" || tier === "hero") && /* @__PURE__ */ jsx("path", { d: SQUIRCLE, fill: `url(#${id}r)` }),
+    edge,
+    (tier === "medium" || tier === "hero") && /* @__PURE__ */ jsx("path", { d: SQUIRCLE_INNER, fill: "none", stroke: `url(#${id}h)`, strokeWidth: tier === "hero" ? 0.35 : 0.5 }),
+    /* @__PURE__ */ jsx("g", { transform: `translate(12 12) scale(${scale}) translate(-12 -12)`, children: glyphPaths(mark.shapes, "rgba(255,255,255,.97)", "rgba(255,255,255,.5)", 2) })
+  ] });
 }
-function SpaceTile({ space, small = false }) {
-  return /* @__PURE__ */ jsx("span", { className: `ls-tile${small ? " ls-tile-small" : ""}`, style: { "--ls-accent": accentColor(space.accent) }, children: /* @__PURE__ */ jsx(SpaceIcon, { icon: space.icon }) });
+function glyphPaths(shapes, primary, secondary, width) {
+  return shapes.map((shape, index) => {
+    const fill = shape.t === 1 ? primary : secondary;
+    return shape.s ? /* @__PURE__ */ jsx("path", { d: shape.d, fill: "none", style: { stroke: fill }, strokeWidth: width, strokeLinecap: "round", strokeLinejoin: "round" }, index) : /* @__PURE__ */ jsx("path", { d: shape.d, style: { fill }, fillRule: "evenodd" }, index);
+  });
+}
+function SpaceTile({ space, size = 40 }) {
+  return /* @__PURE__ */ jsx("span", { className: "ls-tile", style: { width: size, height: size }, children: /* @__PURE__ */ jsx(SpaceMark, { space, size }) });
 }
 function OwnerChip({ owner = "Hermes" }) {
   return /* @__PURE__ */ jsxs("span", { className: "ls-owner", children: [
@@ -707,7 +992,7 @@ function CardPreview({ space, scopeKey = null }) {
   const snapshot = readSnapshot(scopeKey, space.id, space.head_rev || null);
   const [failed, setFailed] = useState2(null);
   const usable = !!snapshot && failed !== snapshot.image;
-  return /* @__PURE__ */ jsx2("div", { className: `ls-thumb${usable ? "" : " ls-thumb-fallback"}`, style: { "--ls-accent": accentColor(space.accent) }, "data-preview": usable ? "snapshot" : "fallback", children: usable ? /* @__PURE__ */ jsx2("img", { src: snapshot.image, width: snapshot.width, height: snapshot.height, alt: "", decoding: "async", draggable: false, onError: () => setFailed(snapshot.image) }) : /* @__PURE__ */ jsx2("span", { className: "ls-thumb-mark", "aria-hidden": "true", children: /* @__PURE__ */ jsx2(SpaceIcon, { icon: space.icon }) }) });
+  return /* @__PURE__ */ jsx2("div", { className: `ls-thumb${usable ? "" : " ls-thumb-fallback"}`, style: { "--ls-accent": accentColor(space.accent), "--ls-mark-glow": ramp(space.accent).bottom }, "data-preview": usable ? "snapshot" : "fallback", children: usable ? /* @__PURE__ */ jsx2("img", { src: snapshot.image, width: snapshot.width, height: snapshot.height, alt: "", decoding: "async", draggable: false, onError: () => setFailed(snapshot.image) }) : /* @__PURE__ */ jsx2("span", { className: "ls-thumb-mark", "aria-hidden": "true", children: /* @__PURE__ */ jsx2(SpaceMark, { space, size: 72 }) }) });
 }
 function SpaceCard({ space, scopeKey = null }) {
   const status = spaceStatus(space);
@@ -737,7 +1022,7 @@ function SpaceCard({ space, scopeKey = null }) {
           ] }) : null
         ] }),
         /* @__PURE__ */ jsxs2("div", { className: "ls-card-caption", children: [
-          /* @__PURE__ */ jsx2(SpaceTile, { space, small: true }),
+          /* @__PURE__ */ jsx2(SpaceTile, { space, size: 40 }),
           /* @__PURE__ */ jsxs2("div", { className: "ls-card-text", children: [
             /* @__PURE__ */ jsx2("div", { className: "ls-card-name", children: space.name }),
             space.description && /* @__PURE__ */ jsx2("p", { className: "ls-card-description", children: space.description }),
@@ -781,7 +1066,7 @@ function FirstSpace({ ctx }) {
     /* @__PURE__ */ jsxs2("div", { className: "ls-empty-tiles", "aria-hidden": "true", children: [
       /* @__PURE__ */ jsx2(SpaceTile, { space: { accent: "blue", icon: "book" } }),
       /* @__PURE__ */ jsx2(SpaceTile, { space: { accent: "green", icon: "calendar" } }),
-      /* @__PURE__ */ jsx2(SpaceTile, { space: { accent: "purple", icon: "graph" } })
+      /* @__PURE__ */ jsx2(SpaceTile, { space: { accent: "purple", icon: "brain" } })
     ] }),
     /* @__PURE__ */ jsx2(EmptyState, { title: "Build your first Space in chat", description: "A Space is a canvas your bots keep alive. Describe one in a normal Hermes chat and it appears here." }),
     PROMPTS.map((text) => /* @__PURE__ */ jsx2(CopyPrompt, { text }, text)),
@@ -796,7 +1081,7 @@ function FirstSpace({ ctx }) {
 function SpacesIndex({ ctx, scopeKey = null }) {
   const [search, setSearch] = useState2("");
   const [filter, setFilter] = useState2("all");
-  const list = useQuery({ queryKey: ["living-spaces", scopeKey, "spaces"], queryFn: () => ctx.rest("/spaces"), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "isLoading", "dataUpdatedAt"] });
+  const list = useQuery2({ queryKey: ["living-spaces", scopeKey, "spaces"], queryFn: () => ctx.rest("/spaces"), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "isLoading", "dataUpdatedAt"] });
   const spaces = list.data?.spaces || [];
   const counts = summaryCounts(spaces);
   const visible = visibleSpaces(spaces, search, filter);
@@ -831,8 +1116,8 @@ function SpacesIndex({ ctx, scopeKey = null }) {
 }
 
 // src/desktop/ui/space.jsx
-import { CopyButton as CopyButton2, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery5, useQueryClient } from "@hermes/plugin-sdk";
-import { useEffect as useEffect3, useId, useLayoutEffect as useLayoutEffect2, useMemo as useMemo2, useRef as useRef5, useState as useState6 } from "react";
+import { CopyButton as CopyButton2, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery6, useQueryClient } from "@hermes/plugin-sdk";
+import { useEffect as useEffect3, useId as useId2, useLayoutEffect as useLayoutEffect2, useMemo as useMemo2, useRef as useRef5, useState as useState6 } from "react";
 
 // src/desktop/ui/dismissal.mjs
 var memory = /* @__PURE__ */ new Map();
@@ -855,7 +1140,7 @@ function writeDismissed(key, value) {
 }
 
 // src/desktop/ui/history.jsx
-import { Badge as Badge2, EmptyState as EmptyState2, ErrorState as ErrorState2, Skeleton as Skeleton2, Tabs, TabsList, TabsTrigger, useQuery as useQuery2 } from "@hermes/plugin-sdk";
+import { Badge as Badge2, EmptyState as EmptyState2, ErrorState as ErrorState2, Skeleton as Skeleton2, Tabs, TabsList, TabsTrigger, useQuery as useQuery3 } from "@hermes/plugin-sdk";
 import { useEffect, useRef as useRef2, useState as useState3 } from "react";
 import { Fragment as Fragment3, jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
 function RunRow({ run }) {
@@ -927,9 +1212,9 @@ function HistorySheet({ ctx, scopeKey = null, space, onClose, onChanged, initial
   const [tab, setTab] = useState3(initialTab);
   const [restore, setRestore] = useState3(null);
   const base = spacePath(space.id);
-  const runs = useQuery2({ queryKey: ["living-spaces", scopeKey, space.id, "runs"], queryFn: () => ctx.rest(`${base}/runs`), refetchInterval: 2e3 });
-  const revisions = useQuery2({ queryKey: ["living-spaces", scopeKey, space.id, "revisions"], queryFn: () => ctx.rest(`${base}/revisions`), refetchInterval: 2e3 });
-  const points = useQuery2({ queryKey: ["living-spaces", scopeKey, space.id, "recovery-points"], queryFn: () => ctx.rest(`${base}/recovery-points`), refetchInterval: 2e3 });
+  const runs = useQuery3({ queryKey: ["living-spaces", scopeKey, space.id, "runs"], queryFn: () => ctx.rest(`${base}/runs`), refetchInterval: 2e3 });
+  const revisions = useQuery3({ queryKey: ["living-spaces", scopeKey, space.id, "revisions"], queryFn: () => ctx.rest(`${base}/revisions`), refetchInterval: 2e3 });
+  const points = useQuery3({ queryKey: ["living-spaces", scopeKey, space.id, "recovery-points"], queryFn: () => ctx.rest(`${base}/recovery-points`), refetchInterval: 2e3 });
   const query = tab === "runs" ? runs : revisions;
   const restoreCompatibility = revisionCompatibility(space, revisions.data?.find((row) => row.rev === restore));
   return /* @__PURE__ */ jsxs3(Fragment3, { children: [
@@ -1100,7 +1385,7 @@ function StorageSection({ ctx, space, onChanged }) {
 }
 
 // src/desktop/ui/permissions.jsx
-import { ErrorState as ErrorState3, Skeleton as Skeleton3, useQuery as useQuery3 } from "@hermes/plugin-sdk";
+import { ErrorState as ErrorState3, Skeleton as Skeleton3, useQuery as useQuery4 } from "@hermes/plugin-sdk";
 import { useRef as useRef3, useState as useState4 } from "react";
 import { Fragment as Fragment4, jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
 var NET_DESCRIPTION = "This Space can load content from and send data to the internet. It can't reach your Hermes app, your files or other Spaces.";
@@ -1228,7 +1513,7 @@ function PermissionsContent({ space, grants: all, audit = [], onDecide, busy = f
 }
 function PermissionsSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFocus }) {
   const base = spacePath(space.id);
-  const query = useQuery3({ queryKey: ["living-spaces", scopeKey, space.id, "grants"], queryFn: () => ctx.rest(`${base}/grants`), refetchInterval: 2e3 });
+  const query = useQuery4({ queryKey: ["living-spaces", scopeKey, space.id, "grants"], queryFn: () => ctx.rest(`${base}/grants`), refetchInterval: 2e3 });
   const [revoke, setRevoke] = useState4(null);
   const [pending, setPending] = useState4(null);
   const busy = !!pending;
@@ -1288,7 +1573,7 @@ function PermissionsSheet({ ctx, scopeKey = null, space, onClose, onChanged, ret
 }
 
 // src/desktop/ui/upkeep.jsx
-import { ErrorState as ErrorState4, Skeleton as Skeleton4, useQuery as useQuery4 } from "@hermes/plugin-sdk";
+import { ErrorState as ErrorState4, Skeleton as Skeleton4, useQuery as useQuery5 } from "@hermes/plugin-sdk";
 import { useEffect as useEffect2, useRef as useRef4, useState as useState5 } from "react";
 import { Fragment as Fragment5, jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
 function UpkeepCost({ job, expanded = false, unavailable }) {
@@ -1333,7 +1618,7 @@ function UpkeepSheet({ ctx, scopeKey = null, space, onClose, onChanged, returnFo
   const [visible, setVisible] = useState5(() => typeof document === "undefined" || !document.hidden);
   const lock = useRef4(false);
   const feedbackNode = useRef4(null);
-  const query = useQuery4({
+  const query = useQuery5({
     queryKey: ["living-spaces", scopeKey, space.id, "upkeep"],
     queryFn: () => ctx.rest(`${base}/upkeep`),
     refetchInterval: (native) => !visible ? false : isRunning(native.state?.data) || recentAction ? 2e3 : 5e3,
@@ -2342,7 +2627,7 @@ function useHeaderMode(hasSpace) {
   return [frame, mode];
 }
 function BotBanner({ action, storageKey, controller, owner }) {
-  const replyId = useId();
+  const replyId = useId2();
   const key = botDismissKey(action);
   const [stored, setStored] = useState6(() => ({ storageKey, value: readDismissed(storageKey) }));
   const record = parseBotDismissal(stored.storageKey === storageKey ? stored.value : readDismissed(storageKey));
@@ -2404,7 +2689,14 @@ function SpaceDetails({ space, dimensions, upkeepLabel, building, onOpen, onClos
   const net = grants.find((grant) => grant.capability === "net");
   const lastRun = space.recent_runs?.[0];
   const sources = space.freshness?.sources || [];
-  return /* @__PURE__ */ jsxs6(Drawer, { returnFocus, title: "Space details", description: `Freshness, storage, access, history and runtime for ${space.name}`, onClose, heading: /* @__PURE__ */ jsx6(SpaceTile, { space, small: true }), children: [
+  return /* @__PURE__ */ jsxs6(Drawer, { returnFocus, title: "Space details", description: `Freshness, storage, access, history and runtime for ${space.name}`, onClose, heading: /* @__PURE__ */ jsx6(SpaceTile, { space, size: 24 }), children: [
+    /* @__PURE__ */ jsxs6("section", { "aria-label": "Space", className: "ls-detail ls-detail-hero", children: [
+      /* @__PURE__ */ jsx6(SpaceTile, { space, size: 96 }),
+      /* @__PURE__ */ jsxs6("div", { children: [
+        /* @__PURE__ */ jsx6("strong", { children: space.name }),
+        space.description && /* @__PURE__ */ jsx6("p", { className: "ls-secondary", children: space.description })
+      ] })
+    ] }),
     /* @__PURE__ */ jsxs6("section", { "aria-label": "Freshness", className: "ls-detail", children: [
       /* @__PURE__ */ jsx6("h3", { children: "Freshness" }),
       /* @__PURE__ */ jsxs6("dl", { className: "ls-facts", children: [
@@ -2540,7 +2832,7 @@ function NoticeDock({ children, minimiseSignal, collapseAfterMs = NOTICE_COLLAPS
   const [focused, setFocused] = useState6(false);
   const [summary, setSummary] = useState6({ count: 0, alerts: 0, titles: [], keys: "" });
   const seen = useRef5(/* @__PURE__ */ new Set());
-  const id = useId();
+  const id = useId2();
   useLayoutEffect2(() => {
     const element = list.current;
     if (!element) return;
@@ -2636,7 +2928,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
   const { connectionId, profile } = useMemo2(() => scope || { connectionId: host2.state.connectionId.get(), profile: host2.state.profile.get() }, [scope, ctx, scopeKey, sid]);
   const base = spacePath(sid);
   const queryClient = useQueryClient();
-  const detail = useQuery5({ queryKey: ["living-spaces", scopeKey, sid, "detail"], queryFn: () => ctx.rest(base), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "dataUpdatedAt"] });
+  const detail = useQuery6({ queryKey: ["living-spaces", scopeKey, sid, "detail"], queryFn: () => ctx.rest(base), refetchInterval: 2e3, notifyOnChangeProps: ["data", "error", "dataUpdatedAt"] });
   const space = detail.data;
   const [frame, headerMode] = useHeaderMode(!!space);
   const [sheet, setSheet] = useState6(null);
@@ -2741,7 +3033,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
       if (controller.current === session) controller.current = null;
     };
   }, [ctx, openingSessionRest, connectionId, profile, scopeKey, sid, space?.head_rev, grantsKey, building, archived, crash, remoteCrash, reload]);
-  const changes = useQuery5({ queryKey: ["living-spaces", scopeKey, sid, "changes", space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 });
+  const changes = useQuery6({ queryKey: ["living-spaces", scopeKey, sid, "changes", space?.head_rev, grantsKey, reload], queryFn: () => ctx.rest(`${base}/changes?since=${cursor.current}`), enabled: hasData && ready && !building && !archived && !crash, refetchInterval: 1500 });
   useEffect3(() => {
     if (!hasData || !ready || !changes.data || !controller.current) return;
     const page = advanceCursor(cursor.current, changes.data);
@@ -2913,7 +3205,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
       /* @__PURE__ */ jsxs6("div", { className: "ls-island ls-island-identity", children: [
         /* @__PURE__ */ jsx6(Action, { className: "ls-action ls-icon-button", icon: "arrow-left", "aria-label": "Back to Spaces", title: "Back to Spaces", onClick: leave }),
         /* @__PURE__ */ jsxs6("div", { className: "ls-identity", children: [
-          /* @__PURE__ */ jsx6(SpaceTile, { space, small: true }),
+          /* @__PURE__ */ jsx6(SpaceTile, { space, size: 24 }),
           /* @__PURE__ */ jsx6("h1", { title: space.name, children: space.name }),
           status !== "ready" && /* @__PURE__ */ jsx6(StatusPill, { status })
         ] })
@@ -3035,16 +3327,16 @@ Logged to this Space only. Common credential values redacted.` }),
 
 // src/desktop/ui/styles.js
 var styles = `
-.ls-root,.ls-sheet,.ls-confirm{--ls-ease-out:cubic-bezier(.23,1,.32,1);--ls-glass:color-mix(in srgb,Canvas 78%,transparent);--ls-glass-strong:color-mix(in srgb,Canvas 92%,transparent);--ls-ease-drawer:cubic-bezier(.32,.72,0,1);--ls-island-shadow:0 0 0 1px rgba(20,20,24,.07),0 1px 0 rgba(255,255,255,.9) inset,0 10px 30px -10px rgba(20,20,24,.25);font:14px/1.5 var(--font-sans,system-ui,sans-serif);color:var(--ui-text-primary);--ls-surface:var(--ui-bg-card,var(--ui-bg-secondary));--ls-line:var(--ui-stroke-secondary);--ls-danger:var(--ui-text-danger,var(--destructive,var(--dt-destructive,#cf2d56)));--ls-warning:var(--ui-text-warning,var(--ui-text-primary));--ls-good:var(--ui-text-success,var(--ui-text-primary))}
+.ls-root,.ls-sheet,.ls-confirm{--ls-mark-edge:rgba(0,0,0,.10);--ls-mark-shadow:color-mix(in oklch,var(--ls-mark-glow,var(--ls-accent)) 45%,transparent);--ls-ease-out:cubic-bezier(.23,1,.32,1);--ls-glass:color-mix(in srgb,Canvas 78%,transparent);--ls-glass-strong:color-mix(in srgb,Canvas 92%,transparent);--ls-ease-drawer:cubic-bezier(.32,.72,0,1);--ls-island-shadow:0 0 0 1px rgba(20,20,24,.07),0 1px 0 rgba(255,255,255,.9) inset,0 10px 30px -10px rgba(20,20,24,.25);font:14px/1.5 var(--font-sans,system-ui,sans-serif);color:var(--ui-text-primary);--ls-surface:var(--ui-bg-card,var(--ui-bg-secondary));--ls-line:var(--ui-stroke-secondary);--ls-danger:var(--ui-text-danger,var(--destructive,var(--dt-destructive,#cf2d56)));--ls-warning:var(--ui-text-warning,var(--ui-text-primary));--ls-good:var(--ui-text-success,var(--ui-text-primary))}
 .ls-root{height:100%;min-height:0;overflow:auto;background:var(--ui-bg-primary)}
 .ls-root *,.ls-sheet *,.ls-confirm *{box-sizing:border-box}
 .ls-root :is(button,a,input):focus-visible,.ls-sheet :is(button,a,input):focus-visible,.ls-confirm button:focus-visible{outline:2px solid var(--ui-accent-lit,var(--ui-accent));outline-offset:2px}
 .ls-root h1{font-size:20px;font-weight:600;margin:0;letter-spacing:-.01em}.ls-root h2,.ls-sheet h2{font-size:14px;font-weight:600;margin:0}.ls-root p,.ls-sheet p{margin:8px 0}
 .ls-page{padding:22px 28px 40px;max-width:1236px;margin:0 auto}.ls-page-heading{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.ls-page-title{display:flex;align-items:baseline;gap:14px;flex:1;min-width:0;flex-wrap:wrap}.ls-gallery h1{font-size:28px;font-weight:600;letter-spacing:-.03em}.ls-secondary{color:var(--ui-text-secondary)}.ls-num{font-variant-numeric:tabular-nums}.ls-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0 16px}.ls-search{width:260px;max-width:100%;min-height:34px;border-radius:10px!important;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-sort{margin-left:auto;font-size:12px;color:var(--ui-text-tertiary,var(--ui-text-secondary))}.ls-toolbar button{min-height:32px}
-.ls-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:22px 18px}.ls-card{display:block;color:inherit;text-decoration:none;border-radius:16px;outline-offset:4px}.ls-card-media{position:relative}.ls-thumb{display:block;aspect-ratio:16/10;width:100%;height:auto;border-radius:14px;overflow:hidden;position:relative;background:var(--ui-bg-secondary);box-shadow:0 0 0 1px var(--ui-stroke-secondary),0 1px 2px rgba(0,0,0,.08);transition:transform 220ms var(--ls-ease-out),box-shadow 220ms var(--ls-ease-out)}.ls-thumb img{display:block;width:100%;height:100%;object-fit:cover;object-position:top left}.ls-thumb-fallback{background:radial-gradient(120% 95% at 0% 0%,color-mix(in srgb,var(--ls-accent) 34%,transparent),transparent 62%),radial-gradient(90% 80% at 100% 100%,color-mix(in srgb,var(--ls-accent) 18%,transparent),transparent 70%),color-mix(in srgb,var(--ls-accent) 7%,var(--ui-bg-secondary))}.ls-thumb-fallback::before{content:'';position:absolute;inset:0;background-image:linear-gradient(color-mix(in srgb,var(--ls-accent) 12%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--ls-accent) 12%,transparent) 1px,transparent 1px);background-size:28px 28px;-webkit-mask-image:radial-gradient(80% 80% at 30% 30%,#000,transparent);mask-image:radial-gradient(80% 80% at 30% 30%,#000,transparent)}.ls-thumb-mark{position:absolute;left:50%;top:50%;translate:-50% -50%;display:grid;place-items:center;width:64px;height:64px;border-radius:18px;color:color-mix(in srgb,var(--ls-accent) 75%,var(--ui-text-primary));background:color-mix(in srgb,var(--ls-accent) 16%,var(--ui-bg-elevated,var(--ui-bg-primary)));box-shadow:0 0 0 1px color-mix(in srgb,var(--ls-accent) 30%,transparent),0 12px 28px -14px color-mix(in srgb,var(--ls-accent) 70%,transparent)}.ls-thumb-mark .codicon{font-size:30px!important}@media(hover:hover) and (pointer:fine){.ls-card:hover .ls-thumb{transform:translateY(-2px);box-shadow:0 0 0 1px var(--ui-stroke-primary,var(--ui-stroke-secondary)),0 14px 30px -12px rgba(0,0,0,.45)}}.ls-card:active .ls-thumb{transform:scale(.99)}.ls-card-state{position:absolute;left:10px;bottom:10px}.ls-card-state .ls-pill{border:0!important;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-pin{position:absolute;right:10px;top:10px;display:grid;place-items:center;width:26px;height:26px;border-radius:999px;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-card-caption{display:flex;align-items:flex-start;gap:10px;padding:12px 2px 0}.ls-card-caption .ls-tile-small{width:26px;height:26px;border-radius:7px;margin-top:1px}.ls-card-caption .ls-tile .codicon{font-size:14px}.ls-card-text{min-width:0;flex:1}.ls-card-name{font-weight:600;font-size:14.5px;letter-spacing:-.012em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ls-card-description{margin:1px 0 0!important;font-size:12.5px;color:var(--ui-text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ls-card-freshness{margin-top:2px;font-size:12px;color:var(--ui-text-tertiary,var(--ui-text-secondary));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ls-card.ls-failed .ls-thumb,.ls-card.ls-blocked .ls-thumb{box-shadow:0 0 0 1px color-mix(in srgb,var(--ls-danger) 55%,var(--ui-stroke-secondary))}.ls-card.ls-archived .ls-thumb{filter:saturate(.4);opacity:.85}.ls-newcard{aspect-ratio:16/10;border-radius:14px;border:1px dashed var(--ui-stroke-primary,var(--ui-stroke-secondary));display:grid;place-items:center;text-align:center;padding:16px;font-size:12.5px}.ls-newcard>div{display:grid;justify-items:center;gap:4px}.ls-newcard strong{font-size:14px;font-weight:600}.ls-newcard>div>.codicon{font-size:20px;color:var(--ui-text-secondary)}.ls-newcard .ls-actions{margin-top:8px;justify-content:center}.ls-newcard .ls-prompt{max-width:260px;text-align:left}.ls-facts{margin:10px 0;display:grid;gap:8px;font-size:13px}.ls-facts>div{display:grid;grid-template-columns:118px 1fr;gap:12px}.ls-facts dt{color:var(--ui-text-secondary)}.ls-facts dd{margin:0;overflow-wrap:anywhere}
-.ls-tile{display:inline-flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;border-radius:10px;border:1px solid color-mix(in srgb,var(--ls-accent) 48%,transparent);background:color-mix(in srgb,var(--ls-accent) 22%,var(--ui-bg-primary));color:color-mix(in srgb,var(--ls-accent) 70%,var(--ui-text-primary))}.ls-tile .codicon{font-size:20px}.ls-tile-small{width:32px;height:32px;border-radius:8px}.ls-owner{display:inline-flex;gap:5px;align-items:center;font-size:12px;color:var(--ui-text-secondary)}.ls-avatar{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:10px;background:var(--ui-bg-quaternary);color:var(--ui-text-primary)}.ls-pin{margin-left:auto}
+.ls-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:22px 18px}.ls-card{display:block;color:inherit;text-decoration:none;border-radius:16px;outline-offset:4px}.ls-card-media{position:relative}.ls-thumb{display:block;aspect-ratio:16/10;width:100%;height:auto;border-radius:14px;overflow:hidden;position:relative;background:var(--ui-bg-secondary);box-shadow:0 0 0 1px var(--ui-stroke-secondary),0 1px 2px rgba(0,0,0,.08);transition:transform 220ms var(--ls-ease-out),box-shadow 220ms var(--ls-ease-out)}.ls-thumb img{display:block;width:100%;height:100%;object-fit:cover;object-position:top left}.ls-thumb-fallback{background:radial-gradient(120% 95% at 0% 0%,color-mix(in srgb,var(--ls-accent) 34%,transparent),transparent 62%),radial-gradient(90% 80% at 100% 100%,color-mix(in srgb,var(--ls-accent) 18%,transparent),transparent 70%),color-mix(in srgb,var(--ls-accent) 7%,var(--ui-bg-secondary))}.ls-thumb-fallback::before{content:'';position:absolute;inset:0;background-image:linear-gradient(color-mix(in srgb,var(--ls-accent) 12%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--ls-accent) 12%,transparent) 1px,transparent 1px);background-size:28px 28px;-webkit-mask-image:radial-gradient(80% 80% at 30% 30%,#000,transparent);mask-image:radial-gradient(80% 80% at 30% 30%,#000,transparent)}.ls-thumb-mark{position:absolute;left:50%;top:50%;translate:-50% -50%;display:grid;place-items:center;line-height:0;filter:drop-shadow(0 14px 22px var(--ls-mark-shadow))}@media(hover:hover) and (pointer:fine){.ls-card:hover .ls-thumb{transform:translateY(-2px);box-shadow:0 0 0 1px var(--ui-stroke-primary,var(--ui-stroke-secondary)),0 14px 30px -12px rgba(0,0,0,.45)}}.ls-card:active .ls-thumb{transform:scale(.99)}.ls-card-state{position:absolute;left:10px;bottom:10px}.ls-card-state .ls-pill{border:0!important;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-pin{position:absolute;right:10px;top:10px;display:grid;place-items:center;width:26px;height:26px;border-radius:999px;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-card-caption{display:flex;align-items:flex-start;gap:10px;padding:12px 2px 0}.ls-card-caption{align-items:center}.ls-card-text{min-width:0;flex:1}.ls-card-name{font-weight:600;font-size:14.5px;letter-spacing:-.012em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ls-card-description{margin:1px 0 0!important;font-size:12.5px;color:var(--ui-text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ls-card-freshness{margin-top:2px;font-size:12px;color:var(--ui-text-tertiary,var(--ui-text-secondary));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ls-card.ls-failed .ls-thumb,.ls-card.ls-blocked .ls-thumb{box-shadow:0 0 0 1px color-mix(in srgb,var(--ls-danger) 55%,var(--ui-stroke-secondary))}.ls-card.ls-archived .ls-thumb{filter:saturate(.4);opacity:.85}.ls-newcard{aspect-ratio:16/10;border-radius:14px;border:1px dashed var(--ui-stroke-primary,var(--ui-stroke-secondary));display:grid;place-items:center;text-align:center;padding:16px;font-size:12.5px}.ls-newcard>div{display:grid;justify-items:center;gap:4px}.ls-newcard strong{font-size:14px;font-weight:600}.ls-newcard>div>.codicon{font-size:20px;color:var(--ui-text-secondary)}.ls-newcard .ls-actions{margin-top:8px;justify-content:center}.ls-newcard .ls-prompt{max-width:260px;text-align:left}.ls-facts{margin:10px 0;display:grid;gap:8px;font-size:13px}.ls-facts>div{display:grid;grid-template-columns:118px 1fr;gap:12px}.ls-facts dt{color:var(--ui-text-secondary)}.ls-facts dd{margin:0;overflow-wrap:anywhere}
+.ls-tile{display:inline-flex;flex:none;line-height:0}.ls-mark{display:block;flex:none;overflow:visible}@media(forced-colors:active){.ls-mark{forced-color-adjust:none}}.ls-detail-hero{display:flex;align-items:center;gap:16px}.ls-detail-hero strong{font-size:16px;font-weight:600;letter-spacing:-.012em}.ls-detail-hero p{margin:2px 0 0!important;font-size:12.5px}.ls-owner{display:inline-flex;gap:5px;align-items:center;font-size:12px;color:var(--ui-text-secondary)}.ls-avatar{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:10px;background:var(--ui-bg-quaternary);color:var(--ui-text-primary)}.ls-pin{margin-left:auto}
 .ls-pill{display:inline-flex;gap:5px;align-items:center;min-height:22px;padding:2px 8px!important;border:1px solid var(--ls-line);border-radius:999px!important;background:transparent!important;color:var(--ui-text-primary)!important;font-size:12px!important;font-weight:500}.ls-pill.ls-ready,.ls-pill.ls-succeeded,.ls-pill.ls-granted{color:var(--ls-good)!important}.ls-pill.ls-failed,.ls-pill.ls-crashed{color:var(--ls-danger)!important;border-color:currentColor}.ls-pill.ls-blocked,.ls-pill.ls-requested{color:var(--ls-warning)!important}.ls-pill.ls-updating{color:var(--ui-accent-lit,var(--ui-accent))!important}.ls-action{min-height:32px!important;border-radius:8px!important;padding:0 12px!important;font-size:13px!important}.ls-action[aria-disabled=true]{opacity:.55;cursor:not-allowed}.ls-danger{color:var(--ls-danger)!important;border:1px solid color-mix(in srgb,var(--ls-danger) 55%,var(--ls-line))!important}.ls-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}.ls-footer{font-size:12px;color:var(--ui-text-secondary);margin-top:22px!important}.ls-empty{max-width:780px;margin:55px auto}.ls-empty-tiles{display:flex;gap:12px;justify-content:center}.ls-empty .ls-prompt{margin-top:12px}.ls-prompt{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--ls-line);border-radius:8px;background:var(--ls-surface);font-size:13px}.ls-prompt q{flex:1;user-select:text;overflow-wrap:anywhere}.ls-prompt button{min-height:28px}.ls-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
-.ls-frame{height:100%;display:flex;flex-direction:column;padding:0 8px 8px;min-height:0}.ls-framebar{height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 2px;background:transparent;position:relative;z-index:2}.ls-island{display:flex;align-items:center;gap:2px;height:38px;padding:0 3px;border-radius:12px;min-width:0;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-island-identity{flex:0 1 auto;max-width:55%}.ls-frame-actions{margin-left:auto;flex:0 1 auto}.ls-island .ls-action{min-height:32px!important;height:32px;border:0!important;background:transparent!important;box-shadow:none!important;gap:6px}@media(hover:hover) and (pointer:fine){.ls-island .ls-action:hover{background:var(--ui-control-hover-background,color-mix(in srgb,var(--ui-text-primary) 7%,transparent))!important}}.ls-icon-button,.ls-island .ls-overflow{width:32px;min-width:32px;padding:0!important;justify-content:center}.ls-identity{display:flex;align-items:center;gap:8px;min-width:0;padding:0 10px 0 4px}.ls-identity .ls-tile-small{width:22px;height:22px;border-radius:6px}.ls-identity .ls-tile .codicon{font-size:13px}.ls-identity h1{font-size:14px!important;font-weight:600;letter-spacing:-.012em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.ls-frame-meta{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 10px;font-size:12.5px;color:var(--ui-text-secondary);white-space:nowrap;min-width:0;overflow:hidden}.ls-frame-meta-text{overflow:hidden;text-overflow:ellipsis}.ls-dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--ls-good);box-shadow:0 0 0 3px color-mix(in srgb,var(--ls-good) 18%,transparent)}.ls-dot[data-tone=danger]{background:var(--ls-danger);box-shadow:0 0 0 3px color-mix(in srgb,var(--ls-danger) 18%,transparent)}.ls-dot[data-tone=busy]{background:var(--ui-accent-lit,var(--ui-accent));box-shadow:none}.ls-dot[data-tone=idle]{background:var(--ui-text-tertiary,var(--ui-text-secondary));box-shadow:none}.ls-save{font-size:12px;display:inline-flex;gap:5px;align-items:center;max-width:220px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ls-save:empty{display:none}.ls-save[data-status=saved]{animation:ls-fade-out 400ms ease 2.6s forwards}@keyframes ls-fade-out{to{opacity:0}}.ls-content{position:relative;display:flex;flex:1;min-height:0;flex-direction:column}.ls-sandbox{flex:1;min-height:0;border-radius:14px;overflow:hidden;position:relative;background:var(--ui-bg-primary);box-shadow:0 0 0 1px var(--ui-stroke-secondary),0 2px 8px rgba(0,0,0,.12)}.ls-mount{height:100%;min-height:0}.ls-stale{filter:saturate(.7)}.ls-notices{position:absolute;right:12px;bottom:12px;z-index:3;width:min(400px,calc(100% - 24px));max-height:calc(100% - 24px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;pointer-events:none}.ls-notices[data-empty]{display:none}.ls-notices>*{pointer-events:auto}.ls-notice-list{width:100%;display:flex;flex-direction:column;gap:6px;min-height:0;max-height:100%}.ls-notice-list[hidden]{display:none}.ls-notice-tools{display:flex;justify-content:flex-end}.ls-notice-minimise{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 9px;border:0;border-radius:999px;font:inherit;font-size:11.5px;color:var(--ui-text-secondary);cursor:pointer;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-notice-stack{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:0;overscroll-behavior:contain;border-radius:14px}.ls-notice-pill{display:inline-flex;align-items:center;gap:6px;max-width:100%;height:32px;padding:0 12px 0 10px;white-space:nowrap;transition:opacity 180ms ease,transform 220ms var(--ls-ease-out);border:0;border-radius:999px;font:inherit;font-size:12.5px;font-weight:550;color:var(--ui-text-primary);cursor:pointer;background:var(--ls-glass-strong);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-notice-pill.ls-alert{color:var(--ls-danger);background:color-mix(in srgb,var(--ls-danger) 9%,var(--ls-glass-strong))}@starting-style{.ls-notice-pill{opacity:0;transform:translateY(6px) scale(.96)}}.ls-banner{display:flex;gap:10px;flex:none;padding:12px 14px 12px 12px;border-radius:14px;font-size:13px;color:var(--ui-text-primary);background:var(--ls-glass-strong);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow);transition:transform 260ms var(--ls-ease-out),opacity 200ms ease}@starting-style{.ls-banner{transform:translateY(10px) scale(.98);opacity:0}}.ls-banner>.codicon{margin-top:2px;color:var(--ui-text-secondary)}.ls-banner .ls-actions{margin-top:10px;gap:6px}.ls-banner .ls-action{min-height:28px!important;height:28px;padding:0 10px!important;font-size:12.5px!important}.ls-banner.ls-failed,.ls-banner.ls-crashed,.ls-banner.ls-conflict{background:color-mix(in srgb,var(--ls-danger) 7%,var(--ls-glass-strong))}.ls-banner.ls-failed>.codicon,.ls-banner.ls-crashed>.codicon,.ls-banner.ls-conflict>.codicon,.ls-banner.ls-failed strong{color:var(--ls-danger)}.ls-banner.ls-blocked>.codicon,.ls-banner.ls-storage>.codicon{color:var(--ls-warning)}.ls-crash{max-width:620px;padding:40px 24px;margin:auto;overflow:auto;max-height:100%}.ls-diagnostic{max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;background:var(--ui-bg-secondary);border:1px solid var(--ls-line);font:12px/1.5 var(--font-mono,monospace)}.ls-building{padding:40px;display:grid;gap:16px}
+.ls-frame{height:100%;display:flex;flex-direction:column;padding:0 8px 8px;min-height:0}.ls-framebar{height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 2px;background:transparent;position:relative;z-index:2}.ls-island{display:flex;align-items:center;gap:2px;height:38px;padding:0 3px;border-radius:12px;min-width:0;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-island-identity{flex:0 1 auto;max-width:55%}.ls-frame-actions{margin-left:auto;flex:0 1 auto}.ls-island .ls-action{min-height:32px!important;height:32px;border:0!important;background:transparent!important;box-shadow:none!important;gap:6px}@media(hover:hover) and (pointer:fine){.ls-island .ls-action:hover{background:var(--ui-control-hover-background,color-mix(in srgb,var(--ui-text-primary) 7%,transparent))!important}}.ls-icon-button,.ls-island .ls-overflow{width:32px;min-width:32px;padding:0!important;justify-content:center}.ls-identity{display:flex;align-items:center;gap:8px;min-width:0;padding:0 10px 0 4px}.ls-identity h1{font-size:14px!important;font-weight:600;letter-spacing:-.012em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.ls-frame-meta{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 10px;font-size:12.5px;color:var(--ui-text-secondary);white-space:nowrap;min-width:0;overflow:hidden}.ls-frame-meta-text{overflow:hidden;text-overflow:ellipsis}.ls-dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--ls-good);box-shadow:0 0 0 3px color-mix(in srgb,var(--ls-good) 18%,transparent)}.ls-dot[data-tone=danger]{background:var(--ls-danger);box-shadow:0 0 0 3px color-mix(in srgb,var(--ls-danger) 18%,transparent)}.ls-dot[data-tone=busy]{background:var(--ui-accent-lit,var(--ui-accent));box-shadow:none}.ls-dot[data-tone=idle]{background:var(--ui-text-tertiary,var(--ui-text-secondary));box-shadow:none}.ls-save{font-size:12px;display:inline-flex;gap:5px;align-items:center;max-width:220px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ls-save:empty{display:none}.ls-save[data-status=saved]{animation:ls-fade-out 400ms ease 2.6s forwards}@keyframes ls-fade-out{to{opacity:0}}.ls-content{position:relative;display:flex;flex:1;min-height:0;flex-direction:column}.ls-sandbox{flex:1;min-height:0;border-radius:14px;overflow:hidden;position:relative;background:var(--ui-bg-primary);box-shadow:0 0 0 1px var(--ui-stroke-secondary),0 2px 8px rgba(0,0,0,.12)}.ls-mount{height:100%;min-height:0}.ls-stale{filter:saturate(.7)}.ls-notices{position:absolute;right:12px;bottom:12px;z-index:3;width:min(400px,calc(100% - 24px));max-height:calc(100% - 24px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;pointer-events:none}.ls-notices[data-empty]{display:none}.ls-notices>*{pointer-events:auto}.ls-notice-list{width:100%;display:flex;flex-direction:column;gap:6px;min-height:0;max-height:100%}.ls-notice-list[hidden]{display:none}.ls-notice-tools{display:flex;justify-content:flex-end}.ls-notice-minimise{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 9px;border:0;border-radius:999px;font:inherit;font-size:11.5px;color:var(--ui-text-secondary);cursor:pointer;background:var(--ls-glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-notice-stack{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:0;overscroll-behavior:contain;border-radius:14px}.ls-notice-pill{display:inline-flex;align-items:center;gap:6px;max-width:100%;height:32px;padding:0 12px 0 10px;white-space:nowrap;transition:opacity 180ms ease,transform 220ms var(--ls-ease-out);border:0;border-radius:999px;font:inherit;font-size:12.5px;font-weight:550;color:var(--ui-text-primary);cursor:pointer;background:var(--ls-glass-strong);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow)}.ls-notice-pill.ls-alert{color:var(--ls-danger);background:color-mix(in srgb,var(--ls-danger) 9%,var(--ls-glass-strong))}@starting-style{.ls-notice-pill{opacity:0;transform:translateY(6px) scale(.96)}}.ls-banner{display:flex;gap:10px;flex:none;padding:12px 14px 12px 12px;border-radius:14px;font-size:13px;color:var(--ui-text-primary);background:var(--ls-glass-strong);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:var(--ls-island-shadow);transition:transform 260ms var(--ls-ease-out),opacity 200ms ease}@starting-style{.ls-banner{transform:translateY(10px) scale(.98);opacity:0}}.ls-banner>.codicon{margin-top:2px;color:var(--ui-text-secondary)}.ls-banner .ls-actions{margin-top:10px;gap:6px}.ls-banner .ls-action{min-height:28px!important;height:28px;padding:0 10px!important;font-size:12.5px!important}.ls-banner.ls-failed,.ls-banner.ls-crashed,.ls-banner.ls-conflict{background:color-mix(in srgb,var(--ls-danger) 7%,var(--ls-glass-strong))}.ls-banner.ls-failed>.codicon,.ls-banner.ls-crashed>.codicon,.ls-banner.ls-conflict>.codicon,.ls-banner.ls-failed strong{color:var(--ls-danger)}.ls-banner.ls-blocked>.codicon,.ls-banner.ls-storage>.codicon{color:var(--ls-warning)}.ls-crash{max-width:620px;padding:40px 24px;margin:auto;overflow:auto;max-height:100%}.ls-diagnostic{max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;background:var(--ui-bg-secondary);border:1px solid var(--ls-line);font:12px/1.5 var(--font-mono,monospace)}.ls-building{padding:40px;display:grid;gap:16px}
 .ls-sheet{position:fixed!important;top:0!important;right:0!important;left:auto!important;bottom:0!important;transform:none!important;translate:none!important;width:min(460px,100vw)!important;max-width:460px!important;max-height:100dvh!important;height:100dvh!important;border-radius:0!important;background:var(--ui-bg-elevated,var(--ui-surface-background,Canvas))!important;animation:none!important}.ls-sheet-body{display:flex!important;flex-direction:column!important;height:100%;max-height:100dvh!important;padding:0!important;gap:0!important;overflow:hidden!important}.ls-sheet-header{display:flex!important;flex-direction:row!important;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--ls-line);flex:none}.ls-sheet-scroll{padding:18px 16px;overflow:auto;min-height:0;flex:1}.ls-disclosure{margin:8px 0!important;font-size:12px;line-height:1.55;max-width:60ch}.ls-internet .ls-row-top{min-height:56px}.ls-internet>.ls-secondary{font-size:12px;max-width:60ch}.ls-switch-value{display:flex;gap:8px;align-items:center}.ls-switch{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:40px;padding:0;border:0;background:none;cursor:pointer;flex:none}.ls-switch-track{display:block;width:40px;height:24px;border-radius:999px;border:1px solid var(--ui-stroke-secondary);background:var(--ui-stroke-secondary);position:relative}.ls-switch-thumb{position:absolute;left:2px;top:2px;width:18px;height:18px;border-radius:50%;background:var(--ui-text-primary);transition:transform 120ms ease-out}.ls-switch[aria-checked=true] .ls-switch-track{background:var(--ui-accent);border-color:var(--ui-accent)}.ls-switch[aria-checked=true] .ls-switch-thumb{transform:translateX(16px);background:var(--ui-text-on-accent,#fff)}.ls-switch[aria-disabled=true]{cursor:not-allowed}.ls-upkeep-prompt{margin:16px 0}.ls-upkeep-prompt h3,.ls-sheet h3{font-size:13px;font-weight:600;margin:0}.ls-upkeep-prompt p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}.ls-clamp-six,.ls-clamp-three{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}.ls-clamp-three{-webkit-line-clamp:3}.ls-upkeep-note{font-size:12px}.ls-upkeep-actions>.ls-danger{margin-left:auto}.ls-upkeep-feedback{font-size:12px;margin:12px 0;outline-offset:2px}.ls-section{margin:0 0 22px}.ls-section-title{font-size:12px!important;font-weight:600!important;letter-spacing:.025em;margin:4px 0 12px!important}.ls-grant,.ls-row{padding:12px;border:1px solid var(--ls-line);border-radius:8px;margin-bottom:12px}.ls-row-top{display:flex;align-items:center;gap:8px;justify-content:space-between}.ls-row-top>strong{display:flex;gap:8px;align-items:center}.ls-pending{background:color-mix(in srgb,var(--ls-warning) 6%,var(--ls-surface))}.ls-audit{padding-left:18px;font-size:12px}.ls-tabs{margin-bottom:16px}.ls-confirm{max-width:520px!important}.ls-compare{display:grid;gap:12px}.ls-directive{padding:14px;border:1px solid var(--ui-stroke-secondary);border-radius:12px;max-width:440px;background:var(--ui-bg-card,var(--ui-bg-secondary));display:grid;gap:10px}.ls-spin{animation:ls-spin 1s linear infinite}@keyframes ls-spin{to{transform:rotate(360deg)}}
 .ls-frame[data-header-mode=compact] .ls-island-button .ls-label,.ls-frame[data-header-mode=narrow] .ls-island-button .ls-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.ls-frame[data-header-mode=compact] .ls-island-button,.ls-frame[data-header-mode=narrow] .ls-island-button{width:32px;min-width:32px;padding:0!important;justify-content:center}.ls-frame[data-header-mode=narrow] .ls-frame-meta{padding:0 8px}.ls-frame[data-header-mode=narrow] .ls-frame-meta-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.ls-frame[data-header-mode=narrow] .ls-island-identity{max-width:none;flex:1}.ls-frame[data-header-mode=narrow] .ls-save{max-width:none;padding:0 4px}.ls-frame[data-header-mode=narrow] .ls-save-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.ls-frame[data-header-mode=narrow]{padding:0 6px 6px}.ls-frame[data-header-mode=narrow] .ls-notices{right:8px;left:8px;bottom:8px;width:auto}
 @media(max-width:899px){.ls-page{padding:20px 16px}.ls-page-heading{gap:8px}}@media(max-width:359px){.ls-internet .ls-row-top{flex-wrap:wrap}.ls-internet .ls-switch-value{width:100%}}@media(prefers-reduced-motion:reduce){.ls-spin{animation:none}.ls-root *,.ls-sheet *,.ls-confirm *{transition:none!important;animation:none!important}}@media(forced-colors:active){.ls-pill,.ls-card,.ls-tile,.ls-action{border:1px solid CanvasText!important}.ls-switch-track{border:1px solid ButtonText!important;background:Canvas!important}.ls-switch-thumb{background:ButtonText!important}.ls-switch[aria-checked=true] .ls-switch-track{background:Highlight!important}.ls-switch[aria-checked=true] .ls-switch-thumb{background:HighlightText!important}}
@@ -3054,7 +3346,7 @@ var styles = `
 .ls-collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows 240ms cubic-bezier(.23,1,.32,1)}.ls-collapse>div{min-height:0;overflow:hidden;opacity:0;transition:opacity 160ms ease}.ls-collapse[data-open=true]{grid-template-rows:1fr}.ls-collapse[data-open=true]>div{opacity:1;transition:opacity 200ms ease 60ms}
 .ls-meter{height:4px;margin-top:6px;border-radius:4px;background:var(--ls-line);overflow:hidden}.ls-meter>i{display:block;height:100%;background:var(--ls-warning)}
 @media(prefers-reduced-motion:reduce){.ls-root .ls-collapse{transition:none!important}.ls-root .ls-collapse>div{transition:opacity 160ms ease!important}}
-:root.dark :is(.ls-root,.ls-sheet,.ls-confirm),.dark :is(.ls-root,.ls-sheet,.ls-confirm){--ls-island-shadow:0 0 0 1px rgba(255,255,255,.08),0 1px 0 rgba(255,255,255,.06) inset,0 10px 30px -8px rgba(0,0,0,.6)}.ls-sheet{top:8px!important;right:8px!important;bottom:8px!important;height:auto!important;max-height:calc(100dvh - 16px)!important;width:min(400px,calc(100vw - 16px))!important;max-width:400px!important;border-radius:16px!important;box-shadow:var(--ls-island-shadow),0 24px 60px -20px rgba(0,0,0,.45)!important;animation:ls-sheet-in 280ms var(--ls-ease-drawer) both!important}@keyframes ls-sheet-in{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}.ls-sheet-header{gap:10px;padding:14px 14px 12px 18px!important}.ls-sheet-header h2{flex:1}.ls-sheet-header .ls-tile-small{width:24px;height:24px;border-radius:7px}.ls-sheet-header .ls-tile .codicon{font-size:14px}.ls-detail{padding:14px 0;border-bottom:1px solid var(--ls-line)}.ls-detail:first-child{padding-top:0}.ls-detail:last-child{border-bottom:0}.ls-detail h3{font-size:11.5px!important;font-weight:600;letter-spacing:.02em;color:var(--ui-text-secondary);margin:0 0 6px!important}.ls-detail .ls-actions{margin-top:8px}@media(prefers-reduced-motion:reduce){.ls-root .ls-thumb{transition:opacity 160ms ease!important}.ls-root .ls-card:hover .ls-thumb,.ls-root .ls-card:active .ls-thumb{transform:none}.ls-root .ls-banner{transition:opacity 200ms ease!important}@starting-style{.ls-root .ls-banner{transform:none;opacity:0}}.ls-root .ls-notice-pill{transition:opacity 180ms ease!important}@starting-style{.ls-root .ls-notice-pill{transform:none;opacity:0}}.ls-sheet{animation:ls-fade-in 200ms ease both!important}@keyframes ls-fade-in{from{opacity:0}}}@media(max-width:699px){.ls-page{padding:16px}.ls-gallery h1{font-size:24px}.ls-sort{display:none}.ls-search{width:100%}}@media(prefers-reduced-transparency:reduce){.ls-island,.ls-banner,.ls-notice-pill,.ls-notice-minimise,.ls-search,.ls-pin,.ls-card-state .ls-pill{background:Canvas!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}@media(forced-colors:active){.ls-island,.ls-banner,.ls-notice-pill,.ls-thumb{border:1px solid CanvasText}}
+:root.dark :is(.ls-root,.ls-sheet,.ls-confirm),.dark :is(.ls-root,.ls-sheet,.ls-confirm){--ls-mark-edge:rgba(255,255,255,.16);--ls-mark-shadow:rgba(0,0,0,.55);--ls-island-shadow:0 0 0 1px rgba(255,255,255,.08),0 1px 0 rgba(255,255,255,.06) inset,0 10px 30px -8px rgba(0,0,0,.6)}.ls-sheet{top:8px!important;right:8px!important;bottom:8px!important;height:auto!important;max-height:calc(100dvh - 16px)!important;width:min(400px,calc(100vw - 16px))!important;max-width:400px!important;border-radius:16px!important;box-shadow:var(--ls-island-shadow),0 24px 60px -20px rgba(0,0,0,.45)!important;animation:ls-sheet-in 280ms var(--ls-ease-drawer) both!important}@keyframes ls-sheet-in{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}.ls-sheet-header{gap:10px;padding:14px 14px 12px 18px!important}.ls-sheet-header h2{flex:1}.ls-detail{padding:14px 0;border-bottom:1px solid var(--ls-line)}.ls-detail:first-child{padding-top:0}.ls-detail:last-child{border-bottom:0}.ls-detail h3{font-size:11.5px!important;font-weight:600;letter-spacing:.02em;color:var(--ui-text-secondary);margin:0 0 6px!important}.ls-detail .ls-actions{margin-top:8px}@media(prefers-reduced-motion:reduce){.ls-root .ls-thumb{transition:opacity 160ms ease!important}.ls-root .ls-card:hover .ls-thumb,.ls-root .ls-card:active .ls-thumb{transform:none}.ls-root .ls-banner{transition:opacity 200ms ease!important}@starting-style{.ls-root .ls-banner{transform:none;opacity:0}}.ls-root .ls-notice-pill{transition:opacity 180ms ease!important}@starting-style{.ls-root .ls-notice-pill{transform:none;opacity:0}}.ls-sheet{animation:ls-fade-in 200ms ease both!important}@keyframes ls-fade-in{from{opacity:0}}}@media(max-width:699px){.ls-page{padding:16px}.ls-gallery h1{font-size:24px}.ls-sort{display:none}.ls-search{width:100%}}@media(prefers-reduced-transparency:reduce){.ls-island,.ls-banner,.ls-notice-pill,.ls-notice-minimise,.ls-search,.ls-pin,.ls-card-state .ls-pill{background:Canvas!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}@media(forced-colors:active){.ls-island,.ls-banner,.ls-notice-pill,.ls-thumb{border:1px solid CanvasText}}
 `;
 
 // src/desktop/ui/context.jsx
@@ -3083,14 +3375,16 @@ function SpacesPage({ ctx }) {
     return () => window.removeEventListener("hashchange", changed);
   }, []);
   const sid = routeSpace(hash);
-  return jsxs7("div", { className: "ls-root", children: [jsx7("style", { children: styles }), sid ? jsx7(SpaceView, { ...scoped, sid }, `${scoped.scopeKey}:${sid}`) : jsx7(SpacesIndex, { ctx: scoped.ctx, scopeKey: scoped.scopeKey }, scoped.scopeKey)] });
+  const icons = useMemo4(() => ({ rest: scoped.ctx.rest, scopeKey: scoped.scopeKey }), [scoped]);
+  return jsx7(IconSource.Provider, { value: icons, children: jsxs7("div", { className: "ls-root", children: [jsx7("style", { children: styles }), sid ? jsx7(SpaceView, { ...scoped, sid }, `${scoped.scopeKey}:${sid}`) : jsx7(SpacesIndex, { ctx: scoped.ctx, scopeKey: scoped.scopeKey }, scoped.scopeKey)] }) });
 }
 function OpenSpaceCard({ ctx, sid }) {
   const scoped = useScopedContext(ctx);
-  const query = useQuery6({ queryKey: ["living-spaces", scoped.scopeKey, sid, "detail"], queryFn: () => scoped.ctx.rest(spacePath(sid)), refetchInterval: 2e3 });
+  const icons = useMemo4(() => ({ rest: scoped.ctx.rest, scopeKey: scoped.scopeKey }), [scoped]);
+  const query = useQuery7({ queryKey: ["living-spaces", scoped.scopeKey, sid, "detail"], queryFn: () => scoped.ctx.rest(spacePath(sid)), refetchInterval: 2e3 });
   if (!query.data) return query.error ? jsx7(ErrorState6, { title: "This Space could not be loaded", description: query.error.message }) : jsx7("span", { role: "status", children: "Loading Space\u2026" });
   const space = query.data;
-  return jsxs7("div", { className: "ls-root ls-directive", children: [jsx7("style", { children: styles }), jsxs7("div", { className: "ls-card-top", children: [jsx7(SpaceTile, { space }), jsxs7("div", { children: [jsx7("strong", { children: space.name }), jsx7(OwnerChip, { owner: space.owner })] })] }), jsxs7("div", { className: "ls-actions", children: [jsx7(StatusPill, { status: spaceStatus(space) }), jsx7("span", { children: `Revision ${space.head_rev}` }), jsx7(Action, { primary: true, onClick: () => host4.navigate(spaceRoute(sid)), children: "Open Space" })] })] });
+  return jsx7(IconSource.Provider, { value: icons, children: jsxs7("div", { className: "ls-root ls-directive", children: [jsx7("style", { children: styles }), jsxs7("div", { className: "ls-card-top", children: [jsx7(SpaceTile, { space }), jsxs7("div", { children: [jsx7("strong", { children: space.name }), jsx7(OwnerChip, { owner: space.owner })] })] }), jsxs7("div", { className: "ls-actions", children: [jsx7(StatusPill, { status: spaceStatus(space) }), jsx7("span", { children: `Revision ${space.head_rev}` }), jsx7(Action, { primary: true, onClick: () => host4.navigate(spaceRoute(sid)), children: "Open Space" })] })] }) });
 }
 function renderDirective(ctx, attrs) {
   return isSpaceId(attrs?.id) ? jsx7(OpenSpaceCard, { ctx, sid: attrs.id }) : null;

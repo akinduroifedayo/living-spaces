@@ -108,6 +108,7 @@ class AdapterCase(unittest.TestCase):
             "inspect": {"space": SID, "rev": 2, "outcome": "loaded", "screenshot": None}, "list_runs": [{"id": "run_demo"}],
             "set_status": None, "set_pinned": None, "touch_opened": None,
             "delete_space": {"deleted": True, "removed": {"records": 2, "revisions": 3, "upkeep": False}},
+            "icon_check": None,
         }
         for name, value in returns.items():
             setattr(self.core, name, Mock(return_value=value))
