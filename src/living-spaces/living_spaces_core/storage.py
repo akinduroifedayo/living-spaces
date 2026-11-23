@@ -58,9 +58,10 @@ def _summary(conn, sid):
         ('data_bytes', record['data'], limits.DATA_BYTES),
         ('source_bytes', record['source'], limits.SOURCE_BYTES),
         ('source_metadata_bytes', record['metadata'], limits.SOURCE_BYTES),
-        ('log_history', category['logs']['count'], limits.LOG_HISTORY),
     ]
     usage = [limits.usage(resource, used, maximum) for resource, used, maximum in resources]
+    # logs.py trims log history to its newest entries, so a full history never stops a write.
+    usage.append({'resource': 'log_history', 'used': category['logs']['count'], 'limit': limits.LOG_HISTORY, 'approaching': False})
     return {'categories': category, 'limits': usage, 'warnings': [row for row in usage if row['approaching']],
             'bytes_basis': 'Logical UTF-8 payload bytes; excludes SQLite overhead. Shared blobs count once per Space.',
             'native_history': {'ownership': 'native-owned', 'counted': False, 'deletable': False}}

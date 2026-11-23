@@ -80,6 +80,28 @@ class Q18StorageTests(CoreCase):
         self.assertEqual(self.put('still-room')['rev'], 1)
         self.assertEqual(records.query(self.sid, 'growth', limit=1)['total'], 40000)
 
+    def fill_logs(self):
+        with db.write() as conn:
+            conn.executemany("INSERT INTO logs(space,rev,at,level,msg,attribution) VALUES(?,1,1,'info','Diagnostic','unattributed')",
+                             ((self.sid,) for _ in range(limits.LOG_HISTORY)))
+
+    def test_full_rolling_log_history_is_not_a_cap_warning(self):
+        self.fill_logs()
+        summary = self.summary()
+        history = next(row for row in summary['limits'] if row['resource'] == 'log_history')
+        self.assertEqual((history['used'], history['limit'], history['approaching']), (limits.LOG_HISTORY, limits.LOG_HISTORY, False))
+        self.assertEqual(summary['warnings'], [])
+        self.assertEqual(logs.add_logs(self.sid, None, [{'level': 'info', 'msg': 'Still logging'}]), 1)
+        self.assertEqual(logs.read_logs(self.sid, limit=1)[0]['msg'], 'Still logging')
+        self.assertEqual(len(logs.read_logs(self.sid, limit=3000)), limits.LOG_HISTORY)
+
+    def test_full_rolling_log_history_leaves_record_warnings_visible(self):
+        self.fill_logs()
+        with db.write() as conn:
+            conn.executemany("INSERT INTO records(space,collection,id,rev,created_at,updated_at,updated_by) "
+                             "VALUES(?,'growth',?,1,1,1,'feed')", ((self.sid, str(i)) for i in range(limits.RECORDS * 85 // 100)))
+        self.assertEqual([row['resource'] for row in self.summary()['warnings']], ['records'])
+
     def test_dry_run_is_byte_identical_and_excludes_protected_items(self):
         self.operation('propose_retention')
         self.seed_history()
