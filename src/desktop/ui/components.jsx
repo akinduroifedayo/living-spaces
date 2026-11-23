@@ -10,9 +10,16 @@ export function absolute(seconds) {
   const zone = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(date).find(p => p.type === 'timeZoneName')?.value || ''
   return `${fmtDateTime.format(date)} ${zone}`.trim()
 }
-export function Time({ at, children, relative: asRelative = false }) {
+const fmtClock = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' })
+// A stamp for a notice title: the time alone when it is today, the full stamp otherwise. The tooltip is always absolute.
+export function clock(seconds, now = Date.now()) {
+  if (!absolute(seconds)) return ''
+  const date = new Date(seconds * 1000)
+  return date.toDateString() === new Date(now).toDateString() ? fmtClock.format(date) : absolute(seconds)
+}
+export function Time({ at, children, relative: asRelative = false, short = false }) {
   if (!absolute(at)) return null
-  return <time dateTime={new Date(at * 1000).toISOString()} title={absolute(at)}>{children ?? (asRelative ? relative(at) : absolute(at))}</time>
+  return <time dateTime={new Date(at * 1000).toISOString()} title={absolute(at)}>{children ?? (asRelative ? relative(at) : short ? clock(at) : absolute(at))}</time>
 }
 export function Freshness({ facts }) {
   return facts.map((fact, index) => <span key={fact.key}>{index > 0 && ' · '}{fact.at == null ? fact.label : <>{fact.label} <Time at={fact.at} relative /></>}</span>)

@@ -259,14 +259,17 @@ test('notices float in a dock over the canvas that minimises to a pill and comes
     await click('Minimise')
     assert.equal(document.querySelector('.ls-notice-list').hidden, true, 'the expanded notices no longer cover the canvas')
     const pill = document.querySelector('.ls-notice-pill')
-    assert.equal(pill.textContent, 'Storage 92% full')
+    assert.equal(pill.textContent, '1 notice', 'the pill is compact: icon and a short count')
+    assert.match(pill.getAttribute('aria-label'), /^Storage 92% full\. Show notice$/, 'the full title stays the accessible name')
+    assert.equal(pill.title, 'Storage 92% full')
     assert.equal(pill.getAttribute('aria-expanded'), 'false')
     await act(async () => mounts.at(-1)?.options.onEvent?.({ kind: 'fault', count: 1 }))
     assert.equal(document.querySelector('.ls-notice-list').hidden, false, 'a new notice expands the dock')
     assert.match(document.querySelector('.ls-notice-list').textContent, /uncaught error/)
     await act(async () => document.querySelector('.ls-notices').dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
     const two = document.querySelector('.ls-notice-pill')
-    assert.match(two.textContent, /2 notices/)
+    assert.equal(two.textContent, '2 notices')
+    assert.match(two.getAttribute('aria-label'), /^2 notices: Storage 92% full; This Space hit an uncaught error\. Show notices$/)
     assert.ok(two.classList.contains('ls-alert'), 'a failure in the stack tints the pill')
     await act(async () => two.click())
     assert.equal(document.querySelector('.ls-notice-list').hidden, false)
@@ -450,4 +453,112 @@ test('Details never words a Space without a refresh handler as a fault, and clai
   assert.equal(model.refreshFact(space({ manifest: { upkeep: { handler: 'feed' } } })), 'Use Refresh now in the top bar.')
   assert.match(model.refreshFact(space({ status: 'archived', manifest: {} })), /archived/)
   assert.match(model.refreshReason(space({ manifest: {} })), /No refresh handler/, 'the disabled-button reason itself is unchanged')
+})
+
+// --- R3: an expanded dock gives the canvas back on its own ------------------------------------------------
+
+const dockOf = (...banners) => React.createElement(ui().NoticeDock, { collapseAfterMs: 60 }, ...banners)
+const bannerOf = (title, key, kind = 'info') => React.createElement(load(resolve(root, 'src/desktop/ui/components.jsx')).Banner, { title, noticeKey: key, kind, key, actions: React.createElement('button', { type: 'button' }, 'Act') })
+const listHidden = () => document.querySelector('.ls-notice-list').hidden
+
+test('an expanded dock collapses to the pill on its own; a failure stays as the alert pill and is never dismissed', async () => {
+  try {
+    view = createRoot(document.getElementById('root'))
+    await act(async () => view.render(dockOf(bannerOf('Hermes didn\'t receive the request', 'bot:a:offline', 'failed'))))
+    assert.equal(listHidden(), false, 'a new notice may float over the canvas when it arrives')
+    await wait(120)
+    assert.equal(listHidden(), true, 'then the dock collapses without the user doing anything')
+    const pill = document.querySelector('.ls-notice-pill')
+    assert.equal(pill.textContent, '1 failed')
+    assert.ok(pill.classList.contains('ls-alert'))
+    assert.match(document.querySelector('.ls-notice-stack').textContent, /didn't receive/, 'collapsing is not dismissing: the failure is still there')
+    await wait(200)
+    assert.ok(document.querySelector('.ls-notice-pill'), 'and it stays until the user dismisses it')
+  } finally { await cleanup() }
+})
+
+test('hover or focus inside the dock pauses the collapse; leaving starts it again', async () => {
+  try {
+    view = createRoot(document.getElementById('root'))
+    await act(async () => view.render(dockOf(bannerOf('Storage 92% full', 'storage'))))
+    const dock = document.querySelector('.ls-notices')
+    // React listens for pointerenter/leave through pointerover/out on the root.
+    await act(async () => dock.dispatchEvent(new dom.window.MouseEvent('pointerover', { bubbles: true, relatedTarget: document.body })))
+    await wait(150)
+    assert.equal(listHidden(), false, 'hover keeps it open')
+    await act(async () => dock.dispatchEvent(new dom.window.MouseEvent('pointerout', { bubbles: true, relatedTarget: document.body })))
+    const act1 = [...document.querySelectorAll('.ls-banner button')].find(node => node.textContent === 'Act')
+    await act(async () => act1.focus())
+    await wait(150)
+    assert.equal(listHidden(), false, 'focus inside keeps it open')
+    await act(async () => act1.blur())
+    await wait(120)
+    assert.equal(listHidden(), true, 'once neither holds it, it collapses')
+  } finally { await cleanup() }
+})
+
+test('a collapsed dock re-expands only for a genuinely new notice, not a passive republish', async () => {
+  try {
+    view = createRoot(document.getElementById('root'))
+    await act(async () => view.render(dockOf(bannerOf('Bot request: busy · 8:13 PM', 'bot:a1:busy'))))
+    await wait(120)
+    assert.equal(listHidden(), true)
+    await act(async () => view.render(dockOf(bannerOf('Bot request: busy · 8:14 PM', 'bot:a1:busy'))))
+    await wait(10)
+    assert.equal(listHidden(), true, 'the same notice with a new time stays collapsed')
+    await act(async () => view.render(dockOf(bannerOf('Hermes replied · 8:15 PM', 'bot:a1:completed'))))
+    await wait(10)
+    assert.equal(listHidden(), false, 'a new status expands it')
+    await wait(120)
+    assert.equal(listHidden(), true, 'and the new notice collapses on its own too')
+  } finally { await cleanup() }
+})
+
+test('Escape inside the expanded dock minimises it and keeps focus on the pill', async () => {
+  try {
+    view = createRoot(document.getElementById('root'))
+    await act(async () => view.render(React.createElement(ui().NoticeDock, {}, bannerOf('Storage 92% full', 'storage'))))
+    const inside = [...document.querySelectorAll('.ls-banner button')].find(node => node.textContent === 'Act')
+    await act(async () => inside.focus())
+    await act(async () => inside.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))); await wait(10)
+    assert.equal(listHidden(), true)
+    assert.equal(document.activeElement, document.querySelector('.ls-notice-pill'))
+  } finally { await cleanup() }
+})
+
+test('reduced motion keeps the same collapse with an opacity-only pill transition', () => {
+  const { styles } = load(resolve(root, 'src/desktop/ui/styles.js'))
+  const reduced = styles.split('@media(prefers-reduced-motion:reduce)').slice(1).join('')
+  assert.match(reduced, /\.ls-root \.ls-notice-pill\{transition:opacity [^}]*\}/)
+  assert.match(reduced, /@starting-style\{\.ls-root \.ls-notice-pill\{transform:none;opacity:0\}\}/)
+  assert.equal(ui().NOTICE_COLLAPSE_MS, 8000)
+})
+
+test('the island names a Space\'s own sync job without repeating its slug, and a named source by its name', () => {
+  const phrase = patch => model.freshnessPhrase(space(patch))
+  assert.equal(phrase({ activity: { kind: 'data', actor: 'upkeep:gbrain-cockpit', at: 50 } }).label, 'Synced')
+  assert.equal(phrase({ freshness: { sources: [{ id: 'usgs', name: 'USGS earthquakes' }] }, activity: { kind: 'data', actor: 'upkeep:usgs', at: 50 } }).label, 'Synced by USGS earthquakes')
+  assert.equal(phrase({ freshness: { sources: [{ id: 'usgs', url: 'https://earthquake.usgs.gov/x' }] }, activity: { kind: 'data', actor: 'upkeep:usgs', at: 50 } }).label, 'Synced by earthquake.usgs.gov')
+})
+
+test('Details Runtime words start with a capital and carry no design footnote', async () => {
+  const { SpaceView } = ui()
+  data.detail = space()
+  try {
+    await render(SpaceView, { sid: 'gbrain-cockpit', ctx: { rest: sessionRest } })
+    await click('Details')
+    const runtime = document.querySelector('section[aria-label="Runtime"]')
+    assert.ok(runtime)
+    assert.doesNotMatch(runtime.textContent, /Shown here only|surface as a notice/)
+    for (const dd of runtime.querySelectorAll('dd')) assert.match(dd.textContent, /^[A-Z]/)
+  } finally { await cleanup() }
+})
+
+test('a notice title shows only the time for today and the full stamp for another day', () => {
+  const { clock, absolute } = load(resolve(root, 'src/desktop/ui/components.jsx'))
+  const now = Date.UTC(2026, 10, 23, 21, 6)
+  const today = now / 1000 - 60
+  assert.doesNotMatch(clock(today, now), /2026/)
+  assert.match(clock(today, now), /\d:\d\d/)
+  assert.equal(clock(today - 3 * 86400, now), absolute(today - 3 * 86400))
 })

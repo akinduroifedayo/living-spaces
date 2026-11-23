@@ -1,3 +1,5 @@
+import { failureParts } from './model.mjs'
+
 const routeFields = ['connectionId', 'profile', 'targetProfile', 'mode']
 const sameRoute = (a, b) => routeFields.every(key => a?.[key] === b?.[key])
 const publicStatus = (action, status, message, answer) => ({ activationId: action?.activation_id, status, message, ...(answer ? { answer } : {}) })
@@ -129,7 +131,10 @@ export function createBotActions({ host, backend, post, onStatus, isActive, user
   function report(error) {
     release?.(); release = null; heldRoute = null
     const status = error.actionStatus || (current ? 'unknown' : 'offline')
-    return publish(publicStatus(current, status, `${error.message || 'Native request unavailable'}. No automatic resend.`))
+    // The words are the backend's own message, not the transport wrapper; the raw text rides along as detail.
+    const { message, reason, raw } = failureParts(error?.message ? error : 'Native request unavailable')
+    const words = `${message}${/[.!?]$/.test(message) ? '' : '.'} No automatic resend.`
+    return publish({ ...publicStatus(current, status, words), ...(reason ? { reason } : {}), ...(raw !== message ? { detail: raw } : {}) })
   }
   async function attach(route, sessionId) {
     const resumed = await rpc(route, 'session.resume', { session_id: sessionId, omit_messages: true })

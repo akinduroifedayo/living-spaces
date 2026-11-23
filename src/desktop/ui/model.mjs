@@ -68,15 +68,24 @@ export function dismissBot(record, action) {
 const botKind = status => status === 'completed' ? 'reply' : BOT_RETRY.includes(status) ? 'failed' : 'progress'
 // The host notice for one bot status. Failed kinds carry a one-line reason and never collapse;
 // a reply carries the answer, collapsed to its first sentence until the user reads it.
-export function botBanner(action, { dismissed = false, expanded = false } = {}) {
+// A failed request is titled by what is known about delivery, never by a raw status word. Only an unbound
+// Space is known not to have received it: an offline or unknown status can follow a request that did arrive.
+function failureCopy(action, who) {
+  if (action.reason === 'unbound') return { label: `${who} didn't receive the request`, reason: `No chat is keeping this Space. Ask ${who} in chat to bind it.` }
+  const label = { offline: `Couldn't reach ${who}`, unknown: `Not sure ${who} received the request` }[action.status] || `The request to ${who} failed`
+  return { label, reason: action.message || null }
+}
+export function botBanner(action, { dismissed = false, expanded = false, owner = null } = {}) {
   if (!action || dismissed) return null
   const kind = botKind(action.status)
   const answer = kind === 'reply' && typeof action.answer === 'string' && action.answer.trim() ? action.answer : null
+  const failure = kind === 'failed' ? failureCopy(action, typeof owner === 'string' && owner.trim() ? owner.trim() : 'Hermes') : null
   return {
     status: action.status,
     kind,
-    label: kind === 'reply' ? 'Hermes replied' : kind === 'failed' ? 'Bot request failed' : `Bot request: ${action.status}`,
-    reason: answer ? null : action.message || null,
+    label: kind === 'reply' ? 'Hermes replied' : failure ? failure.label : `Bot request: ${action.status}`,
+    reason: answer ? null : failure ? failure.reason : action.message || null,
+    detail: failure && typeof action.detail === 'string' && action.detail ? action.detail : null,
     summary: answer ? answerSummary(answer) : '',
     answer,
     at: Number.isFinite(action.at) ? action.at : null,
@@ -111,7 +120,7 @@ export function storageNotice(storage, hidden = null) {
   const subject = STORAGE_SUBJECT[row.resource] || String(row.resource).replace(/_bytes$/, '').replace(/_/g, ' ')
   return { pct, key, title: `Storage ${pct}% full`, line: `${amount(row.used)} of ${amount(row.limit)} used by ${subject}. Writes stop at the limit.` }
 }
-export const GUEST_WORDS = { unknown: 'not reported', starting: 'starting', loaded: 'loaded', failed: 'failed', faulted: 'faulted (uncaught error, still running)' }
+export const GUEST_WORDS = { unknown: 'Not reported', starting: 'Starting', loaded: 'Loaded', failed: 'Failed', faulted: 'Faulted (uncaught error, still running)' }
 export const guestWord = state => GUEST_WORDS[state] || String(state)
 export function needsAttention(space) {
   return space.status !== 'archived' && ['failed', 'blocked', 'crashed'].includes(spaceStatus(space, true))
@@ -135,13 +144,20 @@ export function headerFacts(space) {
   return facts
 }
 // Who an actor string names, in words. Actors are stored as user, app, agent:<name> or upkeep:<name|schedule>.
-function actorWords(actor) {
+// An upkeep actor names its source by id. Show the name a person knows it by when the Space reports one; a
+// Space's own sync job (named by the Space id) has no other name, so it is not repeated back as a slug.
+function sourceName(space, id) {
+  if (id === space.id) return ''
+  const source = (space.freshness?.sources || []).find(item => item?.id === id)
+  return source?.name || source?.label || sourceHost(source?.url) || id
+}
+function actorWords(actor, space = {}) {
   const [kind, ...rest] = String(actor || '').split(':')
-  const name = rest.join(':').trim()
+  const name = kind === 'upkeep' && rest.join(':').trim() !== 'schedule' ? sourceName(space, rest.join(':').trim()) : rest.join(':').trim()
   if (kind === 'user') return { verb: 'Edited by you' }
   if (kind === 'app') return { verb: 'Edited in this Space' }
   if (kind === 'agent') return { verb: name ? `Edited in chat by ${name}` : 'Edited in chat' }
-  if (kind === 'upkeep') return { verb: !name || name === 'schedule' ? 'Refreshed on schedule' : `Synced by ${name}` }
+  if (kind === 'upkeep') return { verb: rest.join(':').trim() === 'schedule' || !rest.join(':').trim() ? 'Refreshed on schedule' : name ? `Synced by ${name}` : 'Synced' }
   return null
 }
 const sourceHost = url => { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return '' } }
@@ -159,7 +175,7 @@ export function freshnessPhrase(space) {
     return f.last_success_at != null ? { key: state, label: `${verb} · data from`, at: f.last_success_at } : { key: state, label: `${verb} · no successful update yet` }
   }
   const activity = space.activity
-  const words = activity && Number.isFinite(activity.at) ? actorWords(activity.actor) : null
+  const words = activity && Number.isFinite(activity.at) ? actorWords(activity.actor, space) : null
   const host = (f.sources || []).map(source => sourceHost(source?.url)).find(Boolean)
   const refreshed = f.last_success_at != null ? { key: 'success', label: host ? `Refreshed from ${host}` : 'Updated', at: f.last_success_at } : null
   // A refresh that wrote records also records an upkeep or agent change at about the same moment: prefer the refresh wording.
@@ -252,7 +268,9 @@ export function restoreCopy(space, rev) {
   const kept = space.head_rev > rev + 1 ? `Revisions ${rev + 1}–${space.head_rev} stay in history.` : `Revision ${space.head_rev} stays in history.`
   return `Restore revision ${rev}? This brings back the Space's earlier code as a new revision ${space.head_rev + 1}. ${kept} Your records, notes and statuses stay as they are now. Migration undo and data downgrades are not supported.`
 }
-export function errorText(error) {
+// The backend's error object for a failure. The desktop IPC wraps a REST error as
+// "Error invoking remote method 'hermes:api': Error: 423: {json}", so the object is parsed back out of the message.
+function backendError(error) {
   let detail = error?.error || error?.body?.error || error
   if (!detail?.code && typeof detail?.message === 'string') {
     const json = detail.message.indexOf('{')
@@ -260,6 +278,18 @@ export function errorText(error) {
       try { detail = JSON.parse(detail.message.slice(json)).error || detail } catch {}
     }
   }
+  return detail
+}
+const IPC_WRAPPER = /^Error invoking remote method '[^']*': (?:Error: )?/
+// A failure in words for the user, plus the raw text for diagnostics. Never the IPC wrapper in the words.
+export function failureParts(error) {
+  const raw = diagnosticText(typeof error === 'string' ? error : error?.message || String(error))
+  const detail = backendError(error)
+  const words = typeof detail?.message === 'string' && detail.message.trim() ? detail.message.trim() : raw.replace(IPC_WRAPPER, '')
+  return { message: diagnosticText(words), code: detail?.code ?? null, reason: detail?.reason ?? null, raw }
+}
+export function errorText(error) {
+  const detail = backendError(error)
   const message = detail?.message || String(error)
   if (detail?.code === 'incompatible' || /incompatible/.test(message)) {
     const versions = detail.from_version != null && detail.to_version != null ? ` Current data version ${detail.from_version}; target data version ${detail.to_version}.` : ''

@@ -737,3 +737,23 @@ test('repeated retry refusals preserve uncertainty and block a different activat
 
   function copySubmissions() { return structuredClone(f.submissions) }
 })
+
+test('a failure published to the host carries the backend message, never the IPC wrapper; the raw text rides as detail', async () => {
+  const statuses = []
+  const raw = `Error invoking remote method 'hermes:api': Error: 423: {"error":{"code":"blocked","message":"No maintaining session is bound. Ask its bot in native chat to bind this Space.","reason":"unbound"}}`
+  const adapter = createBotActions({ host: { retainProfile() {}, profileRoutes: async () => [], requestProfile: async () => ({}) }, backend: { connectionId: 'c', profile: 'p' },
+    post: async () => { throw new Error(raw) }, onStatus: value => statuses.push(value), isActive: () => true })
+  const result = await adapter.check()
+  adapter.destroy()
+  assert.equal(result.message, 'No maintaining session is bound. Ask its bot in native chat to bind this Space. No automatic resend.')
+  assert.equal(result.reason, 'unbound')
+  assert.equal(result.detail, raw)
+  assert.ok(statuses.every(status => !/Error invoking/.test(status.message)))
+  const plain = createBotActions({ host: { retainProfile() {}, profileRoutes: async () => [], requestProfile: async () => ({}) }, backend: { connectionId: 'c', profile: 'p' },
+    post: async () => { throw new Error('Route unavailable') }, onStatus() {}, isActive: () => true })
+  const simple = await plain.check()
+  plain.destroy()
+  assert.equal(simple.message, 'Route unavailable. No automatic resend.')
+  assert.equal('detail' in simple, false, 'a plain message needs no separate detail')
+  assert.equal('reason' in simple, false)
+})

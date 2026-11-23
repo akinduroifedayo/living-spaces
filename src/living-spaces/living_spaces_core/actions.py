@@ -37,7 +37,8 @@ def bind_maintainer(sid, binding):
 def _owner(conn, sid):
     row = conn.execute("SELECT binding FROM maintainers WHERE space=?", (sid,)).fetchone()
     if row is None:
-        raise SpacesError("blocked", "No maintaining session is bound. Ask its bot in native chat to bind this Space.")
+        raise SpacesError("blocked", "No maintaining session is bound. Ask its bot in native chat to bind this Space.",
+                          reason="unbound")
     return json.loads(row["binding"])
 
 

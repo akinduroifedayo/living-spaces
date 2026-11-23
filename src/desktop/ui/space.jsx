@@ -28,7 +28,7 @@ function useHeaderMode(hasSpace) {
   return [frame, mode]
 }
 
-function BotBanner({ action, storageKey, controller }) {
+function BotBanner({ action, storageKey, controller, owner }) {
   const replyId = useId()
   const key = botDismissKey(action)
   const [stored, setStored] = useState(() => ({ storageKey, value: readDismissed(storageKey) }))
@@ -38,7 +38,7 @@ function BotBanner({ action, storageKey, controller }) {
   const identity = key ?? action
   // The stored record hides passive republishes; the in-memory action covers the status on screen,
   // which a user-initiated status would otherwise keep showing.
-  const banner = botBanner(action, { dismissed: dismissedAction === action || (!!key && botDismissed(action, record)), expanded: expandedFor === identity })
+  const banner = botBanner(action, { owner, dismissed: dismissedAction === action || (!!key && botDismissed(action, record)), expanded: expandedFor === identity })
   if (!banner) return null
   const dismiss = () => {
     setDismissedAction(action)
@@ -50,11 +50,12 @@ function BotBanner({ action, storageKey, controller }) {
   const failed = banner.kind === 'failed'
   const canContinue = banner.collapsible && controller.current?.canContinue?.() === true
   // A passive poll republishes the same status with a new time; it is the same notice, so it must not reopen the dock.
-  return <Banner noticeKey={`bot:${key ?? 'current'}:${action.status}`} kind={failed ? 'failed' : 'info'} title={<>{banner.label}{banner.at != null && <> · <Time at={banner.at} /></>}</>} actions={<>
+  return <Banner noticeKey={`bot:${key ?? 'current'}:${action.status}`} kind={failed ? 'failed' : 'info'} title={<>{banner.label}{banner.at != null && <> · <Time at={banner.at} short /></>}</>} actions={<>
     {banner.collapsible && <Action aria-expanded={banner.expanded} aria-controls={replyId} onClick={() => setExpandedFor(banner.expanded ? null : identity)}>{banner.expanded ? 'Collapse' : 'Read reply'}</Action>}
     {banner.kind !== 'reply' && <Action onClick={() => controller.current?.checkAction()}>Check status</Action>}
     {banner.canRetry && <Action onClick={() => controller.current?.retryAction()}>Retry same request</Action>}
     {banner.canDismiss && <Action aria-label={banner.kind === 'reply' ? 'Dismiss reply' : undefined} onClick={dismiss}>Dismiss</Action>}
+    {banner.detail && <CopyButton text={`${banner.detail}${banner.at != null ? `\n${absolute(banner.at)}` : ''}`} label="Copy details" showLabel buttonSize="sm" />}
   </>}>
     {banner.reason && <span className="ls-oneline" title={banner.reason}>{banner.reason}</span>}
     {banner.collapsible && <>
@@ -101,7 +102,7 @@ function SpaceDetails({ space, dimensions, upkeepLabel, building, onOpen, onClos
     <section aria-label="Runtime" className="ls-detail"><h3>Runtime</h3><dl className="ls-facts">
       <div><dt>Host</dt><dd>{PILLS[dimensions.host === 'available' ? 'ready' : dimensions.host]?.label || dimensions.host}</dd></div>
       <div><dt>Space app</dt><dd>{guestWord(dimensions.guest)}</dd></div>
-    </dl><p className="ls-secondary ls-note">Shown here only. Failures surface as a notice over the canvas.</p></section>
+    </dl></section>
   </Drawer>
 }
 
@@ -119,17 +120,23 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
     {write.reply?.error ? errorText(write.reply.error) : 'Your change is kept in this view until you choose how to continue.'}
   </Banner>
 }
-// Floating notices. They sit over the bottom of the canvas, so they must always give it back: the dock minimises
-// to one compact pill (by its button, Escape, or when the user starts using the canvas) and expands again when a
-// new notice arrives. Only the notices themselves take pointer input; the canvas around them stays usable, and
-// nothing here traps focus.
-export function NoticeDock({ children, minimiseSignal }) {
+// Floating notices. They sit over the bottom of the canvas, so they must always give it back: an expanded dock
+// collapses to one compact pill on its own after a few seconds (paused while the pointer or focus is inside it), by
+// its button, by Escape, or when the user starts using the canvas. Only a notice the dock has not shown before
+// expands it again. Collapsing never dismisses: a failure stays as the alert pill until the user dismisses it.
+// Only the notices themselves take pointer input; the canvas around them stays usable, and nothing traps focus.
+export const NOTICE_COLLAPSE_MS = 8000
+const pillLabel = ({ count, alerts }) => count === 1 ? (alerts ? '1 failed' : '1 notice') : alerts === count ? `${count} failed` : `${count} notices`
+export function NoticeDock({ children, minimiseSignal, collapseAfterMs = NOTICE_COLLAPSE_MS }) {
   const dock = useRef(null)
   const list = useRef(null)
   const pill = useRef(null)
   const minimiser = useRef(null)
   const [minimised, setMinimised] = useState(false)
-  const [summary, setSummary] = useState({ count: 0, alert: false, title: '', keys: '' })
+  const [opened, setOpened] = useState(0)
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [summary, setSummary] = useState({ count: 0, alerts: 0, titles: [], keys: '' })
   const seen = useRef(new Set())
   const id = useId()
   useLayoutEffect(() => {
@@ -139,12 +146,13 @@ export function NoticeDock({ children, minimiseSignal }) {
       const notices = [...element.querySelectorAll('.ls-banner')]
       const titles = notices.map(node => node.querySelector('strong')?.textContent || '')
       const keys = notices.map((node, index) => node.dataset.notice || titles[index])
-      const next = { count: notices.length, alert: notices.some(node => node.getAttribute('role') === 'alert'), title: titles[0] || '', keys: titles.join('\n') }
-      setSummary(current => current.keys === next.keys && current.count === next.count && current.alert === next.alert ? current : next)
+      const next = { count: notices.length, alerts: notices.filter(node => node.getAttribute('role') === 'alert').length, titles, keys: titles.join('\n') }
+      setSummary(current => current.keys === next.keys && current.count === next.count && current.alerts === next.alerts ? current : next)
       // A notice the user has not seen yet brings the dock back. Focus on the pill moves with it to the toggle.
       if (keys.some(key => !seen.current.has(key))) {
         if (pill.current && document.activeElement === pill.current) requestAnimationFrame(() => minimiser.current?.focus())
         setMinimised(false)
+        setOpened(n => n + 1)
       }
       seen.current = new Set(keys)
     }
@@ -155,16 +163,27 @@ export function NoticeDock({ children, minimiseSignal }) {
     return () => observer.disconnect()
   }, [])
   useEffect(() => { if (minimiseSignal) setMinimised(true) }, [minimiseSignal])
+  const empty = summary.count === 0
+  // The collapse timer runs only while the expanded dock is left alone; touching it pauses, leaving starts it over.
+  useEffect(() => {
+    if (minimised || empty || hovered || focused || !(collapseAfterMs > 0)) return
+    const timer = setTimeout(() => setMinimised(true), collapseAfterMs)
+    return () => clearTimeout(timer)
+  }, [minimised, empty, hovered, focused, opened, collapseAfterMs])
   const minimise = () => {
     const inside = dock.current?.contains(document.activeElement)
     setMinimised(true)
     if (inside) requestAnimationFrame(() => pill.current?.focus())
   }
-  const expand = () => { setMinimised(false); requestAnimationFrame(() => minimiser.current?.focus()) }
-  const empty = summary.count === 0
-  return <div ref={dock} className="ls-notices" data-minimised={minimised || undefined} data-empty={empty || undefined} onKeyDown={event => { if (event.key === 'Escape' && !minimised && !empty) { event.stopPropagation(); minimise() } }}>
-    {minimised && !empty && <button ref={pill} type="button" className={`ls-notice-pill${summary.alert ? ' ls-alert' : ''}`} aria-expanded="false" aria-controls={id} onClick={expand}>
-      <Icon name={summary.alert ? 'warning' : 'bell'} /><span className="ls-oneline">{summary.count === 1 ? summary.title : `${summary.count} notices`}</span>{summary.count > 1 && <span className="ls-notice-count ls-num">{summary.count}</span>}
+  const expand = () => { setMinimised(false); setOpened(n => n + 1); requestAnimationFrame(() => minimiser.current?.focus()) }
+  const full = summary.count === 1 ? summary.titles[0] : `${summary.count} notices: ${summary.titles.join('; ')}`
+  return <div ref={dock} className="ls-notices" data-minimised={minimised || undefined} data-empty={empty || undefined}
+    onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)}
+    onFocus={() => setFocused(true)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false) }}
+    onKeyDown={event => { if (event.key === 'Escape' && !minimised && !empty) { event.stopPropagation(); minimise() } }}>
+    {minimised && !empty && <button ref={pill} type="button" className={`ls-notice-pill${summary.alerts ? ' ls-alert' : ''}`} aria-expanded="false" aria-controls={id}
+      aria-label={`${full}. Show ${summary.count === 1 ? 'notice' : 'notices'}`} title={summary.titles.join('\n')} onClick={expand}>
+      <Icon name={summary.alerts ? 'warning' : 'bell'} /><span className="ls-num">{pillLabel(summary)}</span>
     </button>}
     <div id={id} className="ls-notice-list" hidden={minimised || undefined} aria-label="Space notices" role="group">
       {!empty && <div className="ls-notice-tools"><button ref={minimiser} type="button" className="ls-notice-minimise" aria-expanded="true" aria-controls={id} onClick={minimise}><Icon name="chevron-down" />Minimise</button></div>}
@@ -423,7 +442,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
     </div>
     <NoticeDock minimiseSignal={canvasFocus}>
       <StorageNotice storage={space.storage} onReview={() => openHistory()} storageKey={`living-spaces:storage-dismissed:${connectionId}:${profile}:${sid}`} />
-      {botAction && <BotBanner action={botAction} controller={controller} storageKey={`living-spaces:bot-dismissed:${connectionId}:${profile}:${sid}`} />}
+      {botAction && <BotBanner action={botAction} controller={controller} owner={space.owner} storageKey={`living-spaces:bot-dismissed:${connectionId}:${profile}:${sid}`} />}
       {guest.status === 'faulted' && <Banner kind="failed" title="This Space hit an uncaught error"><span role="status">It is still open and may keep working. Saved records are unaffected. Review this Space's diagnostic log for details.</span></Banner>}
       {actionError && <Banner kind="failed" title={actionError} />}
       {detail.error && <Banner kind="failed" title="Space status could not be refreshed. You're seeing the last loaded state." actions={<Action onClick={() => detail.refetch()}>Try again</Action>}>{errorText(detail.error)}</Banner>}

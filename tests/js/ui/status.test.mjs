@@ -366,12 +366,12 @@ async function q04Details() {
   assert.equal(document.querySelector('[role="dialog"]'), null)
   return facts
 }
-const Q04_WORDS = { unknown: 'not reported', starting: 'starting', loaded: 'loaded', failed: 'failed', faulted: 'faulted (uncaught error, still running)' }
+const Q04_WORDS = { unknown: 'Not reported', starting: 'Starting', loaded: 'Loaded', failed: 'Failed', faulted: 'Faulted (uncaught error, still running)' }
 const q04Guest = async (...states) => {
   const facts = await q04Details()
   assert.equal(facts.Host, 'Available')
   assert.ok(states.map(state => Q04_WORDS[state]).includes(facts['Space app']), `Space app is ${facts['Space app']}, expected ${states.join(' or ')}`)
-  if (!states.includes('loaded')) assert.notEqual(facts['Space app'], 'loaded', 'Details must not claim the app loaded')
+  if (!states.includes('loaded')) assert.notEqual(facts['Space app'], 'Loaded', 'Details must not claim the app loaded')
   return facts
 }
 // Runtime and readiness appear nowhere on the canvas; the host has no app-readiness signal at all.
