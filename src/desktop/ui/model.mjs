@@ -93,15 +93,19 @@ export function formatBytes(bytes) {
   if (bytes < 1024 * 1024) return `${trimmed(bytes / 1024)} KB`
   return `${trimmed(bytes / 1024 / 1024)} MB`
 }
-// The storage warning for the most-full resource, in words: never the raw resource key or byte counts.
-// Its key names every warned resource and percentage, so hiding it never hides a different warning.
-export function storageNotice(storage) {
-  const rows = (storage?.warnings || []).filter(row => Number.isFinite(row?.used) && Number.isFinite(row?.limit) && row.limit > 0)
-  if (!rows.length) return null
+// The storage warning for the most-full resource the user has not hidden at its current percentage,
+// in words: never the raw resource key or byte counts. `hidden` is a stored `key`: hiding a notice hides
+// every current warning at its current percentage, so a new or changed resource still shows.
+export function storageNotice(storage, hidden = null) {
   const percent = row => Math.round(row.used / row.limit * 100)
-  const row = rows.reduce((top, next) => next.used / next.limit > top.used / top.limit ? next : top)
+  const rows = (storage?.warnings || []).filter(row => Number.isFinite(row?.used) && Number.isFinite(row?.limit) && row.limit > 0)
+    .map(row => ({ row, id: `${row.resource}:${percent(row)}` }))
+  const skip = new Set(String(hidden ?? '').split(','))
+  const shown = rows.filter(({ id }) => !skip.has(id)).map(({ row }) => row)
+  if (!shown.length) return null
+  const row = shown.reduce((top, next) => next.used / next.limit > top.used / top.limit ? next : top)
   const pct = percent(row)
-  const key = rows.map(warning => `${warning.resource}:${percent(warning)}`).sort().join(',')
+  const key = rows.map(({ id }) => id).sort().join(',')
   const bytes = /_bytes$/.test(row.resource)
   const amount = value => bytes ? formatBytes(value) : value.toLocaleString('en-US')
   const subject = STORAGE_SUBJECT[row.resource] || String(row.resource).replace(/_bytes$/, '').replace(/_/g, ' ')

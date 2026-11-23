@@ -89,9 +89,11 @@ class Q18StorageTests(CoreCase):
         self.fill_logs()
         summary = self.summary()
         history = next(row for row in summary['limits'] if row['resource'] == 'log_history')
-        self.assertEqual((history['used'], history['limit']), (limits.LOG_HISTORY, limits.LOG_HISTORY))
+        self.assertEqual((history['used'], history['limit'], history['approaching']), (limits.LOG_HISTORY, limits.LOG_HISTORY, False))
         self.assertEqual(summary['warnings'], [])
         self.assertEqual(logs.add_logs(self.sid, None, [{'level': 'info', 'msg': 'Still logging'}]), 1)
+        self.assertEqual(logs.read_logs(self.sid, limit=1)[0]['msg'], 'Still logging')
+        self.assertEqual(len(logs.read_logs(self.sid, limit=3000)), limits.LOG_HISTORY)
 
     def test_full_rolling_log_history_leaves_record_warnings_visible(self):
         self.fill_logs()

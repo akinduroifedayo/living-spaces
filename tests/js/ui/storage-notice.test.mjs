@@ -60,6 +60,7 @@ const unmount = () => act(async () => view.unmount())
 test('storageNotice describes the most-full resource in words with a rounded percentage', () => {
   assert.equal(model.storageNotice(null), null)
   assert.equal(model.storageNotice({ warnings: [] }), null)
+  assert.equal(model.storageNotice(source(59904), 'source_bytes:91'), null)
   assert.deepEqual(model.storageNotice(source(59904)), { pct: 91, key: 'source_bytes:91', title: 'Storage 91% full', line: '58.5 KB of 64 KB used by source data. Writes stop at the limit.' })
   assert.deepEqual(model.storageNotice({ warnings: [{ resource: 'records', used: 40000, limit: 50000 }, { resource: 'source_bytes', used: 62259, limit: 65536 }] }),
     { pct: 95, key: 'records:80,source_bytes:95', title: 'Storage 95% full', line: '60.8 KB of 64 KB used by source data. Writes stop at the limit.' })
@@ -107,21 +108,7 @@ test('hiding the storage notice lasts across reopen until the percentage changes
   } finally { await unmount() }
 })
 
-test('hiding one storage notice never hides a different resource at its limit', async () => {
-  fresh()
-  const records = { resource: 'records', used: 42500, limit: 50000, approaching: true }
-  const project = { resource: 'project_bytes', used: 25 * 1024 * 1024, limit: 25 * 1024 * 1024, approaching: true }
-  try {
-    await show({ categories: {}, limits: [], warnings: [records] })
-    await act(async () => button('Hide until it changes').click())
-    assert.equal(notice(), undefined)
-    await show({ categories: {}, limits: [], warnings: [records, project] })
-    assert.equal(notice()?.querySelector('strong').textContent, 'Storage 100% full')
-    assert.match(notice().textContent, /25 MB of 25 MB used by project files\. Writes stop at the limit\./)
-  } finally { await unmount() }
-})
-
-test('a newly full resource shows even while a hidden resource is just as full', async () => {
+test('hiding a full resource never hides another resource that fills later', async () => {
   fresh()
   const full = (resource, limit) => ({ resource, used: limit, limit, approaching: true })
   try {
@@ -130,6 +117,25 @@ test('a newly full resource shows even while a hidden resource is just as full',
     assert.equal(notice(), undefined)
     await show({ categories: {}, limits: [], warnings: [full('records', 50000), full('source_bytes', 65536)] })
     assert.equal(notice()?.querySelector('strong').textContent, 'Storage 100% full')
+    assert.match(notice().textContent, /64 KB of 64 KB used by source data\. Writes stop at the limit\./)
+  } finally { await unmount() }
+})
+
+test('a new warning shows past a fuller hidden one, and the hidden one returns when it changes', async () => {
+  fresh()
+  const records = used => ({ resource: 'records', used, limit: 50000, approaching: true })
+  const project = { resource: 'project_bytes', used: 21.25 * 1024 * 1024, limit: 25 * 1024 * 1024, approaching: true }
+  try {
+    await show({ categories: {}, limits: [], warnings: [records(47500)] })
+    await act(async () => button('Hide until it changes').click())
+    await show({ categories: {}, limits: [], warnings: [records(47500), project] })
+    assert.equal(notice()?.querySelector('strong').textContent, 'Storage 85% full')
+    assert.match(notice().textContent, /used by project files\./)
+    await act(async () => button('Hide until it changes').click())
+    assert.equal(notice(), undefined)
+    await show({ categories: {}, limits: [], warnings: [records(48000), project] })
+    assert.equal(notice()?.querySelector('strong').textContent, 'Storage 96% full')
+    assert.match(notice().textContent, /used by records\./)
   } finally { await unmount() }
 })
 

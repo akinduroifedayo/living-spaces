@@ -35,14 +35,13 @@ export function HistorySheet({ ctx, scopeKey = null, space, onClose, onChanged, 
   </Drawer>{restore != null && restoreCompatibility !== 'incompatible' && <DecisionDialog danger title={`Restore revision ${restore}?`} description={restoreCopy(space, restore)} confirmLabel="Restore as new revision" onClose={() => setRestore(null)} onConfirm={async () => { await ctx.rest(`${base}/revisions/${restore}/restore`, { method: 'POST' }); await revisions.refetch(); await onChanged() }} />}</>
 }
 
-// The storage warning for the most-full resource. With a storageKey it can be hidden until any
-// warned resource or percentage changes; without one (inside the storage section) it only informs.
+// The storage warning for the most-full resource. With a storageKey it can be hidden until a warned
+// resource is new or changes percentage; without one (inside the storage section) it only informs.
 export function StorageNotice({ storage, onReview, storageKey }) {
-  const notice = storageNotice(storage)
   const [stored, setStored] = useState(() => ({ storageKey, value: storageKey ? readDismissed(storageKey) : null }))
+  const hidden = !storageKey ? null : stored.storageKey === storageKey ? stored.value : readDismissed(storageKey)
+  const notice = storageNotice(storage, hidden)
   if (!notice) return null
-  const value = !storageKey ? null : stored.storageKey === storageKey ? stored.value : readDismissed(storageKey)
-  if (value != null && value === notice.key) return null
   const dismiss = () => {
     writeDismissed(storageKey, notice.key)
     setStored({ storageKey, value: notice.key })

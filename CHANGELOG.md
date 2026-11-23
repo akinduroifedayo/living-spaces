@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Fix a storage warning that a full diagnostic log history could cause. Log history trims itself and never stops a write, so it no longer replaces record, source or project warnings. Hiding a storage warning no longer hides a different resource that later fills up.
+- Fix a storage warning that a full diagnostic log history could cause. Log history trims itself and never stops a write, so it no longer replaces record, source or project warnings. A hidden storage warning stays hidden only at its current levels. It shows again when another resource nears its limit or a level changes.
 
 ## 0.1.3
 

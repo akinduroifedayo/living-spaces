@@ -202,13 +202,15 @@ function formatBytes(bytes) {
   if (bytes < 1024 * 1024) return `${trimmed(bytes / 1024)} KB`;
   return `${trimmed(bytes / 1024 / 1024)} MB`;
 }
-function storageNotice(storage) {
-  const rows = (storage?.warnings || []).filter((row2) => Number.isFinite(row2?.used) && Number.isFinite(row2?.limit) && row2.limit > 0);
-  if (!rows.length) return null;
+function storageNotice(storage, hidden = null) {
   const percent = (row2) => Math.round(row2.used / row2.limit * 100);
-  const row = rows.reduce((top, next) => next.used / next.limit > top.used / top.limit ? next : top);
+  const rows = (storage?.warnings || []).filter((row2) => Number.isFinite(row2?.used) && Number.isFinite(row2?.limit) && row2.limit > 0).map((row2) => ({ row: row2, id: `${row2.resource}:${percent(row2)}` }));
+  const skip = new Set(String(hidden ?? "").split(","));
+  const shown = rows.filter(({ id }) => !skip.has(id)).map(({ row: row2 }) => row2);
+  if (!shown.length) return null;
+  const row = shown.reduce((top, next) => next.used / next.limit > top.used / top.limit ? next : top);
   const pct = percent(row);
-  const key = rows.map((warning) => `${warning.resource}:${percent(warning)}`).sort().join(",");
+  const key = rows.map(({ id }) => id).sort().join(",");
   const bytes = /_bytes$/.test(row.resource);
   const amount = (value) => bytes ? formatBytes(value) : value.toLocaleString("en-US");
   const subject = STORAGE_SUBJECT[row.resource] || String(row.resource).replace(/_bytes$/, "").replace(/_/g, " ");
@@ -742,11 +744,10 @@ function HistorySheet({ ctx, scopeKey = null, space, onClose, onChanged, initial
   ] });
 }
 function StorageNotice({ storage, onReview, storageKey }) {
-  const notice = storageNotice(storage);
   const [stored, setStored] = useState3(() => ({ storageKey, value: storageKey ? readDismissed(storageKey) : null }));
+  const hidden = !storageKey ? null : stored.storageKey === storageKey ? stored.value : readDismissed(storageKey);
+  const notice = storageNotice(storage, hidden);
   if (!notice) return null;
-  const value = !storageKey ? null : stored.storageKey === storageKey ? stored.value : readDismissed(storageKey);
-  if (value != null && value === notice.key) return null;
   const dismiss = () => {
     writeDismissed(storageKey, notice.key);
     setStored({ storageKey, value: notice.key });
