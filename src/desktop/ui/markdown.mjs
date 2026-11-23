@@ -87,11 +87,11 @@ export function parseMarkdown(text) {
 
 const plain = spans => spans.map(span => span.type === 'break' ? ' ' : span.text).join('').replace(/\s+/g, ' ').trim()
 const SUMMARY_MAX = 160
-// The first sentence of the reply's first prose block (a paragraph, else a list item, else a heading),
-// without markdown markers, capped at 160 characters.
+// The first sentence of the reply's first prose block in reading order (a paragraph or list item;
+// a heading only when there is no prose), without markdown markers, capped at 160 characters.
 export function answerSummary(text) {
   const blocks = parseMarkdown(text)
-  const block = blocks.find(b => b.type === 'paragraph') || blocks.find(b => b.type === 'list') || blocks.find(b => b.type === 'heading')
+  const block = blocks.find(b => b.type === 'paragraph' || b.type === 'list') || blocks.find(b => b.type === 'heading')
   if (!block) return ''
   const line = plain(block.type === 'list' ? block.items[0] : block.spans)
   const sentence = /^.*?[.!?](?=\s|$)/.exec(line)?.[0] ?? line

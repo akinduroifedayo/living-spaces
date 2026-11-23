@@ -129,6 +129,7 @@ test('answerSummary is the first sentence of the first prose block, capped at 16
   assert.equal(markdown.answerSummary('Line one\nline two. Rest'), 'Line one line two.')
   assert.equal(markdown.answerSummary('- see [docs](https://x.test) and `code`'), 'see docs and code')
   assert.equal(markdown.answerSummary('# Only a heading'), 'Only a heading')
+  assert.equal(markdown.answerSummary('- Do not upgrade yet.\n- Back up your files.\n\nThe installer is ready.'), 'Do not upgrade yet.')
   const long = `${'word '.repeat(60)}end.`
   const summary = markdown.answerSummary(long)
   assert.equal(summary.length, 160)
@@ -180,6 +181,7 @@ test('a reply starts collapsed to its summary and time, and expands into rendere
     assert.ok(document.querySelector('button[aria-label="Dismiss reply"]'))
     await click('Read reply')
     assertExpanded()
+    assert.equal(document.querySelector('.ls-answer-summary'), null, 'the summary does not repeat above the expanded answer')
     const answer = document.querySelector('.ls-answer')
     assert.equal(answer.getAttribute('tabindex'), '0')
     assert.equal(answer.getAttribute('role'), 'region')
@@ -197,6 +199,7 @@ test('a reply starts collapsed to its summary and time, and expands into rendere
     assert.deepEqual(controller.links, ['https://example.com/docs'])
     await click('Collapse')
     assertCollapsed()
+    assert.ok(document.querySelector('.ls-answer-summary'))
   } finally { await unmount() }
 })
 test('bold-only lines in a reply render as headings', async () => {
@@ -204,9 +207,9 @@ test('bold-only lines in a reply render as headings', async () => {
   const controller = await mount()
   try {
     await publish(controller, completed('click-1', '**Summary:**\n\nYes, there is an update.\n\n## Details\n\n**Next steps**\n- Upgrade'))
+    assert.equal(document.querySelector('.ls-answer-summary').textContent, 'Yes, there is an update.')
     await click('Read reply')
     assert.deepEqual([...document.querySelectorAll('.ls-answer h5')].map(node => node.textContent), ['Summary:', 'Details', 'Next steps'])
-    assert.equal(document.querySelector('.ls-answer-summary').textContent, 'Yes, there is an update.')
   } finally { await unmount() }
 })
 test('Continue in chat shows only when the session can open the chat, and opens it', async () => {

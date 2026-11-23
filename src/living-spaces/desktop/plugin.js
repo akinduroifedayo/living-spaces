@@ -104,7 +104,7 @@ var plain = (spans) => spans.map((span) => span.type === "break" ? " " : span.te
 var SUMMARY_MAX = 160;
 function answerSummary(text) {
   const blocks = parseMarkdown(text);
-  const block = blocks.find((b) => b.type === "paragraph") || blocks.find((b) => b.type === "list") || blocks.find((b) => b.type === "heading");
+  const block = blocks.find((b) => b.type === "paragraph" || b.type === "list") || blocks.find((b) => b.type === "heading");
   if (!block) return "";
   const line = plain(block.type === "list" ? block.items[0] : block.spans);
   const sentence = /^.*?[.!?](?=\s|$)/.exec(line)?.[0] ?? line;
@@ -2117,7 +2117,7 @@ function BotBanner({ action, storageKey, controller }) {
   ] }), children: [
     banner.reason && /* @__PURE__ */ jsx6("span", { className: "ls-oneline", title: banner.reason, children: banner.reason }),
     banner.collapsible && /* @__PURE__ */ jsxs6(Fragment6, { children: [
-      /* @__PURE__ */ jsx6("p", { className: "ls-oneline ls-answer-summary", title: banner.summary, children: banner.summary }),
+      !banner.expanded && /* @__PURE__ */ jsx6("p", { className: "ls-oneline ls-answer-summary", title: banner.summary, children: banner.summary }),
       /* @__PURE__ */ jsx6("div", { id: replyId, className: "ls-collapse", "data-open": banner.expanded, children: /* @__PURE__ */ jsxs6("div", { inert: !banner.expanded || void 0, "aria-hidden": !banner.expanded, children: [
         /* @__PURE__ */ jsx6("div", { className: "ls-answer", tabIndex: 0, role: "region", "aria-label": "Hermes reply", children: /* @__PURE__ */ jsx6(Answer, { text: banner.answer, onOpenLink: (href) => controller.current?.openLink(href) }) }),
         /* @__PURE__ */ jsxs6("div", { className: "ls-actions", children: [

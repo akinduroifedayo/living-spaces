@@ -56,7 +56,7 @@ function BotBanner({ action, storageKey, controller }) {
   </>}>
     {banner.reason && <span className="ls-oneline" title={banner.reason}>{banner.reason}</span>}
     {banner.collapsible && <>
-      <p className="ls-oneline ls-answer-summary" title={banner.summary}>{banner.summary}</p>
+      {!banner.expanded && <p className="ls-oneline ls-answer-summary" title={banner.summary}>{banner.summary}</p>}
       <div id={replyId} className="ls-collapse" data-open={banner.expanded}><div inert={!banner.expanded || undefined} aria-hidden={!banner.expanded}>
         <div className="ls-answer" tabIndex={0} role="region" aria-label="Hermes reply"><Answer text={banner.answer} onOpenLink={href => controller.current?.openLink(href)} /></div>
         <div className="ls-actions">{canContinue && <Action icon="comment-discussion" onClick={() => controller.current?.continueInChat()}>Continue in chat</Action>}<CopyButton text={banner.answer} label="Copy" showLabel buttonSize="sm" /></div>
