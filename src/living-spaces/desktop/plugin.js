@@ -9,7 +9,7 @@ import { useState as useState2 } from "react";
 
 // src/desktop/ui/components.jsx
 import { Badge, Button, Codicon, CopyButton, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, fmtDateTime, relativeTime, Tip } from "@hermes/plugin-sdk";
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 // src/desktop/ui/markdown.mjs
 var FENCE = /^\s*```/;
@@ -394,8 +394,20 @@ function StatusPill({ status, label }) {
     label || pill.label
   ] });
 }
+function SpaceIcon({ icon }) {
+  const name = iconName(icon);
+  const [missing, setMissing] = useState(null);
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const element = ref.current?.querySelector(".codicon") || ref.current?.firstElementChild;
+    if (!element || typeof getComputedStyle !== "function") return;
+    const content = getComputedStyle(element, "::before").content;
+    setMissing(content === "none" ? name : null);
+  }, [name]);
+  return /* @__PURE__ */ jsx("span", { ref, className: "ls-icon-slot", children: /* @__PURE__ */ jsx(Icon, { name: missing === name ? "layers" : name }) });
+}
 function SpaceTile({ space, small = false }) {
-  return /* @__PURE__ */ jsx("span", { className: `ls-tile${small ? " ls-tile-small" : ""}`, style: { "--ls-accent": accentColor(space.accent) }, children: /* @__PURE__ */ jsx(Icon, { name: iconName(space.icon) }) });
+  return /* @__PURE__ */ jsx("span", { className: `ls-tile${small ? " ls-tile-small" : ""}`, style: { "--ls-accent": accentColor(space.accent) }, children: /* @__PURE__ */ jsx(SpaceIcon, { icon: space.icon }) });
 }
 function OwnerChip({ owner = "Hermes" }) {
   return /* @__PURE__ */ jsxs("span", { className: "ls-owner", children: [
@@ -621,7 +633,7 @@ function CardPreview({ space, scopeKey = null }) {
   const snapshot = readSnapshot(scopeKey, space.id, space.head_rev || null);
   const [failed, setFailed] = useState2(null);
   const usable = !!snapshot && failed !== snapshot.image;
-  return /* @__PURE__ */ jsx2("div", { className: `ls-thumb${usable ? "" : " ls-thumb-fallback"}`, style: { "--ls-accent": accentColor(space.accent) }, "data-preview": usable ? "snapshot" : "fallback", children: usable ? /* @__PURE__ */ jsx2("img", { src: snapshot.image, width: snapshot.width, height: snapshot.height, alt: "", decoding: "async", draggable: false, onError: () => setFailed(snapshot.image) }) : /* @__PURE__ */ jsx2("span", { className: "ls-thumb-mark", "aria-hidden": "true", children: /* @__PURE__ */ jsx2(Icon, { name: iconName(space.icon) }) }) });
+  return /* @__PURE__ */ jsx2("div", { className: `ls-thumb${usable ? "" : " ls-thumb-fallback"}`, style: { "--ls-accent": accentColor(space.accent) }, "data-preview": usable ? "snapshot" : "fallback", children: usable ? /* @__PURE__ */ jsx2("img", { src: snapshot.image, width: snapshot.width, height: snapshot.height, alt: "", decoding: "async", draggable: false, onError: () => setFailed(snapshot.image) }) : /* @__PURE__ */ jsx2("span", { className: "ls-thumb-mark", "aria-hidden": "true", children: /* @__PURE__ */ jsx2(SpaceIcon, { icon: space.icon }) }) });
 }
 function SpaceCard({ space, scopeKey = null }) {
   const status = spaceStatus(space);
@@ -746,7 +758,7 @@ function SpacesIndex({ ctx, scopeKey = null }) {
 
 // src/desktop/ui/space.jsx
 import { CopyButton as CopyButton2, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery5, useQueryClient } from "@hermes/plugin-sdk";
-import { useEffect as useEffect3, useId, useLayoutEffect, useMemo as useMemo2, useRef as useRef5, useState as useState6 } from "react";
+import { useEffect as useEffect3, useId, useLayoutEffect as useLayoutEffect2, useMemo as useMemo2, useRef as useRef5, useState as useState6 } from "react";
 
 // src/desktop/ui/dismissal.mjs
 var memory = /* @__PURE__ */ new Map();
@@ -2239,7 +2251,7 @@ import { Fragment as Fragment6, jsx as jsx6, jsxs as jsxs6 } from "react/jsx-run
 function useHeaderMode(hasSpace) {
   const frame = useRef5(null);
   const [mode, setMode] = useState6("narrow");
-  useLayoutEffect(() => {
+  useLayoutEffect2(() => {
     const element = frame.current;
     if (!element || typeof ResizeObserver === "undefined") return;
     const measure = () => {
@@ -2446,7 +2458,7 @@ function NoticeDock({ children, minimiseSignal }) {
   const [summary, setSummary] = useState6({ count: 0, alert: false, title: "", keys: "" });
   const seen = useRef5(/* @__PURE__ */ new Set());
   const id = useId();
-  useLayoutEffect(() => {
+  useLayoutEffect2(() => {
     const element = list.current;
     if (!element) return;
     const read = () => {
@@ -2542,7 +2554,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
       disposed = true;
     };
   }, [ctx, base]);
-  useLayoutEffect(() => {
+  useLayoutEffect2(() => {
     const lifetime = { active: true };
     refreshLifetime.current = lifetime;
     return () => {
@@ -2620,7 +2632,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
     if (seenRun.current && seenRun.current !== runKey && !inFlight(lastRun.status)) setAnnouncement(lastRun.status === "succeeded" ? `Refresh succeeded: ${runResult(lastRun)}` : `Refresh ${lastRun.status}: ${runResult(lastRun)}`);
     seenRun.current = runKey;
   }, [runKey, ready]);
-  useLayoutEffect(() => {
+  useLayoutEffect2(() => {
     setGuest({ status: "unknown", diagnostic: null });
     setIgnoredCrashRev(null);
   }, [connectionId, profile, scopeKey, sid, space?.head_rev]);

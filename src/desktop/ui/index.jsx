@@ -1,7 +1,7 @@
 import { EmptyState, ErrorState, SearchField, SegmentedControl, Skeleton, host, useQuery } from '@hermes/plugin-sdk'
 import { useState } from 'react'
-import { Action, CopyPrompt, Icon, SpaceTile, StatusPill, Time, absolute, relative } from './components.jsx'
-import { PROMPTS, accentColor, cardLines, freshnessFacts, freshnessPhrase, iconName, spaceRoute, spaceStatus, summaryCounts, visibleSpaces } from './model.mjs'
+import { Action, CopyPrompt, Icon, SpaceIcon, SpaceTile, StatusPill, Time, absolute, relative } from './components.jsx'
+import { PROMPTS, accentColor, cardLines, freshnessFacts, freshnessPhrase, spaceRoute, spaceStatus, summaryCounts, visibleSpaces } from './model.mjs'
 import { readSnapshot } from './snapshots.mjs'
 
 // The card's picture: the Space's own last snapshot when one was captured for its current code, otherwise
@@ -13,7 +13,7 @@ export function CardPreview({ space, scopeKey = null }) {
   return <div className={`ls-thumb${usable ? '' : ' ls-thumb-fallback'}`} style={{ '--ls-accent': accentColor(space.accent) }} data-preview={usable ? 'snapshot' : 'fallback'}>
     {usable
       ? <img src={snapshot.image} width={snapshot.width} height={snapshot.height} alt="" decoding="async" draggable={false} onError={() => setFailed(snapshot.image)} />
-      : <span className="ls-thumb-mark" aria-hidden="true"><Icon name={iconName(space.icon)} /></span>}
+      : <span className="ls-thumb-mark" aria-hidden="true"><SpaceIcon icon={space.icon} /></span>}
   </div>
 }
 

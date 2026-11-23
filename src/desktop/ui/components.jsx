@@ -1,5 +1,5 @@
 import { Badge, Button, Codicon, CopyButton, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, fmtDateTime, relativeTime, Tip } from '@hermes/plugin-sdk'
-import { useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ALERT_KINDS, accentColor, errorText, iconName, PILLS } from './model.mjs'
 import { parseMarkdown } from './markdown.mjs'
 
@@ -22,8 +22,22 @@ export function StatusPill({ status, label }) {
   const pill = PILLS[status] || { label: status, icon: 'info', border: 'solid' }
   return <Badge variant="outline" className={`ls-pill ls-${status}`} style={{ borderStyle: pill.border }}><Icon name={pill.icon} spin={['updating', 'running'].includes(status)} />{label || pill.label}</Badge>
 }
+// A Space names its own icon. A name this host's icon font does not draw renders as nothing, so a Space icon
+// that paints no glyph falls back to the contract's default instead of leaving an empty tile.
+export function SpaceIcon({ icon }) {
+  const name = iconName(icon)
+  const [missing, setMissing] = useState(null)
+  const ref = useRef(null)
+  useLayoutEffect(() => {
+    const element = ref.current?.querySelector('.codicon') || ref.current?.firstElementChild
+    if (!element || typeof getComputedStyle !== 'function') return
+    const content = getComputedStyle(element, '::before').content
+    setMissing(content === 'none' ? name : null)
+  }, [name])
+  return <span ref={ref} className="ls-icon-slot"><Icon name={missing === name ? 'layers' : name} /></span>
+}
 export function SpaceTile({ space, small = false }) {
-  return <span className={`ls-tile${small ? ' ls-tile-small' : ''}`} style={{ '--ls-accent': accentColor(space.accent) }}><Icon name={iconName(space.icon)} /></span>
+  return <span className={`ls-tile${small ? ' ls-tile-small' : ''}`} style={{ '--ls-accent': accentColor(space.accent) }}><SpaceIcon icon={space.icon} /></span>
 }
 export function OwnerChip({ owner = 'Hermes' }) {
   return <span className="ls-owner"><span className="ls-avatar" aria-hidden="true">{owner.slice(0, 1).toUpperCase()}</span><span>{owner}</span></span>
