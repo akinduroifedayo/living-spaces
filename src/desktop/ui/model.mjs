@@ -1,3 +1,4 @@
+import { answerSummary } from './markdown.mjs'
 export const SPACE_ID = /^[a-z0-9][a-z0-9-]{1,47}$/
 export const isSpaceId = value => typeof value === 'string' && SPACE_ID.test(value)
 export const spacePath = sid => `/spaces/${encodeURIComponent(sid)}`
@@ -40,7 +41,25 @@ export function spaceStatus(space, frame = false) {
 }
 export function statusDimensions(space, { guest = 'unknown', write = null, hostError = false } = {}) {
   const host = hostError ? 'unavailable' : space.status === 'archived' ? 'archived' : space.status === 'building' || !space.head_rev ? 'building' : 'available'
-  return { host, guest, save: write?.status || 'idle', freshness: space.freshness, appDomain: 'unknown' }
+  return { host, guest, save: write?.status || 'idle', freshness: space.freshness }
+}
+const BOT_RETRY = ['unknown', 'failed', 'offline']
+const BOT_SETTLED = ['completed', 'failed', 'offline', 'unknown']
+export const botDismissKey = action => action?.activationId ? `${action.activationId}:${action.status}` : null
+export function botBanner(action, { dismissed = false, expanded = false } = {}) {
+  if (!action || dismissed) return null
+  const answer = typeof action.answer === 'string' && action.answer.trim() ? action.answer : null
+  return {
+    title: `Bot request: ${action.status}`,
+    message: action.message,
+    tone: BOT_RETRY.includes(action.status) ? 'failed' : 'info',
+    answer,
+    summary: answer ? answerSummary(answer) : '',
+    collapsible: !!answer,
+    expanded: !!answer && expanded,
+    canRetry: !!action.activationId && BOT_RETRY.includes(action.status),
+    canDismiss: BOT_SETTLED.includes(action.status)
+  }
 }
 export function needsAttention(space) {
   return space.status !== 'archived' && ['failed', 'blocked', 'crashed'].includes(spaceStatus(space, true))

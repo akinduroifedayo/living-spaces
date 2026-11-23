@@ -202,6 +202,7 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
   return {
     ready,
     checkAction() { return actions?.check() },
+    openLink(url) { return openLink({ url }) },
     retryAction() { return actions?.retry() },
     dismissWrite(token) { failures.delete(token); publish(null) },
     postEvent(event, payload) { if (!closed && active()) mounted?.postEvent?.(event, payload) },

@@ -349,21 +349,22 @@ test('failed catch-up in SpaceView preserves last-good header timestamps and fai
 const q04Guest = state => {
   assert.match(document.body.textContent, new RegExp(`(?:guest|application|runtime)[^.!?\\n]{0,60}\\b${state}\\b`, 'i'))
 }
-const q04DomainUnknown = () => {
-  assert.match(document.body.textContent, /(?:app(?:lication)?(?:[- ]domain)?|domain|readiness)[^.!?\n]{0,60}(?:unknown|not (?:known|reported|provided))/i)
+// The host has no app-readiness signal, so it must not render a hard-coded one.
+const q04NoAppReadiness = () => {
+  assert.doesNotMatch(document.body.textContent, /App readiness/i)
 }
 const q04Log = (lifecycle, entries = []) => ({ entries, ...(lifecycle ? { lifecycle } : {}) })
 
-test('Q04 status dimensions keep host guest save freshness and app domain independent', () => {
+test('Q04 status dimensions keep host guest save and freshness independent', () => {
   assert.equal(typeof model.statusDimensions, 'function')
   assert.equal(model.PILLS.ready.label, 'Available')
   const freshness = Object.freeze({ last_success_at: 1700000000, last_attempt_status: 'failed', source_as_of: 1699999900 })
   const space = Object.freeze({ ...demo(), freshness, attention: { kind: 'crashed' } })
-  assert.deepEqual(model.statusDimensions(space), { host: 'available', guest: 'unknown', save: 'idle', freshness, appDomain: 'unknown' })
+  assert.deepEqual(model.statusDimensions(space), { host: 'available', guest: 'unknown', save: 'idle', freshness })
   for (const guest of ['unknown', 'starting', 'loaded', 'failed']) {
     for (const save of ['saving', 'saved', 'failed', 'unknown', 'conflict']) {
       assert.deepEqual(model.statusDimensions(space, { guest, write: { status: save } }),
-        { host: 'available', guest, save, freshness, appDomain: 'unknown' })
+        { host: 'available', guest, save, freshness })
     }
   }
   for (const [patch, options, host] of [
@@ -373,7 +374,7 @@ test('Q04 status dimensions keep host guest save freshness and app domain indepe
     [{}, { hostError: true }, 'unavailable']
   ]) {
     assert.deepEqual(model.statusDimensions({ ...space, ...patch }, options),
-      { host, guest: 'unknown', save: 'idle', freshness, appDomain: 'unknown' })
+      { host, guest: 'unknown', save: 'idle', freshness })
   }
   assert.equal(model.statusDimensions({ ...demo(), freshness: null }).freshness, null)
 })
@@ -401,7 +402,7 @@ for (const [name, message] of [
       assert.match(document.querySelector('.ls-save').textContent, /Saved /)
       assert.deepEqual(calls.map(call => call.op), ['log', 'data.put'])
       q04Guest('loaded')
-      q04DomainUnknown()
+      q04NoAppReadiness()
     } finally { await act(async () => view.unmount()) }
   })
 }
@@ -421,7 +422,7 @@ test('Q04 an uncaught guest fault after first paint raises runtime attention wit
     assert.match(document.body.textContent, /Available/)
     assert.match(document.querySelector('.ls-save').textContent, /Saved /)
     q04Guest('faulted')
-    q04DomainUnknown()
+    q04NoAppReadiness()
     await act(async () => activeMount.call('log', q04Log('loaded')))
     q04Guest('faulted')
   } finally { await act(async () => view.unmount()) }
@@ -453,10 +454,10 @@ test('Q04 session creation and shell boot do not claim guest loaded or app readi
     await act(async () => mounted.onEvent({ kind: 'booted' }))
     q04Guest('starting')
     assert.doesNotMatch(document.body.textContent, /(?:guest|application|runtime)[^.!?\n]{0,60}\bloaded\b/i)
-    q04DomainUnknown()
+    q04NoAppReadiness()
     await act(async () => mounted.call('log', q04Log('loaded')))
     q04Guest('loaded')
-    q04DomainUnknown()
+    q04NoAppReadiness()
     assert.doesNotMatch(document.body.textContent, /\bReady\b/i)
   } finally { await act(async () => view.unmount()) }
 })
@@ -519,7 +520,7 @@ test('Q04 old mount events and lifecycle replies cannot change the replacement v
     assert.ok(document.querySelector('[data-testid="space-host"]'))
     assert.doesNotMatch(document.body.textContent, /Demo stopped working|uncaught error/)
     q04Guest('loaded')
-    q04DomainUnknown()
+    q04NoAppReadiness()
   } finally {
     releaseOld?.({ ok: true, result: { stored: 0 } })
     await act(async () => view.unmount())
@@ -545,7 +546,7 @@ test('Q04 loaded guest and failed save preserve authoritative failed-refresh fre
     assert.ok(document.querySelector('[data-testid="space-host"]'))
     assert.match(document.body.textContent, /Available/)
     q04Guest('loaded')
-    q04DomainUnknown()
+    q04NoAppReadiness()
   } finally { await act(async () => view.unmount()) }
 })
 

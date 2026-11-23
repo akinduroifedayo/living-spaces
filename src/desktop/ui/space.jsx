@@ -1,10 +1,10 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState, Skeleton, host, useQuery, useQueryClient } from '@hermes/plugin-sdk'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Action, Banner, CopyPrompt, DecisionDialog, Drawer, Icon, OwnerChip, SpaceTile, StatusPill, Freshness, DisabledReason, absolute } from './components.jsx'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Action, Answer, Banner, CopyPrompt, DecisionDialog, Drawer, Icon, OwnerChip, SpaceTile, StatusPill, Freshness, DisabledReason, absolute } from './components.jsx'
 import { HistorySheet, StorageNotice } from './history.jsx'
 import { PermissionsSheet } from './permissions.jsx'
 import { UpkeepSheet } from './upkeep.jsx'
-import { advanceCursor, diagnosticText, errorText, headerFacts, inFlight, refreshReason, runResult, spacePath, spaceStatus, statusDimensions } from './model.mjs'
+import { advanceCursor, botBanner, botDismissKey, diagnosticText, errorText, headerFacts, inFlight, refreshReason, runResult, spacePath, spaceStatus, statusDimensions } from './model.mjs'
 import { createSpaceSession } from './session.mjs'
 import { mountSpace } from '../sandbox/index.js'
 
@@ -24,6 +24,45 @@ function useHeaderMode(hasSpace) {
     return () => observer.disconnect()
   }, [hasSpace])
   return [frame, mode]
+}
+
+// Dismissed bot banners persist per Space and activation; memory backs storage when it is unavailable.
+const dismissedMemory = new Map()
+function readDismissed(key) {
+  try { const value = globalThis.localStorage?.getItem(key); if (value != null) return value } catch {}
+  return dismissedMemory.get(key) ?? null
+}
+function writeDismissed(key, value) {
+  try {
+    if (!globalThis.localStorage) throw new Error('No storage')
+    globalThis.localStorage.setItem(key, value)
+    dismissedMemory.delete(key)
+  } catch { dismissedMemory.set(key, value) }
+}
+function BotBanner({ action, storageKey, controller }) {
+  const answerId = useId()
+  const key = botDismissKey(action)
+  const [stored, setStored] = useState(() => ({ storageKey, value: readDismissed(storageKey) }))
+  const dismissedKey = stored.storageKey === storageKey ? stored.value : readDismissed(storageKey)
+  const [dismissedAction, setDismissedAction] = useState(null)
+  const [expandedFor, setExpandedFor] = useState(null)
+  const identity = key ?? action
+  const banner = botBanner(action, { dismissed: key ? key === dismissedKey : dismissedAction === action, expanded: expandedFor === identity })
+  if (!banner) return null
+  const dismiss = () => {
+    if (key) { writeDismissed(storageKey, key); setStored({ storageKey, value: key }) }
+    else setDismissedAction(action)
+  }
+  return <Banner kind={banner.tone} title={banner.title} actions={<>
+    {banner.collapsible && <Action aria-expanded={banner.expanded} aria-controls={answerId} onClick={() => setExpandedFor(banner.expanded ? null : identity)}>{banner.expanded ? 'Hide answer' : 'Show answer'}</Action>}
+    <Action onClick={() => controller.current?.checkAction()}>Check bot status</Action>
+    {banner.canRetry && <Action onClick={() => controller.current?.retryAction()}>Retry same request</Action>}
+    {banner.canDismiss && <Action onClick={dismiss}>Dismiss</Action>}
+  </>}><span role="status" aria-live="polite">{banner.message}</span>
+    {banner.collapsible && (banner.expanded
+      ? <div id={answerId} className="ls-answer" tabIndex={0} role="region" aria-label="Bot answer"><Answer text={banner.answer} onOpenLink={href => controller.current?.openLink(href)} /></div>
+      : <p id={answerId} className="ls-answer-summary" title={banner.summary}>{banner.summary}</p>)}
+  </Banner>
 }
 
 function SaveStatus({ write, announcement }) {
@@ -239,12 +278,9 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
       {!building && <><Action onClick={() => openSheet('permissions')}>Permissions</Action><DisabledReason reason={reason}><Action primary icon="refresh" aria-busy={busy} aria-disabled={!!reason || busy} title={reason || undefined} onClick={refresh}>{busy ? 'Refreshing…' : 'Refresh now'}</Action></DisabledReason></>}
       <DropdownMenu><DropdownMenuTrigger asChild><Action ref={overflow} className="ls-action ls-overflow" aria-label="More Space actions" icon="ellipsis" /></DropdownMenuTrigger><DropdownMenuContent align="end">{headerMode !== 'wide' && <DropdownMenuItem onSelect={() => openHistory()}>History</DropdownMenuItem>}{!building && <>{headerMode === 'narrow' && <DropdownMenuItem onSelect={() => openSheet('upkeep')}>Upkeep</DropdownMenuItem>}<DropdownMenuSeparator /><DropdownMenuItem onSelect={() => act('pin', { pinned: !space.pinned })}>{space.pinned ? 'Unpin Space' : 'Pin Space'}</DropdownMenuItem><DropdownMenuItem onSelect={() => archived ? act('unarchive') : askConfirmation('archive')}>{archived ? 'Restore Space' : 'Archive Space…'}</DropdownMenuItem>{archived && <DropdownMenuItem onSelect={() => askConfirmation('delete')}>Delete…</DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
     </div></header>
-    <p className="ls-secondary" role="status" aria-live="polite">Guest runtime: {dimensions.guest}. App readiness: {dimensions.appDomain}.</p>
+    <p className="ls-secondary" role="status" aria-live="polite">Guest runtime: {dimensions.guest}.</p>
     <StorageNotice storage={space.storage} onReview={() => openHistory()} />
-    {botAction && <Banner kind={['failed', 'offline', 'unknown'].includes(botAction.status) ? 'failed' : undefined} title={`Bot request: ${botAction.status}`} actions={<>
-      <Action onClick={() => controller.current?.checkAction()}>Check bot status</Action>
-      {botAction.activationId && ['unknown', 'failed', 'offline'].includes(botAction.status) && <Action onClick={() => controller.current?.retryAction()}>Retry same request</Action>}
-    </>}><span role="status" aria-live="polite">{botAction.message}</span>{botAction.answer && <p>{botAction.answer}</p>}</Banner>}
+    {botAction && <BotBanner action={botAction} controller={controller} storageKey={`living-spaces:bot-dismissed:${connectionId}:${profile}:${sid}`} />}
     {guest.status === 'faulted' && <Banner kind="failed" title="This Space hit an uncaught error"><span role="status">It is still open and may keep working. Saved records are unaffected. Review this Space's diagnostic log for details.</span></Banner>}
     {actionError && <Banner kind="failed" title={actionError} />}
     {detail.error && <Banner kind="failed" title="Space status could not be refreshed. You're seeing the last loaded state." actions={<Action onClick={() => detail.refetch()}>Try again</Action>}>{errorText(detail.error)}</Banner>}
