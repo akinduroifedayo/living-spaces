@@ -281,11 +281,27 @@ function backendError(error) {
   return detail
 }
 const IPC_WRAPPER = /^Error invoking remote method '[^']*': (?:Error: )?/
+const DIAGNOSTIC_FIELDS = ['code', 'reason', 'message']
+// Only a structured error's code, reason and message reach diagnostics: any other field may hold a credential.
+function diagnosticFields(value) {
+  return Object.fromEntries(Object.entries(value ?? {}).filter(([key, field]) => DIAGNOSTIC_FIELDS.includes(key) && ['string', 'number'].includes(typeof field)))
+}
+// The text behind Copy details. A wrapped JSON error envelope is rebuilt from its allowed fields, keeping the wrapper.
+function diagnosticSource(error, detail) {
+  const text = typeof error === 'string' ? error : error?.message
+  if (typeof text !== 'string' || !text) return JSON.stringify(diagnosticFields(detail))
+  const json = text.indexOf('{')
+  if (json < 0) return text
+  try {
+    const body = JSON.parse(text.slice(json))
+    // Only the backend's error envelope is rebuilt; any other JSON is free text and masked as such.
+    return body?.error && typeof body.error === 'object' ? text.slice(0, json) + JSON.stringify({ error: diagnosticFields(body.error) }) : text
+  } catch { return text }
+}
 // A failure in words for the user, plus the raw text for diagnostics. Never the IPC wrapper in the words.
 export function failureParts(error) {
   const detail = backendError(error)
-  const raw = diagnosticText(typeof error === 'string' ? error : error?.message || JSON.stringify({ code: detail?.code, reason: detail?.reason, message: detail?.message }))
-  // A structured error contributes only its code, reason and message to diagnostics: other fields may hold credentials.
+  const raw = diagnosticText(diagnosticSource(error, detail))
   // Strip the wrapper from whichever text wins: a plain or non-JSON failure carries it in its own message.
   const words = (typeof detail?.message === 'string' && detail.message.trim() ? detail.message.trim() : raw).replace(IPC_WRAPPER, '')
   return { message: diagnosticText(words), code: detail?.code ?? null, reason: detail?.reason ?? null, raw }
@@ -300,8 +316,13 @@ export function errorText(error) {
   if (detail?.code === 'limit') return `limit: ${message}${detail.limit != null ? ` · limit ${detail.limit}` : ''}${detail.actual != null ? ` · actual ${detail.actual}` : ''}`
   return message
 }
+// Free text cannot say where a credential ends: commas, quotes, escapes and newlines can all sit inside one.
+// So everything after the first credential key or Bearer is redacted. JSON \u escapes are decoded first so a key cannot hide.
+const SECRET = /(?:api[_-]?key|token|passw(?:or)?d|secret|authorization|cookie)\\?["']?\s*[:=]\s*|\bBearer\s+/i
 export function diagnosticText(value) {
-  return String(value).replace(/\b(Bearer)\s+\S+/gi, '$1 [redacted]').replace(/\b(api[_-]?key|token|password|secret|authorization)(["']?\s*[:=]\s*["']?)[^\s,"';}]+/gi, '$1$2[redacted]').slice(0, 2000)
+  const text = String(value).replace(/\\u([0-9a-f]{4})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16))).slice(0, 2000)
+  const secret = SECRET.exec(text)
+  return secret ? `${text.slice(0, secret.index + secret[0].length)}[redacted]` : text
 }
 export function scopedRest(rest, currentScope, expected) {
   const requireScope = () => {

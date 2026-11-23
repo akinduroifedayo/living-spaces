@@ -368,9 +368,25 @@ function backendError(error) {
   return detail;
 }
 var IPC_WRAPPER = /^Error invoking remote method '[^']*': (?:Error: )?/;
+var DIAGNOSTIC_FIELDS = ["code", "reason", "message"];
+function diagnosticFields(value) {
+  return Object.fromEntries(Object.entries(value ?? {}).filter(([key, field]) => DIAGNOSTIC_FIELDS.includes(key) && ["string", "number"].includes(typeof field)));
+}
+function diagnosticSource(error, detail) {
+  const text = typeof error === "string" ? error : error?.message;
+  if (typeof text !== "string" || !text) return JSON.stringify(diagnosticFields(detail));
+  const json = text.indexOf("{");
+  if (json < 0) return text;
+  try {
+    const body = JSON.parse(text.slice(json));
+    return body?.error && typeof body.error === "object" ? text.slice(0, json) + JSON.stringify({ error: diagnosticFields(body.error) }) : text;
+  } catch {
+    return text;
+  }
+}
 function failureParts(error) {
   const detail = backendError(error);
-  const raw = diagnosticText(typeof error === "string" ? error : error?.message || JSON.stringify({ code: detail?.code, reason: detail?.reason, message: detail?.message }));
+  const raw = diagnosticText(diagnosticSource(error, detail));
   const words = (typeof detail?.message === "string" && detail.message.trim() ? detail.message.trim() : raw).replace(IPC_WRAPPER, "");
   return { message: diagnosticText(words), code: detail?.code ?? null, reason: detail?.reason ?? null, raw };
 }
@@ -384,8 +400,11 @@ function errorText(error) {
   if (detail?.code === "limit") return `limit: ${message}${detail.limit != null ? ` \xB7 limit ${detail.limit}` : ""}${detail.actual != null ? ` \xB7 actual ${detail.actual}` : ""}`;
   return message;
 }
+var SECRET = /(?:api[_-]?key|token|passw(?:or)?d|secret|authorization|cookie)\\?["']?\s*[:=]\s*|\bBearer\s+/i;
 function diagnosticText(value) {
-  return String(value).replace(/\b(Bearer)\s+\S+/gi, "$1 [redacted]").replace(/\b(api[_-]?key|token|password|secret|authorization)(["']?\s*[:=]\s*["']?)[^\s,"';}]+/gi, "$1$2[redacted]").slice(0, 2e3);
+  const text = String(value).replace(/\\u([0-9a-f]{4})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16))).slice(0, 2e3);
+  const secret = SECRET.exec(text);
+  return secret ? `${text.slice(0, secret.index + secret[0].length)}[redacted]` : text;
 }
 function scopedRest(rest, currentScope2, expected) {
   const requireScope = () => {
