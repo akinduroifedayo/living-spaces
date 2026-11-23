@@ -187,6 +187,8 @@ export function createBotActions({ host, backend, post, onStatus, isActive, user
     return observe(receipt)
   }
   return {
+    // The maintainer's stored chat session, for the host's Continue in chat; never sent to the guest.
+    sessionId: () => binding?.stored_session_id || null,
     restore: () => serial(check).catch(report),
     check: () => serial(check).catch(report),
     request(args) {

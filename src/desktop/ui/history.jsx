@@ -1,7 +1,8 @@
 import { Badge, EmptyState, ErrorState, Skeleton, Tabs, TabsList, TabsTrigger, useQuery } from '@hermes/plugin-sdk'
 import { useEffect, useRef, useState } from 'react'
-import { Action, DecisionDialog, Drawer, Icon, StatusPill, Time, absolute } from './components.jsx'
-import { dispatchText, errorText, recoveryCompatibility, restoreCopy, revisionCompatibility, runResult, spacePath } from './model.mjs'
+import { Action, Banner, DecisionDialog, Drawer, Icon, StatusPill, Time, absolute } from './components.jsx'
+import { readDismissed, writeDismissed } from './dismissal.mjs'
+import { dispatchText, errorText, recoveryCompatibility, restoreCopy, revisionCompatibility, runResult, spacePath, storageNotice } from './model.mjs'
 
 export function RunRow({ run }) {
   const duration = run.ended_at != null && run.started_at != null ? `${Math.max(0, run.ended_at - run.started_at).toFixed(1)} s` : run.status === 'queued' ? 'Not started' : run.status === 'running' ? 'In progress' : 'No duration reported'
@@ -34,9 +35,22 @@ export function HistorySheet({ ctx, scopeKey = null, space, onClose, onChanged, 
   </Drawer>{restore != null && restoreCompatibility !== 'incompatible' && <DecisionDialog danger title={`Restore revision ${restore}?`} description={restoreCopy(space, restore)} confirmLabel="Restore as new revision" onClose={() => setRestore(null)} onConfirm={async () => { await ctx.rest(`${base}/revisions/${restore}/restore`, { method: 'POST' }); await revisions.refetch(); await onChanged() }} />}</>
 }
 
-export function StorageNotice({ storage, onReview }) {
-  if (!storage?.warnings?.length) return null
-  return <div role="status"><strong>Storage approaching a limit</strong>{storage.warnings.map(row => <p key={row.resource}>{row.resource}: {row.used} / {row.limit}</p>)}{onReview && <Action onClick={onReview}>Review storage</Action>}</div>
+// The storage warning for the most-full resource. With a storageKey it can be hidden until the
+// percentage changes; without one (inside the storage section) it only informs.
+export function StorageNotice({ storage, onReview, storageKey }) {
+  const notice = storageNotice(storage)
+  const [stored, setStored] = useState(() => ({ storageKey, value: storageKey ? readDismissed(storageKey) : null }))
+  if (!notice) return null
+  const value = !storageKey ? null : stored.storageKey === storageKey ? stored.value : readDismissed(storageKey)
+  if (value != null && value === String(notice.pct)) return null
+  const dismiss = () => {
+    writeDismissed(storageKey, String(notice.pct))
+    setStored({ storageKey, value: String(notice.pct) })
+  }
+  return <Banner kind="storage" title={notice.title} actions={(onReview || storageKey) && <>
+    {onReview && <Action onClick={onReview}>Review</Action>}
+    {storageKey && <Action onClick={dismiss}>Hide until it changes</Action>}
+  </>}><span className="ls-oneline" title={notice.line}>{notice.line}</span><div className="ls-meter" aria-hidden="true"><i style={{ width: `${notice.pct}%` }} /></div></Banner>
 }
 
 export function StorageSection({ ctx, space, onChanged }) {

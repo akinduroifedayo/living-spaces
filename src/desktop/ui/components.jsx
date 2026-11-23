@@ -1,6 +1,7 @@
 import { Badge, Button, Codicon, CopyButton, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, fmtDateTime, relativeTime, Tip } from '@hermes/plugin-sdk'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { accentColor, errorText, iconName, PILLS } from './model.mjs'
+import { parseMarkdown } from './markdown.mjs'
 
 export const relative = seconds => relativeTime(seconds * 1000)
 export function absolute(seconds) {
@@ -37,6 +38,22 @@ export function CopyPrompt({ text, label = 'Copy' }) {
 }
 export function Banner({ kind = 'info', title, children, actions }) {
   return <div className={`ls-banner ls-${kind}`} role={['failed', 'blocked', 'crashed', 'conflict'].includes(kind) ? 'alert' : 'status'}><Icon name={kind === 'info' ? 'info' : 'warning'} /><div><strong>{title}</strong>{children && <div className="ls-secondary">{children}</div>}{actions && <div className="ls-actions">{actions}</div>}</div></div>
+}
+function Spans({ spans, onOpenLink }) {
+  return spans.map((span, index) => span.type === 'break' ? <br key={index} />
+    : span.type === 'strong' ? <strong key={index}>{span.text}</strong>
+    : span.type === 'em' ? <em key={index}>{span.text}</em>
+    : span.type === 'code' ? <code key={index}>{span.text}</code>
+    : span.type === 'link' ? <a key={index} href={span.href} onClick={event => { event.preventDefault(); onOpenLink?.(span.href) }}>{span.text}</a>
+    : span.text)
+}
+// Renders a bot answer as elements only; markdown.mjs never yields HTML, so raw tags stay text.
+export function Answer({ text, onOpenLink }) {
+  const blocks = useMemo(() => parseMarkdown(text), [text])
+  return blocks.map((block, index) => block.type === 'code' ? <pre key={index}><code>{block.text}</code></pre>
+    : block.type === 'heading' ? <h5 key={index}><Spans spans={block.spans} onOpenLink={onOpenLink} /></h5>
+    : block.type === 'list' ? (() => { const List = block.ordered ? 'ol' : 'ul'; return <List key={index}>{block.items.map((item, n) => <li key={n}><Spans spans={item} onOpenLink={onOpenLink} /></li>)}</List> })()
+    : <p key={index}><Spans spans={block.spans} onOpenLink={onOpenLink} /></p>)
 }
 export function Drawer({ title, description, children, onClose, note, returnFocus }) {
   const trigger = useRef(returnFocus || (typeof document === 'undefined' ? null : document.activeElement))

@@ -1,3 +1,4 @@
+import { answerSummary } from './markdown.mjs'
 export const SPACE_ID = /^[a-z0-9][a-z0-9-]{1,47}$/
 export const isSpaceId = value => typeof value === 'string' && SPACE_ID.test(value)
 export const spacePath = sid => `/spaces/${encodeURIComponent(sid)}`
@@ -40,8 +41,71 @@ export function spaceStatus(space, frame = false) {
 }
 export function statusDimensions(space, { guest = 'unknown', write = null, hostError = false } = {}) {
   const host = hostError ? 'unavailable' : space.status === 'archived' ? 'archived' : space.status === 'building' || !space.head_rev ? 'building' : 'available'
-  return { host, guest, save: write?.status || 'idle', freshness: space.freshness, appDomain: 'unknown' }
+  return { host, guest, save: write?.status || 'idle', freshness: space.freshness }
 }
+const BOT_RETRY = ['unknown', 'failed', 'offline']
+const BOT_SETTLED = ['completed', 'failed', 'offline', 'unknown']
+export const botDismissKey = action => action?.activationId ? `${action.activationId}:${action.status}` : null
+// A dismissal is { id, statuses }: one activation and every status the user dismissed it in.
+// Anything else, including the earlier 'id:status' string form, is no dismissal.
+export function parseBotDismissal(value) {
+  let record
+  try { record = JSON.parse(value) } catch { return null }
+  if (typeof record?.id !== 'string' || !Array.isArray(record.statuses) || !record.statuses.every(status => typeof status === 'string')) return null
+  return { id: record.id, statuses: record.statuses }
+}
+// A dismissed activation stays hidden at the statuses it was dismissed in, and through offline/unknown,
+// which only mean the outcome could not be observed (restore() reports them when a route is down).
+// A different observed outcome is new information, and a status the user just caused always shows.
+export function botDismissed(action, record) {
+  if (!action?.activationId || action.userInitiated === true || record?.id !== action.activationId) return false
+  return record.statuses.includes(action.status) || ['offline', 'unknown'].includes(action.status)
+}
+export function dismissBot(record, action) {
+  const statuses = record?.id === action.activationId ? record.statuses : []
+  return { id: action.activationId, statuses: [...new Set([...statuses, action.status])] }
+}
+const botKind = status => status === 'completed' ? 'reply' : BOT_RETRY.includes(status) ? 'failed' : 'progress'
+// The host notice for one bot status. Failed kinds carry a one-line reason and never collapse;
+// a reply carries the answer, collapsed to its first sentence until the user reads it.
+export function botBanner(action, { dismissed = false, expanded = false } = {}) {
+  if (!action || dismissed) return null
+  const kind = botKind(action.status)
+  const answer = kind === 'reply' && typeof action.answer === 'string' && action.answer.trim() ? action.answer : null
+  return {
+    status: action.status,
+    kind,
+    label: kind === 'reply' ? 'Hermes replied' : kind === 'failed' ? 'Bot request failed' : `Bot request: ${action.status}`,
+    reason: answer ? null : action.message || null,
+    summary: answer ? answerSummary(answer) : '',
+    answer,
+    at: Number.isFinite(action.at) ? action.at : null,
+    expanded: !!answer && expanded,
+    collapsible: !!answer,
+    canRetry: !!action.activationId && kind === 'failed',
+    canDismiss: BOT_SETTLED.includes(action.status)
+  }
+}
+const STORAGE_SUBJECT = { source_bytes: 'source data', source_metadata_bytes: 'source metadata', data_bytes: 'records', records: 'records', project_bytes: 'project files', project_files: 'project files', file_bytes: 'the largest file', log_history: 'diagnostic logs' }
+const trimmed = value => Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '')
+export function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${trimmed(bytes / 1024)} KB`
+  return `${trimmed(bytes / 1024 / 1024)} MB`
+}
+// The storage warning for the most-full resource, in words: never the raw resource key or byte counts.
+export function storageNotice(storage) {
+  const rows = (storage?.warnings || []).filter(row => Number.isFinite(row?.used) && Number.isFinite(row?.limit) && row.limit > 0)
+  if (!rows.length) return null
+  const row = rows.reduce((top, next) => next.used / next.limit > top.used / top.limit ? next : top)
+  const pct = Math.round(row.used / row.limit * 100)
+  const bytes = /_bytes$/.test(row.resource)
+  const amount = value => bytes ? formatBytes(value) : value.toLocaleString('en-US')
+  const subject = STORAGE_SUBJECT[row.resource] || String(row.resource).replace(/_bytes$/, '').replace(/_/g, ' ')
+  return { pct, title: `Storage ${pct}% full`, line: `${amount(row.used)} of ${amount(row.limit)} used by ${subject}. Writes stop at the limit.` }
+}
+export const GUEST_WORDS = { unknown: 'not reported', starting: 'starting', loaded: 'loaded', failed: 'failed', faulted: 'faulted (uncaught error, still running)' }
+export const guestWord = state => GUEST_WORDS[state] || String(state)
 export function needsAttention(space) {
   return space.status !== 'archived' && ['failed', 'blocked', 'crashed'].includes(spaceStatus(space, true))
 }
