@@ -431,3 +431,10 @@ test('a notice republished with a new time keeps the dock minimised; a new notic
     assert.equal(document.activeElement, button('Minimise'), 'focus moves with the pill to the toggle, never to the body')
   } finally { await cleanup() }
 })
+
+test('the failure tint always resolves: the danger token ends in a literal colour, so a failure notice is never transparent', () => {
+  const { styles } = load(resolve(root, 'src/desktop/ui/styles.js'))
+  const chain = styles.match(/--ls-danger:([^;]+);/)[1]
+  assert.match(chain, /var\(--color-destructive,#[0-9a-f]{6}\)/i, 'falls back to the host token, then a literal')
+  assert.match(styles, /\.ls-banner\.ls-failed[^{]*\{background:color-mix\(in srgb,var\(--ls-danger\) \d+%,var\(--ls-glass-strong\)\)\}/)
+})
