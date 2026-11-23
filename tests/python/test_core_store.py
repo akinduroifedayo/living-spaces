@@ -209,6 +209,16 @@ class ProjectTests(CoreCase):
         self.assertIsNone(space["upkeep"])
         self.assertNotIn("schedule", space)
 
+    def test_activity_names_the_latest_change_by_its_stored_actor(self):
+        created = projects.get_space(self.sid)["activity"]
+        self.assertEqual((created["kind"], created["actor"]), ("code", "agent:demo"))
+        self.put()
+        latest = projects.get_space(self.sid)["activity"]
+        self.assertEqual((latest["kind"], latest["actor"]), ("data", "user"))
+        self.assertGreaterEqual(latest["at"], created["at"])
+        listed = {row["id"]: row for row in projects.list_spaces()}[self.sid]
+        self.assertEqual(listed["activity"], latest)
+
 
 class RecordTests(CoreCase):
     def test_create_only_and_stale_put_return_current(self):

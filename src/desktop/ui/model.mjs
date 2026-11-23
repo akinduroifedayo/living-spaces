@@ -121,7 +121,7 @@ export function summaryCounts(spaces) {
 }
 export function visibleSpaces(spaces, search, filter) {
   const q = search.trim().toLocaleLowerCase()
-  return spaces.filter(s => filter === 'archived' ? s.status === 'archived' : s.status !== 'archived' && (filter !== 'attention' || needsAttention(s)))
+  return spaces.filter(s => filter === 'archived' ? s.status === 'archived' : s.status !== 'archived' && (filter !== 'attention' || needsAttention(s)) && (filter !== 'pinned' || s.pinned))
     .filter(s => `${s.name} ${s.owner}`.toLocaleLowerCase().includes(q))
     .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || (b.last_opened_at ?? 0) - (a.last_opened_at ?? 0) || b.updated_at - a.updated_at || a.id.localeCompare(b.id))
 }
@@ -134,6 +134,44 @@ export function headerFacts(space) {
   if (f.source_as_of != null && Math.abs(f.source_as_of - f.last_success_at) >= 60) facts.push({ key: 'source', label: 'Source data from', at: f.source_as_of })
   return facts
 }
+// Who an actor string names, in words. Actors are stored as user, app, agent:<name> or upkeep:<name|schedule>.
+function actorWords(actor) {
+  const [kind, ...rest] = String(actor || '').split(':')
+  const name = rest.join(':').trim()
+  if (kind === 'user') return { verb: 'Edited by you' }
+  if (kind === 'app') return { verb: 'Edited in this Space' }
+  if (kind === 'agent') return { verb: name ? `Edited in chat by ${name}` : 'Edited in chat' }
+  if (kind === 'upkeep') return { verb: !name || name === 'schedule' ? 'Refreshed on schedule' : `Synced by ${name}` }
+  return null
+}
+const sourceHost = url => { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return '' } }
+// The one freshness phrase the Space header shows, worded by what last changed the Space. It never names a
+// source or time the backend did not report; the full set of freshness facts lives in Details.
+export function freshnessPhrase(space) {
+  const f = space.freshness || {}
+  const state = spaceStatus(space, true)
+  if (state === 'archived') return { key: 'archive', label: 'Archived', at: space.archived_at ?? space.updated_at }
+  if (state === 'building') return { key: 'building', label: 'Building the first version' }
+  if (state === 'updating') return { key: 'updating', label: 'Refreshing now…' }
+  // A failed or blocked refresh still says how old the data on screen is: the last good update, when there is one.
+  if (state === 'failed' || state === 'blocked') {
+    const verb = state === 'failed' ? 'Refresh failed' : 'Refresh blocked'
+    return f.last_success_at != null ? { key: state, label: `${verb} · data from`, at: f.last_success_at } : { key: state, label: `${verb} · no successful update yet` }
+  }
+  const activity = space.activity
+  const words = activity && Number.isFinite(activity.at) ? actorWords(activity.actor) : null
+  const host = (f.sources || []).map(source => sourceHost(source?.url)).find(Boolean)
+  const refreshed = f.last_success_at != null ? { key: 'success', label: host ? `Refreshed from ${host}` : 'Updated', at: f.last_success_at } : null
+  // A refresh that wrote records also records an upkeep or agent change at about the same moment: prefer the refresh wording.
+  if (words && (!refreshed || activity.at > refreshed.at + 60)) {
+    const verb = activity.kind === 'code' && activity.actor?.startsWith('agent:') ? words.verb.replace('Edited in chat', 'Changed in chat') : words.verb
+    return { key: 'activity', label: verb, at: activity.at }
+  }
+  if (refreshed) return refreshed
+  return { key: 'success', label: f.last_attempt_status === 'failed' || f.last_attempt_status === 'blocked' ? 'No successful update yet' : 'Not refreshed yet' }
+}
+// Which notice kinds are failures: they are announced as alerts and drawn in the danger tone.
+export const ALERT_KINDS = ['failed', 'blocked', 'crashed', 'conflict']
 export function freshnessFacts(space, format) {
   const f = space.freshness || {}
   return [

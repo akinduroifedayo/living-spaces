@@ -328,18 +328,23 @@ test('failed catch-up in SpaceView preserves last-good header timestamps and fai
   data.detail = { ...data.detail, freshness: { last_success_at: 1700000000, source_as_of: 1699999900, last_attempt_at: 1794312000, last_attempt_status: 'failed' }, recent_runs: [{ id: 'failed-catch-up', status: 'failed', trigger: 'schedule', error: 'Source unavailable', detail: { dispatch } }] }
   try {
     await render(SpaceView, props)
+    // The island carries one phrase: the failure, and how old the data on screen is.
     const header = document.querySelector('.ls-frame-meta').textContent
-    assert.match(header, /Updated relative 1700000000000/)
-    assert.match(header, /Source data from relative 1699999900000/)
+    assert.match(header, /Refresh failed · data from · relative 1700000000000/)
     const times = document.querySelectorAll('.ls-frame-meta time')
+    assert.equal(times.length, 1)
     assert.equal(times[0].title, absolute(1700000000))
-    assert.equal(times[1].title, absolute(1699999900))
     assert.match(document.querySelector('.ls-identity').textContent, /Failed/)
+    // The full set of freshness facts, including the source age, lives in Details.
+    await click('Details')
+    const details = document.querySelector('section[aria-label="Freshness"]').textContent
+    assert.ok(details.includes(`Last successful update${absolute(1700000000)}`))
+    assert.ok(details.includes(`Source data from${absolute(1699999900)}`))
     const banner = document.querySelector('.ls-banner.ls-failed').textContent
     assert.match(banner, /Refresh failed/)
     assert.ok(banner.includes(`You're seeing data from ${absolute(1700000000)}`))
     assert.match(banner, /Source unavailable/)
-    await click('History')
+    await click('Open history')
     data.runs = data.detail.recent_runs
     await render(SpaceView, props)
     assert.match(document.body.textContent, /Catch-up refresh/)
@@ -347,25 +352,16 @@ test('failed catch-up in SpaceView preserves last-good header timestamps and fai
   } finally { await act(async () => view.unmount()) }
 })
 
-// Runtime state lives only in the Details drawer: open it from the overflow menu, read 'Space app', close it.
+// Runtime state lives only in the Details drawer: open it from the island's Details control, read its Runtime
+// section, close it.
 async function q04Details() {
-  const menu = { content: sdk.DropdownMenuContent, item: sdk.DropdownMenuItem }
-  sdk.DropdownMenuContent = ({ children }) => React.createElement('div', { role: 'menu' }, children)
-  sdk.DropdownMenuItem = ({ children, onSelect }) => React.createElement('button', { type: 'button', role: 'menuitem', onClick: onSelect }, children)
-  try {
-    await act(async () => view.render(React.createElement(SpaceView, lastProps)))
-    const item = [...document.querySelectorAll('[role="menuitem"]')].find(node => node.textContent === 'Details')
-    assert.ok(item, 'the overflow menu offers Details')
-    await act(async () => item.click())
-  } finally {
-    sdk.DropdownMenuContent = menu.content
-    sdk.DropdownMenuItem = menu.item
-    await act(async () => view.render(React.createElement(SpaceView, lastProps)))
-  }
+  const opener = [...document.querySelectorAll('.ls-framebar button')].find(button => button.textContent.trim() === 'Details')
+  assert.ok(opener, 'the Space island offers Details')
+  await act(async () => opener.click())
   const dialog = document.querySelector('[role="dialog"]')
   assert.ok(dialog, 'Details opens a drawer')
   assert.match(dialog.textContent, /Space details/)
-  const facts = Object.fromEntries([...dialog.querySelectorAll('dl div')].map(row => [row.querySelector('dt').textContent, row.querySelector('dd').textContent]))
+  const facts = Object.fromEntries([...dialog.querySelectorAll('section[aria-label="Runtime"] dl div')].map(row => [row.querySelector('dt').textContent, row.querySelector('dd').textContent]))
   await click('Close')
   assert.equal(document.querySelector('[role="dialog"]'), null)
   return facts
@@ -448,7 +444,6 @@ test('Q04 an uncaught guest fault after first paint raises runtime attention wit
     assert.ok(document.querySelector('[data-testid="space-host"]'), 'the app stays mounted')
     assert.match(document.body.textContent, /uncaught error/)
     assert.doesNotMatch(document.body.textContent, /Demo stopped working/)
-    assert.match(document.body.textContent, /Available/)
     assert.match(document.querySelector('.ls-save').textContent, /Saved /)
     await q04Guest('faulted')
     q04NoAppReadiness()
@@ -477,7 +472,6 @@ test('Q04 session creation and shell boot do not claim guest loaded or app readi
   try {
     await render(SpaceView, spaceProps())
     assert.ok(mounted, 'session creation reached the mount seam')
-    assert.match(document.body.textContent, /Available/)
     assert.doesNotMatch(document.body.textContent, /\bReady\b|(?:guest|application|runtime)[^.!?\n]{0,60}\bloaded\b/i)
     await q04Guest('unknown', 'starting')
     await act(async () => mounted.onEvent({ kind: 'booted' }))
@@ -503,7 +497,6 @@ test('Q04 mount lifecycle failed supersedes loaded and stays failed after loaded
     assert.deepEqual(calls.map(call => call.args.lifecycle), ['loaded', 'failed'], 'real mount calls reached the bridge')
     assert.match(document.body.textContent, /Demo stopped working/)
     await q04Guest('failed')
-    assert.match(document.body.textContent, /Available/)
     await act(async () => activeMount.call('log', q04Log('loaded')))
     await q04Guest('failed')
     assert.match(document.body.textContent, /Demo stopped working/)
@@ -573,7 +566,6 @@ test('Q04 loaded guest and failed save preserve authoritative failed-refresh fre
     assert.equal(document.querySelector('.ls-frame-meta').textContent, header)
     assert.deepEqual(data.detail.freshness, freshness)
     assert.ok(document.querySelector('[data-testid="space-host"]'))
-    assert.match(document.body.textContent, /Available/)
     await q04Guest('loaded')
     q04NoAppReadiness()
   } finally { await act(async () => view.unmount()) }
