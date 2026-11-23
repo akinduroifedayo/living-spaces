@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
+import { crc32, deflateSync } from 'node:zlib'
 import { resolve, dirname, join } from 'node:path'
 import * as session from '../../../src/desktop/ui/session.mjs'
 import * as model from '../../../src/desktop/ui/model.mjs'
@@ -63,7 +64,14 @@ before(async () => {
 after(() => dom.window.close())
 beforeEach(() => { localStorage.clear(); data = {}; mounts = []; navigations = [] })
 
-const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+// A real, decodable PNG of the given pixel size (blank grey), so headers and declared sizes can be compared.
+function png(width, height) {
+  const chunk = (type, body) => { const head = Buffer.alloc(8); head.writeUInt32BE(body.length); head.write(type, 4); const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(Buffer.concat([Buffer.from(type), body]))); return Buffer.concat([head, body, crc]) }
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(width); ihdr.writeUInt32BE(height, 4); ihdr[8] = 8; ihdr[9] = 0
+  const raw = Buffer.alloc((width + 1) * height, 0x80); for (let y = 0; y < height; y++) raw[y * (width + 1)] = 0
+  return 'data:image/png;base64,' + Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]).toString('base64')
+}
+const PNG = png(480, 300)
 const space = patch => ({ id: 'gbrain-cockpit', name: 'GBrain Cockpit', description: 'Your brain at a glance', owner: 'Hermes', status: 'active', head_rev: 7, accent: 'teal', icon: 'pulse', pinned: false, updated_at: 1700000000, grants: [], freshness: {}, manifest: {}, ...patch })
 const ui = () => ({ ...load(resolve(root, 'src/desktop/ui/index.jsx')), ...load(resolve(root, 'src/desktop/ui/space.jsx')) })
 async function render(Component, props) { view = createRoot(document.getElementById('root')); await act(async () => view.render(React.createElement(Component, props))) }
@@ -90,7 +98,9 @@ test('only bounded raster data URLs are accepted as snapshots', () => {
     { ...ok, image: 'https://example.invalid/shot.png' },
     { ...ok, image: 'data:image/png;base64,<script>' },
     { ...ok, image: 'data:image/png;base64,' + 'A'.repeat(snapshots.SNAPSHOT_LIMITS.maxChars) },
-    { ...ok, width: 8 }, { ...ok, height: 4096 }, { ...ok, at: 'now' }, { ...ok, rev: 1.5 }
+    { ...ok, width: 8 }, { ...ok, height: 4096 }, { ...ok, at: 'now' }, { ...ok, rev: 1.5 },
+    { ...ok, image: png(4096, 4096) }, { ...ok, image: png(479, 300) }, { ...ok, image: png(480, 301) },
+    { ...ok, image: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/' }
   ]) assert.equal(snapshots.writeSnapshot(null, 'demo-space', bad), false, JSON.stringify(bad).slice(0, 80))
   assert.equal(snapshots.readSnapshot(null, 'demo-space'), null)
   localStorage.setItem(snapshots.snapshotKey(null, 'demo-space'), '{"image":"javascript:alert(1)","width":480,"height":300,"at":1}')
@@ -99,7 +109,7 @@ test('only bounded raster data URLs are accepted as snapshots', () => {
 
 test('a new capture replaces the old one and the oldest previews are evicted at the cap', () => {
   snapshots.writeSnapshot(null, 's-0', { image: PNG, width: 480, height: 300, at: 1, rev: 1 })
-  const other = PNG.replace('ggg', 'ggA')
+  const other = png(480, 300).replace(/.{4}$/, 'AAAA')
   snapshots.writeSnapshot(null, 's-0', { image: other, width: 480, height: 300, at: 2, rev: 1 })
   assert.equal(snapshots.readSnapshot(null, 's-0').image, other)
   for (let n = 1; n <= snapshots.SNAPSHOT_LIMITS.maxEntries; n++) snapshots.writeSnapshot(null, `s-${n}`, { image: PNG, width: 480, height: 300, at: n, rev: 1 })
@@ -352,4 +362,53 @@ test('floating surfaces are tinted from the opaque system canvas colour so text 
   assert.match(styles, /\.ls-banner\{[^}]*background:var\(--ls-glass-strong\)/)
   assert.match(styles, /\.ls-notice-pill\{[^}]*background:var\(--ls-glass-strong\)/)
   assert.doesNotMatch(styles, /ui-bg-elevated[^;]*\) 70%,transparent/, 'no glass mixed from a translucent host token')
+})
+
+// --- review regressions ------------------------------------------------------------------------------------
+
+test('a Space cannot get an oversized image stored by declaring a small size', () => {
+  assert.deepEqual(snapshots.encodedSize(png(4096, 4096)), { width: 4096, height: 4096 })
+  assert.equal(snapshots.writeSnapshot(null, 'demo-space', { image: png(4096, 4096), width: 480, height: 300, at: 1, rev: 1 }), false)
+  // WebP headers as Chromium's canvas encoder writes them: lossy, lossless and extended.
+  const webp = (chunk, bytes) => 'data:image/webp;base64,' + Buffer.concat([Buffer.from('RIFF\0\0\0\0WEBP' + chunk), Buffer.alloc(4), Buffer.from(bytes), Buffer.alloc(8)]).toString('base64')
+  assert.deepEqual(snapshots.encodedSize(webp('VP8 ', [0, 0, 0, 0x9d, 0x01, 0x2a, 480 & 255, 480 >> 8, 300 & 255, 300 >> 8])), { width: 480, height: 300 })
+  assert.deepEqual(snapshots.encodedSize(webp('VP8X', [0, 0, 0, 0, 479 & 255, 479 >> 8, 0, 299 & 255, 299 >> 8, 0])), { width: 480, height: 300 })
+  const w = 479, h = 299
+  assert.deepEqual(snapshots.encodedSize(webp('VP8L', [0x2f, w & 255, (w >> 8) | ((h & 3) << 6), (h >> 2) & 255, (h >> 10) & 15])), { width: 480, height: 300 })
+})
+
+test('leaving waits for the capture but never navigates once the view is gone', async () => {
+  const { SpaceView } = ui()
+  data.detail = space()
+  try {
+    await render(SpaceView, { sid: 'gbrain-cockpit', ctx: { rest: sessionRest } })
+    await wait(20)
+    mounts.at(-1).snapshot = () => new Promise(() => {})
+    await click('Back to Spaces')
+    await cleanup()
+    navigations.push('/another-page')
+    await act(async () => new Promise(done => setTimeout(done, 800)))
+    assert.deepEqual(navigations, ['/another-page'], 'the stale leave does not redirect the new page')
+  } finally { if (document.getElementById('root').childNodes.length) await cleanup() }
+})
+
+test('minimising from the dock\'s own toggle moves focus to the pill, not into the hidden list', async () => {
+  const { SpaceView } = ui()
+  data.detail = space({ storage: { warnings: [{ resource: 'source_bytes', used: 60000, limit: 65536 }] } })
+  try {
+    await render(SpaceView, { sid: 'gbrain-cockpit', ctx: { rest: sessionRest } })
+    const toggle = button('Minimise'); toggle.focus()
+    await act(async () => toggle.click()); await wait(10)
+    assert.equal(document.activeElement, document.querySelector('.ls-notice-pill'))
+    await act(async () => document.activeElement.click()); await wait(10)
+    assert.equal(document.activeElement, button('Minimise'))
+    await act(async () => document.activeElement.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))); await wait(10)
+    assert.equal(document.activeElement, document.querySelector('.ls-notice-pill'), 'Escape on the toggle does the same')
+  } finally { await cleanup() }
+})
+
+test('at narrow width save feedback stays announced, only its words are visually hidden', () => {
+  const { styles } = load(resolve(root, 'src/desktop/ui/styles.js'))
+  assert.doesNotMatch(styles, /data-header-mode=narrow\] \.ls-save\{display:none/)
+  assert.match(styles, /data-header-mode=narrow\] \.ls-save-text\{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect\(0,0,0,0\)/)
 })

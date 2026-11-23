@@ -106,7 +106,7 @@ function SpaceDetails({ space, dimensions, upkeepLabel, building, onOpen, onClos
 
 function SaveStatus({ write, announcement }) {
   const labels = { saving: 'Saving…', saved: `Saved ${write?.at ? absolute(write.at) : ''}`, failed: 'Not saved — this change was rejected', unknown: 'Save outcome unknown — the change may have been stored', conflict: 'Conflict — this record changed elsewhere' }
-  return <span className="ls-save" data-status={write?.status} role="status" aria-live="polite" aria-atomic="true">{write && <><Icon name={write.status === 'saving' ? 'refresh' : ['failed', 'unknown', 'conflict'].includes(write.status) ? 'warning' : 'check'} spin={write.status === 'saving'} />{labels[write.status]}</>}{announcement && <span>{announcement}</span>}</span>
+  return <span className="ls-save" data-status={write?.status} role="status" aria-live="polite" aria-atomic="true">{write && <><Icon name={write.status === 'saving' ? 'refresh' : ['failed', 'unknown', 'conflict'].includes(write.status) ? 'warning' : 'check'} spin={write.status === 'saving'} /><span className="ls-save-text">{labels[write.status]}</span></>}{announcement && <span className="ls-save-text">{announcement}</span>}</span>
 }
 function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
   if (!write || !['failed', 'unknown', 'conflict'].includes(write.status)) return null
@@ -123,6 +123,7 @@ function WriteBanner({ write, setWrite, onCompare, onUpdated, onDismiss }) {
 // new notice arrives. Only the notices themselves take pointer input; the canvas around them stays usable, and
 // nothing here traps focus.
 function NoticeDock({ children, minimiseSignal }) {
+  const dock = useRef(null)
   const list = useRef(null)
   const pill = useRef(null)
   const minimiser = useRef(null)
@@ -150,13 +151,13 @@ function NoticeDock({ children, minimiseSignal }) {
   }, [])
   useEffect(() => { if (minimiseSignal) setMinimised(true) }, [minimiseSignal])
   const minimise = () => {
-    const inside = list.current?.contains(document.activeElement)
+    const inside = dock.current?.contains(document.activeElement)
     setMinimised(true)
     if (inside) requestAnimationFrame(() => pill.current?.focus())
   }
   const expand = () => { setMinimised(false); requestAnimationFrame(() => minimiser.current?.focus()) }
   const empty = summary.count === 0
-  return <div className="ls-notices" data-minimised={minimised || undefined} data-empty={empty || undefined} onKeyDown={event => { if (event.key === 'Escape' && !minimised && !empty) { event.stopPropagation(); minimise() } }}>
+  return <div ref={dock} className="ls-notices" data-minimised={minimised || undefined} data-empty={empty || undefined} onKeyDown={event => { if (event.key === 'Escape' && !minimised && !empty) { event.stopPropagation(); minimise() } }}>
     {minimised && !empty && <button ref={pill} type="button" className={`ls-notice-pill${summary.alert ? ' ls-alert' : ''}`} aria-expanded="false" aria-controls={id} onClick={expand}>
       <Icon name={summary.alert ? 'warning' : 'bell'} /><span className="ls-oneline">{summary.count === 1 ? summary.title : `${summary.count} notices`}</span>{summary.count > 1 && <span className="ls-notice-count ls-num">{summary.count}</span>}
     </button>}
@@ -312,10 +313,14 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
     return () => window.removeEventListener('blur', onBlur)
   }, [])
   const leaving = useRef(false)
+  const mounted = useRef(true)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   async function leave() {
     if (leaving.current) return
     leaving.current = true
     try { await Promise.race([capture.current?.(), new Promise(resolve => setTimeout(resolve, 700))]) } catch {}
+    // The capture wait is short but real: if the user went elsewhere or switched profile meanwhile, stay out of it.
+    if (!mounted.current || host.state.connectionId.get() !== connectionId || host.state.profile.get() !== profile) return
     host.navigate('/spaces')
   }
   async function refresh() {

@@ -6,7 +6,26 @@ const PREFIX = 'living-spaces:snapshot:'
 const INDEX = 'living-spaces:snapshot-index'
 // The Desktop origin's localStorage is shared with the rest of Hermes, so previews get a small, fixed budget.
 export const SNAPSHOT_LIMITS = Object.freeze({ maxChars: 200_000, budgetChars: 1_200_000, maxEntries: 24, width: 480, minSide: 16, maxSide: 1024 })
-const IMAGE = /^data:image\/(?:webp|png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/
+const IMAGE = /^data:image\/(?:webp|png);base64,[A-Za-z0-9+/]+={0,2}$/
+
+// The pixel size written in the image's own header, or null. A Space chooses the bytes, so the declared
+// width and height are only trusted when the encoded image says the same: an oversized image never reaches
+// the host's decoder. Only the two encodings the loader produces are read: PNG, and WebP (VP8, VP8L, or VP8X when it has transparency).
+export function encodedSize(image) {
+  let b
+  try { b = Uint8Array.from(atob(image.slice(image.indexOf(',') + 1, image.indexOf(',') + 49)), c => c.charCodeAt(0)) } catch { return null }
+  const ascii = (at, n) => String.fromCharCode(...b.subarray(at, at + n))
+  if (image.startsWith('data:image/png') && b.length >= 24 && b[0] === 0x89 && ascii(1, 3) === 'PNG' && ascii(12, 4) === 'IHDR') {
+    const view = new DataView(b.buffer)
+    return { width: view.getUint32(16), height: view.getUint32(20) }
+  }
+  if (!image.startsWith('data:image/webp') || b.length < 30 || ascii(0, 4) !== 'RIFF' || ascii(8, 4) !== 'WEBP') return null
+  const chunk = ascii(12, 4)
+  if (chunk === 'VP8 ' && b[23] === 0x9d && b[24] === 0x01 && b[25] === 0x2a) return { width: (b[26] | b[27] << 8) & 0x3fff, height: (b[28] | b[29] << 8) & 0x3fff }
+  if (chunk === 'VP8X') return { width: 1 + (b[24] | b[25] << 8 | b[26] << 16), height: 1 + (b[27] | b[28] << 8 | b[29] << 16) }
+  if (chunk === 'VP8L' && b[20] === 0x2f) return { width: 1 + (b[21] | (b[22] & 0x3f) << 8), height: 1 + (b[22] >> 6 | b[23] << 2 | (b[24] & 0x0f) << 10) }
+  return null
+}
 const side = value => Number.isInteger(value) && value >= SNAPSHOT_LIMITS.minSide && value <= SNAPSHOT_LIMITS.maxSide
 
 export const snapshotKey = (scopeKey, sid) => PREFIX + JSON.stringify([scopeKey ?? null, sid])
@@ -21,6 +40,8 @@ export function parseSnapshot(value) {
   const { image, width, height, at, rev } = snapshot
   if (typeof image !== 'string' || image.length > SNAPSHOT_LIMITS.maxChars || !IMAGE.test(image)) return null
   if (!side(width) || !side(height) || !Number.isFinite(at) || !(rev == null || Number.isSafeInteger(rev))) return null
+  const encoded = encodedSize(image)
+  if (!encoded || encoded.width !== width || encoded.height !== height) return null
   return { image, width, height, at, rev: rev ?? null }
 }
 

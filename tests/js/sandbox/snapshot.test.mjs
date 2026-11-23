@@ -50,7 +50,7 @@ function hostFixture(boot = true) {
   } }
 }
 
-for (const format of ['webp', 'png', 'jpeg']) test(`host accepts only the matching snapshot reply (${format})`, async () => {
+for (const format of ['webp', 'png']) test(`host accepts only the matching snapshot reply (${format})`, async () => {
   const f = hostFixture()
   try {
     const pending = f.mount.snapshot()
@@ -72,6 +72,7 @@ for (const format of ['webp', 'png', 'jpeg']) test(`host accepts only the matchi
 for (const [name, extra] of [
   ['malformed data URL', { image: 'data:image/png;base64,AA!A' }],
   ['svg data URL', { image: 'data:image/svg+xml;base64,AAAA' }],
+  ['jpeg data URL, which the loader never produces', { image: 'data:image/jpeg;base64,AAAA' }],
   ['oversized image', { image: 'data:image/png;base64,' + 'A'.repeat(350000) }],
   ['missing image', { image: undefined }],
   ['empty base64', { image: 'data:image/png;base64,' }],

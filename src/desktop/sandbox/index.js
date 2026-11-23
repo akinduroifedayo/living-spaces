@@ -134,7 +134,7 @@ export function mountSpace(container, { bundle, grants = [], call, onEvent = () 
       if (!settle) return
       const valid = !Array.isArray(m) && m.v === 1 && m.ok === true &&
         typeof m.image === 'string' && m.image.length <= 350000 &&
-        /^data:image\/(?:webp|png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(m.image) &&
+        /^data:image\/(?:webp|png);base64,[A-Za-z0-9+/]+={0,2}$/.test(m.image) &&
         [m.width, m.height].every(size => Number.isInteger(size) && size >= 16 && size <= 1024)
       settle(valid ? { image: m.image, width: m.width, height: m.height } : null)
       return
