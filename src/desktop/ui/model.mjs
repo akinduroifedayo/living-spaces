@@ -65,21 +65,47 @@ export function dismissBot(record, action) {
   const statuses = record?.id === action.activationId ? record.statuses : []
   return { id: action.activationId, statuses: [...new Set([...statuses, action.status])] }
 }
+const botKind = status => status === 'completed' ? 'reply' : BOT_RETRY.includes(status) ? 'failed' : 'progress'
+// The host notice for one bot status. Failed kinds carry a one-line reason and never collapse;
+// a reply carries the answer, collapsed to its first sentence until the user reads it.
 export function botBanner(action, { dismissed = false, expanded = false } = {}) {
   if (!action || dismissed) return null
-  const answer = typeof action.answer === 'string' && action.answer.trim() ? action.answer : null
+  const kind = botKind(action.status)
+  const answer = kind === 'reply' && typeof action.answer === 'string' && action.answer.trim() ? action.answer : null
   return {
-    title: `Bot request: ${action.status}`,
-    message: action.message,
-    tone: BOT_RETRY.includes(action.status) ? 'failed' : 'info',
-    answer,
+    status: action.status,
+    kind,
+    label: kind === 'reply' ? 'Hermes replied' : kind === 'failed' ? 'Bot request failed' : `Bot request: ${action.status}`,
+    reason: answer ? null : action.message || null,
     summary: answer ? answerSummary(answer) : '',
-    collapsible: !!answer,
+    answer,
+    at: Number.isFinite(action.at) ? action.at : null,
     expanded: !!answer && expanded,
-    canRetry: !!action.activationId && BOT_RETRY.includes(action.status),
+    collapsible: !!answer,
+    canRetry: !!action.activationId && kind === 'failed',
     canDismiss: BOT_SETTLED.includes(action.status)
   }
 }
+const STORAGE_SUBJECT = { source_bytes: 'source data', source_metadata_bytes: 'source metadata', data_bytes: 'records', records: 'records', project_bytes: 'project files', project_files: 'project files', file_bytes: 'the largest file', log_history: 'diagnostic logs' }
+const trimmed = value => Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '')
+export function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${trimmed(bytes / 1024)} KB`
+  return `${trimmed(bytes / 1024 / 1024)} MB`
+}
+// The storage warning for the most-full resource, in words: never the raw resource key or byte counts.
+export function storageNotice(storage) {
+  const rows = (storage?.warnings || []).filter(row => Number.isFinite(row?.used) && Number.isFinite(row?.limit) && row.limit > 0)
+  if (!rows.length) return null
+  const row = rows.reduce((top, next) => next.used / next.limit > top.used / top.limit ? next : top)
+  const pct = Math.round(row.used / row.limit * 100)
+  const bytes = /_bytes$/.test(row.resource)
+  const amount = value => bytes ? formatBytes(value) : value.toLocaleString('en-US')
+  const subject = STORAGE_SUBJECT[row.resource] || String(row.resource).replace(/_bytes$/, '').replace(/_/g, ' ')
+  return { pct, title: `Storage ${pct}% full`, line: `${amount(row.used)} of ${amount(row.limit)} used by ${subject}. Writes stop at the limit.` }
+}
+export const GUEST_WORDS = { unknown: 'not reported', starting: 'starting', loaded: 'loaded', failed: 'failed', faulted: 'faulted (uncaught error, still running)' }
+export const guestWord = state => GUEST_WORDS[state] || String(state)
 export function needsAttention(space) {
   return space.status !== 'archived' && ['failed', 'blocked', 'crashed'].includes(spaceStatus(space, true))
 }

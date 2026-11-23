@@ -51,7 +51,7 @@ function Spans({ spans, onOpenLink }) {
 export function Answer({ text, onOpenLink }) {
   const blocks = useMemo(() => parseMarkdown(text), [text])
   return blocks.map((block, index) => block.type === 'code' ? <pre key={index}><code>{block.text}</code></pre>
-    : block.type === 'heading' ? <p key={index}><strong><Spans spans={block.spans} onOpenLink={onOpenLink} /></strong></p>
+    : block.type === 'heading' ? <h5 key={index}><Spans spans={block.spans} onOpenLink={onOpenLink} /></h5>
     : block.type === 'list' ? (() => { const List = block.ordered ? 'ol' : 'ul'; return <List key={index}>{block.items.map((item, n) => <li key={n}><Spans spans={item} onOpenLink={onOpenLink} /></li>)}</List> })()
     : <p key={index}><Spans spans={block.spans} onOpenLink={onOpenLink} /></p>)
 }

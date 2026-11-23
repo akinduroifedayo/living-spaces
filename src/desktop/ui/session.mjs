@@ -207,6 +207,12 @@ export function createSpaceSession({ rest, backend, sid, container, mount, onEve
     ready,
     checkAction() { return actions && byUser(() => actions.check()) },
     openLink(url) { return openLink({ url }) },
+    canContinue() { return !!actions?.sessionId() && typeof host?.openSession === 'function' },
+    continueInChat() {
+      const id = actions?.sessionId()
+      if (!id || typeof host?.openSession !== 'function') return false
+      return host.openSession(id)
+    },
     retryAction() { return actions && byUser(() => actions.retry()) },
     dismissWrite(token) { failures.delete(token); publish(null) },
     postEvent(event, payload) { if (!closed && active()) mounted?.postEvent?.(event, payload) },

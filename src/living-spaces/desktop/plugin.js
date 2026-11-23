@@ -15,6 +15,7 @@ import { useMemo, useRef, useState } from "react";
 var FENCE = /^\s*```/;
 var HEADING = /^\s{0,3}(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/;
 var ITEM = /^\s*([-*+]|\d{1,9}[.)])\s+(.*)$/;
+var BOLD_HEADING = /^\s*(?:\*\*([^*\n]+?)\*\*|__([^_\n]+?)__)\s*$/;
 var INLINE = new RegExp([
   /`([^`\n]+)`/.source,
   /\*\*([^*\n]+?)\*\*/.source,
@@ -46,7 +47,7 @@ function parseInline(line) {
   push({ type: "text", text: line.slice(index) });
   return spans;
 }
-var startsBlock = (line) => FENCE.test(line) || HEADING.test(line) || ITEM.test(line);
+var startsBlock = (line) => FENCE.test(line) || HEADING.test(line) || BOLD_HEADING.test(line) || ITEM.test(line);
 function parseMarkdown(text) {
   const lines = String(text ?? "").replace(/\r\n?/g, "\n").split("\n");
   const blocks = [];
@@ -67,6 +68,12 @@ function parseMarkdown(text) {
     const heading = HEADING.exec(line);
     if (heading) {
       blocks.push({ type: "heading", spans: parseInline(heading[2]) });
+      i++;
+      continue;
+    }
+    const bold = BOLD_HEADING.exec(line);
+    if (bold) {
+      blocks.push({ type: "heading", spans: [{ type: "text", text: (bold[1] ?? bold[2]).trim() }] });
       i++;
       continue;
     }
@@ -93,13 +100,15 @@ function parseMarkdown(text) {
   }
   return blocks;
 }
+var plain = (spans) => spans.map((span) => span.type === "break" ? " " : span.text).join("").replace(/\s+/g, " ").trim();
+var SUMMARY_MAX = 160;
 function answerSummary(text) {
-  for (const raw of String(text ?? "").replace(/\r\n?/g, "\n").split("\n")) {
-    const line = raw.replace(/^\s*(?:```.*|#{1,6}\s+|>\s*|[-*+]\s+|\d{1,9}[.)]\s+)/, "");
-    const summary = parseInline(line).map((span) => span.text).join("").trim();
-    if (summary) return summary;
-  }
-  return "";
+  const blocks = parseMarkdown(text);
+  const block = blocks.find((b) => b.type === "paragraph") || blocks.find((b) => b.type === "list") || blocks.find((b) => b.type === "heading");
+  if (!block) return "";
+  const line = plain(block.type === "list" ? block.items[0] : block.spans);
+  const sentence = /^.*?[.!?](?=\s|$)/.exec(line)?.[0] ?? line;
+  return sentence.length > SUMMARY_MAX ? `${sentence.slice(0, SUMMARY_MAX - 1).trimEnd()}\u2026` : sentence;
 }
 
 // src/desktop/ui/model.mjs
@@ -167,21 +176,44 @@ function dismissBot(record, action) {
   const statuses = record?.id === action.activationId ? record.statuses : [];
   return { id: action.activationId, statuses: [.../* @__PURE__ */ new Set([...statuses, action.status])] };
 }
+var botKind = (status) => status === "completed" ? "reply" : BOT_RETRY.includes(status) ? "failed" : "progress";
 function botBanner(action, { dismissed = false, expanded = false } = {}) {
   if (!action || dismissed) return null;
-  const answer = typeof action.answer === "string" && action.answer.trim() ? action.answer : null;
+  const kind = botKind(action.status);
+  const answer = kind === "reply" && typeof action.answer === "string" && action.answer.trim() ? action.answer : null;
   return {
-    title: `Bot request: ${action.status}`,
-    message: action.message,
-    tone: BOT_RETRY.includes(action.status) ? "failed" : "info",
-    answer,
+    status: action.status,
+    kind,
+    label: kind === "reply" ? "Hermes replied" : kind === "failed" ? "Bot request failed" : `Bot request: ${action.status}`,
+    reason: answer ? null : action.message || null,
     summary: answer ? answerSummary(answer) : "",
-    collapsible: !!answer,
+    answer,
+    at: Number.isFinite(action.at) ? action.at : null,
     expanded: !!answer && expanded,
-    canRetry: !!action.activationId && BOT_RETRY.includes(action.status),
+    collapsible: !!answer,
+    canRetry: !!action.activationId && kind === "failed",
     canDismiss: BOT_SETTLED.includes(action.status)
   };
 }
+var STORAGE_SUBJECT = { source_bytes: "source data", source_metadata_bytes: "source metadata", data_bytes: "records", records: "records", project_bytes: "project files", project_files: "project files", file_bytes: "the largest file", log_history: "diagnostic logs" };
+var trimmed = (value) => Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${trimmed(bytes / 1024)} KB`;
+  return `${trimmed(bytes / 1024 / 1024)} MB`;
+}
+function storageNotice(storage) {
+  const rows = (storage?.warnings || []).filter((row2) => Number.isFinite(row2?.used) && Number.isFinite(row2?.limit) && row2.limit > 0);
+  if (!rows.length) return null;
+  const row = rows.reduce((top, next) => next.used / next.limit > top.used / top.limit ? next : top);
+  const pct = Math.round(row.used / row.limit * 100);
+  const bytes = /_bytes$/.test(row.resource);
+  const amount = (value) => bytes ? formatBytes(value) : value.toLocaleString("en-US");
+  const subject = STORAGE_SUBJECT[row.resource] || String(row.resource).replace(/_bytes$/, "").replace(/_/g, " ");
+  return { pct, title: `Storage ${pct}% full`, line: `${amount(row.used)} of ${amount(row.limit)} used by ${subject}. Writes stop at the limit.` };
+}
+var GUEST_WORDS = { unknown: "not reported", starting: "starting", loaded: "loaded", failed: "failed", faulted: "faulted (uncaught error, still running)" };
+var guestWord = (state) => GUEST_WORDS[state] || String(state);
 function needsAttention(space) {
   return space.status !== "archived" && ["failed", "blocked", "crashed"].includes(spaceStatus(space, true));
 }
@@ -384,7 +416,7 @@ function Spans({ spans, onOpenLink }) {
 }
 function Answer({ text, onOpenLink }) {
   const blocks = useMemo(() => parseMarkdown(text), [text]);
-  return blocks.map((block, index) => block.type === "code" ? /* @__PURE__ */ jsx("pre", { children: /* @__PURE__ */ jsx("code", { children: block.text }) }, index) : block.type === "heading" ? /* @__PURE__ */ jsx("p", { children: /* @__PURE__ */ jsx("strong", { children: /* @__PURE__ */ jsx(Spans, { spans: block.spans, onOpenLink }) }) }, index) : block.type === "list" ? (() => {
+  return blocks.map((block, index) => block.type === "code" ? /* @__PURE__ */ jsx("pre", { children: /* @__PURE__ */ jsx("code", { children: block.text }) }, index) : block.type === "heading" ? /* @__PURE__ */ jsx("h5", { children: /* @__PURE__ */ jsx(Spans, { spans: block.spans, onOpenLink }) }, index) : block.type === "list" ? (() => {
     const List = block.ordered ? "ol" : "ul";
     return /* @__PURE__ */ jsx(List, { children: block.items.map((item, n) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx(Spans, { spans: item, onOpenLink }) }, n)) }, index);
   })() : /* @__PURE__ */ jsx("p", { children: /* @__PURE__ */ jsx(Spans, { spans: block.spans, onOpenLink }) }, index));
@@ -580,8 +612,28 @@ function SpacesIndex({ ctx, scopeKey = null }) {
 }
 
 // src/desktop/ui/space.jsx
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery5, useQueryClient } from "@hermes/plugin-sdk";
+import { CopyButton as CopyButton2, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState as ErrorState5, Skeleton as Skeleton5, host as host2, useQuery as useQuery5, useQueryClient } from "@hermes/plugin-sdk";
 import { useEffect as useEffect3, useId, useLayoutEffect, useMemo as useMemo2, useRef as useRef5, useState as useState6 } from "react";
+
+// src/desktop/ui/dismissal.mjs
+var memory = /* @__PURE__ */ new Map();
+function readDismissed(key) {
+  if (memory.has(key)) return memory.get(key);
+  try {
+    return globalThis.localStorage?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+}
+function writeDismissed(key, value) {
+  try {
+    if (!globalThis.localStorage) throw new Error("No storage");
+    globalThis.localStorage.setItem(key, value);
+    memory.delete(key);
+  } catch {
+    memory.set(key, value);
+  }
+}
 
 // src/desktop/ui/history.jsx
 import { Badge as Badge2, EmptyState as EmptyState2, ErrorState as ErrorState2, Skeleton as Skeleton2, Tabs, TabsList, TabsTrigger, useQuery as useQuery2 } from "@hermes/plugin-sdk";
@@ -687,18 +739,22 @@ function HistorySheet({ ctx, scopeKey = null, space, onClose, onChanged, initial
     } })
   ] });
 }
-function StorageNotice({ storage, onReview }) {
-  if (!storage?.warnings?.length) return null;
-  return /* @__PURE__ */ jsxs3("div", { role: "status", children: [
-    /* @__PURE__ */ jsx3("strong", { children: "Storage approaching a limit" }),
-    storage.warnings.map((row) => /* @__PURE__ */ jsxs3("p", { children: [
-      row.resource,
-      ": ",
-      row.used,
-      " / ",
-      row.limit
-    ] }, row.resource)),
-    onReview && /* @__PURE__ */ jsx3(Action, { onClick: onReview, children: "Review storage" })
+function StorageNotice({ storage, onReview, storageKey }) {
+  const notice = storageNotice(storage);
+  const [stored, setStored] = useState3(() => ({ storageKey, value: storageKey ? readDismissed(storageKey) : null }));
+  if (!notice) return null;
+  const value = !storageKey ? null : stored.storageKey === storageKey ? stored.value : readDismissed(storageKey);
+  if (value != null && value === String(notice.pct)) return null;
+  const dismiss = () => {
+    writeDismissed(storageKey, String(notice.pct));
+    setStored({ storageKey, value: String(notice.pct) });
+  };
+  return /* @__PURE__ */ jsxs3(Banner, { kind: "storage", title: notice.title, actions: (onReview || storageKey) && /* @__PURE__ */ jsxs3(Fragment3, { children: [
+    onReview && /* @__PURE__ */ jsx3(Action, { onClick: onReview, children: "Review" }),
+    storageKey && /* @__PURE__ */ jsx3(Action, { onClick: dismiss, children: "Hide until it changes" })
+  ] }), children: [
+    /* @__PURE__ */ jsx3("span", { className: "ls-oneline", title: notice.line, children: notice.line }),
+    /* @__PURE__ */ jsx3("div", { className: "ls-meter", "aria-hidden": "true", children: /* @__PURE__ */ jsx3("i", { style: { width: `${notice.pct}%` } }) })
   ] });
 }
 function StorageSection({ ctx, space, onChanged }) {
@@ -1477,6 +1533,8 @@ function createBotActions({ host: host5, backend, post, onStatus, isActive, user
     return observe(receipt);
   }
   return {
+    // The maintainer's stored chat session, for the host's Continue in chat; never sent to the guest.
+    sessionId: () => binding?.stored_session_id || null,
     restore: () => serial(check).catch(report),
     check: () => serial(check).catch(report),
     request(args) {
@@ -1979,6 +2037,14 @@ function createSpaceSession({ rest, backend, sid, container, mount, onEvent, hos
     openLink(url) {
       return openLink({ url });
     },
+    canContinue() {
+      return !!actions?.sessionId() && typeof host5?.openSession === "function";
+    },
+    continueInChat() {
+      const id = actions?.sessionId();
+      if (!id || typeof host5?.openSession !== "function") return false;
+      return host5.openSession(id);
+    },
     retryAction() {
       return actions && byUser(() => actions.retry());
     },
@@ -2018,26 +2084,8 @@ function useHeaderMode(hasSpace) {
   }, [hasSpace]);
   return [frame, mode];
 }
-var dismissedMemory = /* @__PURE__ */ new Map();
-function readDismissed(key) {
-  if (dismissedMemory.has(key)) return dismissedMemory.get(key);
-  try {
-    return globalThis.localStorage?.getItem(key) ?? null;
-  } catch {
-    return null;
-  }
-}
-function writeDismissed(key, value) {
-  try {
-    if (!globalThis.localStorage) throw new Error("No storage");
-    globalThis.localStorage.setItem(key, value);
-    dismissedMemory.delete(key);
-  } catch {
-    dismissedMemory.set(key, value);
-  }
-}
 function BotBanner({ action, storageKey, controller }) {
-  const answerId = useId();
+  const replyId = useId();
   const key = botDismissKey(action);
   const [stored, setStored] = useState6(() => ({ storageKey, value: readDismissed(storageKey) }));
   const record = parseBotDismissal(stored.storageKey === storageKey ? stored.value : readDismissed(storageKey));
@@ -2053,15 +2101,47 @@ function BotBanner({ action, storageKey, controller }) {
     writeDismissed(storageKey, value);
     setStored({ storageKey, value });
   };
-  return /* @__PURE__ */ jsxs6(Banner, { kind: banner.tone, title: banner.title, actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
-    banner.collapsible && /* @__PURE__ */ jsx6(Action, { "aria-expanded": banner.expanded, "aria-controls": answerId, onClick: () => setExpandedFor(banner.expanded ? null : identity), children: banner.expanded ? "Hide answer" : "Show answer" }),
-    /* @__PURE__ */ jsx6(Action, { onClick: () => controller.current?.checkAction(), children: "Check bot status" }),
+  const failed = banner.kind === "failed";
+  const canContinue = banner.collapsible && controller.current?.canContinue?.() === true;
+  return /* @__PURE__ */ jsxs6(Banner, { kind: failed ? "failed" : "info", title: /* @__PURE__ */ jsxs6(Fragment6, { children: [
+    banner.label,
+    banner.at != null && /* @__PURE__ */ jsxs6(Fragment6, { children: [
+      " \xB7 ",
+      /* @__PURE__ */ jsx6(Time, { at: banner.at })
+    ] })
+  ] }), actions: /* @__PURE__ */ jsxs6(Fragment6, { children: [
+    banner.collapsible && /* @__PURE__ */ jsx6(Action, { "aria-expanded": banner.expanded, "aria-controls": replyId, onClick: () => setExpandedFor(banner.expanded ? null : identity), children: banner.expanded ? "Collapse" : "Read reply" }),
+    banner.kind !== "reply" && /* @__PURE__ */ jsx6(Action, { onClick: () => controller.current?.checkAction(), children: "Check status" }),
     banner.canRetry && /* @__PURE__ */ jsx6(Action, { onClick: () => controller.current?.retryAction(), children: "Retry same request" }),
-    banner.canDismiss && /* @__PURE__ */ jsx6(Action, { onClick: dismiss, children: "Dismiss" })
+    banner.canDismiss && /* @__PURE__ */ jsx6(Action, { "aria-label": banner.kind === "reply" ? "Dismiss reply" : void 0, onClick: dismiss, children: "Dismiss" })
   ] }), children: [
-    /* @__PURE__ */ jsx6("span", { role: "status", "aria-live": "polite", children: banner.message }),
-    banner.collapsible && (banner.expanded ? /* @__PURE__ */ jsx6("div", { id: answerId, className: "ls-answer", tabIndex: 0, role: "region", "aria-label": "Bot answer", children: /* @__PURE__ */ jsx6(Answer, { text: banner.answer, onOpenLink: (href) => controller.current?.openLink(href) }) }) : /* @__PURE__ */ jsx6("p", { id: answerId, className: "ls-answer-summary", title: banner.summary, children: banner.summary }))
+    banner.reason && /* @__PURE__ */ jsx6("span", { className: "ls-oneline", title: banner.reason, children: banner.reason }),
+    banner.collapsible && /* @__PURE__ */ jsxs6(Fragment6, { children: [
+      /* @__PURE__ */ jsx6("p", { className: "ls-oneline ls-answer-summary", title: banner.summary, children: banner.summary }),
+      /* @__PURE__ */ jsx6("div", { id: replyId, className: "ls-collapse", "data-open": banner.expanded, children: /* @__PURE__ */ jsxs6("div", { inert: !banner.expanded || void 0, "aria-hidden": !banner.expanded, children: [
+        /* @__PURE__ */ jsx6("div", { className: "ls-answer", tabIndex: 0, role: "region", "aria-label": "Hermes reply", children: /* @__PURE__ */ jsx6(Answer, { text: banner.answer, onOpenLink: (href) => controller.current?.openLink(href) }) }),
+        /* @__PURE__ */ jsxs6("div", { className: "ls-actions", children: [
+          canContinue && /* @__PURE__ */ jsx6(Action, { icon: "comment-discussion", onClick: () => controller.current?.continueInChat(), children: "Continue in chat" }),
+          /* @__PURE__ */ jsx6(CopyButton2, { text: banner.answer, label: "Copy", showLabel: true, buttonSize: "sm" })
+        ] })
+      ] }) })
+    ] })
   ] });
+}
+function SpaceDetails({ dimensions, onClose, returnFocus }) {
+  return /* @__PURE__ */ jsx6(Drawer, { returnFocus, title: "Space details", onClose, children: /* @__PURE__ */ jsxs6("section", { "aria-label": "Runtime", children: [
+    /* @__PURE__ */ jsx6("h3", { children: "Runtime" }),
+    /* @__PURE__ */ jsxs6("dl", { className: "ls-facts", children: [
+      /* @__PURE__ */ jsxs6("div", { children: [
+        /* @__PURE__ */ jsx6("dt", { children: "Host" }),
+        /* @__PURE__ */ jsx6("dd", { children: PILLS[dimensions.host === "available" ? "ready" : dimensions.host]?.label || dimensions.host })
+      ] }),
+      /* @__PURE__ */ jsxs6("div", { children: [
+        /* @__PURE__ */ jsx6("dt", { children: "Space app" }),
+        /* @__PURE__ */ jsx6("dd", { children: guestWord(dimensions.guest) })
+      ] })
+    ] })
+  ] }) });
 }
 function SaveStatus({ write, announcement }) {
   const labels = { saving: "Saving\u2026", saved: `Saved ${write?.at ? absolute(write.at) : ""}`, failed: "Not saved \u2014 this change was rejected", unknown: "Save outcome unknown \u2014 the change may have been stored", conflict: "Conflict \u2014 this record changed elsewhere" };
@@ -2165,7 +2245,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
     const session = createSpaceSession({
       backend,
       host: host2,
-      onAction: (event) => current() && setBotAction(event),
+      onAction: (event) => current() && setBotAction({ ...event, at: Date.now() / 1e3 }),
       rest: openingSessionRest || ((path, options) => ctx.rest(path, options)),
       sid,
       container: content.current,
@@ -2355,6 +2435,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
         /* @__PURE__ */ jsxs6(DropdownMenu, { children: [
           /* @__PURE__ */ jsx6(DropdownMenuTrigger, { asChild: true, children: /* @__PURE__ */ jsx6(Action, { ref: overflow, className: "ls-action ls-overflow", "aria-label": "More Space actions", icon: "ellipsis" }) }),
           /* @__PURE__ */ jsxs6(DropdownMenuContent, { align: "end", children: [
+            /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openSheet("details"), children: "Details" }),
             headerMode !== "wide" && /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openHistory(), children: "History" }),
             !building && /* @__PURE__ */ jsxs6(Fragment6, { children: [
               headerMode === "narrow" && /* @__PURE__ */ jsx6(DropdownMenuItem, { onSelect: () => openSheet("upkeep"), children: "Upkeep" }),
@@ -2367,12 +2448,7 @@ function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid }) {
         ] })
       ] })
     ] }),
-    /* @__PURE__ */ jsxs6("p", { className: "ls-secondary", role: "status", "aria-live": "polite", children: [
-      "Guest runtime: ",
-      dimensions.guest,
-      "."
-    ] }),
-    /* @__PURE__ */ jsx6(StorageNotice, { storage: space.storage, onReview: () => openHistory() }),
+    /* @__PURE__ */ jsx6(StorageNotice, { storage: space.storage, onReview: () => openHistory(), storageKey: `living-spaces:storage-dismissed:${connectionId}:${profile}:${sid}` }),
     botAction && /* @__PURE__ */ jsx6(BotBanner, { action: botAction, controller, storageKey: `living-spaces:bot-dismissed:${connectionId}:${profile}:${sid}` }),
     guest.status === "faulted" && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: "This Space hit an uncaught error", children: /* @__PURE__ */ jsx6("span", { role: "status", children: "It is still open and may keep working. Saved records are unaffected. Review this Space's diagnostic log for details." }) }),
     actionError && /* @__PURE__ */ jsx6(Banner, { kind: "failed", title: actionError }),
@@ -2423,6 +2499,7 @@ Logged to this Space only. Common credential values redacted.` }),
         " can read this error and apply a new revision."
       ] })
     ] }) : archived ? /* @__PURE__ */ jsx6("div", { className: "ls-building", children: /* @__PURE__ */ jsx6("p", { children: "Restore Space to open its content. Your records and revisions are kept." }) }) : /* @__PURE__ */ jsx6("div", { ref: content, className: "ls-mount", "data-testid": "space-host" }) }) }),
+    sheet?.kind === "details" && /* @__PURE__ */ jsx6(SpaceDetails, { returnFocus: sheet.returnFocus, dimensions, onClose: () => setSheet(null) }),
     sheet?.kind === "permissions" && /* @__PURE__ */ jsx6(PermissionsSheet, { returnFocus: sheet.returnFocus, ctx, scopeKey, space, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
     sheet?.kind === "history" && /* @__PURE__ */ jsx6(HistorySheet, { returnFocus: sheet.returnFocus, ctx, scopeKey, space, initialTab: sheet.tab, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
     sheet?.kind === "upkeep" && /* @__PURE__ */ jsx6(UpkeepSheet, { returnFocus: sheet.returnFocus, ctx, scopeKey, space, onClose: () => setSheet(null), onChanged: () => detail.refetch() }),
@@ -2462,7 +2539,10 @@ var styles = `
 .ls-sheet{position:fixed!important;top:0!important;right:0!important;left:auto!important;bottom:0!important;transform:none!important;translate:none!important;width:min(460px,100vw)!important;max-width:460px!important;max-height:100dvh!important;height:100dvh!important;border-radius:0!important;background:var(--ui-bg-elevated,var(--ui-surface-background,Canvas))!important;animation:none!important}.ls-sheet-body{display:flex!important;flex-direction:column!important;height:100%;max-height:100dvh!important;padding:0!important;gap:0!important;overflow:hidden!important}.ls-sheet-header{display:flex!important;flex-direction:row!important;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--ls-line);flex:none}.ls-sheet-scroll{padding:18px 16px;overflow:auto;min-height:0;flex:1}.ls-disclosure{margin:8px 0!important;font-size:12px;line-height:1.55;max-width:60ch}.ls-internet .ls-row-top{min-height:56px}.ls-internet>.ls-secondary{font-size:12px;max-width:60ch}.ls-switch-value{display:flex;gap:8px;align-items:center}.ls-switch{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:40px;padding:0;border:0;background:none;cursor:pointer;flex:none}.ls-switch-track{display:block;width:40px;height:24px;border-radius:999px;border:1px solid var(--ui-stroke-secondary);background:var(--ui-stroke-secondary);position:relative}.ls-switch-thumb{position:absolute;left:2px;top:2px;width:18px;height:18px;border-radius:50%;background:var(--ui-text-primary);transition:transform 120ms ease-out}.ls-switch[aria-checked=true] .ls-switch-track{background:var(--ui-accent);border-color:var(--ui-accent)}.ls-switch[aria-checked=true] .ls-switch-thumb{transform:translateX(16px);background:var(--ui-text-on-accent,#fff)}.ls-switch[aria-disabled=true]{cursor:not-allowed}.ls-upkeep-prompt{margin:16px 0}.ls-upkeep-prompt h3,.ls-sheet h3{font-size:13px;font-weight:600;margin:0}.ls-upkeep-prompt p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}.ls-clamp-six,.ls-clamp-three{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}.ls-clamp-three{-webkit-line-clamp:3}.ls-upkeep-note{font-size:12px}.ls-upkeep-actions>.ls-danger{margin-left:auto}.ls-upkeep-feedback{font-size:12px;margin:12px 0;outline-offset:2px}.ls-section{margin:0 0 22px}.ls-section-title{font-size:12px!important;font-weight:600!important;letter-spacing:.025em;margin:4px 0 12px!important}.ls-grant,.ls-row{padding:12px;border:1px solid var(--ls-line);border-radius:8px;margin-bottom:12px}.ls-row-top{display:flex;align-items:center;gap:8px;justify-content:space-between}.ls-row-top>strong{display:flex;gap:8px;align-items:center}.ls-pending{background:color-mix(in srgb,var(--ls-warning) 6%,var(--ls-surface))}.ls-audit{padding-left:18px;font-size:12px}.ls-tabs{margin-bottom:16px}.ls-confirm{max-width:520px!important}.ls-compare{display:grid;gap:12px}.ls-directive{padding:14px;border:1px solid var(--ui-stroke-secondary);border-radius:12px;max-width:440px;background:var(--ui-bg-card,var(--ui-bg-secondary));display:grid;gap:10px}.ls-spin{animation:ls-spin 1s linear infinite}@keyframes ls-spin{to{transform:rotate(360deg)}}
 .ls-frame:not([data-header-mode=wide]) .ls-wide-only{display:none!important}.ls-frame:not([data-header-mode=wide]) .ls-framebar{flex-wrap:wrap}.ls-frame:not([data-header-mode=wide]) .ls-framebar{position:static}.ls-frame:not([data-header-mode=wide]) .ls-frame-actions{width:100%;justify-content:flex-end}.ls-frame:not([data-header-mode=wide]) .ls-save{margin-right:auto}.ls-frame[data-header-mode=narrow] .ls-identity{flex-basis:100%}.ls-frame[data-header-mode=narrow] .ls-upkeep-action{display:none}.ls-frame[data-header-mode=narrow] .ls-frame-actions .ls-action:not(.ls-overflow){padding:0 8px!important}.ls-frame[data-header-mode=narrow] .ls-save{max-width:100%;flex-basis:100%}.ls-frame[data-header-mode=narrow] .ls-save:empty{display:none}.ls-frame-actions .ls-overflow{width:32px;height:32px;min-width:32px;padding:0!important;flex:none}
 @media(max-width:899px){.ls-page{padding:20px 16px}.ls-content{padding:12px}.ls-page-heading{flex-wrap:wrap;gap:4px}.ls-sort{width:100%}.ls-sheet{width:min(460px,100vw)!important}}@media(max-width:359px){.ls-internet .ls-row-top{flex-wrap:wrap}.ls-internet .ls-switch-value{width:100%}}@media(prefers-reduced-motion:reduce){.ls-spin{animation:none}.ls-root *,.ls-sheet *,.ls-confirm *{transition:none!important;animation:none!important}}@media(forced-colors:active){.ls-pill,.ls-card,.ls-tile,.ls-action{border:1px solid CanvasText!important}.ls-switch-track{border:1px solid ButtonText!important;background:Canvas!important}.ls-switch-thumb{background:ButtonText!important}.ls-switch[aria-checked=true] .ls-switch-track{background:Highlight!important}.ls-switch[aria-checked=true] .ls-switch-thumb{background:HighlightText!important}}
-.ls-banner>div{min-width:0;flex:1}.ls-answer-summary{margin:4px 0 0!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ls-answer{margin-top:6px;max-height:min(40vh,320px);overflow:auto;overflow-wrap:anywhere;color:var(--ui-text-primary)}.ls-answer :is(p,ul,ol,pre){margin:0 0 6px!important}.ls-answer :is(ul,ol){padding-left:20px}.ls-answer pre{white-space:pre-wrap;padding:8px;background:var(--ui-bg-primary);border:1px solid var(--ls-line);font:12px/1.5 var(--font-mono,monospace)}.ls-answer code{font-family:var(--font-mono,monospace)}
+.ls-banner>div{min-width:0;flex:1}.ls-oneline{display:block;margin:4px 0 0!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ls-answer{margin-top:6px;max-height:min(42vh,360px);overflow:auto;overflow-wrap:anywhere;color:var(--ui-text-primary)}.ls-answer :is(p,ul,ol,pre,h5){margin:0 0 6px!important}.ls-answer h5{font-size:inherit}.ls-answer :is(ul,ol){padding-left:20px}.ls-answer pre{white-space:pre-wrap;padding:8px;background:var(--ui-bg-primary);border:1px solid var(--ls-line);font:12px/1.5 var(--font-mono,monospace)}.ls-answer code{font-family:var(--font-mono,monospace)}
+.ls-collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows 240ms cubic-bezier(.23,1,.32,1)}.ls-collapse>div{min-height:0;overflow:hidden;opacity:0;transition:opacity 160ms ease}.ls-collapse[data-open=true]{grid-template-rows:1fr}.ls-collapse[data-open=true]>div{opacity:1;transition:opacity 200ms ease 60ms}
+.ls-meter{height:4px;margin-top:6px;border-radius:4px;background:var(--ls-line);overflow:hidden}.ls-meter>i{display:block;height:100%;background:var(--ls-warning)}
+@media(prefers-reduced-motion:reduce){.ls-root .ls-collapse{transition:none!important}.ls-root .ls-collapse>div{transition:opacity 160ms ease!important}}
 `;
 
 // src/desktop/ui/context.jsx

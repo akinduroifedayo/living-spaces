@@ -1,10 +1,11 @@
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState, Skeleton, host, useQuery, useQueryClient } from '@hermes/plugin-sdk'
+import { CopyButton, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, ErrorState, Skeleton, host, useQuery, useQueryClient } from '@hermes/plugin-sdk'
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Action, Answer, Banner, CopyPrompt, DecisionDialog, Drawer, Icon, OwnerChip, SpaceTile, StatusPill, Freshness, DisabledReason, absolute } from './components.jsx'
+import { Action, Answer, Banner, CopyPrompt, DecisionDialog, Drawer, Icon, OwnerChip, SpaceTile, StatusPill, Freshness, DisabledReason, Time, absolute } from './components.jsx'
+import { readDismissed, writeDismissed } from './dismissal.mjs'
 import { HistorySheet, StorageNotice } from './history.jsx'
 import { PermissionsSheet } from './permissions.jsx'
 import { UpkeepSheet } from './upkeep.jsx'
-import { advanceCursor, botBanner, botDismissed, botDismissKey, diagnosticText, dismissBot, errorText, headerFacts, inFlight, parseBotDismissal, refreshReason, runResult, spacePath, spaceStatus, statusDimensions } from './model.mjs'
+import { advanceCursor, botBanner, botDismissed, botDismissKey, diagnosticText, dismissBot, errorText, guestWord, headerFacts, inFlight, parseBotDismissal, PILLS, refreshReason, runResult, spacePath, spaceStatus, statusDimensions } from './model.mjs'
 import { createSpaceSession } from './session.mjs'
 import { mountSpace } from '../sandbox/index.js'
 
@@ -26,22 +27,8 @@ function useHeaderMode(hasSpace) {
   return [frame, mode]
 }
 
-// Dismissed bot banners persist per Space and activation; memory backs storage when it is unavailable.
-const dismissedMemory = new Map()
-function readDismissed(key) {
-  // Memory holds only a dismissal that storage refused, so it is newer than any stored value.
-  if (dismissedMemory.has(key)) return dismissedMemory.get(key)
-  try { return globalThis.localStorage?.getItem(key) ?? null } catch { return null }
-}
-function writeDismissed(key, value) {
-  try {
-    if (!globalThis.localStorage) throw new Error('No storage')
-    globalThis.localStorage.setItem(key, value)
-    dismissedMemory.delete(key)
-  } catch { dismissedMemory.set(key, value) }
-}
 function BotBanner({ action, storageKey, controller }) {
-  const answerId = useId()
+  const replyId = useId()
   const key = botDismissKey(action)
   const [stored, setStored] = useState(() => ({ storageKey, value: readDismissed(storageKey) }))
   const record = parseBotDismissal(stored.storageKey === storageKey ? stored.value : readDismissed(storageKey))
@@ -59,16 +46,32 @@ function BotBanner({ action, storageKey, controller }) {
     writeDismissed(storageKey, value)
     setStored({ storageKey, value })
   }
-  return <Banner kind={banner.tone} title={banner.title} actions={<>
-    {banner.collapsible && <Action aria-expanded={banner.expanded} aria-controls={answerId} onClick={() => setExpandedFor(banner.expanded ? null : identity)}>{banner.expanded ? 'Hide answer' : 'Show answer'}</Action>}
-    <Action onClick={() => controller.current?.checkAction()}>Check bot status</Action>
+  const failed = banner.kind === 'failed'
+  const canContinue = banner.collapsible && controller.current?.canContinue?.() === true
+  return <Banner kind={failed ? 'failed' : 'info'} title={<>{banner.label}{banner.at != null && <> · <Time at={banner.at} /></>}</>} actions={<>
+    {banner.collapsible && <Action aria-expanded={banner.expanded} aria-controls={replyId} onClick={() => setExpandedFor(banner.expanded ? null : identity)}>{banner.expanded ? 'Collapse' : 'Read reply'}</Action>}
+    {banner.kind !== 'reply' && <Action onClick={() => controller.current?.checkAction()}>Check status</Action>}
     {banner.canRetry && <Action onClick={() => controller.current?.retryAction()}>Retry same request</Action>}
-    {banner.canDismiss && <Action onClick={dismiss}>Dismiss</Action>}
-  </>}><span role="status" aria-live="polite">{banner.message}</span>
-    {banner.collapsible && (banner.expanded
-      ? <div id={answerId} className="ls-answer" tabIndex={0} role="region" aria-label="Bot answer"><Answer text={banner.answer} onOpenLink={href => controller.current?.openLink(href)} /></div>
-      : <p id={answerId} className="ls-answer-summary" title={banner.summary}>{banner.summary}</p>)}
+    {banner.canDismiss && <Action aria-label={banner.kind === 'reply' ? 'Dismiss reply' : undefined} onClick={dismiss}>Dismiss</Action>}
+  </>}>
+    {banner.reason && <span className="ls-oneline" title={banner.reason}>{banner.reason}</span>}
+    {banner.collapsible && <>
+      <p className="ls-oneline ls-answer-summary" title={banner.summary}>{banner.summary}</p>
+      <div id={replyId} className="ls-collapse" data-open={banner.expanded}><div inert={!banner.expanded || undefined} aria-hidden={!banner.expanded}>
+        <div className="ls-answer" tabIndex={0} role="region" aria-label="Hermes reply"><Answer text={banner.answer} onOpenLink={href => controller.current?.openLink(href)} /></div>
+        <div className="ls-actions">{canContinue && <Action icon="comment-discussion" onClick={() => controller.current?.continueInChat()}>Continue in chat</Action>}<CopyButton text={banner.answer} label="Copy" showLabel buttonSize="sm" /></div>
+      </div></div>
+    </>}
   </Banner>
+}
+
+function SpaceDetails({ dimensions, onClose, returnFocus }) {
+  return <Drawer returnFocus={returnFocus} title="Space details" onClose={onClose}>
+    <section aria-label="Runtime"><h3>Runtime</h3><dl className="ls-facts">
+      <div><dt>Host</dt><dd>{PILLS[dimensions.host === 'available' ? 'ready' : dimensions.host]?.label || dimensions.host}</dd></div>
+      <div><dt>Space app</dt><dd>{guestWord(dimensions.guest)}</dd></div>
+    </dl></section>
+  </Drawer>
 }
 
 function SaveStatus({ write, announcement }) {
@@ -151,7 +154,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
     const current = () => !disposed && host.state.connectionId.get() === connectionId && host.state.profile.get() === profile
     const fail = message => setGuest({ status: 'failed', diagnostic: diagnosticText(message || 'The guest could not be loaded.') })
     const backend = { connectionId, profile }
-    const session = createSpaceSession({ backend, host, onAction: event => current() && setBotAction(event), rest: openingSessionRest || ((path, options) => ctx.rest(path, options)), sid, container: content.current,
+    const session = createSpaceSession({ backend, host, onAction: event => current() && setBotAction({ ...event, at: Date.now() / 1000 }), rest: openingSessionRest || ((path, options) => ctx.rest(path, options)), sid, container: content.current,
       mount: (container, options) => mountSpace(container, { ...options, call: async (op, args) => {
         const reply = await options.call(op, args)
         if (current() && op === 'log' && reply?.ok === true) {
@@ -282,10 +285,9 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
       <span className="ls-wide-only"><Action onClick={() => openHistory()}>History</Action></span>
       {space.grants?.some(grant => grant.capability === 'net' && grant.status === 'granted') && <Action icon="globe" onClick={() => openSheet('permissions')}>Internet on</Action>}
       {!building && <><Action onClick={() => openSheet('permissions')}>Permissions</Action><DisabledReason reason={reason}><Action primary icon="refresh" aria-busy={busy} aria-disabled={!!reason || busy} title={reason || undefined} onClick={refresh}>{busy ? 'Refreshing…' : 'Refresh now'}</Action></DisabledReason></>}
-      <DropdownMenu><DropdownMenuTrigger asChild><Action ref={overflow} className="ls-action ls-overflow" aria-label="More Space actions" icon="ellipsis" /></DropdownMenuTrigger><DropdownMenuContent align="end">{headerMode !== 'wide' && <DropdownMenuItem onSelect={() => openHistory()}>History</DropdownMenuItem>}{!building && <>{headerMode === 'narrow' && <DropdownMenuItem onSelect={() => openSheet('upkeep')}>Upkeep</DropdownMenuItem>}<DropdownMenuSeparator /><DropdownMenuItem onSelect={() => act('pin', { pinned: !space.pinned })}>{space.pinned ? 'Unpin Space' : 'Pin Space'}</DropdownMenuItem><DropdownMenuItem onSelect={() => archived ? act('unarchive') : askConfirmation('archive')}>{archived ? 'Restore Space' : 'Archive Space…'}</DropdownMenuItem>{archived && <DropdownMenuItem onSelect={() => askConfirmation('delete')}>Delete…</DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
+      <DropdownMenu><DropdownMenuTrigger asChild><Action ref={overflow} className="ls-action ls-overflow" aria-label="More Space actions" icon="ellipsis" /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => openSheet('details')}>Details</DropdownMenuItem>{headerMode !== 'wide' && <DropdownMenuItem onSelect={() => openHistory()}>History</DropdownMenuItem>}{!building && <>{headerMode === 'narrow' && <DropdownMenuItem onSelect={() => openSheet('upkeep')}>Upkeep</DropdownMenuItem>}<DropdownMenuSeparator /><DropdownMenuItem onSelect={() => act('pin', { pinned: !space.pinned })}>{space.pinned ? 'Unpin Space' : 'Pin Space'}</DropdownMenuItem><DropdownMenuItem onSelect={() => archived ? act('unarchive') : askConfirmation('archive')}>{archived ? 'Restore Space' : 'Archive Space…'}</DropdownMenuItem>{archived && <DropdownMenuItem onSelect={() => askConfirmation('delete')}>Delete…</DropdownMenuItem>}</>}</DropdownMenuContent></DropdownMenu>
     </div></header>
-    <p className="ls-secondary" role="status" aria-live="polite">Guest runtime: {dimensions.guest}.</p>
-    <StorageNotice storage={space.storage} onReview={() => openHistory()} />
+    <StorageNotice storage={space.storage} onReview={() => openHistory()} storageKey={`living-spaces:storage-dismissed:${connectionId}:${profile}:${sid}`} />
     {botAction && <BotBanner action={botAction} controller={controller} storageKey={`living-spaces:bot-dismissed:${connectionId}:${profile}:${sid}`} />}
     {guest.status === 'faulted' && <Banner kind="failed" title="This Space hit an uncaught error"><span role="status">It is still open and may keep working. Saved records are unaffected. Review this Space's diagnostic log for details.</span></Banner>}
     {actionError && <Banner kind="failed" title={actionError} />}
@@ -296,6 +298,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
     <section className="ls-content" aria-label="Space content"><div className={`ls-sandbox${status === 'failed' ? ' ls-stale' : ''}`}>
       {building ? <div className="ls-building"><p role="status">{space.owner} is building the first version. This opens automatically when it's ready.</p><Skeleton style={{ height: 100 }} /><Skeleton style={{ height: 180 }} /></div> : status === 'crashed' ? <div className="ls-crash"><ErrorState title={`${space.name} stopped working`} description="The guest hit an error and was stopped. Already-written records remain; stopping the guest does not undo changes. Check the save status for any pending change." /><pre className="ls-diagnostic">{`Revision ${space.head_rev}\n${crashMessage}\nLogged to this Space only. Common credential values redacted.`}</pre><div className="ls-actions"><Action primary onClick={() => { setGuest({ status: 'unknown', diagnostic: null }); setIgnoredCrashRev(space.head_rev); setReload(n => n + 1) }}>Reload Space</Action><Action onClick={() => openHistory('revisions')}>Restore revision…</Action></div><CopyPrompt text={`${space.owner}, ${space.name} crashed. Please read its error log and fix it.`} /><p className="ls-secondary">Repairs happen in chat. {space.owner} can read this error and apply a new revision.</p></div> : archived ? <div className="ls-building"><p>Restore Space to open its content. Your records and revisions are kept.</p></div> : <div ref={content} className="ls-mount" data-testid="space-host" />}
     </div></section>
+    {sheet?.kind === 'details' && <SpaceDetails returnFocus={sheet.returnFocus} dimensions={dimensions} onClose={() => setSheet(null)} />}
     {sheet?.kind === 'permissions' && <PermissionsSheet returnFocus={sheet.returnFocus} ctx={ctx} scopeKey={scopeKey} space={space} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
     {sheet?.kind === 'history' && <HistorySheet returnFocus={sheet.returnFocus} ctx={ctx} scopeKey={scopeKey} space={space} initialTab={sheet.tab} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}
     {sheet?.kind === 'upkeep' && <UpkeepSheet returnFocus={sheet.returnFocus} ctx={ctx} scopeKey={scopeKey} space={space} onClose={() => setSheet(null)} onChanged={() => detail.refetch()} />}

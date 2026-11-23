@@ -4,6 +4,8 @@
 const FENCE = /^\s*```/
 const HEADING = /^\s{0,3}(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/
 const ITEM = /^\s*([-*+]|\d{1,9}[.)])\s+(.*)$/
+// A line that is only bold text ('**Heading**' or '**Heading:**') is a heading in chat replies.
+const BOLD_HEADING = /^\s*(?:\*\*([^*\n]+?)\*\*|__([^_\n]+?)__)\s*$/
 const INLINE = new RegExp([
   /`([^`\n]+)`/.source,
   /\*\*([^*\n]+?)\*\*/.source,
@@ -38,7 +40,7 @@ export function parseInline(line) {
   return spans
 }
 
-const startsBlock = line => FENCE.test(line) || HEADING.test(line) || ITEM.test(line)
+const startsBlock = line => FENCE.test(line) || HEADING.test(line) || BOLD_HEADING.test(line) || ITEM.test(line)
 
 export function parseMarkdown(text) {
   const lines = String(text ?? '').replace(/\r\n?/g, '\n').split('\n')
@@ -56,6 +58,8 @@ export function parseMarkdown(text) {
     }
     const heading = HEADING.exec(line)
     if (heading) { blocks.push({ type: 'heading', spans: parseInline(heading[2]) }); i++; continue }
+    const bold = BOLD_HEADING.exec(line)
+    if (bold) { blocks.push({ type: 'heading', spans: [{ type: 'text', text: (bold[1] ?? bold[2]).trim() }] }); i++; continue }
     const item = ITEM.exec(line)
     if (item) {
       const ordered = /\d/.test(item[1])
@@ -81,11 +85,15 @@ export function parseMarkdown(text) {
   return blocks
 }
 
+const plain = spans => spans.map(span => span.type === 'break' ? ' ' : span.text).join('').replace(/\s+/g, ' ').trim()
+const SUMMARY_MAX = 160
+// The first sentence of the reply's first prose block (a paragraph, else a list item, else a heading),
+// without markdown markers, capped at 160 characters.
 export function answerSummary(text) {
-  for (const raw of String(text ?? '').replace(/\r\n?/g, '\n').split('\n')) {
-    const line = raw.replace(/^\s*(?:```.*|#{1,6}\s+|>\s*|[-*+]\s+|\d{1,9}[.)]\s+)/, '')
-    const summary = parseInline(line).map(span => span.text).join('').trim()
-    if (summary) return summary
-  }
-  return ''
+  const blocks = parseMarkdown(text)
+  const block = blocks.find(b => b.type === 'paragraph') || blocks.find(b => b.type === 'list') || blocks.find(b => b.type === 'heading')
+  if (!block) return ''
+  const line = plain(block.type === 'list' ? block.items[0] : block.spans)
+  const sentence = /^.*?[.!?](?=\s|$)/.exec(line)?.[0] ?? line
+  return sentence.length > SUMMARY_MAX ? `${sentence.slice(0, SUMMARY_MAX - 1).trimEnd()}…` : sentence
 }

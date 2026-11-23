@@ -38,7 +38,8 @@ test('Q18 host storage shows counts and warnings and requires exact proposal con
   try {
     await act(async () => view.render(React.createElement(history.StorageSection, { ctx, space: { id: 'demo-space', storage }, onChanged() {} })))
     assert.match(document.body.textContent, /40000/)
-    assert.match(document.body.textContent, /50000/)
+    assert.match(document.body.textContent, /Storage 80% full/)
+    assert.match(document.body.textContent, /40,000 of 50,000 used by records\. Writes stop at the limit\./)
     assert.match(document.body.textContent, /native-owned/i)
     assert.equal(calls.length, 0)
     await click('Preview cleanup')

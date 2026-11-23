@@ -50,7 +50,8 @@ before(() => {
 })
 after(() => dom.window.close())
 function setup() { data = {}; view = createRoot(document.getElementById('root')) }
-async function render(Component, props) { await act(async () => view.render(React.createElement(Component, props))) }
+let lastProps
+async function render(Component, props) { if (Component === SpaceView) lastProps = props; await act(async () => view.render(React.createElement(Component, props))) }
 async function click(label) {
   const button = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === label)
   assert.ok(button, label)
@@ -346,12 +347,40 @@ test('failed catch-up in SpaceView preserves last-good header timestamps and fai
   } finally { await act(async () => view.unmount()) }
 })
 
-const q04Guest = state => {
-  assert.match(document.body.textContent, new RegExp(`(?:guest|application|runtime)[^.!?\\n]{0,60}\\b${state}\\b`, 'i'))
+// Runtime state lives only in the Details drawer: open it from the overflow menu, read 'Space app', close it.
+async function q04Details() {
+  const menu = { content: sdk.DropdownMenuContent, item: sdk.DropdownMenuItem }
+  sdk.DropdownMenuContent = ({ children }) => React.createElement('div', { role: 'menu' }, children)
+  sdk.DropdownMenuItem = ({ children, onSelect }) => React.createElement('button', { type: 'button', role: 'menuitem', onClick: onSelect }, children)
+  try {
+    await act(async () => view.render(React.createElement(SpaceView, lastProps)))
+    const item = [...document.querySelectorAll('[role="menuitem"]')].find(node => node.textContent === 'Details')
+    assert.ok(item, 'the overflow menu offers Details')
+    await act(async () => item.click())
+  } finally {
+    sdk.DropdownMenuContent = menu.content
+    sdk.DropdownMenuItem = menu.item
+    await act(async () => view.render(React.createElement(SpaceView, lastProps)))
+  }
+  const dialog = document.querySelector('[role="dialog"]')
+  assert.ok(dialog, 'Details opens a drawer')
+  assert.match(dialog.textContent, /Space details/)
+  const facts = Object.fromEntries([...dialog.querySelectorAll('dl div')].map(row => [row.querySelector('dt').textContent, row.querySelector('dd').textContent]))
+  await click('Close')
+  assert.equal(document.querySelector('[role="dialog"]'), null)
+  return facts
 }
-// The host has no app-readiness signal, so it must not render a hard-coded one.
+const Q04_WORDS = { unknown: 'not reported', starting: 'starting', loaded: 'loaded', failed: 'failed', faulted: 'faulted (uncaught error, still running)' }
+const q04Guest = async (...states) => {
+  const facts = await q04Details()
+  assert.equal(facts.Host, 'Available')
+  assert.ok(states.map(state => Q04_WORDS[state]).includes(facts['Space app']), `Space app is ${facts['Space app']}, expected ${states.join(' or ')}`)
+  if (!states.includes('loaded')) assert.notEqual(facts['Space app'], 'loaded', 'Details must not claim the app loaded')
+  return facts
+}
+// Runtime and readiness appear nowhere on the canvas; the host has no app-readiness signal at all.
 const q04NoAppReadiness = () => {
-  assert.doesNotMatch(document.body.textContent, /App readiness/i)
+  assert.doesNotMatch(document.body.textContent, /App readiness|Guest runtime|Space app/i)
 }
 const q04Log = (lifecycle, entries = []) => ({ entries, ...(lifecycle ? { lifecycle } : {}) })
 
@@ -401,7 +430,7 @@ for (const [name, message] of [
       assert.equal(document.querySelector('.ls-frame-meta').textContent, header)
       assert.match(document.querySelector('.ls-save').textContent, /Saved /)
       assert.deepEqual(calls.map(call => call.op), ['log', 'data.put'])
-      q04Guest('loaded')
+      await q04Guest('loaded')
       q04NoAppReadiness()
     } finally { await act(async () => view.unmount()) }
   })
@@ -421,10 +450,10 @@ test('Q04 an uncaught guest fault after first paint raises runtime attention wit
     assert.doesNotMatch(document.body.textContent, /Demo stopped working/)
     assert.match(document.body.textContent, /Available/)
     assert.match(document.querySelector('.ls-save').textContent, /Saved /)
-    q04Guest('faulted')
+    await q04Guest('faulted')
     q04NoAppReadiness()
     await act(async () => activeMount.call('log', q04Log('loaded')))
-    q04Guest('faulted')
+    await q04Guest('faulted')
   } finally { await act(async () => view.unmount()) }
 })
 
@@ -434,12 +463,12 @@ test('Q04 a later boot failure supersedes a runtime fault', async () => {
     await render(SpaceView, spaceProps(body => ({ ok: true, result: { stored: body.args.entries?.length || 0 } })))
     const activeMount = mounted
     await act(async () => activeMount.onEvent({ kind: 'fault', count: 1 }))
-    q04Guest('faulted')
+    await q04Guest('faulted')
     await act(async () => activeMount.call('log', q04Log('failed', [{ level: 'error', msg: 'Evaluation refused' }])))
     assert.match(document.body.textContent, /Demo stopped working/)
-    q04Guest('failed')
+    await q04Guest('failed')
     await act(async () => activeMount.onEvent({ kind: 'fault', count: 2 }))
-    q04Guest('failed')
+    await q04Guest('failed')
   } finally { await act(async () => view.unmount()) }
 })
 
@@ -450,13 +479,13 @@ test('Q04 session creation and shell boot do not claim guest loaded or app readi
     assert.ok(mounted, 'session creation reached the mount seam')
     assert.match(document.body.textContent, /Available/)
     assert.doesNotMatch(document.body.textContent, /\bReady\b|(?:guest|application|runtime)[^.!?\n]{0,60}\bloaded\b/i)
-    q04Guest('(?:unknown|starting)')
+    await q04Guest('unknown', 'starting')
     await act(async () => mounted.onEvent({ kind: 'booted' }))
-    q04Guest('starting')
+    await q04Guest('starting')
     assert.doesNotMatch(document.body.textContent, /(?:guest|application|runtime)[^.!?\n]{0,60}\bloaded\b/i)
     q04NoAppReadiness()
     await act(async () => mounted.call('log', q04Log('loaded')))
-    q04Guest('loaded')
+    await q04Guest('loaded')
     q04NoAppReadiness()
     assert.doesNotMatch(document.body.textContent, /\bReady\b/i)
   } finally { await act(async () => view.unmount()) }
@@ -473,10 +502,10 @@ test('Q04 mount lifecycle failed supersedes loaded and stays failed after loaded
     await act(async () => activeMount.call('log', q04Log('failed', [{ level: 'error', msg: 'Evaluation refused' }])))
     assert.deepEqual(calls.map(call => call.args.lifecycle), ['loaded', 'failed'], 'real mount calls reached the bridge')
     assert.match(document.body.textContent, /Demo stopped working/)
-    q04Guest('failed')
+    await q04Guest('failed')
     assert.match(document.body.textContent, /Available/)
     await act(async () => activeMount.call('log', q04Log('loaded')))
-    q04Guest('failed')
+    await q04Guest('failed')
     assert.match(document.body.textContent, /Demo stopped working/)
   } finally { await act(async () => view.unmount()) }
 })
@@ -492,7 +521,7 @@ test('Q04 error log entries without lifecycle do not fail a loaded guest', async
     assert.deepEqual(calls.map(call => call.args), [q04Log('loaded'), { entries }])
     assert.ok(document.querySelector('[data-testid="space-host"]'))
     assert.doesNotMatch(document.body.textContent, /Demo stopped working/)
-    q04Guest('loaded')
+    await q04Guest('loaded')
   } finally { await act(async () => view.unmount()) }
 })
 
@@ -519,7 +548,7 @@ test('Q04 old mount events and lifecycle replies cannot change the replacement v
     })
     assert.ok(document.querySelector('[data-testid="space-host"]'))
     assert.doesNotMatch(document.body.textContent, /Demo stopped working|uncaught error/)
-    q04Guest('loaded')
+    await q04Guest('loaded')
     q04NoAppReadiness()
   } finally {
     releaseOld?.({ ok: true, result: { stored: 0 } })
@@ -545,7 +574,7 @@ test('Q04 loaded guest and failed save preserve authoritative failed-refresh fre
     assert.deepEqual(data.detail.freshness, freshness)
     assert.ok(document.querySelector('[data-testid="space-host"]'))
     assert.match(document.body.textContent, /Available/)
-    q04Guest('loaded')
+    await q04Guest('loaded')
     q04NoAppReadiness()
   } finally { await act(async () => view.unmount()) }
 })
