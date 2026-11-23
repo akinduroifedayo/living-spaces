@@ -126,6 +126,41 @@ class Checks(IconCase):
         self.assertIn("not in this Space's files", space["icon_image"]["fails"][0])
 
 
+class ReviewRegressions(IconCase):
+    def test_a_huge_header_is_refused_before_any_pixel_is_decoded(self):
+        import struct, zlib
+        small = io.BytesIO(); Image.new("RGB", (1, 1)).save(small, "PNG"); raw = bytearray(small.getvalue())
+        ihdr = struct.pack(">II", 12000, 12000) + bytes(raw[24:29])
+        raw[16:29] = ihdr
+        raw[29:33] = struct.pack(">I", zlib.crc32(b"IHDR" + ihdr) & 0xFFFFFFFF)
+        with patch.object(Image.Image, "load", side_effect=AssertionError("decoded")):
+            self.assertIn("too large 12000px (max 2048)", icons.check(bytes(raw), "teal")["fails"])
+            self.assertEqual(icons.prepare("assets/icon.png", bytes(raw)), bytes(raw))
+
+    def test_animated_and_palette_transparent_images_fail(self):
+        frames = [Image.open(io.BytesIO(icon())), Image.new("RGB", (1024, 1024), "#ff0000")]
+        out = io.BytesIO(); frames[0].save(out, "PNG", save_all=True, append_images=frames[1:])
+        self.assertIn("animated (one still image only)", icons.check(out.getvalue(), "teal")["fails"])
+        palette = Image.open(io.BytesIO(icon(size=512))).convert("P")
+        out = io.BytesIO(); palette.save(out, "PNG", transparency=palette.getpixel((256, 256)))
+        self.assertTrue(any("transparency" in f for f in icons.check(out.getvalue(), "teal")["fails"]))
+
+    def test_selecting_an_existing_asset_normalises_it(self):
+        space = self.create("globe", {"assets/big.png": icon()})
+        self.write(space["id"], files={}, manifest={"name": "Faultline Atlas", "accent": "teal", "icon": {"image": "assets/big.png"}})
+        stored = base64.b64decode(projects.read_file(space["id"], "assets/big.png")["b64"])
+        self.assertEqual(Image.open(io.BytesIO(stored)).size, (512, 512))
+        self.assertTrue(projects.icon_check(space["id"])["pass"])
+
+    def test_writing_back_the_stored_bytes_is_not_a_regeneration(self):
+        space = self.create({"image": "assets/icon.webp", "glyph": "graph"}, {"assets/icon.webp": icon(mark="#d05050")})
+        stored = base64.b64decode(projects.read_file(space["id"], "assets/icon.webp")["b64"])
+        self.write(space["id"], files={"assets/icon.webp": stored})
+        after = base64.b64decode(projects.read_file(space["id"], "assets/icon.webp")["b64"])
+        self.assertEqual(after, stored, "stored-form bytes are kept byte for byte")
+        self.assertEqual(projects.icon_check(space["id"])["attempt"], 1)
+
+
 class RegenerateOnce(IconCase):
     def plugin(self):
         path = ROOT / "src/living-spaces/__init__.py"

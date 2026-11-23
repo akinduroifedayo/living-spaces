@@ -177,11 +177,19 @@ def _diagnose(conn, manifest, files, found=()):
     return {"diagnostics": found, "warnings": [d["message"] for d in found]}
 
 
-def _prepare_icon(manifest, changed):
-    """Normalise a newly written icon image to the stored 512 px form before it is hashed."""
+def _prepare_icon(manifest, changed, conn=None, existing=None):
+    """Normalise the icon image to the stored 512 px form before it is hashed: a newly written image, or an asset
+    already in the Space that the manifest now selects. Bytes already in the stored form are kept as they are."""
     path = icons.image_path(manifest["icon"])
-    if path is not None and changed.get(path) is not None:
+    if path is None:
+        return
+    if changed.get(path) is not None:
         changed[path] = icons.prepare(path, changed[path])
+    elif path not in changed and existing and path in existing:
+        raw = bytes(conn.execute("SELECT content FROM blobs WHERE sha=?", (existing[path],)).fetchone()[0])
+        prepared = icons.prepare(path, raw)
+        if prepared != raw:
+            changed[path] = prepared
 
 
 def _icon_record(conn, sid):
@@ -446,7 +454,7 @@ def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=()
     manifest = _manifest(supplied if supplied is not None else old["manifest"], space["name"], space["description"])
     found = []
     _libraries(changed, manifest, libraries, found, existing=old["files"])
-    _prepare_icon(manifest, changed)
+    _prepare_icon(manifest, changed, conn, old["files"])
     version = manifest["data"]["version"]
     if version < space["data_version"]:
         raise SpacesError("incompatible", "Project requires an older data version", from_version=space["data_version"], to_version=version)

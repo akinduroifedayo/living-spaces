@@ -9,6 +9,7 @@ deterministic sigil. Pillow ships with Hermes; without it every image fails the 
 import io
 import math
 import re
+import warnings
 
 from .errors import SpacesError
 
@@ -78,19 +79,53 @@ def _pil():
         return None
 
 
+def _open(Image, raw):
+    """Open an image's header only: no pixels are decoded, so the size checks run before any allocation."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", Image.DecompressionBombWarning)
+        return Image.open(io.BytesIO(raw))
+
+
+def _structure(image):
+    """Fails readable from the header alone, before any pixel is allocated."""
+    fails = []
+    width, height = image.size
+    if image.format not in LIMITS["formats"]:
+        fails.append(f"format {image.format} (PNG or WebP only)")
+    if width != height:
+        fails.append(f"not square {width}x{height}")
+    if min(width, height) < LIMITS["min_px"]:
+        fails.append(f"too small {min(width, height)}px (min {LIMITS['min_px']})")
+    if max(width, height) > LIMITS["max_px"]:
+        fails.append(f"too large {max(width, height)}px (max {LIMITS['max_px']})")
+    if getattr(image, "n_frames", 1) > 1:
+        fails.append("animated (one still image only)")
+    return fails
+
+
+def _transparent(image):
+    return "A" in image.getbands() or "transparency" in image.info
+
+
+def _stored(path, image):
+    return (image.size == (STORED_PX, STORED_PX) and image.format == ("WEBP" if path.endswith(".webp") else "PNG")
+            and getattr(image, "n_frames", 1) == 1)
+
+
 def prepare(path, raw):
-    """The bytes to store at the icon path. A decodable square PNG or WebP of a usable size is re-encoded at
-    512 px in the path's own format; anything else is stored as given and fails the checks."""
+    """The bytes to store at the icon path. An image already in the stored form (512 px, the path's format) is kept
+    byte for byte, so a read-back rewrite changes nothing. A valid, opaque, still PNG or WebP of a usable size is
+    re-encoded at 512 px. Anything else is stored as given and fails the checks."""
     Image = _pil()
-    if Image is None or raw is None:
+    if Image is None or not isinstance(raw, (bytes, bytearray)):
         return raw
     try:
-        image = Image.open(io.BytesIO(raw))
-        image.load()
-        width, height = image.size
-        if (image.format not in LIMITS["formats"] or width != height
-                or not LIMITS["min_px"] <= width <= LIMITS["max_px"]):
+        image = _open(Image, raw)
+        if _stored(path, image) or _structure(image) or _transparent(image):
             return raw
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            image.load()
         out = io.BytesIO()
         image = image.convert("RGB").resize((STORED_PX, STORED_PX), Image.Resampling.LANCZOS)
         if path.endswith(".webp"):
@@ -144,24 +179,28 @@ def check(raw, accent):
         fails.append("image checks are unavailable on this host (Pillow is missing)")
         return result
     try:
-        image = Image.open(io.BytesIO(raw))
-        image.load()
+        image = _open(Image, raw)
+    except Image.DecompressionBombError:
+        fails.append(f"too large (over the decoder's pixel limit; max {LIMITS['max_px']}px)")
+        return result
     except Exception:
         fails.append("unreadable: not a PNG or WebP image")
         return result
     metrics["format"], metrics["size"] = image.format, list(image.size)
-    width, height = image.size
-    if image.format not in LIMITS["formats"]:
-        fails.append(f"format {image.format} (PNG or WebP only)")
-    if width != height:
-        fails.append(f"not square {width}x{height}")
-    if min(width, height) < LIMITS["min_px"]:
-        fails.append(f"too small {min(width, height)}px (min {LIMITS['min_px']})")
-    if max(width, height) > LIMITS["max_px"]:
-        fails.append(f"too large {max(width, height)}px (max {LIMITS['max_px']})")
     if len(raw) > LIMITS["max_bytes"]:
         fails.append(f"file {len(raw) // 1024} KiB > {LIMITS['max_bytes'] // 1024} KiB")
-    if image.mode in ("RGBA", "LA") and min(image.getchannel("A").getdata()) < 250:
+    structural = _structure(image)
+    if structural:
+        fails[:0] = structural
+        return result
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            image.load()
+    except Exception:
+        fails.append("unreadable: not a PNG or WebP image")
+        return result
+    if _transparent(image) and image.convert("RGBA").getchannel("A").getextrema()[0] < 250:  # type: ignore[index]
         fails.append("has transparency (the field must be opaque, edge to edge)")
     n = 256
     data = image.convert("RGB").resize((n, n), Image.Resampling.LANCZOS).tobytes()
