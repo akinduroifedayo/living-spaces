@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix a storage warning that a full diagnostic log history could cause. Log history trims itself and never stops a write, so it no longer replaces record, source or project warnings. Hiding a storage warning no longer hides a different resource that later fills up.
+
 ## 0.1.3
 
 - Inspect saved Spaces with screenshots, interaction checks, and clearer diagnostics when a view fails to load.

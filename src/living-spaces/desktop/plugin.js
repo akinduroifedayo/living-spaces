@@ -195,7 +195,7 @@ function botBanner(action, { dismissed = false, expanded = false } = {}) {
     canDismiss: BOT_SETTLED.includes(action.status)
   };
 }
-var STORAGE_SUBJECT = { source_bytes: "source data", source_metadata_bytes: "source metadata", data_bytes: "records", records: "records", project_bytes: "project files", project_files: "project files", file_bytes: "the largest file", log_history: "diagnostic logs" };
+var STORAGE_SUBJECT = { source_bytes: "source data", source_metadata_bytes: "source metadata", data_bytes: "records", records: "records", project_bytes: "project files", project_files: "project files", file_bytes: "the largest file" };
 var trimmed = (value) => Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -205,12 +205,14 @@ function formatBytes(bytes) {
 function storageNotice(storage) {
   const rows = (storage?.warnings || []).filter((row2) => Number.isFinite(row2?.used) && Number.isFinite(row2?.limit) && row2.limit > 0);
   if (!rows.length) return null;
+  const percent = (row2) => Math.round(row2.used / row2.limit * 100);
   const row = rows.reduce((top, next) => next.used / next.limit > top.used / top.limit ? next : top);
-  const pct = Math.round(row.used / row.limit * 100);
+  const pct = percent(row);
+  const key = rows.map((warning) => `${warning.resource}:${percent(warning)}`).sort().join(",");
   const bytes = /_bytes$/.test(row.resource);
   const amount = (value) => bytes ? formatBytes(value) : value.toLocaleString("en-US");
   const subject = STORAGE_SUBJECT[row.resource] || String(row.resource).replace(/_bytes$/, "").replace(/_/g, " ");
-  return { pct, title: `Storage ${pct}% full`, line: `${amount(row.used)} of ${amount(row.limit)} used by ${subject}. Writes stop at the limit.` };
+  return { pct, key, title: `Storage ${pct}% full`, line: `${amount(row.used)} of ${amount(row.limit)} used by ${subject}. Writes stop at the limit.` };
 }
 var GUEST_WORDS = { unknown: "not reported", starting: "starting", loaded: "loaded", failed: "failed", faulted: "faulted (uncaught error, still running)" };
 var guestWord = (state) => GUEST_WORDS[state] || String(state);
@@ -744,10 +746,10 @@ function StorageNotice({ storage, onReview, storageKey }) {
   const [stored, setStored] = useState3(() => ({ storageKey, value: storageKey ? readDismissed(storageKey) : null }));
   if (!notice) return null;
   const value = !storageKey ? null : stored.storageKey === storageKey ? stored.value : readDismissed(storageKey);
-  if (value != null && value === String(notice.pct)) return null;
+  if (value != null && value === notice.key) return null;
   const dismiss = () => {
-    writeDismissed(storageKey, String(notice.pct));
-    setStored({ storageKey, value: String(notice.pct) });
+    writeDismissed(storageKey, notice.key);
+    setStored({ storageKey, value: notice.key });
   };
   return /* @__PURE__ */ jsxs3(Banner, { kind: "storage", title: notice.title, actions: (onReview || storageKey) && /* @__PURE__ */ jsxs3(Fragment3, { children: [
     onReview && /* @__PURE__ */ jsx3(Action, { onClick: onReview, children: "Review" }),

@@ -61,7 +61,9 @@ def _summary(conn, sid):
         ('log_history', category['logs']['count'], limits.LOG_HISTORY),
     ]
     usage = [limits.usage(resource, used, maximum) for resource, used, maximum in resources]
-    return {'categories': category, 'limits': usage, 'warnings': [row for row in usage if row['approaching']],
+    # Log history is a rolling window that logs.py trims, so a full history never stops a write.
+    warnings = [row for row in usage if row['approaching'] and row['resource'] != 'log_history']
+    return {'categories': category, 'limits': usage, 'warnings': warnings,
             'bytes_basis': 'Logical UTF-8 payload bytes; excludes SQLite overhead. Shared blobs count once per Space.',
             'native_history': {'ownership': 'native-owned', 'counted': False, 'deletable': False}}
 

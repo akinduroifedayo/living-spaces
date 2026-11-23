@@ -86,7 +86,7 @@ export function botBanner(action, { dismissed = false, expanded = false } = {}) 
     canDismiss: BOT_SETTLED.includes(action.status)
   }
 }
-const STORAGE_SUBJECT = { source_bytes: 'source data', source_metadata_bytes: 'source metadata', data_bytes: 'records', records: 'records', project_bytes: 'project files', project_files: 'project files', file_bytes: 'the largest file', log_history: 'diagnostic logs' }
+const STORAGE_SUBJECT = { source_bytes: 'source data', source_metadata_bytes: 'source metadata', data_bytes: 'records', records: 'records', project_bytes: 'project files', project_files: 'project files', file_bytes: 'the largest file' }
 const trimmed = value => Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '')
 export function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`
@@ -94,15 +94,18 @@ export function formatBytes(bytes) {
   return `${trimmed(bytes / 1024 / 1024)} MB`
 }
 // The storage warning for the most-full resource, in words: never the raw resource key or byte counts.
+// Its key names every warned resource and percentage, so hiding it never hides a different warning.
 export function storageNotice(storage) {
   const rows = (storage?.warnings || []).filter(row => Number.isFinite(row?.used) && Number.isFinite(row?.limit) && row.limit > 0)
   if (!rows.length) return null
+  const percent = row => Math.round(row.used / row.limit * 100)
   const row = rows.reduce((top, next) => next.used / next.limit > top.used / top.limit ? next : top)
-  const pct = Math.round(row.used / row.limit * 100)
+  const pct = percent(row)
+  const key = rows.map(warning => `${warning.resource}:${percent(warning)}`).sort().join(',')
   const bytes = /_bytes$/.test(row.resource)
   const amount = value => bytes ? formatBytes(value) : value.toLocaleString('en-US')
   const subject = STORAGE_SUBJECT[row.resource] || String(row.resource).replace(/_bytes$/, '').replace(/_/g, ' ')
-  return { pct, title: `Storage ${pct}% full`, line: `${amount(row.used)} of ${amount(row.limit)} used by ${subject}. Writes stop at the limit.` }
+  return { pct, key, title: `Storage ${pct}% full`, line: `${amount(row.used)} of ${amount(row.limit)} used by ${subject}. Writes stop at the limit.` }
 }
 export const GUEST_WORDS = { unknown: 'not reported', starting: 'starting', loaded: 'loaded', failed: 'failed', faulted: 'faulted (uncaught error, still running)' }
 export const guestWord = state => GUEST_WORDS[state] || String(state)
