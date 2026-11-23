@@ -46,6 +46,14 @@ export function statusDimensions(space, { guest = 'unknown', write = null, hostE
 const BOT_RETRY = ['unknown', 'failed', 'offline']
 const BOT_SETTLED = ['completed', 'failed', 'offline', 'unknown']
 export const botDismissKey = action => action?.activationId ? `${action.activationId}:${action.status}` : null
+// A dismissed activation stays hidden at the status it was dismissed in, and through offline/unknown,
+// which only mean the outcome could not be observed (restore() reports them when a route is down).
+// A different observed outcome for the same activation is new information and shows again.
+export function botDismissed(action, stored) {
+  const key = botDismissKey(action)
+  if (!key || typeof stored !== 'string') return false
+  return stored === key || (stored.startsWith(`${action.activationId}:`) && ['offline', 'unknown'].includes(action.status))
+}
 export function botBanner(action, { dismissed = false, expanded = false } = {}) {
   if (!action || dismissed) return null
   const answer = typeof action.answer === 'string' && action.answer.trim() ? action.answer : null

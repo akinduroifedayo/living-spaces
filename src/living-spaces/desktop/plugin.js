@@ -149,6 +149,11 @@ function statusDimensions(space, { guest = "unknown", write = null, hostError = 
 var BOT_RETRY = ["unknown", "failed", "offline"];
 var BOT_SETTLED = ["completed", "failed", "offline", "unknown"];
 var botDismissKey = (action) => action?.activationId ? `${action.activationId}:${action.status}` : null;
+function botDismissed(action, stored) {
+  const key = botDismissKey(action);
+  if (!key || typeof stored !== "string") return false;
+  return stored === key || stored.startsWith(`${action.activationId}:`) && ["offline", "unknown"].includes(action.status);
+}
 function botBanner(action, { dismissed = false, expanded = false } = {}) {
   if (!action || dismissed) return null;
   const answer = typeof action.answer === "string" && action.answer.trim() ? action.answer : null;
@@ -1993,12 +1998,12 @@ function useHeaderMode(hasSpace) {
 }
 var dismissedMemory = /* @__PURE__ */ new Map();
 function readDismissed(key) {
+  if (dismissedMemory.has(key)) return dismissedMemory.get(key);
   try {
-    const value = globalThis.localStorage?.getItem(key);
-    if (value != null) return value;
+    return globalThis.localStorage?.getItem(key) ?? null;
   } catch {
+    return null;
   }
-  return dismissedMemory.get(key) ?? null;
 }
 function writeDismissed(key, value) {
   try {
@@ -2017,7 +2022,7 @@ function BotBanner({ action, storageKey, controller }) {
   const [dismissedAction, setDismissedAction] = useState6(null);
   const [expandedFor, setExpandedFor] = useState6(null);
   const identity = key ?? action;
-  const banner = botBanner(action, { dismissed: key ? key === dismissedKey : dismissedAction === action, expanded: expandedFor === identity });
+  const banner = botBanner(action, { dismissed: key ? botDismissed(action, dismissedKey) : dismissedAction === action, expanded: expandedFor === identity });
   if (!banner) return null;
   const dismiss = () => {
     if (key) {

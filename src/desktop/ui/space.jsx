@@ -4,7 +4,7 @@ import { Action, Answer, Banner, CopyPrompt, DecisionDialog, Drawer, Icon, Owner
 import { HistorySheet, StorageNotice } from './history.jsx'
 import { PermissionsSheet } from './permissions.jsx'
 import { UpkeepSheet } from './upkeep.jsx'
-import { advanceCursor, botBanner, botDismissKey, diagnosticText, errorText, headerFacts, inFlight, refreshReason, runResult, spacePath, spaceStatus, statusDimensions } from './model.mjs'
+import { advanceCursor, botBanner, botDismissed, botDismissKey, diagnosticText, errorText, headerFacts, inFlight, refreshReason, runResult, spacePath, spaceStatus, statusDimensions } from './model.mjs'
 import { createSpaceSession } from './session.mjs'
 import { mountSpace } from '../sandbox/index.js'
 
@@ -29,8 +29,9 @@ function useHeaderMode(hasSpace) {
 // Dismissed bot banners persist per Space and activation; memory backs storage when it is unavailable.
 const dismissedMemory = new Map()
 function readDismissed(key) {
-  try { const value = globalThis.localStorage?.getItem(key); if (value != null) return value } catch {}
-  return dismissedMemory.get(key) ?? null
+  // Memory holds only a dismissal that storage refused, so it is newer than any stored value.
+  if (dismissedMemory.has(key)) return dismissedMemory.get(key)
+  try { return globalThis.localStorage?.getItem(key) ?? null } catch { return null }
 }
 function writeDismissed(key, value) {
   try {
@@ -47,7 +48,7 @@ function BotBanner({ action, storageKey, controller }) {
   const [dismissedAction, setDismissedAction] = useState(null)
   const [expandedFor, setExpandedFor] = useState(null)
   const identity = key ?? action
-  const banner = botBanner(action, { dismissed: key ? key === dismissedKey : dismissedAction === action, expanded: expandedFor === identity })
+  const banner = botBanner(action, { dismissed: key ? botDismissed(action, dismissedKey) : dismissedAction === action, expanded: expandedFor === identity })
   if (!banner) return null
   const dismiss = () => {
     if (key) { writeDismissed(storageKey, key); setStored({ storageKey, value: key }) }

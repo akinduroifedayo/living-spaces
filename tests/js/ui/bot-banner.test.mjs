@@ -179,6 +179,54 @@ test('Dismiss hides the answer across re-render and reopen of the same activatio
     assert.match(document.querySelector('.ls-answer-summary').textContent, /Another answer/)
   } finally { await unmount() }
 })
+test('a dismissed activation stays hidden when reopen can only report it offline or unknown', async () => {
+  fresh()
+  let controller = await mount()
+  try {
+    await publish(controller, completed())
+    await click('Dismiss')
+    await unmount()
+    controller = await mount()
+    for (const status of ['offline', 'unknown']) {
+      await publish(controller, { activationId: 'click-1', status, message: 'The exact maintaining profile route is unavailable or ambiguous. No automatic resend.' })
+      assert.doesNotMatch(text(), /Bot request/, status)
+    }
+    await publish(controller, completed())
+    assert.doesNotMatch(text(), /Bot request/)
+    await publish(controller, { activationId: 'click-2', status: 'offline', message: 'Route unavailable.' })
+    assert.match(text(), /Bot request: offline/)
+    assert.ok(button('Retry same request'))
+  } finally { await unmount() }
+})
+test('botDismissed treats unobservable statuses as the dismissed activation, other outcomes as new', () => {
+  assert.equal(model.botDismissed({ activationId: 'a', status: 'completed' }, 'a:completed'), true)
+  assert.equal(model.botDismissed({ activationId: 'a', status: 'offline' }, 'a:completed'), true)
+  assert.equal(model.botDismissed({ activationId: 'a', status: 'unknown' }, 'a:failed'), true)
+  assert.equal(model.botDismissed({ activationId: 'a', status: 'failed' }, 'a:completed'), false)
+  assert.equal(model.botDismissed({ activationId: 'ab', status: 'offline' }, 'a:completed'), false)
+  assert.equal(model.botDismissed({ activationId: 'a', status: 'offline' }, null), false)
+  assert.equal(model.botDismissed({ status: 'offline' }, 'a:completed'), false)
+})
+test('a dismissal that storage refused wins over an older stored one after reopen', async () => {
+  fresh()
+  const key = 'living-spaces:bot-dismissed:demo-backend:demo-profile:demo-space'
+  localStorage.setItem(key, 'click-0:completed')
+  const setItem = Object.getPrototypeOf(localStorage).setItem
+  Object.getPrototypeOf(localStorage).setItem = () => { throw new Error('quota') }
+  let controller
+  try {
+    controller = await mount()
+    await publish(controller, completed('click-7'))
+    await click('Dismiss')
+    await unmount()
+    controller = await mount()
+    await publish(controller, completed('click-7'))
+    assert.doesNotMatch(text(), /Bot request/)
+  } finally {
+    Object.getPrototypeOf(localStorage).setItem = setItem
+    await unmount()
+  }
+})
 test('expanded state resets when the activation changes', async () => {
   fresh()
   const controller = await mount()
