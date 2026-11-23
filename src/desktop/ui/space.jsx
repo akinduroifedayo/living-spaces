@@ -5,7 +5,7 @@ import { readDismissed, writeDismissed } from './dismissal.mjs'
 import { HistorySheet, StorageNotice } from './history.jsx'
 import { PermissionsSheet } from './permissions.jsx'
 import { UpkeepSheet } from './upkeep.jsx'
-import { advanceCursor, botBanner, botDismissed, botDismissKey, diagnosticText, dismissBot, errorText, freshnessFacts, freshnessPhrase, guestWord, inFlight, parseBotDismissal, PILLS, refreshReason, runResult, spacePath, spaceStatus, statusDimensions, storageNotice } from './model.mjs'
+import { advanceCursor, botBanner, botDismissed, botDismissKey, diagnosticText, dismissBot, errorText, freshnessFacts, freshnessPhrase, guestWord, inFlight, parseBotDismissal, PILLS, refreshFact, refreshReason, runResult, spacePath, spaceStatus, statusDimensions, storageNotice } from './model.mjs'
 import { createSpaceSession } from './session.mjs'
 import { SNAPSHOT_LIMITS, forgetSnapshot, writeSnapshot } from './snapshots.mjs'
 import { mountSpace } from '../sandbox/index.js'
@@ -84,7 +84,7 @@ function SpaceDetails({ space, dimensions, upkeepLabel, building, onOpen, onClos
       <div><dt>Latest change</dt><dd>{phrase.label}{phrase.at != null && <> · <Time at={phrase.at} /></>}</dd></div>
       {facts.map(fact => <div key={fact.key}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}
       {sources.map(source => <div key={source.id}><dt>Source</dt><dd>{[source.id, sourceHost(source.url), source.failure_reason].filter(Boolean).join(' · ')}</dd></div>)}
-      {!building && <div><dt>Refresh</dt><dd>{reason || 'Use Refresh now in the top bar.'}</dd></div>}
+      {!building && <div><dt>Refresh</dt><dd>{refreshFact(space)}</dd></div>}
       {!building && <div><dt>Upkeep</dt><dd>{upkeepLabel}</dd></div>}
     </dl>{!building && <div className="ls-actions"><Action onClick={() => onOpen('upkeep')}>Manage upkeep</Action></div>}</section>
     {space.storage && <section aria-label="Storage use" className="ls-detail"><h3>Storage</h3>

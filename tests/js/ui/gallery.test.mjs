@@ -438,3 +438,14 @@ test('the failure tint always resolves: the danger token ends in a literal colou
   assert.match(chain, /var\(--color-destructive,#[0-9a-f]{6}\)/i, 'falls back to the host token, then a literal')
   assert.match(styles, /\.ls-banner\.ls-failed[^{]*\{background:color-mix\(in srgb,var\(--ls-danger\) \d+%,var\(--ls-glass-strong\)\)\}/)
 })
+
+test('Details never words a Space without a refresh handler as a fault, and names who keeps it current', () => {
+  const synced = space({ manifest: {}, activity: { kind: 'data', actor: 'upkeep:gbrain-cockpit', at: 1 } })
+  assert.equal(model.refreshFact(synced), 'Kept current by gbrain-cockpit. Living Spaces has no refresh of its own to run.')
+  assert.equal(model.refreshFact(space({ manifest: {}, activity: { kind: 'data', actor: 'agent:Hermes', at: 1 } })), 'Updated in chat or in the Space itself. There is no refresh to run.')
+  assert.equal(model.refreshFact(space({ manifest: {} })), 'Updated in chat or in the Space itself. There is no refresh to run.')
+  for (const value of [synced, space({ manifest: {} })]) assert.doesNotMatch(model.refreshFact(value), /No refresh handler|Ask the owner/)
+  assert.equal(model.refreshFact(space({ manifest: { upkeep: { handler: 'feed' } } })), 'Use Refresh now in the top bar.')
+  assert.match(model.refreshFact(space({ status: 'archived', manifest: {} })), /archived/)
+  assert.match(model.refreshReason(space({ manifest: {} })), /No refresh handler/, 'the disabled-button reason itself is unchanged')
+})

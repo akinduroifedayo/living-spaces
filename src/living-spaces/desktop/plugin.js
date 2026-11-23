@@ -298,6 +298,14 @@ function refreshReason(space) {
   if (spaceStatus(space) === "blocked") return space.attention?.message || "Refresh is blocked. Review Permissions.";
   return "";
 }
+function refreshFact(space) {
+  const reason = refreshReason(space);
+  if (space.manifest?.upkeep || space.status === "archived") return reason || "Use Refresh now in the top bar.";
+  const [kind, ...rest] = String(space.activity?.actor || "").split(":");
+  const name = rest.join(":").trim();
+  if (kind === "upkeep" && name && name !== "schedule") return `Kept current by ${name}. Living Spaces has no refresh of its own to run.`;
+  return "Updated in chat or in the Space itself. There is no refresh to run.";
+}
 function runResult(run) {
   if (run.status === "failed") return run.error || "Refresh failed";
   if (run.status === "blocked") return `Blocked: ${run.detail?.reason || "Review Permissions"}`;
@@ -2371,7 +2379,7 @@ function SpaceDetails({ space, dimensions, upkeepLabel, building, onOpen, onClos
         ] }, source.id)),
         !building && /* @__PURE__ */ jsxs6("div", { children: [
           /* @__PURE__ */ jsx6("dt", { children: "Refresh" }),
-          /* @__PURE__ */ jsx6("dd", { children: reason || "Use Refresh now in the top bar." })
+          /* @__PURE__ */ jsx6("dd", { children: refreshFact(space) })
         ] }),
         !building && /* @__PURE__ */ jsxs6("div", { children: [
           /* @__PURE__ */ jsx6("dt", { children: "Upkeep" }),
