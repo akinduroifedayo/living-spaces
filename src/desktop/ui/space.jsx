@@ -57,7 +57,7 @@ function BotBanner({ action, storageKey, controller, owner }) {
     {banner.canDismiss && <Action aria-label={banner.kind === 'reply' ? 'Dismiss reply' : undefined} onClick={dismiss}>Dismiss</Action>}
     {banner.detail && <CopyButton text={`${banner.detail}${banner.at != null ? `\n${absolute(banner.at)}` : ''}`} label="Copy details" showLabel buttonSize="sm" />}
   </>}>
-    {banner.reason && <span className="ls-oneline" title={banner.reason}>{banner.reason}</span>}
+    {banner.reason && <span className="ls-reason" title={banner.reason}>{banner.reason}</span>}
     {banner.collapsible && <>
       {!banner.expanded && <p className="ls-oneline ls-answer-summary" title={banner.summary}>{banner.summary}</p>}
       <div id={replyId} className="ls-collapse" data-open={banner.expanded}><div inert={!banner.expanded || undefined} aria-hidden={!banner.expanded}>

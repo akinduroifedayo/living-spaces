@@ -384,7 +384,7 @@ for (const status of ['failed', 'offline', 'unknown']) {
       await publish(controller, { activationId: 'click-1', status, message })
       assert.equal(notice().getAttribute('role'), 'alert')
       assert.match(notice().querySelector('strong').textContent, FAILED_TITLE)
-      const reason = notice().querySelector('.ls-oneline')
+      const reason = notice().querySelector('.ls-reason')
       assert.equal(reason.textContent, message)
       assert.equal(reason.title, message)
       await click('Retry same request')
@@ -540,4 +540,11 @@ test('an unbound Space names the owner and the fix, keeps the raw error behind C
     assert.ok(copy.dataset.copy.startsWith(raw), 'the raw error is what gets copied')
     assert.ok(button('Check status') && button('Dismiss'), 'the actions stay')
   } finally { await unmount() }
+})
+
+test('a failure reason may wrap to two lines instead of cutting off its instruction', () => {
+  const styles = readFileSync(new URL('../../../src/desktop/ui/styles.js', import.meta.url), 'utf8')
+  const rule = styles.match(/\.ls-reason\{[^}]*\}/)?.[0] || ''
+  assert.match(rule, /-webkit-line-clamp:2/)
+  assert.doesNotMatch(rule, /nowrap/)
 })
