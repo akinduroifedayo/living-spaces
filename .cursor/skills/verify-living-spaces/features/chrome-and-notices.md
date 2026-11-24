@@ -34,14 +34,16 @@ On a fresh prepared instance with the fixture (see SKILL.md Launch), run:
 "$(dirname "$C")/chrome_journeys.py" --out "$RUN" --clipboard
 ```
 
-Results are in `chrome-journeys.json`, and every case must be `passed`. The cases are:
+Results are in `chrome-journeys.json`, and every case must be `passed`. The command exits 1 when any case fails, and its last stdout line is a summary such as `{"passed": 7, "total": 7, "failed": [], "pass_string": "PPPPPPP"}`.
+
+Before case 1 it waits up to 60 s for the fixture card in the polled Gallery. If the card never appears, it exits with `Gallery not ready` and the visible page text. It never creates a Space; run `fixture` exactly once first. After every case, passed or failed, it presses Escape until no dialog or menu is open, parks the pointer, blurs focus, and returns to the Gallery, so a failure stays in its own row. If that reset fails, the row fails with `reset_error`, the remaining cases are recorded as `blocked` (`B` in `pass_string`), and the run stops. `control.py click` and `hover` scroll the one visible target into view and require a hit test on it before the native event. A covered or off-screen target fails with its box and the viewport. The cases are:
 
 - `gallery-card`: fallback preview, card name, create card, filter row.
 - `space-island`: Back, More Space actions, Details, Internet on, no Refresh, freshness phrase.
 - `notice-unbound-bot`: the fixture's maintaining chat is unbound. Copy details goes through the macOS pasteboard. The case refuses to run when the pasteboard holds anything but plain text, and restores that text afterwards. It must contain `"reason":"unbound"` and no credential words. The copy is saved as `copy-details.txt`.
 - `notice-dock-timing`: idle collapse in 7–10 s, a 32 px pill, focus pause, Escape to the focused pill, hover pause, collapse 7–10 s after the pointer leaves, and canvas use minimising the dock.
 - `notice-bot-and-storage`: Dismiss, then the fixture's **Ask Hermes** shows the user-initiated failure again. **Fill storage** writes one ~234 KB record and must show **Storage 92% full**. The freshness phrase must change to **Edited in this Space**. **Hide until it changes** must survive leaving and reopening.
-- `details-sheet`: all five sections, initial focus, and the three Manage/Open routes.
+- `details-sheet`: all five sections, initial focus, and the three Manage/Open routes. Runtime > Space app must settle on **Loaded**. The guest Save button exists before the host receives the guest's `lifecycle: loaded` log reply, so the sheet can read **Starting** briefly. The case waits for that one transition and fails on any other final word.
 - `gallery-pin-snapshot`: pin, the snapshot preview with `.ls-pin`, unpin.
 
 Manual checks:
@@ -58,3 +60,4 @@ Manual checks:
 - **Unreachable here: the reply banner** (Hermes replied, Read reply/Collapse, Dismiss reply, answer summary), Retry same request, and the offline/unknown copy. They need a bound maintaining chat and a model route. The disposable run has neither, because `control.py` launches with `nous.guest: false`, and this skill may not add a provider. These were checked from source only.
 - Snapshot previews live in the disposable renderer's localStorage. They are not shared with another Desktop or profile, and a fresh run always starts from fallback cards.
 - Phrases that include times (**· 6 sec. ago**) change between reads. Match their prefixes.
+- With the 96 px Details hero (PR #11), **Open history** sits at y=865 in an 853 px window until the sheet scrolls. Earlier driver versions clicked it off-screen.

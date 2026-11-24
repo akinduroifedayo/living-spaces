@@ -10,6 +10,7 @@ import argparse
 import json
 from pathlib import Path
 import subprocess
+import sys
 import time
 
 import control as c
@@ -28,7 +29,7 @@ def text():
     return c.evaluate(OUT, 'document.body.innerText')
 
 
-def wait(predicate, timeout=20):
+def wait(predicate, timeout=20, what='observable'):
     deadline = time.monotonic() + timeout
     last = None
     while time.monotonic() < deadline:
@@ -36,10 +37,10 @@ def wait(predicate, timeout=20):
             last = predicate()
             if last:
                 return last
-        except AssertionError:
-            pass
+        except AssertionError as error:
+            last = f'AssertionError: {error}'
         time.sleep(.2)
-    raise AssertionError(f'Native observable did not arrive; last={last}')
+    raise AssertionError(f'Native {what} did not arrive in {timeout}s; last={last}')
 
 
 def focused():
@@ -68,15 +69,61 @@ def gallery():
         c.click(OUT, c.BACK)
     elif not visible('[data-testid="spaces-index"]'):
         c.click(OUT, 'text=Spaces')
-    wait(lambda: visible('[data-testid="spaces-index"]'))
+    wait(lambda: visible('[data-testid="spaces-index"]'), what='Spaces index')
+
+
+def overlays():
+    """Open host dialogs (Details, History, Upkeep, Permissions) and menus, by role."""
+    return c.evaluate(OUT, '[...document.querySelectorAll("[role=dialog],[role=alertdialog],[role=menu]")].filter(e=>e.getClientRects().length).length')
+
+
+def reset():
+    """Known state between cases: no dialog or menu open, pointer parked, focus on the body, Gallery landing showing.
+
+    A failed case can leave the Details sheet or a menu open; without this, the next case fails on the overlay instead of
+    on its own feature.
+    """
+    for _ in range(4):
+        if not overlays():
+            break
+        c.key(OUT, 'Escape')
+        time.sleep(.4)
+    assert not overlays(), 'A dialog or menu stayed open after Escape'
+    leave_pointer_and_focus()
+    gallery()
+
+
+def ready(timeout=60):
+    """Before case 1: the Gallery has loaded its polled list and shows the fixture card.
+
+    The index polls /spaces every 2s, so a fresh instance can briefly show the empty first-Space page. Never create the
+    fixture here: a second fixture call makes verification-notebook-2 and every case then drives the wrong Space.
+    """
+    gallery()
+    try:
+        wait(lambda: visible(CARD), timeout, 'fixture card in the Gallery')
+    except AssertionError as error:
+        raise SystemExit(f'Gallery not ready: {error}. Run `control.py fixture` once on this instance before '
+                         f'chrome_journeys.py; the driver does not create Spaces. Visible text: {text()[:400]!r}')
+    return c.target(OUT, CARD)
+
+
+def guest_mounted():
+    """The guest canvas of the opened Space is mounted and its own Save button is hit-testable."""
+    return c.guest_read(OUT, 'button#save')
+
+
+def space_app_word():
+    """Details > Runtime > Space app, as the user reads it."""
+    return c.evaluate(OUT, '[...document.querySelectorAll("[role=dialog] dt")].find(e=>e.textContent.trim()==="Space app")?.nextElementSibling?.textContent.trim()')
 
 
 def open_notebook():
     gallery()
-    wait(lambda: visible(CARD))
+    wait(lambda: visible(CARD), what='fixture card')
     c.click(OUT, CARD)
-    wait(lambda: visible('[data-testid="space-view"]'))
-    wait(lambda: c.guest_read(OUT, 'button#save'))
+    wait(lambda: visible('[data-testid="space-view"]'), what='Space view')
+    wait(guest_mounted, what='guest Save button')
 
 
 def run_case(name, fn):
@@ -87,17 +134,24 @@ def run_case(name, fn):
         row = dict(feature=name, status='passed', started=started, ended=time.time(), observed=result)
     except Exception as error:
         c.capture(OUT, name + '-failed')
-        row = dict(feature=name, status='failed', started=started, ended=time.time(), error=str(error))
+        row = dict(feature=name, status='failed', started=started, ended=time.time(),
+                   error=f'{type(error).__name__}: {error}')
+    try:
+        reset()
+    except Exception as error:
+        # No known starting state: this row fails (its own error kept) and the caller stops instead of cascading.
+        c.capture(OUT, name + '-reset-failed')
+        row['status'] = 'failed'
+        row['reset_error'] = f'{type(error).__name__}: {error}'
     RESULTS.append(row)
     c.dump(OUT / 'chrome-journeys.json', RESULTS)
     print(json.dumps(row))
+    return 'reset_error' not in row
 
 
 def gallery_card():
     gallery()
-    if not visible(CARD):
-        c.fixture(OUT)
-    wait(lambda: visible(CARD))
+    wait(lambda: visible(CARD), what='fixture card')
     box = c.target(OUT, CARD + ':has([data-preview="fallback"])')
     assert 'Verification Notebook' in box['label'] and 'owner' in box['label']
     assert visible('.ls-newcard') and 'Build a Space in chat' in text()
@@ -178,7 +232,9 @@ def dock_timing():
     c.click(OUT, '.ls-notice-pill')
     c.guest_click(OUT, 'input#note')
     canvas = wait(lambda: dock() == 'pill', 5)
-    assert focus_paused and escape and hover_paused and canvas and 7 <= idle <= 10 and 7 <= after_leave <= 10
+    observed = dict(focus_paused=focus_paused, escape=escape, hover_paused=hover_paused, canvas=canvas, idle=idle,
+                    after_leave=after_leave)
+    assert focus_paused and escape and hover_paused and canvas and 7 <= idle <= 10 and 7 <= after_leave <= 10, observed
     return dict(idle_collapse_s=idle, pill=dict(width=pill['width'], height=pill['height'], label=pill['label']),
                 focus_paused=focus_paused, escape_to_pill_with_focus=escape, hover_paused=hover_paused,
                 collapse_after_pointer_leave_s=after_leave, canvas_click_minimises=canvas)
@@ -217,6 +273,11 @@ def details():
     open_notebook()
     c.click(OUT, 'text=Details')
     c.wait_text(OUT, 'Space details')
+    # The guest's Save button exists before the host receives its `log lifecycle:loaded` reply, so the sheet can read
+    # Starting for a moment. Wait for that one transition; any other final word (Failed, Faulted) fails the case.
+    word = wait(lambda: space_app_word() not in (None, 'Starting', 'Not reported') and space_app_word(), 20,
+                'Space app runtime word')
+    assert word == 'Loaded', f'Space app reads {word!r}'
     body = text()
     for words in ['Freshness, storage, access, history and runtime for Verification Notebook', 'Latest change',
                   'This Space has no refresh of its own.', 'Upkeep', 'Storage', 'Internet', 'Records', 'Diagnostic log',
@@ -253,6 +314,14 @@ def pin_and_snapshot():
     return dict(snapshot_preview=True, pin_marker=True, unpinned=True)
 
 
+def cases(clipboard):
+    """Order matters: bot-and-storage leaves a storage hide, and pin-snapshot needs an earlier opened canvas snapshot."""
+    return [('gallery-card', gallery_card), ('space-island', island),
+            ('notice-unbound-bot', lambda: unbound_notice(clipboard)), ('notice-dock-timing', dock_timing),
+            ('notice-bot-and-storage', bot_and_storage), ('details-sheet', details),
+            ('gallery-pin-snapshot', pin_and_snapshot)]
+
+
 def main():
     global OUT
     p = argparse.ArgumentParser(description=(__doc__ or '').splitlines()[0])
@@ -263,12 +332,21 @@ def main():
     OUT = a.out.resolve()
     assert OUT is not None
     c.owned(OUT)
-    for name, fn in [('gallery-card', gallery_card), ('space-island', island),
-                     ('notice-unbound-bot', lambda: unbound_notice(a.clipboard)), ('notice-dock-timing', dock_timing),
-                     ('notice-bot-and-storage', bot_and_storage), ('details-sheet', details),
-                     ('gallery-pin-snapshot', pin_and_snapshot)]:
-        run_case(name, fn)
+    card = ready()
+    print(json.dumps(dict(ready=True, card=card['label'])))
+    remaining = cases(a.clipboard)
+    while remaining:
+        name, fn = remaining.pop(0)
+        if not run_case(name, fn):
+            for skipped, _ in remaining:
+                RESULTS.append(dict(feature=skipped, status='blocked', error=f'Not run: reset after {name} failed'))
+            c.dump(OUT / 'chrome-journeys.json', RESULTS)
+            break
+    failed = [row['feature'] for row in RESULTS if row['status'] != 'passed']
+    print(json.dumps(dict(passed=len(RESULTS) - len(failed), total=len(RESULTS), failed=failed,
+                          pass_string=''.join({'passed': 'P', 'blocked': 'B'}.get(row['status'], 'F') for row in RESULTS))))
+    return 1 if failed else 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

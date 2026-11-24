@@ -171,13 +171,41 @@ def capture(out, name):
     (out / (name + '.txt')).write_text(evaluate(out, 'document.body.innerText'))
 
 
+def _query(selector):
+    if selector.startswith('text='):
+        return (f'[...document.querySelectorAll("button,[role=button],a,[role=menuitem]")]'
+                f'.filter(e=>e.textContent.trim()==={json.dumps(selector[5:])})')
+    return f'[...document.querySelectorAll({json.dumps(selector)})]'
+
+
+def reveal(out, selector, settle=2.0):
+    """Scroll the single visible target into view and return its centre once a hit test lands on it.
+
+    A target below the fold (Details with the 96px hero puts Open history at y=865 in an 853px window) would otherwise be
+    clicked off-screen. The hit test also refuses a target covered by an overlay or still mid-transition.
+    """
+    expr = f'''(() => {{ const els={_query(selector)}.filter(e=>e.getClientRects().length);
+      if(els.length!==1) return {{error:'Expected one visible target, got '+els.length}};
+      const e=els[0]; e.scrollIntoView({{block:'nearest', inline:'nearest', behavior:'instant'}});
+      const r=e.getBoundingClientRect(), x=r.x+r.width/2, y=r.y+r.height/2;
+      const inside=x>=0&&y>=0&&x<innerWidth&&y<innerHeight; const hit=inside&&document.elementFromPoint(x,y);
+      return {{x, y, width:r.width, height:r.height, label:e.getAttribute('aria-label'), text:e.innerText,
+               inside, hit:!!hit&&(hit===e||e.contains(hit)), viewport:[innerWidth,innerHeight]}}; }})()'''
+    deadline = time.monotonic() + settle
+    while True:
+        box = evaluate(out, expr)
+        if 'error' not in box and box['inside'] and box['hit']:
+            return box
+        if time.monotonic() >= deadline:
+            raise AssertionError(f'Target {selector!r} not clickable after scrolling into view: {box}')
+        time.sleep(.1)
+
+
 def click(out, selector):
     call(out, 'Page.bringToFront')
     time.sleep(.2)
-    query = (f'[...document.querySelectorAll("button,[role=button],a,[role=menuitem]")].filter(e=>e.textContent.trim()==={json.dumps(selector[5:])})'
-             if selector.startswith('text=') else f'[...document.querySelectorAll({json.dumps(selector)})]')
-    expr = f'''(() => {{ const els={query}.filter(e=>e.getClientRects().length); if(els.length!==1) throw Error('Expected one visible target, got '+els.length); const r=els[0].getBoundingClientRect(); return {{x:r.x+r.width/2,y:r.y+r.height/2}}; }})()'''
-    pos = evaluate(out, expr)
+    box = reveal(out, selector)
+    pos = dict(x=box['x'], y=box['y'])
     call_many(out, [('Page.bringToFront', {}),
                     ('Input.dispatchMouseEvent', dict(type='mouseMoved', **pos)),
                     ('Input.dispatchMouseEvent', dict(type='mousePressed', button='left', clickCount=1, **pos)),
@@ -187,9 +215,7 @@ def click(out, selector):
 
 
 def target(out, selector):
-    query = (f'[...document.querySelectorAll("button,[role=button],a,[role=menuitem]")].filter(e=>e.textContent.trim()==={json.dumps(selector[5:])})'
-             if selector.startswith('text=') else f'[...document.querySelectorAll({json.dumps(selector)})]')
-    return evaluate(out, f'''(() => {{ const els={query}.filter(e=>e.getClientRects().length); if(els.length!==1) throw Error('Expected one visible target, got '+els.length); const r=els[0].getBoundingClientRect(); return {{x:r.x,y:r.y,width:r.width,height:r.height,label:els[0].getAttribute('aria-label'),text:els[0].innerText}}; }})()''')
+    return evaluate(out, f'''(() => {{ const els={_query(selector)}.filter(e=>e.getClientRects().length); if(els.length!==1) throw Error('Expected one visible target, got '+els.length); const r=els[0].getBoundingClientRect(); return {{x:r.x,y:r.y,width:r.width,height:r.height,label:els[0].getAttribute('aria-label'),text:els[0].innerText}}; }})()''')
 
 
 def hover(out, selector):
@@ -197,8 +223,8 @@ def hover(out, selector):
     if selector == 'corner':
         pos = dict(x=4, y=4)
     else:
-        box = target(out, selector)
-        pos = dict(x=box['x'] + box['width'] / 2, y=box['y'] + box['height'] / 2)
+        box = reveal(out, selector)
+        pos = dict(x=box['x'], y=box['y'])
     call_many(out, [('Page.bringToFront', {}), ('Input.dispatchMouseEvent', dict(type='mouseMoved', **pos))])
     with (out / 'actions.jsonl').open('a') as stream:
         stream.write(json.dumps(dict(action='hover', selector=selector, coordinates=pos, at=time.time())) + '\n')

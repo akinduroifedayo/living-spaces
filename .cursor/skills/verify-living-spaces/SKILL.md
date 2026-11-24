@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Verify Living Spaces
 
-**Status: usable scoped Desktop driver, re-exercised on main `92486e1` (post-Gallery). Product acceptance is not complete.** The isolated Desktop decision enables the native Spaces page. Native note save and reopen pass with visible and SQLite evidence. On main, the Gallery landing, floating island, Details sheet, notice dock, unbound bot notice, Copy details and storage notice also pass natively. Copy details redaction is checked from source only. The Desktop plus chat Refresh race created two native one-shots and two model-backed cron sessions on both older pins; it needs a model route, which the current launch no longer has. Do not treat this skill as a release approval.
+**Status: usable scoped Desktop driver, re-exercised on main `92486e1` (post-Gallery). Product acceptance is not complete.** The isolated Desktop decision enables the native Spaces page. Native note save and reopen pass with visible and SQLite evidence. On main, the Gallery landing, floating island, Details sheet, notice dock, unbound bot notice, Copy details and storage notice also pass natively. `chrome_journeys.py` scored PPPPPPP in 5 of 5 fresh runs on main `92486e1` and 5 of 5 on PR #11 head `ee0254d` after the readiness, reset, scroll and Loaded-wait fixes; see Evidence for the earlier flaky runs. Copy details redaction is checked from source only. The Desktop plus chat Refresh race created two native one-shots and two model-backed cron sessions on both older pins; it needs a model route, which the current launch no longer has. Do not treat this skill as a release approval.
 
 Read [the feature index](features/README.md) before driving. Use `/maintain-verification-skill` when the host or product changes.
 
@@ -14,8 +14,8 @@ Read [the feature index](features/README.md) before driving. Use `/maintain-veri
 
 - Current target: any clean checkout. `product-pin.json` records `checkout_head`, the `src/living-spaces` tree, and file digests. Last maintained against `origin/main` `92486e1` (product tree `7eb1844`), driven from a worktree whose `src/` equals that commit.
 - Historical labels: released baseline `4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98` (0.1.1) and unpublished candidate `8008dcc6f77c3f5cb51f966ab1241bd9f89dc37a` keep their names when their exact tree is checked out. Runtime inspection exists only on that candidate.
-- Baseline verification worktree `/Volumes/Expansion/Development/Build/living-spaces-app-verification`, branch `verify/living-spaces-app`.
-- Candidate worktree `/Volumes/Expansion/Development/Build/living-spaces-app-verification-candidate`. Never edit product code there.
+- Drive the scripts from the checkout that holds this skill, and choose the product tree with `--repo`. Without `--repo`, `launch` and `proof` drive the checkout the scripts live in. Do not run the scripts from another worktree's copy of this skill: `living-spaces-app-verification` (branch `verify/living-spaces-app`, 45fc126) carries an older copy with no `chrome_journeys.py`.
+- Candidate worktree `/Volumes/Expansion/Development/Build/living-spaces-app-verification-candidate` (detached `8008dcc`). Never edit product code there.
 - Existing host `/Applications/Hermes.app`, observed Desktop `v0.23.3+1019` (earlier runs: `v0.23.1+6306`). The runtime and interpreter are existing dependencies, not a build produced by this skill.
 
 Do not run the released `harness/app.py` whole. Its prepare step configures a model plugin and its stop step invokes gateway stop. Reuse only protocol details. The helper owns its PID group, detached gateway, OS home, Hermes home, userData, cwd, and temporary directory.
@@ -26,11 +26,14 @@ No installs, auth copying, sign-in, live profile changes, gateway restart, publi
 
 The disposable config is `plugins.enabled: [living-spaces]`, `nous.guest: false` and `security.allow_lazy_installs: false`, with `HERMES_SHARED_AUTH_DIR` inside the disposable home. `nous.guest: false` is the host's own switch that stops a fresh home claiming the Desktop welcome trial or minting a free-tier account (the same config as `tools/verify-desktop/drive.py`). Onboarding is completed with **I'll choose a provider later** (older hosts: **Skip setup** / **No thanks**). The consequence is that no model route exists: chat, agent Refresh and native inspection are `verified-unreachable` in a fresh run. Earlier native inspection and race receipts used the welcome-trial `nous/welcome` route before this change.
 
+Run this from inside the checkout that holds this skill. `C` resolves from that checkout, never from a fixed sibling path:
+
 ```sh
-cd /Volumes/Expansion/Development/Build/living-spaces-app-verification
-export C="$PWD/.cursor/skills/verify-living-spaces/scripts/control.py"
-export RUN="/Volumes/Expansion/Development/Build/living-spaces-app-verification-evidence/baseline-$(date +%Y%m%d-%H%M%S)"
-"$C" proof --enable-isolated-desktop --out "$RUN"
+export C="$(git rev-parse --show-toplevel)/.cursor/skills/verify-living-spaces/scripts/control.py"
+test -x "$(dirname "$C")/chrome_journeys.py" || echo "Wrong checkout: this copy of the skill has no chrome_journeys.py"
+export PRODUCT="$(git rev-parse --show-toplevel)"   # or any other clean product checkout
+export RUN="/Volumes/Expansion/Development/Build/living-spaces-app-verification-evidence/run-$(date +%Y%m%d-%H%M%S)"
+"$C" proof --enable-isolated-desktop --repo "$PRODUCT" --out "$RUN"
 ```
 
 The proof prepares fresh directories, disables lazy installs, rechecks loopback CDP 19432 immediately before launch, then proves actual storage isolation before its one Desktop decision write. It completes native onboarding, selects Reload desktop plugins, clicks native Spaces navigation, requires a usable index, prepares a fixture, saves a note through its visible controls, verifies SQLite, leaves and reopens, and cleans up in `finally`.
@@ -48,7 +51,7 @@ A candidate proof also runs the separately labeled headless handler check after 
 For an owned live instance used by the broader recipes:
 
 ```sh
-"$C" launch --out "$RUN"
+"$C" launch --repo "$PRODUCT" --out "$RUN"
 trap '"$C" cleanup --out "$RUN"' EXIT INT TERM
 "$(dirname "$C")/flag_enable.py" --out "$RUN"
 "$C" setup --out "$RUN"
@@ -56,7 +59,7 @@ trap '"$C" cleanup --out "$RUN"' EXIT INT TERM
 "$C" fixture --out "$RUN"
 ```
 
-Choose `--repo` on `launch` for the candidate. Do not use an already completed proof's output directory for this sequence.
+Set `PRODUCT` to the candidate, a PR worktree, or a detached worktree (`git worktree add --detach <path> <sha>`) to drive that tree. The pin check needs only `src/living-spaces` clean. Do not use an already completed proof's output directory for this sequence.
 
 ## Isolated Desktop decision
 
@@ -113,7 +116,7 @@ Gallery chrome and notices are driven by:
 "$(dirname "$C")/chrome_journeys.py" --out "$RUN" --clipboard
 ```
 
-It needs a fresh instance with the fixture and writes `chrome-journeys.json`. `--clipboard` reads Copy details through the macOS pasteboard. It refuses a pasteboard holding anything but plain text, and restores that text afterwards. Supporting manual commands: `hover --value <selector|corner>`, `box --value <selector>` and `focused`.
+It needs a fresh instance with the fixture and writes `chrome-journeys.json`. It exits 1 when any case fails and ends with a `pass_string` summary line. It waits for the fixture card before case 1, refuses (exit 1, `Gallery not ready`) rather than creating a Space, and resets to the Gallery with no dialog or menu open after each case. A failed reset fails that row and blocks the rest. `click` and `hover` scroll their target into view and hit-test it first. `--clipboard` reads Copy details through the macOS pasteboard. It refuses a pasteboard holding anything but plain text, and restores that text afterwards. Supporting manual commands: `hover --value <selector|corner>`, `box --value <selector>` and `focused`.
 
 ## Native inspection and interruption
 
@@ -135,7 +138,7 @@ The native Desktop busy button suppresses a second Desktop click. It does not es
 "$(dirname "$C")/race_native.py" --repo /Volumes/Expansion/Development/Build/living-spaces-app-verification-candidate --out "/Volumes/Expansion/Development/Build/living-spaces-app-verification-evidence/candidate-race-$(date +%Y%m%d-%H%M%S)"
 ```
 
-For the baseline, change `--repo` to this verification worktree and use another output path. The runner launches and cleans up itself. It prepares one agent fixture, primes native chat with the tool schema without firing Refresh, drafts the chat request, presses Desktop Refresh, switches back to native chat, and submits immediately.
+For the baseline, set `--repo` to a clean checkout of `4aea12d` (for example `/Volumes/Expansion/Development/Build/living-spaces-legacy-0.1.1`) and use another output path. The runner launches and cleans up itself. It prepares one agent fixture, primes native chat with the tool schema without firing Refresh, drafts the chat request, presses Desktop Refresh, switches back to native chat, and submits immediately.
 
 `race-result.json` reports exact native one-shot IDs, cron session IDs, actual model API-call counts, timestamps proving overlap, native tool-call arguments, and Space run rows. **Both product pins failed this race:** two one-shots and two model-backed native cron sessions for the same Space. The chat call arrived before the first cron session ended. No product repair is included. The empty Space `runs` table is not evidence that no model work happened.
 
@@ -149,7 +152,9 @@ Evidence root `/Volumes/Expansion/Development/Build/living-spaces-app-verificati
 - `baseline-journeys-01` and `candidate-journeys-01` contain the broader mapped native trials.
 - `candidate-journeys-01/native-inspect-tool-results.json`, `stop-attempt.json`, and `stop-outcome.json` bind native dispatch, cancellation, unchanged SQL, and browser cleanup.
 - `baseline-desktop-chat-race-01` and `candidate-desktop-chat-race-01` contain the actual duplicated native dispatches.
-- `main-92486e1-reproof2-20261123-184505` is the final re-proof after review fixes (same results; checkout `4428901` plus those fixes, `src/` identical to `92486e1`). `main-92486e1-reproof-20261123-183445` is the first post-Gallery re-proof on main: `chrome-journeys.json` (7/7 passed), `mapped-journeys.json` (7 passed, `refresh-double-agent` verified-unreachable), `copy-details.txt` and 36 PNGs. Its `product-pin.json` records checkout `79a095c`, whose `src/` is identical to `92486e1` (product tree `7eb1844`). `main-92486e1-20261123-182324` holds the exploratory drives that found the harness gaps, including its failed first attempts.
+- Chrome journeys after the gate fixes, each a fresh launch, fixture and cleanup: `main-92486e1-{fix1,fix2,fix3,final,commit}-*` (detached worktree at `92486e1`) and `icons-ee0254d-{fix1,fix2,fix3,final,commit}-*` (`living-spaces-icons` at `ee0254d`). All ten scored PPPPPPP and exited 0. The `commit` pair ran the committed driver; earlier runs predate only the `cases()` extraction and the reset-failure stop, neither of which changes a passing path. `negative-92486e1-*` proves the failure paths: no fixture gives `Gallery not ready`, exit 1 and zero Spaces; a forced failure with Details open is followed by a passing `gallery-pin-snapshot` and exit 1.
+- **Earlier flake, before those fixes.** The independent gate scored main `92486e1` PPPPFPP, PPPPPPP and PPPPPFF, and PR #11 trees failed `details-sheet` on every run. Causes: `details-sheet: Loaded` was the Starting→Loaded race (the failed capture reads Loaded moments later); `No refresh runs yet.` on PR #11 was the off-screen **Open history** click; the trailing `gallery-pin-snapshot` failures cascaded from the open sheet; and the all-failed run had no readiness wait and created `verification-notebook-2`. **Residual, not reproduced in ten runs and root cause unconfirmed:** one `notice-bot-and-storage` timeout (gate run `base-92486e1-pr-gate-*`) stalled in `open_notebook` waiting for the guest Save button after a reopen, and one `notice-dock-timing` failure (`icons-d5cc5e8-run2-*`) hit the final assertion with no message. Waits now report the last assertion and the timing case reports its measured values, so a recurrence names its cause. Treat a single failure in these two cases as possible flake; re-run once on a fresh instance before calling it a product regression.
+- `main-92486e1-reproof2-20261123-184505` is the earlier re-proof after review fixes (checkout `4428901`, `src/` identical to `92486e1`). `main-92486e1-reproof-20261123-183445` is the first post-Gallery re-proof on main: `chrome-journeys.json` (7/7 in that one run; not reproducible before the gate fixes), `mapped-journeys.json` (7 passed, `refresh-double-agent` verified-unreachable), `copy-details.txt` and 36 PNGs. Its `product-pin.json` records checkout `79a095c`, whose `src/` is identical to `92486e1` (product tree `7eb1844`). `main-92486e1-20261123-182324` holds the exploratory drives that found the harness gaps, including its failed first attempts.
 - Earlier flag trials remain as failed harness attempts. `flag-01` failed the old switch-only check. `baseline-flag-02` did not wait for the polled card. `baseline-flag-03` used a forbidden submit fixture. Do not relabel these green.
 - Driver-only unit receipts are `followup-unit-tests-green.json`. Mocked guard and classifier tests are not product proof. The earlier red receipt records a missing `wait_text` mock, not a product failure.
 
