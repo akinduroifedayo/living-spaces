@@ -11,50 +11,18 @@ and compares each answer with the live bridge.dispatch on the same database.
                 (records, order, paging, totals, seq, not_granted, invalid and not_found answers)
   Snapshot      a write committed after the snapshot opened is not visible to the adapter
 
-Known findings (bugs on 92486e1, both introduced by 10517b9, which changed bridge.dispatch without PassiveAdapter):
-  F4  PassiveAdapter replies to reads lack the live reply's "outcome" envelope ({"status": "success"|"rejected"}).
-  F5  the live bridge answers every not_granted with "Operation could not be completed" and no capability
-      (bridge._delivery_failure re-authorizes and _failure(authorized=False) redacts), against
-      docs/contracts/CONTRACTS.md:118 "not_granted (extra: capability)"; the adapter still returns the documented
-      error. Both are counted exactly: any other difference, or a changed case set, fails the check.
+SameAsLive has no exemptions. F4 (missing outcome envelope) and F5 (redacted not_granted) were fixed in the
+product; controls inspect-F4-envelope-dropped and inspect-F5-redaction-change-noticed reintroduce each one.
 
 On a tree without inspection.py the check prints PASS with "not applicable".
 """
 from __future__ import annotations
 
-import hashlib
 import itertools
-import json
 import sqlite3
 from pathlib import Path
 
 from harness import Violation, main, space
-
-KNOWN = {"F4": "inspection replies lack the live bridge's outcome envelope",
-         "F5": "live not_granted replies drop the documented capability and message"}
-KNOWN_CASES_SHA256 = "4df25664e6a96b3afa0d1a78ea57f76c3da435cf4666f2400d7007e391155404"
-REDACTED = "Operation could not be completed"
-
-
-NOT_GRANTED = "Capability or requested scope is not granted"
-
-
-def known_difference(got, live, needed, granted):
-    """Return F4/F5 when got differs from live only by those findings, else None.
-
-    F5 is granted only when the adapter's own reply is the contract's not_granted for the capability this op
-    needs and lacks (CONTRACTS.md:118), so a wrong message or capability from the adapter is never excused."""
-    rest = dict(live)
-    outcome = rest.pop("outcome", None)
-    if outcome != {"status": "success" if got.get("ok") else "rejected"}:
-        return None
-    if rest == got:
-        return "F4"
-    if (needed and needed not in granted and set(got) == {"ok", "error"} and got["ok"] is False
-            and got["error"] == {"code": "not_granted", "message": NOT_GRANTED, "capability": needed}
-            and rest == {"ok": False, "error": {"code": "not_granted", "message": REDACTED}}):
-        return "F5"
-    return None
 
 CAPS = ("data", "logs", "net")
 WRITES = ("data.put", "data.delete", "data.batch", "refresh", "bot.request", "net.fetch")
@@ -111,7 +79,7 @@ def check(core, home):
     runs.start_refresh(sid, trigger="manual", actor="user")
     path = str(db.db_path())
     commits = Commits(path)
-    cases, findings, finding_cases = 0, {}, []
+    cases = 0
     for on in itertools.chain.from_iterable(itertools.combinations(CAPS, k) for k in range(4)):
         for cap in CAPS:
             core.decide(sid, cap, "grant" if cap in on else "revoke", actor="user")
@@ -143,11 +111,7 @@ def check(core, home):
                     else:
                         live = core.dispatch(sid, session, op, dict(args))
                         if got != live:
-                            finding = known_difference(got, live, core.bridge._OPS.get(op, (None,))[0], on)
-                            if finding is None:
-                                raise Violation(f"SameAsLive: the live bridge returned {live}. {story}")
-                            findings.setdefault(finding, {"count": 0, "example": f"live {live}. {story}"})["count"] += 1
-                            finding_cases.append([finding, sorted(on), spoof, op, args])
+                            raise Violation(f"SameAsLive: the live bridge returned {live}. {story}")
                     core.close_session(session)
             records.put(sid, "tasks", "late", {"n": 1}, actor="user")
             late = adapter.call("data.get", {"collection": "tasks", "id": "late"}) if "data" in on else None
@@ -157,13 +121,7 @@ def check(core, home):
         finally:
             conn.close()
     commits.conn.close()
-    digest = hashlib.sha256(json.dumps(finding_cases, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-    if digest != KNOWN_CASES_SHA256:
-        raise Violation(f"KnownFindingDrift: F4/F5 case set changed: "
-                        f"{ {k: v['count'] for k, v in findings.items()} }, sha256={digest}. Review the bridge and "
-                        "PassiveAdapter before updating the synced baseline.")
-    return {"applicable": True, "cases": cases, "finding_cases_sha256": digest,
-            "known_findings": {k: {"what": KNOWN[k], **v} for k, v in findings.items()}}
+    return {"applicable": True, "cases": cases}
 
 
 if __name__ == "__main__":

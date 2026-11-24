@@ -471,14 +471,16 @@ class PassiveAdapter:
         return self._order_and_page(rows, order, limit, offset)
 
     def call(self, op, args):
+        """The live bridge's reply envelope. Nothing here has an effect, so a failure is always rejected."""
         try:
-            return {"ok": True, "result": self._call(op, args)}
+            return {"ok": True, "result": self._call(op, args), "outcome": {"status": "success"}}
         except _Timeout:
             raise
         except SpacesError as exc:
-            return {"ok": False, "error": exc.to_dict()}
+            error = exc.to_dict()
         except Exception:
-            return {"ok": False, "error": {"code": "invalid", "message": "Operation could not be completed"}}
+            error = {"code": "invalid", "message": "Operation could not be completed"}
+        return {"ok": False, "error": error, "outcome": {"status": "rejected"}}
 
     def _call(self, op, args):
         if not isinstance(op, str) or op not in bridge._OPS:
@@ -583,7 +585,6 @@ class RecordOverlay(PassiveAdapter):
                 try:
                     self.snap.conn, self.snap.seq = self.conn, records._seq(self.conn, self.snap.sid)
                     result = super().call(op, args)
-                    result["outcome"] = {"status": "success" if result["ok"] else "rejected"}
                 finally:
                     self.snap.conn, self.snap.seq = original_conn, original_seq
             else:

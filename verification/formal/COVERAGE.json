@@ -274,27 +274,18 @@
       "properties": [
         "ReadOnly",
         "Refused",
-        "SameAsLive (known findings F4 outcome envelope, F5 not_granted redaction; case set pinned by sha256)",
+        "SameAsLive (no exemptions)",
         "Snapshot"
       ],
       "bounds": "6768 calls: 8 grant sets x 2 (space-arg spoof) x 423 calls (405 queries = 5 where x 9 order x 3 limit x 3 offset, plus get/meta/runs/log/unknown/6 writes) over 7 records; not applicable on trees without inspection.py; the Chromium runner, DevTools pipe, redaction and network blocking are NOT covered"
     }
   },
-  "known_findings": {
-    "F4": {
-      "check": "inspection_readonly",
-      "introduced": "10517b9",
-      "what": "PassiveAdapter replies to reads omit the live bridge's outcome envelope ({status: success|rejected}) that bridge.dispatch has returned since 10517b9"
-    },
-    "F5": {
-      "check": "inspection_readonly",
-      "introduced": "10517b9",
-      "what": "live bridge.dispatch answers every not_granted with 'Operation could not be completed' and no capability (_delivery_failure re-authorizes, then _failure(authorized=False) redacts), contrary to docs/contracts/CONTRACTS.md:118; inspection returns the documented error, so inspection and live differ"
-    }
-  },
+  "known_findings": {},
   "resolved_findings": {
     "F1": "fixed b57f3cc/f56321d (post_run_check_failed); frozen test tests/python/test_f1_f4_regressions.py",
     "F2": "fixed bfc0e09 (delete_space removes blobs only it referenced)",
-    "F3": "fixed b57f3cc/f56321d (maintenance.acquire one claim per Space; join returns the saved reply)"
+    "F3": "fixed b57f3cc/f56321d (maintenance.acquire one claim per Space; join returns the saved reply)",
+    "F4": "fixed by the F4/F5 bridge fix (PassiveAdapter.call returns the live outcome envelope); control inspect-F4-envelope-dropped; test tests/python/test_bridge_reply_contract.py",
+    "F5": "fixed by the F4/F5 bridge fix (_delivery_failure substitutes the authority error with its documented capability); controls inspect-F5-redaction-change-noticed, inspect-F5-wrong-adapter-error-not-excused; test tests/python/test_bridge_reply_contract.py"
   }
 }

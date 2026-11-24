@@ -188,14 +188,22 @@ MUTANTS = {
         "check": "delete_residue", "expect": "Blobs",
         "why": "F2 regression: delete_space keeps file contents only the deleted Space referenced",
         "edits": [("projects.py", '        conn.execute("""DELETE FROM blobs WHERE sha IN (', '        conn.execute("""SELECT 1 FROM blobs WHERE sha IN (')]},
+    "inspect-F4-envelope-dropped": {
+        "check": "inspection_readonly", "expect": "SameAsLive", "requires": "inspection.py",
+        "signatures": ["'outcome': {'status': 'success'}"],
+        "why": "F4 regression: passive inspection answers reads without the live outcome envelope",
+        "edits": [("inspection.py", '"result": self._call(op, args), "outcome": {"status": "success"}}',
+                   '"result": self._call(op, args)}')]},
     "inspect-F5-redaction-change-noticed": {
-        "check": "inspection_readonly", "expect": "KnownFindingDrift", "requires": "inspection.py",
-        "why": "fixing (or changing) the live not_granted redaction must change the pinned F4/F5 case set",
-        "edits": [("bridge.py", "        return _failure(authority, invocation.effect, authorized=False)",
-                   "        return _failure(authority, invocation.effect)")]},
+        "check": "inspection_readonly", "expect": "SameAsLive", "requires": "inspection.py",
+        "signatures": ["'message': 'Operation could not be completed'"],
+        "why": "F5 regression: the live bridge redacts not_granted and drops its documented capability",
+        "edits": [("bridge.py", "        error = authority\n",
+                   "        error = SpacesError(authority.code, \"Operation could not be completed\") "
+                   "if isinstance(authority, SpacesError) else authority\n")]},
     "inspect-F5-wrong-adapter-error-not-excused": {
         "check": "inspection_readonly", "expect": "SameAsLive", "requires": "inspection.py",
-        "why": "a wrong not_granted message or capability from PassiveAdapter must not pass as the known F5 difference",
+        "why": "a wrong not_granted message or capability from PassiveAdapter differs from the live bridge",
         "edits": [("inspection.py",
                    '            raise SpacesError("not_granted", "Capability or requested scope is not granted", capability=capability)',
                    '            raise SpacesError("not_granted", "WRONG MESSAGE", capability="WRONG CAPABILITY")')]},

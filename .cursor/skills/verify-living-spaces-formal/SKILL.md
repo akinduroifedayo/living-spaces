@@ -58,10 +58,10 @@ Evidence levels, strongest first:
 | `bridge_authority` | Exhaustive within bound | Authority, NoEffect | 800 cases: 8 grant sets x 5 session kinds x 10 ops x `space` arg spoof | 9 s |
 | `delete_residue` | Generated, real code (schema read live) | Gone, Untouched, Fresh, Blobs | every table with a `space` column; 12 of them populated; retained `maintenance_operations` history must be retired and belong to the deleted incarnation | <1 s |
 | `net_boundary` | Generated, real code (resolver and entire transport faked) | VettedIpArgument, ResolvedIpArgument, PortAllowlist, CredentialsStay | seeds 0..19999: 9 spellings of private/public IPv4, IPv6, mixed DNS answers, up to 4 redirects | 1 s |
-| `inspection_readonly` | Exhaustive within bound | ReadOnly, Refused, SameAsLive (F4/F5 pinned), Snapshot | 6768 calls: 8 grant sets x spoof x 405 query shapes + get/meta/runs/log/unknown/6 writes | 25 s |
+| `inspection_readonly` | Exhaustive within bound | ReadOnly, Refused, SameAsLive, Snapshot | 6768 calls: 8 grant sets x spoof x 405 query shapes + get/meta/runs/log/unknown/6 writes | 25 s |
 
 The file and function map for each check is `verification/formal/COVERAGE.json`. The negative controls are in
-`verification/formal/mutants.py` (39 at 92486e1) plus the model configurations in `tla.py`.
+`verification/formal/mutants.py` (41 with the F4/F5 controls) plus the model configurations in `tla.py`.
 Each control names the property it must trip. Ambiguous controls also require mechanism signatures. Every TLA+
 negative configuration checks its final trace values. The paused-run control starts fresh with no user action,
 requires `manualRan=FALSE` and a `skipped` reply. The Python counterpart requires an inline-success scenario with
@@ -98,22 +98,17 @@ keeps it disabled. The (d) controls therefore demonstrate related failure classe
 
 ## Findings at the sync commit
 
-Python checks report open findings as `known_findings`. Their documented presence is not a new regression.
-Each finding's exact case set is pinned by a SHA-256 over its inputs; any change, including a fix, fails with
-`KnownFindingDrift` until the synced baseline is reviewed through `/maintain-formal-verification-skill`.
+No findings are open. Python checks can still report open findings as `known_findings`; a documented one is not a
+new regression, and its exact case set must be pinned so that any change, including a fix, is noticed.
 
-- **F4 Inspection replies lack the live outcome envelope.** Since `10517b9` `bridge.dispatch` adds
-  `outcome: {status: success|rejected}` to every reply (`bridge.py:213-273`). `inspection.PassiveAdapter.call`
-  never adds it; only the `RecordOverlay` subclass does, for editor saves (`inspection.py:585-586`). 3376 of the 6768 calls differ only by this field.
-- **F5 Live not_granted replies drop the documented detail.** `bridge._delivery_failure` re-runs `_authorize`;
-  when the grant is missing, that refusal goes through `_failure(authorized=False)` and becomes
-  `{"code": "not_granted", "message": "Operation could not be completed"}` with no `capability`
-  (`bridge.py:213-231`). `docs/contracts/CONTRACTS.md:118` promises `not_granted (extra: capability)`, and the
-  desktop sandbox still sends `capability` (`src/desktop/sandbox/index.js:74`). Inspection returns the documented
-  error, so 3296 calls differ by this redaction plus F4. Introduced by `10517b9`, with no test or note stating
-  that the redaction was intended.
-
-Fixed since 0.1.1, now hard properties with regression controls:
+Fixed, now hard properties with regression controls:
+- **F4** (inspection replies lacked the live `outcome` envelope, from `10517b9`): `PassiveAdapter.call` returns
+  `outcome: {status: success|rejected}` like `bridge.dispatch`; control `inspect-F4-envelope-dropped`.
+- **F5** (live `not_granted` redacted to "Operation could not be completed" without `capability`, from
+  `10517b9`): `bridge._delivery_failure` substitutes the authority error itself, so it keeps the detail
+  `docs/contracts/CONTRACTS.md` promises; control `inspect-F5-redaction-change-noticed`, and
+  `inspect-F5-wrong-adapter-error-not-excused` keeps the adapter's side to the contract. Tests in
+  `tests/python/test_bridge_reply_contract.py`.
 - **F1** (Refresh reported refused after it ran): `b57f3cc`/`f56321d` raise `post_run_check_failed` with the run
   reply (`upkeep.py:607-609`); controls `refresh-verify-refusal-reported-as-refused` and
   `f1-verify-refusal-reported-as-refused`.
@@ -159,7 +154,7 @@ operation (same document). `delete_residue` requires them to be retired history 
 1. Run `python3 verification/formal/run.py`. Note any `DRIFT` lines.
 2. A `BAD` check line normally means a property your change broke: the line quotes the steps and stored state.
    Fix the code, not the check, unless the documented behavior changed on purpose. `KnownFindingDrift` instead
-   means a pinned finding set (F4/F5 today) changed. Investigate it, including a genuine fix, before updating that
+   means a pinned finding set changed (none is pinned today). Investigate it, including a genuine fix, before updating that
    pin and the source-linked model through `/maintain-formal-verification-skill`.
 3. A `BAD control` line means a check can no longer see the break it guards, or the mutant text no longer matches
    (the code moved). Update the mutant's text in `mutants.py` to the new code; never delete a control to go green.
