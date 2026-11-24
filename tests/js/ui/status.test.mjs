@@ -361,6 +361,12 @@ async function q04Details() {
   const dialog = document.querySelector('[role="dialog"]')
   assert.ok(dialog, 'Details opens a drawer')
   assert.match(dialog.textContent, /Space details/)
+  // The Space's mark appears once, as the 96 px hero; the header carries only the title and Close.
+  const tiles = [...dialog.querySelectorAll('.ls-tile')]
+  assert.equal(tiles.length, 1, 'Details shows the Space mark exactly once')
+  assert.ok(tiles[0].closest('section[aria-label="Space"]'), 'the one mark is the hero')
+  assert.equal(tiles[0].style.width, '96px')
+  assert.equal(dialog.querySelector('.ls-sheet-header .ls-tile'), null, 'the header repeats no mark')
   const facts = Object.fromEntries([...dialog.querySelectorAll('section[aria-label="Runtime"] dl div')].map(row => [row.querySelector('dt').textContent, row.querySelector('dd').textContent]))
   await click('Close')
   assert.equal(document.querySelector('[role="dialog"]'), null)

@@ -22,7 +22,7 @@ _sandbox_spec = importlib.util.spec_from_file_location(
 _sandbox = importlib.util.module_from_spec(_sandbox_spec)
 _sandbox_spec.loader.exec_module(_sandbox)
 SPACE_ID = re.compile(r"[a-z0-9][a-z0-9-]{1,47}\Z")
-SUMMARY_FIELDS = {"id", "name", "description", "owner", "status", "head_rev", "accent", "icon", "pinned",
+SUMMARY_FIELDS = {"id", "name", "description", "owner", "status", "head_rev", "accent", "icon", "icon_image", "pinned",
                   "updated_at", "last_opened_at", "freshness", "activity", "upkeep", "attention"}
 
 
@@ -98,6 +98,11 @@ async def status():
 @router.get("/spaces/{space_id}")
 async def space_detail(space_id: str):
     return await _run(space_id, lambda core: core.get_space(space_id))
+
+
+@router.get("/spaces/{space_id}/icon")
+async def space_icon(space_id: str):
+    return await _run(space_id, lambda core: core.icon_image(space_id))
 
 
 @router.get("/spaces/{space_id}/bundle")

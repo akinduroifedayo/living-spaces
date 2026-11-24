@@ -80,7 +80,8 @@ function SpaceDetails({ space, dimensions, upkeepLabel, building, onOpen, onClos
   const net = grants.find(grant => grant.capability === 'net')
   const lastRun = space.recent_runs?.[0]
   const sources = space.freshness?.sources || []
-  return <Drawer returnFocus={returnFocus} title="Space details" description={`Freshness, storage, access, history and runtime for ${space.name}`} onClose={onClose} heading={<SpaceTile space={space} small />}>
+  return <Drawer returnFocus={returnFocus} title="Space details" description={`Freshness, storage, access, history and runtime for ${space.name}`} onClose={onClose}>
+    <section aria-label="Space" className="ls-detail ls-detail-hero"><SpaceTile space={space} size={96} /><div><strong>{space.name}</strong>{space.description && <p className="ls-secondary">{space.description}</p>}</div></section>
     <section aria-label="Freshness" className="ls-detail"><h3>Freshness</h3><dl className="ls-facts">
       <div><dt>Latest change</dt><dd>{phrase.label}{phrase.at != null && <> · <Time at={phrase.at} /></>}</dd></div>
       {facts.map(fact => <div key={fact.key}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}
@@ -431,7 +432,7 @@ export function SpaceView({ ctx, scopeKey = null, scope, openingSessionRest, sid
   const tone = ['failed', 'blocked', 'crashed'].includes(status) ? 'danger' : status === 'updating' ? 'busy' : phrase.key === 'success' && !space.freshness?.last_success_at ? 'idle' : 'good'
   return <div ref={frame} className="ls-frame" data-header-mode={headerMode} data-testid="space-view"><header className="ls-framebar">
     <div className="ls-island ls-island-identity"><Action className="ls-action ls-icon-button" icon="arrow-left" aria-label="Back to Spaces" title="Back to Spaces" onClick={leave} />
-      <div className="ls-identity"><SpaceTile space={space} small /><h1 title={space.name}>{space.name}</h1>{status !== 'ready' && <StatusPill status={status} />}</div></div>
+      <div className="ls-identity"><SpaceTile space={space} size={24} /><h1 title={space.name}>{space.name}</h1>{status !== 'ready' && <StatusPill status={status} />}</div></div>
     <div className="ls-island ls-frame-actions">
       <span className="ls-frame-meta" title={phrase.at != null ? `${phrase.label} · ${absolute(phrase.at)}` : phrase.label}><span className="ls-dot" data-tone={tone} aria-hidden="true" /><span className="ls-frame-meta-text">{phrase.label}{phrase.at != null && <> · <Time at={phrase.at} relative /></>}</span></span>
       <SaveStatus write={write} announcement={announcement} />

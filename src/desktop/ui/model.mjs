@@ -10,7 +10,6 @@ export function routeSpace(hash) {
 
 export const ACCENTS = { blue: '#0053fd', green: '#55a583', amber: '#e0a06c', purple: '#9e94d5', teal: '#4c9fb0', rose: '#e75e78', orange: '#e08a64', grey: '#8a8a93' }
 export const accentColor = accent => Object.hasOwn(ACCENTS, accent) ? ACCENTS[accent] : ACCENTS.blue
-export const iconName = icon => typeof icon === 'string' && /^[a-z][a-z0-9-]{0,63}$/.test(icon) ? icon : 'layers'
 export const PILLS = {
   ready: { label: 'Available', icon: 'check', border: 'solid' },
   building: { label: 'Building', icon: 'tools', border: 'dashed' },

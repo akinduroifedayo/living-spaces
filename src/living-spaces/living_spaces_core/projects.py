@@ -8,7 +8,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-from . import db, diagnostics, grants, limits, migrations, records, runs, upkeep
+from . import db, diagnostics, grants, icons, limits, migrations, records, runs, upkeep
 from .errors import SpacesError
 
 RUNTIME = Path(__file__).parent.parent / "runtime"
@@ -50,8 +50,7 @@ def _manifest(value, name, description):
         limits.path(path)
     accent = value.get("accent", "blue")
     value["accent"] = accent if isinstance(accent, str) and accent in _ACCENTS else "blue"
-    icon = value.get("icon", "layers")
-    value["icon"] = icon if isinstance(icon, str) and re.fullmatch(r"[a-z][a-z0-9-]*", icon) else "layers"
+    value["icon"] = icons.manifest_icon(value.get("icon", icons.DEFAULT))
     if "theme" in value:
         theme = value["theme"]
         limits.object_json(theme, resource="theme")
@@ -178,6 +177,36 @@ def _diagnose(conn, manifest, files, found=()):
     return {"diagnostics": found, "warnings": [d["message"] for d in found]}
 
 
+def _prepare_icon(manifest, changed, conn=None, existing=None):
+    """Normalise the icon image to the stored 512 px form before it is hashed: a newly written image, or an asset
+    already in the Space that the manifest now selects. Bytes already in the stored form are kept as they are."""
+    path = icons.image_path(manifest["icon"])
+    if path is None:
+        return
+    if changed.get(path) is not None:
+        changed[path] = icons.prepare(path, changed[path])
+    elif path not in changed and existing and path in existing:
+        raw = bytes(conn.execute("SELECT content FROM blobs WHERE sha=?", (existing[path],)).fetchone()[0])
+        prepared = icons.prepare(path, raw)
+        if prepared != raw:
+            changed[path] = prepared
+
+
+def _icon_record(conn, sid):
+    row = conn.execute("SELECT result FROM icon_checks WHERE space=?", (sid,)).fetchone()
+    return json.loads(row["result"]) if row else None
+
+
+def _check_icon(conn, sid, manifest, files):
+    """Check the revision's icon image once, keeping an earlier result for unchanged bytes and accent."""
+    load = lambda sha: conn.execute("SELECT content FROM blobs WHERE sha=?", (sha,)).fetchone()[0]
+    record = icons.evaluate(load, _icon_record(conn, sid), manifest, files)
+    if record is None:
+        conn.execute("DELETE FROM icon_checks WHERE space=?", (sid,))
+    else:
+        conn.execute("INSERT OR REPLACE INTO icon_checks(space,result) VALUES(?,?)", (sid, limits.dumps(record)))
+
+
 def _save_revision(conn, space, manifest, files, *, kind, author, summary, restored_from=None):
     encoded_manifest = limits.object_json(manifest, limits.FILE_BYTES, "manifest")
     rev, at = space["head_rev"] + 1, db.now()
@@ -186,7 +215,8 @@ def _save_revision(conn, space, manifest, files, *, kind, author, summary, resto
                   encoded_manifest, limits.dumps(files), author, summary, at))
     status = "active" if manifest["entry"] in files else space["status"]
     conn.execute("UPDATE spaces SET head_rev=?,name=?,description=?,accent=?,icon=?,status=?,updated_at=? WHERE id=?",
-                 (rev, manifest["name"], manifest["description"], manifest["accent"], manifest["icon"], status, at, space["id"]))
+                 (rev, manifest["name"], manifest["description"], manifest["accent"], icons.glyph(manifest["icon"]), status, at, space["id"]))
+    _check_icon(conn, space["id"], manifest, files)
     return _revision(conn, space["id"], rev)
 
 
@@ -202,6 +232,7 @@ def create_space(name, *, description="", owner, files=None, manifest=None, libr
     normalized = _manifest(supplied if supplied is not None else {}, name, description)
     found = []
     _libraries(changed, normalized, libraries, found)
+    _prepare_icon(normalized, changed)
     slug = re.sub(r"[^a-z0-9]+", "-", unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()).strip("-")[:48].rstrip("-")
     if len(slug) < 2:
         slug = (slug + "-space") if slug else "space"
@@ -213,7 +244,7 @@ def create_space(name, *, description="", owner, files=None, manifest=None, libr
             sid = slug[:48 - len(tail)].rstrip("-") + tail
         at = db.now()
         conn.execute("INSERT INTO spaces(id,name,description,owner,status,data_version,accent,icon,created_at,updated_at) VALUES(?,?,?,?,'building',?,?,?,?,?)",
-                     (sid, normalized["name"], normalized["description"], owner, normalized["data"]["version"], normalized["accent"], normalized["icon"], at, at))
+                     (sid, normalized["name"], normalized["description"], owner, normalized["data"]["version"], normalized["accent"], icons.glyph(normalized["icon"]), at, at))
         from . import maintenance
         maintenance.create_identity(conn, sid)
         grants._seed(conn, sid, normalized, author)
@@ -257,10 +288,39 @@ def _activity(sid):
     return max(candidates, key=lambda item: item["at"], default=None)
 
 
+def _icon_summary(sid):
+    """The icon image's save-time result for the shell: {path, sha, pass, fails, attempt}, or None."""
+    with db.read() as conn:
+        record = _icon_record(conn, sid)
+    return None if record is None else {key: record[key] for key in ("path", "sha", "pass", "fails", "attempt")}
+
+
+def icon_check(sid):
+    """`icon_check` for a build result, or None when the manifest names no image."""
+    with db.read() as conn:
+        record = _icon_record(conn, sid)
+        manifest = _head_manifest(conn, sid)
+    return icons.build_result(manifest, record)
+
+
+def icon_image(sid):
+    """The Space's checked icon image as a local data URL. Only an image that passed is served."""
+    with db.read() as conn:
+        db.space(conn, sid)
+        record = _icon_record(conn, sid)
+        if not record or not record.get("pass") or not record.get("sha"):
+            raise SpacesError("not_found", "This Space has no icon image that passed the checks")
+        row = conn.execute("SELECT content FROM blobs WHERE sha=?", (record["sha"],)).fetchone()
+    if row is None:
+        raise SpacesError("not_found", "Icon image not found")
+    return {"sha": record["sha"], "image": icons.image_data(bytes(row[0]))}
+
+
 def _summary(row):
     sid = row["id"]
     summary = {key: row[key] for key in ("id", "name", "description", "owner", "status", "head_rev", "accent", "icon", "pinned", "updated_at", "last_opened_at")}
     summary["pinned"] = bool(summary["pinned"])
+    summary["icon_image"] = _icon_summary(sid)
     summary["freshness"] = runs.freshness(sid)
     summary["activity"] = _activity(sid)
     summary["upkeep"] = upkeep.summary(sid)
@@ -394,6 +454,7 @@ def _write(conn, sid, changed, supplied, author, summary, base_rev, libraries=()
     manifest = _manifest(supplied if supplied is not None else old["manifest"], space["name"], space["description"])
     found = []
     _libraries(changed, manifest, libraries, found, existing=old["files"])
+    _prepare_icon(manifest, changed, conn, old["files"])
     version = manifest["data"]["version"]
     if version < space["data_version"]:
         raise SpacesError("incompatible", "Project requires an older data version", from_version=space["data_version"], to_version=version)

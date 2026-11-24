@@ -1,6 +1,7 @@
-import { Badge, Button, Codicon, CopyButton, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, fmtDateTime, relativeTime, Tip } from '@hermes/plugin-sdk'
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ALERT_KINDS, accentColor, errorText, iconName, PILLS } from './model.mjs'
+import { Badge, Button, Codicon, CopyButton, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, fmtDateTime, relativeTime, Tip, useQuery } from '@hermes/plugin-sdk'
+import { createContext, useContext, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { ALERT_KINDS, errorText, PILLS, spacePath } from './model.mjs'
+import { GLYPH_SCALE, IMAGE_ZOOM, SQUIRCLE, SQUIRCLE_INNER, ramp, resolveMark, tierFor } from './marks.mjs'
 import { parseMarkdown } from './markdown.mjs'
 
 export const relative = seconds => relativeTime(seconds * 1000)
@@ -29,22 +30,56 @@ export function StatusPill({ status, label }) {
   const pill = PILLS[status] || { label: status, icon: 'info', border: 'solid' }
   return <Badge variant="outline" className={`ls-pill ls-${status}`} style={{ borderStyle: pill.border }}><Icon name={pill.icon} spin={['updating', 'running'].includes(status)} />{label || pill.label}</Badge>
 }
-// A Space names its own icon. A name this host's icon font does not draw renders as nothing, so a Space icon
-// that paints no glyph falls back to the contract's default instead of leaving an empty tile.
-export function SpaceIcon({ icon }) {
-  const name = iconName(icon)
-  const [missing, setMissing] = useState(null)
-  const ref = useRef(null)
-  useLayoutEffect(() => {
-    const element = ref.current?.querySelector('.codicon') || ref.current?.firstElementChild
-    if (!element || typeof getComputedStyle !== 'function') return
-    const content = getComputedStyle(element, '::before').content
-    setMissing(content === 'none' ? name : null)
-  }, [name])
-  return <span ref={ref} className="ls-icon-slot"><Icon name={missing === name ? 'layers' : name} /></span>
+// Where a Space mark reads its checked icon image: the scoped REST of the page that renders it. Without a source
+// (a test, an empty state) marks draw their glyph or sigil.
+export const IconSource = createContext(null)
+
+// A Space's mark at one size. The Space's generated image when it passed the save-time checks and decodes, else its
+// kit glyph, else a sigil from its id: never blank or broken. The image comes from the Space's own stored files
+// through this backend's REST route as a data URL; nothing is fetched from the network. The host draws the squircle,
+// accent ramp, edge and sheen around it, so every Space sits in one family.
+export function SpaceMark({ space, size = 40, className = '' }) {
+  const source = useContext(IconSource)
+  const record = space?.icon_image
+  const wanted = !!(source?.rest && record?.pass && record.sha && space?.id)
+  const query = useQuery({ queryKey: ['living-spaces', source?.scopeKey ?? null, space?.id, 'icon', record?.sha ?? null],
+    queryFn: () => source.rest(`${spacePath(space.id)}/icon`), enabled: wanted, staleTime: Infinity, retry: false })
+  const [failed, setFailed] = useState(null)
+  const image = wanted && query.data?.sha === record.sha ? query.data.image : null
+  const mark = resolveMark(space, image && image !== failed ? image : null)
+  const id = `lsm${useId().replace(/[^A-Za-z0-9_-]/g, '')}`
+  const tier = tierFor(size)
+  const r = ramp(space?.accent, { hueShift: mark.hueShift || 0 })
+  const edge = <path d={SQUIRCLE} fill="none" style={{ stroke: 'var(--ls-mark-edge)' }} strokeWidth={Math.max(24 / size, 0.25)} />
+  const common = { className: `ls-mark ${className}`.trim(), width: size, height: size, viewBox: '0 0 24 24', 'aria-hidden': true,
+    'data-mark': mark.source, 'data-tier': tier, ...(mark.key ? { 'data-glyph': mark.key } : {}) }
+  if (mark.source === 'image') {
+    const z = IMAGE_ZOOM[tier], o = (24 - 24 * z) / 2
+    return <svg {...common}><defs><clipPath id={`${id}c`}><path d={SQUIRCLE} /></clipPath>
+      <linearGradient id={`${id}l`} x1=".2" y1="0" x2=".8" y2="1"><stop offset="0" stopColor={r.top} stopOpacity=".55" /><stop offset=".5" stopColor={r.mid} stopOpacity="0" /><stop offset="1" stopColor={r.bottom} stopOpacity=".6" /></linearGradient>
+      <radialGradient id={`${id}r`} cx=".28" cy="0" r="1"><stop offset="0" stopColor="#fff" stopOpacity=".16" /><stop offset=".55" stopColor="#fff" stopOpacity="0" /></radialGradient></defs>
+      <g clipPath={`url(#${id}c)`}><rect width="24" height="24" fill={r.mid} />
+        <image href={mark.image} x={o} y={o} width={24 * z} height={24 * z} preserveAspectRatio="xMidYMid slice" onError={() => setFailed(mark.image)} />
+        {tier !== 'micro' && <path d={SQUIRCLE} fill={`url(#${id}l)`} />}{(tier === 'medium' || tier === 'hero') && <path d={SQUIRCLE} fill={`url(#${id}r)`} />}</g>{edge}</svg>
+  }
+  const scale = GLYPH_SCALE[tier]
+  return <svg {...common}><defs>
+      <linearGradient id={`${id}g`} x1=".2" y1="0" x2=".8" y2="1"><stop offset="0" stopColor={r.top} /><stop offset=".55" stopColor={r.mid} /><stop offset="1" stopColor={r.bottom} /></linearGradient>
+      <linearGradient id={`${id}h`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity=".55" /><stop offset=".35" stopColor="#fff" stopOpacity="0" /></linearGradient>
+      <radialGradient id={`${id}r`} cx=".3" cy="0" r="1"><stop offset="0" stopColor="#fff" stopOpacity=".22" /><stop offset=".6" stopColor="#fff" stopOpacity="0" /></radialGradient></defs>
+    <path d={SQUIRCLE} fill={`url(#${id}g)`} />{(tier === 'medium' || tier === 'hero') && <path d={SQUIRCLE} fill={`url(#${id}r)`} />}{edge}
+    {(tier === 'medium' || tier === 'hero') && <path d={SQUIRCLE_INNER} fill="none" stroke={`url(#${id}h)`} strokeWidth={tier === 'hero' ? 0.35 : 0.5} />}
+    <g transform={`translate(12 12) scale(${scale}) translate(-12 -12)`}>{glyphPaths(mark.shapes, 'rgba(255,255,255,.97)', 'rgba(255,255,255,.5)', 2)}</g></svg>
 }
-export function SpaceTile({ space, small = false }) {
-  return <span className={`ls-tile${small ? ' ls-tile-small' : ''}`} style={{ '--ls-accent': accentColor(space.accent) }}><SpaceIcon icon={space.icon} /></span>
+function glyphPaths(shapes, primary, secondary, width) {
+  return shapes.map((shape, index) => {
+    const fill = shape.t === 1 ? primary : secondary
+    return shape.s ? <path key={index} d={shape.d} fill="none" style={{ stroke: fill }} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />
+      : <path key={index} d={shape.d} style={{ fill }} fillRule="evenodd" />
+  })
+}
+export function SpaceTile({ space, size = 40 }) {
+  return <span className="ls-tile" style={{ width: size, height: size }}><SpaceMark space={space} size={size} /></span>
 }
 export function OwnerChip({ owner = 'Hermes' }) {
   return <span className="ls-owner"><span className="ls-avatar" aria-hidden="true">{owner.slice(0, 1).toUpperCase()}</span><span>{owner}</span></span>
@@ -77,13 +112,13 @@ export function Answer({ text, onOpenLink }) {
     : block.type === 'list' ? (() => { const List = block.ordered ? 'ol' : 'ul'; return <List key={index}>{block.items.map((item, n) => <li key={n}><Spans spans={item} onOpenLink={onOpenLink} /></li>)}</List> })()
     : <p key={index}><Spans spans={block.spans} onOpenLink={onOpenLink} /></p>)
 }
-export function Drawer({ title, description, children, onClose, note, returnFocus, heading }) {
+export function Drawer({ title, description, children, onClose, note, returnFocus }) {
   const trigger = useRef(returnFocus || (typeof document === 'undefined' ? null : document.activeElement))
   const close = useRef(null)
   return <Dialog open onOpenChange={open => !open && onClose()}><DialogContent className="ls-sheet" bodyClassName="ls-sheet-body" showCloseButton={false}
     onOpenAutoFocus={event => { event.preventDefault(); close.current?.focus() }}
     onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
-    <DialogHeader className="ls-sheet-header">{heading}<DialogTitle>{title}</DialogTitle><Button ref={close} onClick={onClose} variant="ghost" size="sm" className="ls-action"><Icon name="close" />Close</Button><DialogDescription className="ls-sr">{description || title}</DialogDescription></DialogHeader>
+    <DialogHeader className="ls-sheet-header"><DialogTitle>{title}</DialogTitle><Button ref={close} onClick={onClose} variant="ghost" size="sm" className="ls-action"><Icon name="close" />Close</Button><DialogDescription className="ls-sr">{description || title}</DialogDescription></DialogHeader>
     {note}<div className="ls-sheet-scroll">{children}</div>
   </DialogContent></Dialog>
 }

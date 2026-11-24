@@ -95,8 +95,6 @@ test('restore confirmation makes retained history and records explicit', () => {
 test('manifest identity falls back without injecting a style or icon', () => {
   assert.equal(m.accentColor('constructor'), '#0053fd')
   assert.equal(m.accentColor('rose'), '#e75e78')
-  assert.equal(m.iconName('book'), 'book')
-  assert.equal(m.iconName('book" onclick="bad'), 'layers')
 })
 test('diagnostics bound output and redact common credential values', () => {
   assert.equal(m.diagnosticText('token=demo-secret Bearer demo-value'), 'token=[redacted]', 'free text is redacted from the first credential to the end')
