@@ -20,7 +20,8 @@ spec.loader.exec_module(plugin)
 html = (Path(__file__).resolve().parents[1] / 'fixtures/notebook.html').read_text()
 args: dict = dict(name='Verification Notebook', description='Disposable note persistence check',
             files={'index.html': html}, libraries=[], manifest={'entry': 'index.html',
-            'data': {'version': 1, 'collections': {'notes': {'description': 'Saved user notes'}}}})
+            'data': {'version': 1, 'collections': {'notes': {'description': 'Saved user notes'},
+                                        'bulk': {'description': 'One near-limit record for the storage notice probe'}}}})
 variant = sys.argv[3] if len(sys.argv) > 3 else 'notebook'
 assert variant in ['notebook', 'agent']
 if variant == 'agent':

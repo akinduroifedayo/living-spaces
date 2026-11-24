@@ -12,6 +12,7 @@ import control as c
 OUT = None
 RESULTS = []
 CARD = 'a[href="#/spaces?space=verification-notebook"]'
+MENU = 'button[aria-label="More Space actions"]'
 
 
 def wait(predicate, timeout=20):
@@ -35,14 +36,14 @@ def visible(selector):
 def index():
     c.key(OUT, 'Escape')
     if visible('[data-testid="space-view"]'):
-        c.click(OUT, 'header.ls-framebar > button:first-child')
+        c.click(OUT, c.BACK)
     elif not visible('[data-testid="spaces-index"]'):
         c.click(OUT, 'text=Spaces')
     wait(lambda: visible('[data-testid="spaces-index"]'))
     if visible('input[aria-label="Search Spaces or owner"]'):
         c.fill(OUT, 'input[aria-label="Search Spaces or owner"]', '')
     if 'No archived Spaces.' in c.evaluate(OUT, 'document.body.innerText'):
-        c.click(OUT, 'text=All')
+        c.click(OUT, 'text=Recent')
 
 
 def notebook():
@@ -62,6 +63,10 @@ def notebook_row(data):
     return next(r for r in data['spaces'] if r['id'] == 'verification-notebook')
 
 
+class Unreachable(Exception):
+    """A missing prerequisite (named in the message), not a product or harness failure."""
+
+
 def run_case(name, fn):
     started = time.time()
     try:
@@ -69,6 +74,8 @@ def run_case(name, fn):
         c.capture(OUT, name + '-result')
         row = dict(feature=name, status='observed' if name == 'refresh-double-agent' else 'passed',
                    started=started, ended=time.time(), observed=result)
+    except Unreachable as error:
+        row = dict(feature=name, status='verified-unreachable', started=started, ended=time.time(), prerequisite=str(error))
     except Exception as error:
         c.capture(OUT, name + '-failed')
         row = dict(feature=name, status='failed', started=started, ended=time.time(), error=str(error))
@@ -91,9 +98,15 @@ def save():
     return dict(visible_saved=True, persisted=True, reopened=True)
 
 
+def menu(item):
+    c.click(OUT, MENU)
+    wait(lambda: visible('[role="menuitem"]'))
+    c.click(OUT, 'text=' + item)
+
+
 def history():
     notebook()
-    c.click(OUT, 'text=History')
+    menu('History')
     c.wait_text(OUT, 'No refresh runs yet.')
     c.capture(OUT, 'history-empty-runs')
     c.click(OUT, 'text=Revisions')
@@ -107,19 +120,21 @@ def history():
 
 def empty_upkeep():
     notebook()
-    c.click(OUT, 'text=Upkeep: none')
+    # A Space without a declared refresh shows no Refresh control; Details explains why.
+    assert not c.evaluate(OUT, '[...document.querySelectorAll(".ls-frame-actions button")].some(e=>/Refresh/.test(e.textContent))')
+    c.click(OUT, 'text=Details')
+    c.wait_text(OUT, 'This Space has no refresh of its own.')
+    c.capture(OUT, 'details-no-refresh')
+    c.click(OUT, 'text=Manage upkeep')
     c.wait_text(OUT, 'No upkeep yet')
     c.capture(OUT, 'upkeep-empty')
     c.key(OUT, 'Escape')
-    selector = '.ls-frame-actions button[title="No refresh handler is declared. Ask the owner in chat to add one."]'
-    assert visible(selector)
-    assert c.evaluate(OUT, f'document.querySelector({json.dumps(selector)}).getAttribute("aria-disabled")') == 'true'
-    return dict(empty_upkeep=True, refresh_disabled_for_missing_handler=True)
+    return dict(empty_upkeep=True, refresh_absent_without_handler=True, explained_in_details=True)
 
 
 def permissions():
     notebook()
-    c.click(OUT, 'text=Permissions')
+    menu('Permissions')
     c.wait_text(OUT, 'Internet access')
     selector = 'button[role="switch"][aria-labelledby="ls-net-title"]'
     assert c.evaluate(OUT, f'document.querySelector({json.dumps(selector)}).getAttribute("aria-checked")') == 'true'
@@ -132,7 +147,10 @@ def permissions():
     assert any(r['capability'] == 'net' and r['action'] != 'request' and r['outcome'] != 'granted' for r in data['audit'])
     assert 'WebRTC' in c.evaluate(OUT, 'document.body.innerText')
     c.key(OUT, 'Escape')
-    c.click(OUT, 'text=Permissions')
+    # Internet on leaves the island once the grant is off; Details > Manage access is the other route back.
+    assert not visible('.ls-frame-actions button[title^="Internet access is on"]')
+    c.click(OUT, 'text=Details')
+    c.click(OUT, 'text=Manage access')
     c.wait_text(OUT, 'Internet access')
     assert c.evaluate(OUT, f'document.querySelector({json.dumps(selector)}).getAttribute("aria-checked")') == 'false'
     c.capture(OUT, 'internet-off-reopened')
@@ -154,28 +172,31 @@ def find():
     c.click(OUT, 'text=Archived')
     c.wait_text(OUT, 'No archived Spaces.')
     c.capture(OUT, 'archive-filter-empty')
-    c.click(OUT, 'text=All')
+    c.click(OUT, 'text=Recent')
     return dict(name_match=True, no_match=True, archived_empty=True)
 
 
 def pin():
     notebook()
-    c.click(OUT, 'button[aria-label="More Space actions"]')
-    c.click(OUT, 'text=Pin Space')
+    if notebook_row(rows())['pinned']:   # start unpinned whatever an earlier drive left behind
+        menu('Unpin Space')
+        wait(lambda: notebook_row(rows())['pinned'] == 0)
+    menu('Pin Space')
     wait(lambda: notebook_row(rows())['pinned'] == 1)
     index()
-    c.wait_text(OUT, 'Pinned')
+    wait(lambda: visible(CARD + ' .ls-pin'))
     c.capture(OUT, 'pinned-index')
     notebook()
-    c.click(OUT, 'button[aria-label="More Space actions"]')
-    c.click(OUT, 'text=Unpin Space')
+    menu('Unpin Space')
     wait(lambda: notebook_row(rows())['pinned'] == 0)
     return dict(pin=True, unpin=True, persisted=True)
 
 
 def double_refresh():
     m = c.owned(OUT)
-    assert 'nous/welcome' in c.evaluate(OUT, 'document.body.innerText'), 'Unverified model refused'
+    # Needs a model route. control.py launches with nous.guest false, so this case fails closed unless one is approved.
+    if 'nous/welcome' not in c.evaluate(OUT, 'document.body.innerText'):
+        raise Unreachable('agent Refresh needs a model route; control.py launches with nous.guest false and no provider')
     argv = [c.PYTHON, str(Path(c.__file__).with_name('fixture.py')), m['repo'], str(OUT), 'agent']
     result = subprocess.run(argv, env={**c.env(Path(m['state'])), 'PYTHONPATH': c.RUNTIME}, capture_output=True, text=True, timeout=30)
     (OUT / 'agent-fixture.log').write_text(result.stdout + result.stderr)
@@ -206,7 +227,7 @@ def double_refresh():
     with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as conn:
         conn.row_factory = sqlite3.Row
         runs = [dict(r) for r in conn.execute('SELECT * FROM runs WHERE space="verification-agent-refresh"')]
-    c.click(OUT, 'text=Upkeep: none')
+    menu('Upkeep')
     time.sleep(2)
     c.capture(OUT, 'double-refresh-upkeep')
     c.key(OUT, 'Escape')
@@ -224,8 +245,7 @@ def lifecycle():
     notebook()
     before = rows()
     notes = [r for r in before['records'] if r['space'] == 'verification-notebook']
-    c.click(OUT, 'button[aria-label="More Space actions"]')
-    c.click(OUT, 'text=Archive Space…')
+    menu('Archive Space…')
     c.capture(OUT, 'archive-confirmation')
     c.click(OUT, 'text=Archive Space')
     c.wait_text(OUT, 'This Space is archived.')
@@ -239,8 +259,7 @@ def lifecycle():
     assert any('W32 mapped note' in r['text'] for r in c.guest_read(OUT))
     assert notebook_row(rows())['status'] == 'active'
     c.capture(OUT, 'restored-note')
-    c.click(OUT, 'button[aria-label="More Space actions"]')
-    c.click(OUT, 'text=Archive Space…')
+    menu('Archive Space…')
     c.click(OUT, 'text=Archive Space')
     c.wait_text(OUT, 'This Space is archived.')
     c.click(OUT, 'text=Delete…')

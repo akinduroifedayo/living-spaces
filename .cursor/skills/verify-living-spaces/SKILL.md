@@ -6,23 +6,25 @@ disable-model-invocation: true
 
 # Verify Living Spaces
 
-**Status: usable scoped Desktop driver, exercised on both pins. Product acceptance is not complete.** The isolated Desktop decision enables the native Spaces page. Native note save and reopen pass with visible and SQLite evidence. The actual Desktop plus chat Refresh race creates two native one-shots and two model-backed cron sessions on both pins. Do not treat this skill as a release approval.
+**Status: usable scoped Desktop driver, re-exercised on main `92486e1` (post-Gallery). Product acceptance is not complete.** The isolated Desktop decision enables the native Spaces page. Native note save and reopen pass with visible and SQLite evidence. On main, the Gallery landing, floating island, Details sheet, notice dock, unbound bot notice, Copy details and storage notice also pass natively. The Desktop plus chat Refresh race created two native one-shots and two model-backed cron sessions on both older pins; it needs a model route, which the current launch no longer has. Do not treat this skill as a release approval.
 
 Read [the feature index](features/README.md) before driving. Use `/maintain-verification-skill` when the host or product changes.
 
 ## Product and pin
 
-- Released baseline `4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98`, version 0.1.1.
-- Unpublished candidate `8008dcc6f77c3f5cb51f966ab1241bd9f89dc37a`. Runtime inspection exists only on this candidate.
+- Current target: any clean checkout. `product-pin.json` records `checkout_head`, the `src/living-spaces` tree, and file digests. Last maintained against `origin/main` `92486e1` (product tree `7eb1844`), driven from a worktree whose `src/` equals that commit.
+- Historical labels: released baseline `4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98` (0.1.1) and unpublished candidate `8008dcc6f77c3f5cb51f966ab1241bd9f89dc37a` keep their names when their exact tree is checked out. Runtime inspection exists only on that candidate.
 - Baseline verification worktree `/Volumes/Expansion/Development/Build/living-spaces-app-verification`, branch `verify/living-spaces-app`.
 - Candidate worktree `/Volumes/Expansion/Development/Build/living-spaces-app-verification-candidate`. Never edit product code there.
-- Existing host `/Applications/Hermes.app`, observed Desktop `v0.23.1+6306`. The runtime and interpreter are existing dependencies, not a build produced by this skill.
+- Existing host `/Applications/Hermes.app`, observed Desktop `v0.23.3+1019` (earlier runs: `v0.23.1+6306`). The runtime and interpreter are existing dependencies, not a build produced by this skill.
 
 Do not run the released `harness/app.py` whole. Its prepare step configures a model plugin and its stop step invokes gateway stop. Reuse only protocol details. The helper owns its PID group, detached gateway, OS home, Hermes home, userData, cwd, and temporary directory.
 
 ## Launch
 
-No installs, auth copying, sign-in, live profile changes, gateway restart, publication, or product repairs are permitted. Use only the existing host and interpreter. The scoped native follow-up used the disposable app's existing `nous/welcome` model. It did not configure a model plugin or copy credentials. Do not select a paid provider to make a journey work.
+No installs, auth copying, sign-in, live profile changes, gateway restart, publication, or product repairs are permitted. Use only the existing host and interpreter. Do not select a paid provider to make a journey work.
+
+The disposable config is `plugins.enabled: [living-spaces]`, `nous.guest: false` and `security.allow_lazy_installs: false`, with `HERMES_SHARED_AUTH_DIR` inside the disposable home. `nous.guest: false` is the host's own switch that stops a fresh home claiming the Desktop welcome trial or minting a free-tier account (the same config as `tools/verify-desktop/drive.py`). Onboarding is completed with **I'll choose a provider later** (older hosts: **Skip setup** / **No thanks**). The consequence is that no model route exists: chat, agent Refresh and native inspection are `verified-unreachable` in a fresh run. Earlier native inspection and race receipts used the welcome-trial `nous/welcome` route before this change.
 
 ```sh
 cd /Volumes/Expansion/Development/Build/living-spaces-app-verification
@@ -91,11 +93,11 @@ The feature map calls `scripts/control.py` **control-living-spaces**. CDP gestur
 "$C" records --out "$RUN"
 ```
 
-Wait for the fixture's polled native card before clicking. Require **Note saved**, the rendered note, and a matching SQLite record. Return through `header.ls-framebar > button:first-child`, reopen the native card, and require the same note. A persisted row without visible success fails.
+Wait for the fixture's polled native card before clicking. Require **Note saved**, the rendered note, and a matching SQLite record. Return through **Back to Spaces**, `header.ls-framebar button[aria-label="Back to Spaces"]` (`control.BACK`), reopen the native card, and require the same note. A persisted row without visible success fails.
 
 The fixture uses a labeled input and an explicit `type="button"` click handler. Native form submission is forbidden by the shipped sandbox, including `onSubmit`. Do not loosen the sandbox or use `requestSubmit()` to repair a fixture.
 
-`fixture` prepares one code revision through the shipped handler. It is not chat creation or maintaining-session binding. Its warning about the absent maintaining session is real. The visible Bot request offline banner does not invalidate a separately proven note save.
+`fixture` prepares one code revision through the shipped handler. It is not chat creation or maintaining-session binding. Its warning about the absent maintaining session is real. The visible **Hermes didn't receive the request** notice (unbound) does not invalidate a separately proven note save. The fixture page also has two notice probes, **Ask Hermes** (`space.ask`) and **Fill storage** (one ~234 KB `bulk` record); see [chrome-and-notices](features/chrome-and-notices.md).
 
 Run the broader native recipes in a live prepared instance:
 
@@ -103,11 +105,19 @@ Run the broader native recipes in a live prepared instance:
 "$(dirname "$C")/mapped_journeys.py" --out "$RUN"
 ```
 
-This drives note save and reopen, History, empty Upkeep, Internet Off and its audit, search and Archived filter, pin and unpin, Desktop double Refresh, and archive, restore, and logical deletion of the disposable Notebook. It creates a separate agent-upkeep fixture for Refresh. Results are in `mapped-journeys.json`; inspect every case, not just the command exit. The double-click row is telemetry, not a passed concurrency test. The fixture deletion is intentional and is not suitable for live data.
+This drives note save and reopen, History, empty Upkeep with no Refresh control, Internet Off and its audit, search and Archived filter, pin and unpin, Desktop double Refresh, and archive, restore, and logical deletion of the disposable Notebook. Results are in `mapped-journeys.json`; inspect every case, not just the command exit. `refresh-double-agent` reports `verified-unreachable` with its prerequisite when no model route exists; with one, it creates a separate agent-upkeep fixture and its row is telemetry, not a passed concurrency test. The fixture deletion is intentional and is not suitable for live data, so run it after `chrome_journeys.py`.
+
+Gallery chrome and notices are driven by:
+
+```sh
+"$(dirname "$C")/chrome_journeys.py" --out "$RUN" --clipboard
+```
+
+It needs a fresh instance with the fixture and writes `chrome-journeys.json`. `--clipboard` reads Copy details through the macOS pasteboard, restoring its earlier text. Supporting manual commands: `hover --value <selector|corner>`, `box --value <selector>` and `focused`.
 
 ## Native inspection and interruption
 
-Use the candidate only. From the native **Getting started** chat, verify the existing model remains `nous/welcome`. Submit a read-only request to inspect Verification Notebook revision 1 with the runtime tool. Require the actual stored `spaces_inspect` tool result, not the model's summary. The completed native candidate trial returned `loaded`, no errors, and renderer and temporary-directory cleanup. It also returned a host notice about the unrecognized CSP `webrtc` directive. Inspection has no screenshot and does not prove visual quality.
+Use the candidate only, and only with an explicitly approved model route (a fresh run has none; see Launch). From the native **Getting started** chat, verify the route is the approved one. Submit a read-only request to inspect Verification Notebook revision 1 with the runtime tool. Require the actual stored `spaces_inspect` tool result, not the model's summary. The completed native candidate trial returned `loaded`, no errors, and renderer and temporary-directory cleanup. It also returned a host notice about the unrecognized CSP `webrtc` directive. Inspection has no screenshot and does not prove visual quality.
 
 ```sh
 "$C" click --out "$RUN" --value 'text=Getting started'
@@ -139,6 +149,7 @@ Evidence root `/Volumes/Expansion/Development/Build/living-spaces-app-verificati
 - `baseline-journeys-01` and `candidate-journeys-01` contain the broader mapped native trials.
 - `candidate-journeys-01/native-inspect-tool-results.json`, `stop-attempt.json`, and `stop-outcome.json` bind native dispatch, cancellation, unchanged SQL, and browser cleanup.
 - `baseline-desktop-chat-race-01` and `candidate-desktop-chat-race-01` contain the actual duplicated native dispatches.
+- `main-92486e1-reproof-20261123-183543` is the post-Gallery re-proof on main: `chrome-journeys.json` (7/7 passed), `mapped-journeys.json` (7 passed, `refresh-double-agent` verified-unreachable), `copy-details.txt` and 36 PNGs. `main-92486e1-20261123-182324` holds the exploratory drives that found the harness gaps, including its failed first attempts.
 - Earlier flag trials remain as failed harness attempts. `flag-01` failed the old switch-only check. `baseline-flag-02` did not wait for the polled card. `baseline-flag-03` used a forbidden submit fixture. Do not relabel these green.
 - Driver-only unit receipts are `followup-unit-tests-green.json`. Mocked guard and classifier tests are not product proof. The earlier red receipt records a missing `wait_text` mock, not a product failure.
 
@@ -154,4 +165,4 @@ All scripts use the existing interpreter and are executable. `test_driver_safety
 
 `.agents/skills/verify-living-spaces` is the repo-local alias. No live project-trust setting was changed.
 
-Coverage remains partial. Natural-language creation and editing, older-code restore, shared chat data editing, record conflicts and batches, assets and multiple views, feed success and failure, recurring upkeep controls, pending-grant decisions, cross-profile isolation, and maintained-bot binding are not qualified by these trials. Keep those entries explicit in the feature map. A working driver and the reproduced F-refresh bug do not qualify the whole product. Forge owns integration and any repair. No merge, push, live install, restart, auth change, or publication follows from this skill.
+Coverage remains partial. The bot reply banner (Hermes replied, Read reply, Dismiss reply, answer summary), Retry same request, offline/unknown copy, natural-language creation and editing, older-code restore, shared chat data editing, record conflicts and batches, assets and multiple views, feed success and failure, recurring upkeep controls, pending-grant decisions, cross-profile isolation, and maintained-bot binding are not qualified by these trials. Keep those entries explicit in the feature map. A working driver and the reproduced F-refresh bug do not qualify the whole product. Forge owns integration and any repair. No merge, push, live install, restart, auth change, or publication follows from this skill.

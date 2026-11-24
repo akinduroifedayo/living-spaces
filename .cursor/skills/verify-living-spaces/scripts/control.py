@@ -20,8 +20,12 @@ PYTHON = '/Users/ifedayoakinduro/.hermes/hermes-agent/venv/bin/python'
 RUNTIME = '/Users/ifedayoakinduro/.hermes/hermes-agent'
 APP = '/Applications/Hermes.app/Contents/MacOS/Hermes'
 PORT = 19432
+BACK = 'header.ls-framebar button[aria-label="Back to Spaces"]'
 BASE = '4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98'
 CANDIDATE = '8008dcc'
+# nous.guest false is the host's own switch that stops a fresh home claiming the Desktop welcome trial or minting a
+# free-tier account (same config as tools/verify-desktop/drive.py). No model route exists in a disposable run.
+CONFIG = 'plugins:\n  enabled: [living-spaces]\nnous:\n  guest: false\nsecurity:\n  allow_lazy_installs: false\n'
 
 
 def dump(path, value):
@@ -60,7 +64,8 @@ def env(state):
     return dict(HOME=str(state / 'os-home'), USER=os.environ.get('USER', ''),
                 PATH=f'{Path(PYTHON).parent}:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin',
                 LANG='en_US.UTF-8', TMPDIR=str(state / 'tmp'), PYTHONDONTWRITEBYTECODE='1',
-                HERMES_HOME=str(state / 'home'), HERMES_DESKTOP_USER_DATA_DIR=str(state / 'ud'),
+                HERMES_HOME=str(state / 'home'), HERMES_SHARED_AUTH_DIR=str(state / 'home/shared'),
+                HERMES_DESKTOP_USER_DATA_DIR=str(state / 'ud'),
                 HERMES_DESKTOP_CWD=str(state / 'cwd'), HERMES_DESKTOP_ISOLATED_BACKEND='1',
                 HERMES_DESKTOP_APP_NAME='Hermes W32 Verification', HERMES_DESKTOP_SKIP_QUIT_CONFIRM='1',
                 HERMES_DESKTOP_HERMES_ROOT=RUNTIME, HERMES_DESKTOP_PYTHON=PYTHON,
@@ -77,22 +82,23 @@ def launch(out, repo, acquisition=None):
     source = repo / 'src/living-spaces'
     checkout_head = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'HEAD'], text=True).strip()
     product_tree = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'HEAD:src/living-spaces'], text=True).strip()
-    revision = None
+    # A historical pin keeps its label; any other clean checkout is driven as its own HEAD.
+    revision = checkout_head
     for pin in [BASE, CANDIDATE]:
-        tree = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', f'{pin}:src/living-spaces'], text=True).strip()
+        tree = subprocess.run(['git', '-C', str(repo), 'rev-parse', f'{pin}:src/living-spaces'],
+                              capture_output=True, text=True).stdout.strip()
         if tree == product_tree:
             revision = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', pin], text=True).strip()
             break
-    assert revision, f'Unsupported product tree at {checkout_head}'
     dirty = subprocess.check_output(['git', '-C', str(repo), 'status', '--porcelain', '--untracked-files=all', '--', 'src/living-spaces'], text=True)
     assert not dirty, f'Product working tree differs from pin: {dirty}'
     files = {str(p.relative_to(source)): hashlib.sha256(p.read_bytes()).hexdigest()
              for p in source.rglob('*') if p.is_file() and '__pycache__' not in p.parts}
-    dump(out / 'product-pin.json', dict(revision=revision, files=files))
+    dump(out / 'product-pin.json', dict(revision=revision, checkout_head=checkout_head, product_tree=product_tree, files=files))
     shutil.copytree(source, state / 'home/plugins/living-spaces')
     shutil.copytree(source / 'desktop', state / 'home/desktop-plugins/living-spaces')
     e = env(state)
-    (state / 'home/config.yaml').write_text('plugins:\n  enabled: [living-spaces]\n')
+    (state / 'home/config.yaml').write_text(CONFIG)
     dump(out / 'prepare.json', dict(empty_home_before=True, credentials_copied=False,
                                     config='new disposable verification config, plugin only',
                                     lazy_installs_disabled=True))
@@ -180,6 +186,24 @@ def click(out, selector):
         stream.write(json.dumps(dict(action='click', selector=selector, coordinates=pos, at=time.time())) + '\n')
 
 
+def target(out, selector):
+    query = (f'[...document.querySelectorAll("button,[role=button],a,[role=menuitem]")].filter(e=>e.textContent.trim()==={json.dumps(selector[5:])})'
+             if selector.startswith('text=') else f'[...document.querySelectorAll({json.dumps(selector)})]')
+    return evaluate(out, f'''(() => {{ const els={query}.filter(e=>e.getClientRects().length); if(els.length!==1) throw Error('Expected one visible target, got '+els.length); const r=els[0].getBoundingClientRect(); return {{x:r.x,y:r.y,width:r.width,height:r.height,label:els[0].getAttribute('aria-label'),text:els[0].innerText}}; }})()''')
+
+
+def hover(out, selector):
+    """Move the native pointer onto one visible target, or to a corner with --value corner."""
+    if selector == 'corner':
+        pos = dict(x=4, y=4)
+    else:
+        box = target(out, selector)
+        pos = dict(x=box['x'] + box['width'] / 2, y=box['y'] + box['height'] / 2)
+    call_many(out, [('Page.bringToFront', {}), ('Input.dispatchMouseEvent', dict(type='mouseMoved', **pos))])
+    with (out / 'actions.jsonl').open('a') as stream:
+        stream.write(json.dumps(dict(action='hover', selector=selector, coordinates=pos, at=time.time())) + '\n')
+
+
 def wait_text(out, text, timeout=60):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -188,6 +212,18 @@ def wait_text(out, text, timeout=60):
         time.sleep(.5)
     capture(out, 'wait-failed')
     raise TimeoutError(f'Visible text not found: {text}')
+
+
+def wait_any(out, *texts, timeout=60):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        text = evaluate(out, 'document.body.innerText')
+        for candidate in texts:
+            if candidate in text:
+                return candidate
+        time.sleep(.5)
+    capture(out, 'wait-failed')
+    raise TimeoutError(f'Visible text not found: {texts}')
 
 
 def doctor(out):
@@ -361,11 +397,12 @@ def records(out):
 
 
 def setup(out):
-    wait_text(out, 'Skip setup')
+    label = wait_any(out, "I'll choose a provider later", 'Skip setup')
     capture(out, 'before-skip')
-    click(out, 'text=Skip setup')
-    wait_text(out, 'No thanks')
-    click(out, 'text=No thanks')
+    click(out, 'text=' + label)
+    time.sleep(2)
+    if 'No thanks' in evaluate(out, 'document.body.innerText'):
+        click(out, 'text=No thanks')
     wait_text(out, 'Capabilities')
     click(out, 'text=Capabilities')
     wait_text(out, 'Plugins')
@@ -522,7 +559,7 @@ def proof(out, repo, enable_isolated_desktop=False):
             assert isinstance(notes, dict) and 'W32 persisted note' in notes.get('text', ''), 'Visible saved note missing'
             saved = records(out)
             assert any('W32 persisted note' in str(row) for row in saved['records']), 'No persisted note'
-            click(out, 'header.ls-framebar > button:first-child')
+            click(out, BACK)
             click(out, 'a[href="#/spaces?space=verification-notebook"]')
             time.sleep(3)
             capture(out, 'after-reopen')
@@ -556,6 +593,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['launch', 'setup', 'doctor', 'capture', 'click', 'fill', 'key', 'read',
                                           'guest-click', 'guest-fill', 'guest-read', 'fixture', 'records', 'diagnostic',
+                                          'hover', 'box', 'focused',
                                           'inspect', 'jobs', 'proof', 'cleanup'])
     parser.add_argument('--out', required=True, type=Path)
     parser.add_argument('--repo', type=Path, default=Path(__file__).resolve().parents[4])
@@ -589,6 +627,12 @@ def main():
         key(out, args.value)
     elif args.command == 'read':
         print(evaluate(out, 'document.body.innerText'))
+    elif args.command == 'hover':
+        hover(out, args.value)
+    elif args.command == 'box':
+        print(json.dumps(target(out, args.value)))
+    elif args.command == 'focused':
+        print(json.dumps(evaluate(out, '(() => { const e=document.activeElement; return e && {tag:e.tagName, label:e.getAttribute("aria-label"), text:(e.innerText||"").slice(0,120), cls:e.className} })()')))
     elif args.command == 'guest-click':
         guest_click(out, args.value)
     elif args.command == 'guest-fill':
