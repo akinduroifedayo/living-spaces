@@ -10,24 +10,21 @@ MUTANTS = {
         "check": "refresh_one_shot", "expect": "NoSuccessForSkipped",
         "signatures": ["NoSuccessForSkipped: start=fresh, run outcome=inline_ok, during run=nothing, post-run DB failure=False, no cron refusals.", "Executions: []"],
         "why": "(a) the born-paused one-shot is run without resuming it, and the skip is not refused",
-        "edits": [("upkeep.py", '        if created:\n            _mutate("resume", jid)\n', "        pass\n"),
-                  ("upkeep.py", '(job.get("executed") is False\n                                      or job.get("execution_skipped")\n'
-                                '                                      or job.get("execution_success") is False)', "False")]},
+        "edits": [("upkeep.py", '                if created:\n                    _mutate("resume", jid)\n', "                pass\n"),
+                  ("upkeep.py", 'if command == "refresh" and _refresh_outcome(native) == "refused":', "if False:")]},
     "refresh-b-manual-run-not-consumed": {
         "check": "refresh_one_shot", "expect": "AtMostOnce",
         "why": "(b) after a manual inline run the once slot stays pending and the scheduler fires it again",
-        "edits": [("upkeep.py", '                result["one_shot"] = _consume_one_shot(jid, native, actor=actor)\n', "                pass\n")]},
+        "edits": [("upkeep.py", 'if created and outcome in ("completed", "background"):', 'if created and outcome == "background":')]},
     "refresh-c-background-not-consumed": {
         "check": "refresh_one_shot", "expect": "AtMostOnce",
         "why": "(c) a background run leaves its one-shot enabled",
-        "edits": [("upkeep.py", 'result["one_shot"] = _consume_one_shot(jid, native, actor=actor, background=True)', "pass")]},
+        "edits": [("upkeep.py", 'if created and outcome in ("completed", "background"):', 'if created and outcome == "completed":')]},
     "refresh-c-post-run-error-not-cleaned": {
         "check": "refresh_one_shot", "expect": "AtMostOnce",
         "why": "(c) an error after dispatch (DB failure after db.write(), verification) leaves the one-shot due",
-        "edits": [("upkeep.py", "    except SpacesError as failure:\n        if created:\n            pause_failure = None\n"
-                                '            try:\n                _mutate("pause", jid, reason=f"Living Spaces refresh by {actor} failed")',
-                   "    except SpacesError as failure:\n        if created and not dispatched:\n            pause_failure = None\n"
-                   '            try:\n                _mutate("pause", jid, reason=f"Living Spaces refresh by {actor} failed")')]},
+        "edits": [("upkeep.py", "if created and jid and not stale and not creation_cleanup_failed:",
+                   "if created and jid and not stale and not creation_cleanup_failed and not dispatched:")]},
     "refresh-d-one-shot-due-at-create": {
         "check": "refresh_one_shot", "expect": "NoFalseRefusal",
         "why": "due-slot analogue of (d): scheduler fires before the manual request; not dispatch-limit retirement mid-run",
@@ -71,11 +68,9 @@ MUTANTS = {
     "bridge-grant-not-checked-for-reads": {
         "check": "bridge_authority", "expect": "Authority",
         "why": "reads skip the capability check before and after the call",
-        "edits": [("bridge.py", "        if capability:\n            grants.check(sid, capability)\n        limits.object_json(args)",
-                   "        limits.object_json(args)"),
-                  ("bridge.py", "        sessions.require(sid, session)\n        if capability:\n            grants.check(sid, capability)\n"
-                                '        return {"ok": True',
-                   '        sessions.require(sid, session)\n        return {"ok": True')]},
+        "edits": [("bridge.py", "            if capability:\n                grants.check(sid, capability)\n            if request_id is not None:",
+                   "            if request_id is not None:"),
+                  ("bridge.py", "    if invocation.capability:\n        grants.check(invocation.sid, invocation.capability)\n", "")]},
     "delete-keeps-change-log": {
         "check": "delete_residue", "expect": "Gone",
         "why": "delete_space leaves the change log, which the next Space with the same name inherits",
@@ -118,19 +113,20 @@ MUTANTS = {
     "refresh-consumption-leaves-enabled-job": {
         "check": "refresh_one_shot", "expect": "NoLeftoverOneShot",
         "why": "the inline return leaves its one-shot enabled",
-        "edits": [("upkeep.py", '                result["one_shot"] = _consume_one_shot(jid, native, actor=actor)\n', "                pass\n")]},
+        "edits": [("upkeep.py", 'if created and outcome in ("completed", "background"):', 'if created and outcome == "background":')]},
     "refresh-success-falsely-refused": {
         "check": "refresh_one_shot", "expect": "NoFalseRefusal",
         "why": "background execution is refused because its reply lacks a completion field",
-        "edits": [("upkeep.py", 'or job.get("execution_success") is False)', 'or job.get("execution_success") is not True)')]},
+        "edits": [("maintenance.py", 'or job.get("execution_success") is False:', 'or job.get("execution_success") is not True:')]},
     "refresh-each-request-runs-twice": {
         "check": "refresh_concurrency", "expect": "OneRunAtATime",
-        "why": "each overlapping request dispatches twice instead of the known single dispatch per request",
-        "edits": [("upkeep.py", '        native = _run_now(sid, jid)\n        job = native.get("job")',
-                   '        native = _run_now(sid, jid)\n        native = _run_now(sid, jid)\n        job = native.get("job")')]},
+        "why": "the admitted request dispatches twice, so overlapping requests start more than one run",
+        "edits": [("upkeep.py", "            native = _run_now(sid, jid, claim=claim, on_reply=lambda reply: _update_refresh_claim(claim, reply))\n",
+                   "            _run_now(sid, jid, claim=claim)\n"
+                   "            native = _run_now(sid, jid, claim=claim, on_reply=lambda reply: _update_refresh_claim(claim, reply))\n")]},
     "refresh-worker-crashes": {
         "check": "refresh_concurrency", "expect": "ProbeCompleted",
-        "why": "thread exceptions must fail the probe rather than appear to fix F3",
+        "why": "thread exceptions must fail the probe rather than look like a single run",
         "edits": [("runs.py", '    if trigger not in ("manual", "schedule", "chat"):',
                    '    raise RuntimeError("broken refresh entry")\n    if trigger not in ("manual", "schedule", "chat"):')]},
     "records-change-cursor-reversed": {
@@ -140,8 +136,8 @@ MUTANTS = {
     "bridge-refusal-writes-data": {
         "check": "bridge_authority", "expect": "NoEffect",
         "why": "a denied operation changes records before checking its grant",
-        "edits": [("bridge.py", '        if capability:\n            grants.check(sid, capability)\n        limits.object_json(args)',
-                   '        if capability:\n            with db.write() as conn:\n                conn.execute("UPDATE records SET data=\'{}\' WHERE space=?", (sid,))\n            grants.check(sid, capability)\n        limits.object_json(args)')]},
+        "edits": [("bridge.py", '            if capability:\n                grants.check(sid, capability)\n            if request_id is not None:',
+                   '            if capability:\n                with db.write() as conn:\n                    conn.execute("UPDATE records SET data=\'{}\' WHERE space=?", (sid,))\n                grants.check(sid, capability)\n            if request_id is not None:')]},
     "bridge-authorized-operations-all-refused": {
         "check": "bridge_authority", "expect": "Authority",
         "why": "valid operations must succeed, not merely avoid authorization errors",
@@ -155,8 +151,8 @@ MUTANTS = {
     "create-without-files-is-not-empty": {
         "check": "delete_residue", "expect": "Fresh",
         "why": "a recreated empty Space unexpectedly contains a record",
-        "edits": [("projects.py", '    result["warnings"] = warnings\n    return result',
-                   '    result["warnings"] = warnings\n    if files is None:\n        records.put(sid, "old", "ghost", {"stale": True}, actor="user")\n    return result')]},
+        "edits": [("projects.py", '        report = _diagnose(conn, normalized, stored, found)\n    return {**get_space(sid), **report}',
+                   '        report = _diagnose(conn, normalized, stored, found)\n    if files is None:\n        records.put(sid, "old", "ghost", {"stale": True}, actor="user")\n    return {**get_space(sid), **report}')]},
     "net-unresolved-address-passed": {
         "check": "net_boundary", "expect": "ResolvedIpArgument",
         "why": "the transport receives a different public IP than the validated resolver answer",
@@ -169,8 +165,32 @@ MUTANTS = {
                    '        conn, sid = self.snap.conn, self.snap.sid\n        with sqlite3.connect(db.db_path()) as unsafe:\n            unsafe.execute("UPDATE spaces SET name=name || \'changed\' WHERE id=?", (sid,))')]},
     "refresh-consume-refusal-is-not-F1": {
         "check": "refresh_one_shot", "expect": "NoFalseRefusal",
-        "why": "a new consume-phase refusal must fail, not become a known _run_now finding",
-        "signatures": ["VIOLATION: 11 scenario(s) broke a property.", "NoFalseRefusal: start=fresh, run outcome=inline_ok", "Hermes cron remove refused: injected remove refusal #1"],
+        "why": "a consume-phase remove refusal surfaced as native_refused after a successful run must fail (17 = 7 nothing + 1 archive + 1 delete + 1 remove + 7 pause)",
+        "signatures": ["VIOLATION: 17 scenario(s) broke a property.", "NoFalseRefusal: start=fresh, run outcome=inline_ok", "Hermes cron remove refused: injected remove refusal #1"],
         "edits": [("upkeep.py", '            return {"job_id": jid, "consumed": "paused", "cleanup": cleanup.to_dict()}',
                    '            raise SpacesError(cleanup.code, cleanup.message, **{**cleanup.extra, "native": native})')]},
+    "refresh-verify-refusal-reported-as-refused": {
+        "check": "refresh_one_shot", "expect": "NoFalseRefusal",
+        "why": "F1 regression: a refused post-run verification list is reported as native_refused again",
+        "edits": [("upkeep.py", 'raise SpacesError("blocked", verification.message, reason="post_run_check_failed", native=native,',
+                   'raise SpacesError("blocked", verification.message, reason="native_refused", native=native,')]},
+    "delete-leaves-live-maintenance-history": {
+        "check": "delete_residue", "expect": "Gone",
+        "why": "the retained maintenance_operations row of the delete itself is left unretired",
+        "edits": [("maintenance.py", "UPDATE maintenance_operations SET phase='retired',outcome='applied' WHERE token=?",
+                   "UPDATE maintenance_operations SET phase='applied',outcome='applied' WHERE token=?")]},
+    "recreate-reuses-incarnation": {
+        "check": "delete_residue", "expect": "Fresh",
+        "why": "a Space re-created with the same id gets the deleted Space's maintenance incarnation",
+        "edits": [("maintenance.py", 'conn.execute("INSERT INTO maintenance_spaces(space,incarnation) VALUES(?,?)", (sid, uuid.uuid4().hex))',
+                   'conn.execute("INSERT INTO maintenance_spaces(space,incarnation) VALUES(?,?)", (sid, sid))')]},
+    "delete-keeps-unique-blobs": {
+        "check": "delete_residue", "expect": "Blobs",
+        "why": "F2 regression: delete_space keeps file contents only the deleted Space referenced",
+        "edits": [("projects.py", '        conn.execute("""DELETE FROM blobs WHERE sha IN (', '        conn.execute("""SELECT 1 FROM blobs WHERE sha IN (')]},
+    "inspect-F5-redaction-change-noticed": {
+        "check": "inspection_readonly", "expect": "KnownFindingDrift", "requires": "inspection.py",
+        "why": "fixing (or changing) the live not_granted redaction must change the pinned F4/F5 case set",
+        "edits": [("bridge.py", "        return _failure(authority, invocation.effect, authorized=False)",
+                   "        return _failure(authority, invocation.effect)")]},
 }

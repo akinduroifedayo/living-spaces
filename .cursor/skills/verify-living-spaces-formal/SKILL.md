@@ -9,7 +9,7 @@ Check selected high-risk properties against real `living_spaces_core` code and a
 Deliberately broken copies show whether each check can still detect its named regression.
 
 ```bash
-python3 verification/formal/run.py                       # this tree: checks + negative controls, about 5 min
+python3 verification/formal/run.py                       # this tree: checks + negative controls, about 12 min
 python3 verification/formal/run.py --only records_integrity --no-controls   # one check, ~12 s
 ```
 
@@ -27,8 +27,10 @@ Only a checkout root receives a Git identity. Scratch copies report `unknown` an
 
 | Check | Synced at | Evidence level |
 |---|---|---|
-| refresh_model, refresh_one_shot, refresh_concurrency, records_integrity, bridge_authority, delete_residue, net_boundary | `4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98` (0.1.1) | see below |
-| inspection_readonly | `8008dcc6f77c3f5cb51f966ab1241bd9f89dc37a` (inspection candidate) | prints "not applicable" on trees without `inspection.py` |
+| all eight checks | `92486e1a36594bb37d152a031f07cccd24950f0f` (main after PRs #6-#9) | see below |
+
+`inspection_readonly` still prints "not applicable" on a tree without `inspection.py`. The previous syncs were
+`4aea12d` (0.1.1) and `8008dcc` (inspection candidate).
 
 `run.py` prints `DRIFT` for every check whose covered files changed since its sync commit. Drift is a prompt to
 re-read the cited lines, not a failure; `/maintain-formal-verification-skill` owns bringing a drifted check back.
@@ -49,17 +51,17 @@ Evidence levels, strongest first:
 
 | Check | Level | Properties | Bound | Runtime |
 |---|---|---|---|---|
-| `refresh_model` (`verification/formal/refresh/RefreshOneShot.tla`) | Model-checked | AtMostOnce, NoSuccessForSkippedRun, NoFalseRefusal; F1 checked separately | one request and one job; at most one user pause/remove/archive/delete; separate native effects, readbacks, DB recheck and execution/reply; bounded clock and reply types below; 79394 baseline states | 10 s for all configurations |
-| `refresh_one_shot` | Generated, real code (exhaustive over its scenario grid) | AtMostOnce, NoSuccessForSkipped, NoFalseRefusal, NoLeftoverOneShot | 2844 scenarios: 3 starts x 3 run outcomes x 4 mid-run events x every set of up to 2 cron refusals | 22 s |
-| `refresh_concurrency` | Generated, real code | OneRunAtATime | 3 trigger pairs, both requests inside their native run together | 1 s |
+| `refresh_model` (`verification/formal/refresh/RefreshOneShot.tla`) | Model-checked | AtMostOnce, NoSuccessForSkippedRun, NoFalseRefusal, NoRefusalAfterSuccessfulRun | one request and one job; at most one user pause/remove/archive/delete; refresh and user SQLite writers serialized; separate native effects, readbacks, receipt write, read-only fence, verification list and execution/reply; remove/delete retire the claim; bounded clock and reply types below; 49674 baseline states | about 20 s for all configurations |
+| `refresh_one_shot` | Generated, real code (exhaustive over its scenario grid) | AtMostOnce, NoSuccessForSkipped, NoFalseRefusal, NoLeftoverOneShot | 4266 scenarios: 3 starts x 3 run outcomes x 5 mid-run events (nothing, archive, delete, Upkeep remove, Upkeep pause) and post-run DB failure x every set of up to 2 cron refusals | about 110 s |
+| `refresh_concurrency` | Generated, real code | OneRunAtATime | 3 trigger pairs, both requests inside their native run together | 10 s |
 | `records_integrity` | Generated, real code vs reference model | Conflict, RevMonotonic, UserOwned, BatchAtomic, Isolation, Cursor | seeds 0..119 x 30 steps, 2 generated Spaces x 2 collections x 3 ids; separate three-operation numeric stale-revision fixture | 12 s |
 | `bridge_authority` | Exhaustive within bound | Authority, NoEffect | 800 cases: 8 grant sets x 5 session kinds x 10 ops x `space` arg spoof | 9 s |
-| `delete_residue` | Generated, real code (schema read live) | Gone, Untouched, Fresh | every table with a `space` column; 10 of them populated | <1 s |
+| `delete_residue` | Generated, real code (schema read live) | Gone, Untouched, Fresh, Blobs | every table with a `space` column; 12 of them populated; retained `maintenance_operations` history must be retired and belong to the deleted incarnation | <1 s |
 | `net_boundary` | Generated, real code (resolver and entire transport faked) | VettedIpArgument, ResolvedIpArgument, PortAllowlist, CredentialsStay | seeds 0..19999: 9 spellings of private/public IPv4, IPv6, mixed DNS answers, up to 4 redirects | 1 s |
-| `inspection_readonly` | Exhaustive within bound | ReadOnly, Refused, SameAsLive, Snapshot | 6768 calls: 8 grant sets x spoof x 405 query shapes + get/meta/runs/log/unknown/6 writes | 9 s |
+| `inspection_readonly` | Exhaustive within bound | ReadOnly, Refused, SameAsLive (F4/F5 pinned), Snapshot | 6768 calls: 8 grant sets x spoof x 405 query shapes + get/meta/runs/log/unknown/6 writes | 25 s |
 
 The file and function map for each check is `verification/formal/COVERAGE.json`. The negative controls are in
-`verification/formal/mutants.py` (29 on 0.1.1, 34 with inspection) plus the model configurations in `tla.py`.
+`verification/formal/mutants.py` (39 at 92486e1) plus the model configurations in `tla.py`.
 Each control names the property it must trip. Ambiguous controls also require mechanism signatures. Every TLA+
 negative configuration checks its final trace values. The paused-run control starts fresh with no user action,
 requires `manualRan=FALSE` and a `skipped` reply. The Python counterpart requires an inline-success scenario with
@@ -77,66 +79,57 @@ accepts those other reply types, so this check does not prove they executed or c
 The TLA+ baseline clocks a fresh job due only after the request returns. The long-run control clocks it due
 between execution and reply. Other mid-request elapsed-time delays are omitted. Recurring linked-job scheduler
 fires, create/commit failures, lost acknowledgements, process crashes and timeouts are outside the model. A user
-lifecycle operation has separate list, mutate, verify, final-list and DB commit steps, but only one job and no
-filesystem or DB-commit failures. `AtMostOnce` excludes recurring linked jobs and paths that report cleanup
+lifecycle operation has separate list, mutate, verify, final-list and DB commit steps inside one writer
+(`maintenance.control` + `transaction`), but only one job and no filesystem or DB-commit failures. Upkeep remove
+and Space delete retire the refresh claim in that commit; the refresh then fails its next fence with
+`refresh_claim_lost`/`not_found` and does no cleanup. Joined followers, orphan discovery and `unresolved` replies
+are outside the model. `AtMostOnce` excludes recurring linked jobs and paths that report cleanup
 failure. `ok` for background dispatch means accepted, not completed. These are safety checks, not liveness proofs.
 An explicit run refusal while an existing job remains present is also outside the model. TLC action coverage
-must reach the user lifecycle, DB recheck and native pause/remove actions. This is a non-vacuity check, not an
+must reach the user lifecycle, receipt, fence, archive recheck, consume and native pause/remove actions. This is a non-vacuity check, not an
 independent proof of the lifecycle transaction. After a violation, `/statechart` can hit its 100,000-state rerun
-bound. The (d) and long-run reports leave additional rules unchecked. The baseline completes all 79,394 states.
+bound. The (d) and long-run reports leave additional rules unchecked. The baseline completes all 49,674 states.
 
 The two `NoFalseRefusal` checks are not identical. TLA+ forbids an explicit run-refused result after a confirmed
-successful execution. Python requires a post-execution error to carry the native execution reply and detects
-misleading `native_refused` reasons outside F1. The Python scheduler deletes a spent once job, while the model
+successful execution, and `NoRefusalAfterSuccessfulRun` forbids a refused verification list being reported as a
+refusal. Python requires a post-execution error to carry the native execution reply and never say
+`native_refused`. The Python scheduler deletes a spent once job, while the model
 keeps it disabled. The (d) controls therefore demonstrate related failure classes, not matching native traces.
 
-## Findings at the sync commits
+## Findings at the sync commit
 
-Python checks report these as `known_findings`. Their documented presence is not a new regression. F1's exact
-120-scenario set is pinned by a SHA-256 over scenario inputs; any change, including a fix, fails with
-`KnownFindingDrift` until the synced baseline is reviewed. Other product fixes can remove their Python findings,
-but the source-linked model and its frozen finding expectation still need maintenance before acceptance.
+Python checks report open findings as `known_findings`. Their documented presence is not a new regression.
+Each finding's exact case set is pinned by a SHA-256 over its inputs; any change, including a fix, fails with
+`KnownFindingDrift` until the synced baseline is reviewed through `/maintain-formal-verification-skill`.
 
-- **F1 Refresh reported refused after it ran.** If Hermes cron refuses the job-list call that verifies a run
-  (`upkeep.py:149-155`), `_call` raises `reason="native_refused"` (`upkeep.py:123-125`) and the caller sees
-  `blocked (native_refused): Hermes cron list refused` though the run executed. The run reply is attached as
-  `native`. Reproduced with an injected public-cron refusal: fresh start, inline run succeeds, list call #3 refuses.
-  This demonstrates error reporting under that synthetic fault, not its frequency in a live Hermes session.
-  The Python exemption also covers injected native refusals during `_run_now`'s archived/deleted Space recheck
-  at `upkeep.py:449-450`. It requires a recorded fault inside `_run_now` and its exact action/call-number message.
-  Re-entered user archive/delete faults have their own phases. Consume-phase errors are never exempt. The
-  maintained consume-phase refusal control requires all 11 unknown violations, including a delete refusal
-  followed by a distinct consume refusal of the same action. A frozen three-case probe also checks that case
-  alongside ordinary success and a genuine F1 positive control.
-  The TLA+ F1 configuration checks only the run-list verification case, not all Python F1 cases.
-- **F2 Deleted file contents stay in the database.** `blobs` is content-addressed and has no `space` column
-  (`projects.py:162`); `delete_space` removes revisions but never collects blobs, so the HTML of a deleted Space
-  stays in `spaces.db`. The desktop says Delete removes "all its records and revisions permanently"
-  (`src/desktop/ui/space.jsx:191`). Severity: privacy and storage.
-- **F3 Overlapping agent Refresh requests each run.** `start_refresh` returns `upkeep.refresh_now(...)` for agent
-  upkeep at `runs.py:80`, before the one-run-per-Space guard at `runs.py:98-100`. The contract says "a second request
-  returns the same run" (`docs/contracts/CONTRACTS.md:190`) and R1-11 says repeated refresh "does not multiply
-  effects" (`docs/spec/SPEC.md:76`). Desktop + chat at once gives two one-shots and two model runs; both are
-  consumed afterwards in the isolated code probe. The Desktop button's lock (`space.jsx:127`) only covers one view.
-  W32 also reproduced Desktop plus native chat in the real app on both exact pins, released
-  `4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98` and candidate `8008dcc6f77c3f5cb51f966ab1241bd9f89dc37a`.
-  The evidence root is `/Volumes/Expansion/Development/Build/living-spaces-app-verification-evidence/`.
-  `baseline-desktop-chat-race-01/race-result.json` records one-shots `2a5836e07588` and `e34e9cd534f2`.
-  `candidate-desktop-chat-race-01/race-result.json` records one-shots `c84fbfee5685` and `a368e04ab02d`.
-  Each run has two overlapping `source=cron` sessions with API calls and `cron_complete`, and a chat
-  `spaces_refresh` call inside the first session's runtime window. The corresponding `race-actions.json`
-  files record Desktop before chat. This is a pre-existing shipped-release bug, not a candidate regression.
-  W32 executed the real-app runs; W31 read back the receipts. Both Space runs tables stayed empty, so the
-  evidence proves duplicate dispatch and model work, not duplicate Space run rows or a W31 live execution.
+- **F4 Inspection replies lack the live outcome envelope.** Since `10517b9` `bridge.dispatch` adds
+  `outcome: {status: success|rejected}` to every reply (`bridge.py:213-273`). `inspection.PassiveAdapter.call`
+  adds it only to editor saves (`inspection.py:585-586`). 3376 of the 6768 calls differ only by this field.
+- **F5 Live not_granted replies drop the documented detail.** `bridge._delivery_failure` re-runs `_authorize`;
+  when the grant is missing, that refusal goes through `_failure(authorized=False)` and becomes
+  `{"code": "not_granted", "message": "Operation could not be completed"}` with no `capability`
+  (`bridge.py:213-231`). `docs/contracts/CONTRACTS.md:118` promises `not_granted (extra: capability)`, and the
+  desktop sandbox still sends `capability` (`src/desktop/sandbox/index.js:74`). Inspection returns the documented
+  error, so 3296 calls differ by this redaction plus F4. Introduced by `10517b9`, with no test or note stating
+  that the redaction was intended.
 
-Supplemental finding **F4 Feed-size limits disagree** is not part of the formal suite. The parser accepts 501,
-999 and 1000 entries, but `feeds.refresh_source` then rejects the batch with `source entries exceeds 500`, storing
-zero records. 499 and 500 succeed; 1001 fails at the parser. Reproduce on an isolated database with
-`python3 verification/formal/probes/feed_limit.py --src .`. The parser/ingest mismatch is at `feeds.py:82-83,131`
-and `records.py:199-205` at 4aea12d. This is not a partial-write finding or a parser proof.
+Fixed since 0.1.1, now hard properties with regression controls:
+- **F1** (Refresh reported refused after it ran): `b57f3cc`/`f56321d` raise `post_run_check_failed` with the run
+  reply (`upkeep.py:605-607`); controls `refresh-verify-refusal-reported-as-refused` and
+  `f1-verify-refusal-reported-as-refused`.
+- **F2** (deleted file contents kept): `bfc0e09` deletes blobs only the deleted Space referenced
+  (`projects.py:610-616`); control `delete-keeps-unique-blobs`.
+- **F3** (overlapping agent Refresh requests each run): `maintenance.acquire` admits one claim per Space and
+  `join` returns the saved reply (`maintenance.py:313-338`); control `refresh-each-request-runs-twice`.
 
-Residual by design: a native run longer than the 7-day one-shot slot can be claimed again (`upkeep.py:19-23`); the
-model shows it under `residual-run-outlasts-slot`.
+The supplemental feed-size probe (`verification/formal/probes/feed_limit.py`, formerly listed as F4) is not part
+of the suite and was not re-run at this sync.
+
+Residual by design: a native run longer than the 7-day one-shot slot can be claimed again
+(`docs/architecture/F3-MAINTENANCE-COORDINATION.md`, "Limits"); the model shows it under `residual-run-outlasts-slot`.
+
+Retained by design: `maintenance_operations` rows survive `delete_space` so an old reply can still belong to its
+operation (same document). `delete_residue` requires them to be retired history of the deleted incarnation.
 
 ## Not covered
 
@@ -151,6 +144,11 @@ model shows it under `residual-run-outlasts-slot`.
 - Profile isolation, Desktop backend switching, and REST/RPC management authorization. The authority checks use
   two Spaces in one isolated database. They do not prove separation between Hermes profiles. `LIVING_SPACES_DB`
   can explicitly make profiles share a database, and `owner` is a display label rather than bot authorization.
+- Desktop-only state: Space snapshots (`src/desktop/ui/snapshots.mjs`: capture on leave, cap 24,
+  replace-on-capture, stale-leave guard), notice dismissal per activation and passive-poll non-reopen, and the
+  storage warning rules from #7. None of them write a guarded core table; they are covered by JS unit tests only.
+- `bridge_receipts`/`editor_drafts` and `editor.save`/`outcome.get` reconciliation (10517b9): scanned by
+  `delete_residue`, but no property covers replay or reconciliation.
 - Data migrations, file-reference import containment, concurrent grant/session revocation, and delete/recreate
   ABA races. Recovery-point restore is exercised, but that does not establish migration correctness.
 - `harness/app.py` (the release test harness): `prepare` enables a model plugin, `enable-desktop` writes Desktop
@@ -161,8 +159,8 @@ model shows it under `residual-run-outlasts-slot`.
 1. Run `python3 verification/formal/run.py`. Note any `DRIFT` lines.
 2. A `BAD` check line normally means a property your change broke: the line quotes the steps and stored state.
    Fix the code, not the check, unless the documented behavior changed on purpose. `KnownFindingDrift` instead
-   means F1's pinned scenario set changed. Investigate it, including a genuine F1 fix, before updating that pin
-   and the source-linked model through `/maintain-formal-verification-skill`.
+   means a pinned finding set (F4/F5 today) changed. Investigate it, including a genuine fix, before updating that
+   pin and the source-linked model through `/maintain-formal-verification-skill`.
 3. A `BAD control` line means a check can no longer see the break it guards, or the mutant text no longer matches
    (the code moved). Update the mutant's text in `mutants.py` to the new code; never delete a control to go green.
    Fix any baseline `BAD` check first. A real bug can make other controls fail for the wrong reason, even when

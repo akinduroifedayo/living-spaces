@@ -8,13 +8,16 @@ execution_success). A manual run is an extra fire: the once slot stays pending u
 Properties, for one Refresh now request:
   AtMostOnce            the request causes at most one execution, unless its error says the job may run again
   NoSuccessForSkipped   a returned result means the manual run executed (inline success or background start)
-  NoFalseRefusal        an error after an execution that succeeded carries that run's reply, unless it warns the
-                        job may run again (finding F1: such errors still say reason native_refused)
+  NoFalseRefusal        an error after an execution that succeeded carries that run's reply and never says reason
+                        native_refused, unless it warns the job may run again (F1, fixed in b57f3cc/f56321d: a refused
+                        post-run call is now post_run_check_failed; tests/python/test_f1_f4_regressions.py:66)
   NoLeftoverOneShot     after a returned result, no enabled one-shot of this request is still pending
+
+Mid-run events are the user lifecycle calls that reach the refresh claim (92486e1): archive (set_status), delete
+(delete_space), Upkeep remove (upkeep_action, which retires the claim; maintenance.retire_resources) and Upkeep pause.
 """
 from __future__ import annotations
 
-import hashlib
 import itertools
 import json
 import re
@@ -25,11 +28,10 @@ from harness import Violation, main, space
 
 OUTCOMES = ("inline_ok", "inline_fail", "background")
 FAULT_ACTIONS = ("resume", "pause", "remove", "list")
-DURING_RUN = (None, "archive", "delete")
+DURING_RUN = (None, "archive", "delete", "remove", "pause")
 POST_RUN_DB = (False, True)
 STARTS = ("fresh", "linked_enabled", "linked_paused")
 MINUTES_BEFORE_RESUME = 1
-KNOWN_F1_CASES_SHA256 = "65d451636e7abb4bfc5f29f390167b778254a31f997c94bafaa987e3f4f6e499"
 
 
 class FakeCron:
@@ -82,7 +84,7 @@ class FakeCron:
             phase = "other"
             frame = sys._getframe(1)
             while frame is not None:
-                if frame.f_code.co_name in ("_consume_one_shot", "on_delete", "pause_for_archive", "_run_now"):
+                if frame.f_code.co_name in ("_consume_one_shot", "on_delete", "pause_for_archive", "upkeep_action", "_run_now"):
                     phase = frame.f_code.co_name
                     break
                 frame = frame.f_back
@@ -125,6 +127,8 @@ class FakeCron:
                     self.core.set_status(self.s["sid"], "archived", actor="user")
                 elif self.s["during_run"] == "delete":
                     self.core.delete_space(self.s["sid"], actor="user", confirm=self.s["sid"])
+                elif self.s["during_run"] in ("remove", "pause"):
+                    self.core.upkeep_action(self.s["sid"], self.s["during_run"], actor="user")
             except self.core.SpacesError:
                 pass
             self.armed_db_failure = self.s["post_run_db"]
@@ -203,49 +207,26 @@ def check_one(core, s):
     elif not warned and any(ok for _, _, ok in mine):
         native = error.extra.get("native")
         ran = isinstance(native, dict) and isinstance(native.get("job"), dict) and native["job"].get("executed") is True
-        if not ran:
+        if not ran or error.extra.get("reason") == "native_refused":
             violations.append(("NoFalseRefusal", story))
-        elif error.extra.get("reason") == "native_refused":
-            injected_post_run_refusal = any(
-                phase == "_run_now"
-                and error.message == f"Hermes cron {action} refused: injected {action} refusal #{n}"
-                for action, n, phase in cron.refusals)
-            if injected_post_run_refusal:
-                violations.append(("NoFalseRefusal", story, "F1"))
-            else:
-                violations.append(("NoFalseRefusal", story))
     tag = "ok" if error is None else error.extra.get("reason") or error.code
     return tag, violations
 
 
-KNOWN = {"F1": "a successful run is reported as refused when a cron call after the run is refused"}
-
-
 def check(core, home):
-    results, findings, unknown, finding_cases = {}, {}, [], []
+    results, unknown = {}, []
     for n, s in enumerate(scenarios()):
         s["n"] = n
         tag, violations = check_one(core, s)
         results[tag] = results.get(tag, 0) + 1
-        for v in violations:
-            if len(v) == 3:
-                findings.setdefault(v[2], {"count": 0, "example": v[1]})["count"] += 1
-                finding_cases.append([s["start"], s["outcome"], s["during_run"], s["post_run_db"], sorted(s["faults"])])
-            else:
-                unknown.append(v)
+        unknown.extend(violations)
     if unknown:
         first = {}
         for prop, story in unknown:
             first.setdefault(prop, story)
         raise Violation(f"{len(unknown)} scenario(s) broke a property. " +
                         " | ".join(f"{prop}: {story}" for prop, story in first.items()))
-    finding_hash = hashlib.sha256(json.dumps(finding_cases, separators=(",", ":")).encode()).hexdigest()
-    if finding_hash != KNOWN_F1_CASES_SHA256:
-        raise Violation(f"KnownFindingDrift: F1 scenario set changed: {len(finding_cases)} cases, sha256={finding_hash}. "
-                        "Review the source and F1 attribution before updating its synced baseline.")
-    return {"scenarios": sum(results.values()), "outcomes": results, "f1_scenarios_sha256": finding_hash,
-            "known_findings": {k: {"what": KNOWN[k], **v} for k, v in findings.items()},
-            "known_findings_gone": sorted(set(KNOWN) - set(findings))}
+    return {"scenarios": sum(results.values()), "outcomes": results, "known_findings": {}}
 
 
 if __name__ == "__main__":

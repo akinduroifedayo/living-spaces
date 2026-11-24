@@ -17,9 +17,9 @@ TLA_VERSION = "1.7.4"
 TLA_URL = f"https://github.com/tlaplus/tlaplus/releases/download/v{TLA_VERSION}/tla2tools.jar"
 TLA_SHA256 = "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88"
 MODEL = HERE / "refresh" / "RefreshOneShot.tla"
-INVARIANTS = ("TypeOK", "AtMostOnce", "NoSuccessForSkippedRun", "NoFalseRefusal")
+INVARIANTS = ("TypeOK", "AtMostOnce", "NoSuccessForSkippedRun", "NoFalseRefusal", "NoRefusalAfterSuccessfulRun")
 FLAGS = ("FreshOnly", "NoUserAction", "AllowLongRun", "BrokenNoResume", "BrokenNoSkipCheck", "BrokenNoConsume",
-         "BrokenNoBackgroundConsume", "BrokenNoPostRunCleanup", "BrokenSlotDueAtCreate")
+         "BrokenNoBackgroundConsume", "BrokenNoPostRunCleanup", "BrokenSlotDueAtCreate", "BrokenVerifyAsRefused")
 
 RUNS = {
     "baseline": ((), "pass", INVARIANTS),
@@ -29,10 +29,14 @@ RUNS = {
     "c-background-not-consumed": (("BrokenNoBackgroundConsume",), "AtMostOnce", INVARIANTS),
     "c-db-error-no-cleanup": (("BrokenNoPostRunCleanup",), "AtMostOnce", INVARIANTS),
     # Due-at-resume scheduler execution followed by a manual skip/refusal. This does NOT model
-    # the historical dispatch-limit-mid-run retirement described in upkeep.py:22-23.
+    # the historical dispatch-limit-mid-run retirement.
     "d-slot-due-at-create": (("BrokenSlotDueAtCreate",), "NoFalseRefusal", ("TypeOK", "NoFalseRefusal")),
-    "finding-F1-refused-after-success": ((), "NoRefusalAfterSuccessfulRun", ("TypeOK", "NoRefusalAfterSuccessfulRun")),
-    # Known residual, documented at upkeep.py:19-23: a run longer than the 7-day slot can be claimed again.
+    # F1 was fixed (b57f3cc/f56321d); this control restores the old mapping of a refused verification list to
+    # native_refused and must trip the property the baseline now holds.
+    "f1-verify-refusal-reported-as-refused": (("BrokenVerifyAsRefused",), "NoRefusalAfterSuccessfulRun",
+                                              ("TypeOK", "NoRefusalAfterSuccessfulRun")),
+    # Known residual (docs/architecture/F3-MAINTENANCE-COORDINATION.md "Limits"): a run longer than the 7-day
+    # slot can be claimed again.
     "residual-run-outlasts-slot": (("AllowLongRun",), "AtMostOnce", INVARIANTS),
 }
 
@@ -44,7 +48,7 @@ TRACE_SIGNATURES = {
     "c-background-not-consumed": {"created": "TRUE", "execs": "2", "reply": '"background"'},
     "c-db-error-no-cleanup": {"created": "TRUE", "execs": "2", "err": '"post_run"'},
     "d-slot-due-at-create": {"slotDue": "TRUE", "okExecs": "1", "result": '"err_refused"'},
-    "finding-F1-refused-after-success": {"okExecs": "1", "result": '"err_verify_refused"'},
+    "f1-verify-refusal-reported-as-refused": {"okExecs": "1", "result": '"err_verify_refused"', "verifyFailed": "TRUE"},
     "residual-run-outlasts-slot": {"execs": "2", "pc": '"run_reply"', "reply": '"inline_ok"'},
 }
 
@@ -104,7 +108,8 @@ def run(name: str) -> dict:
     coverage = {action: [int(new), int(total)] for action, new, total in
                 re.findall(r"(?m)^<(\w+) line[^\n]+>: (\d+):(\d+)$", out)}
     required_actions = ("UserStart", "UserList", "UserMutate", "UserVerify", "UserFinalList", "UserCommit",
-                        "UserAbort", "DBRecheck", "RecheckList", "NativePause", "NativePauseVerify",
+                        "UserAbort", "RunReceipt", "RunFence", "RecheckList", "RecheckTxn", "RefusedFence",
+                        "ConsumeFence", "CleanupTxn", "NativePause", "NativePauseVerify",
                         "NativeRemove", "NativeRemoveVerify", "CleanupLinked", "ClockReachesSlot",
                         "SchedulerClaim", "SchedulerExecute", "SchedulerRetire", "BackgroundRelease",
                         "ReturnOk") if name == "baseline" else ()

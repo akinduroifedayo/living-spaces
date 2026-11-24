@@ -2,8 +2,9 @@
 
 The contract says "One non-terminal run per Space is allowed: a second request returns the same run"
 (docs/contracts/CONTRACTS.md:190), and R1-11 says "repeated refresh/retry does not multiply effects"
-(docs/spec/SPEC.md:76). For feed upkeep start_refresh enforces this inside one write transaction
-(runs.py:98-100). For agent upkeep it returns upkeep.refresh_now(...) at runs.py:80, before that guard.
+(docs/spec/SPEC.md:76). For agent upkeep runs.start_refresh calls upkeep.refresh_now, whose admission is
+maintenance.acquire: one refresh_claims row per Space, inserted in one write transaction; a second request finds
+the held claim and maintenance.join returns the saved native reply without another dispatch (b57f3cc, f56321d).
 
 Each scenario makes two requests overlap: both are inside their native run at the same time (a barrier in the fake
 cron's run), from the trigger pairs a person can produce: Desktop and chat, or two Desktop windows. The Desktop
@@ -12,7 +13,7 @@ view's own lock (src/desktop/ui/space.jsx:127) stops a second press only within 
   OneRunAtATime  overlapping requests for one Space start at most one native execution
 (The feed side of the guard is already covered by tests/python/test_upkeep_runs.py:208 and needs the network.)
 
-A broken OneRunAtATime on agent upkeep is reported as finding F3, not a failure, until the product decides.
+F3 (each overlapping request ran) was fixed by that admission; OneRunAtATime is now a hard property.
 """
 from __future__ import annotations
 
@@ -63,7 +64,6 @@ def overlap(core, cron, sid, pair):
 
 def check(core, home):
     from living_spaces_core import upkeep
-    findings = {}
     for n, pair in enumerate(PAIRS):
         scenario = {"n": n, "faults": frozenset(), "outcome": "inline_ok", "during_run": None, "post_run_db": False}
         cron = FakeCron(scenario, core)
@@ -73,17 +73,10 @@ def check(core, home):
         scenario["sid"] = sid
         replies = overlap(core, cron, sid, pair)
         ran = [e for e in cron.executions if e[2]]
-        if not ran or len(ran) > 2:
-            raise Violation(f"OneRunAtATime: expected the fixed one run or known F3 two runs; got {ran}, replies {replies}")
-        if len(ran) > 1:
-            findings.setdefault("F3", {"what": "overlapping agent Refresh now requests each start a native run",
-                                       "count": 0,
-                                       "example": f"start_refresh({sid!r}, trigger={pair[0]!r}) and start_refresh({sid!r}, "
-                                                  f"trigger={pair[1]!r}) at once: native runs {ran}; replies "
-                                                  f"{[r.get('one_shot', r) for r in replies]}"})
-            findings["F3"]["count"] += 1
-    return {"pairs": [list(p) for p in PAIRS], "known_findings": findings,
-            "known_findings_gone": [] if findings else ["F3"]}
+        if len(ran) != 1:
+            raise Violation(f"OneRunAtATime: start_refresh({sid!r}, trigger={pair[0]!r}) and start_refresh({sid!r}, "
+                            f"trigger={pair[1]!r}) at once started {len(ran)} native runs {ran}; replies {replies}")
+    return {"pairs": [list(p) for p in PAIRS], "known_findings": {}}
 
 
 if __name__ == "__main__":
