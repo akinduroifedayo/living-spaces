@@ -210,24 +210,27 @@ def _call(sid, session, op, args):
     return records.get(sid, **args)
 
 
-def _failure(error, proof, *, authorized=True):
+def _failure(error, proof):
     status = "unknown" if proof.possible else "busy" if db.is_busy(error) else "rejected"
     if status == "unknown":
         detail = {"code": error.code if isinstance(error, SpacesError) else "ambiguous", "message": "Operation outcome is unknown"}
     elif status == "busy":
         detail = {"code": "blocked", "message": "Store is busy"}
-    elif isinstance(error, SpacesError) and authorized:
+    elif isinstance(error, SpacesError):
         detail = error.to_dict()
     else:
-        detail = {"code": error.code if isinstance(error, SpacesError) else "invalid", "message": "Operation could not be completed"}
+        detail = {"code": "invalid", "message": "Operation could not be completed"}
     return {"ok": False, "error": detail, "outcome": {"status": status}}
 
 
 def _delivery_failure(invocation, error):
+    # A caller that lost authority gets the authority error in place of the operation's, so detail such as a
+    # conflict's current record never reaches it. The authority error itself (not_granted with its capability,
+    # session_invalid) is the truthful reply and is safe to send.
     try:
         _authorize(invocation)
     except Exception as authority:
-        return _failure(authority, invocation.effect, authorized=False)
+        error = authority
     return _failure(error, invocation.effect)
 
 

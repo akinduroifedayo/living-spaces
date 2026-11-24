@@ -123,5 +123,5 @@ class Q15InspectionFreshnessTests(CoreCase):
         self.addCleanup(conn.close)
         adapter = inspection.PassiveAdapter(inspection.Snapshot(conn, sid, 1))
         reply = adapter.call("freshness", {})
-        self.assertEqual(reply, {"ok": True, "result": live})
+        self.assertEqual(reply, {"ok": True, "result": live, "outcome": {"status": "success"}})
         self.assertEqual(adapter.call("freshness", {"extra": 1})["ok"], False)
