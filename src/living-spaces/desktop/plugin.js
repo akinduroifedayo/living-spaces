@@ -794,7 +794,7 @@ function Answer({ text, onOpenLink }) {
     return /* @__PURE__ */ jsx(List, { children: block.items.map((item, n) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx(Spans, { spans: item, onOpenLink }) }, n)) }, index);
   })() : /* @__PURE__ */ jsx("p", { children: /* @__PURE__ */ jsx(Spans, { spans: block.spans, onOpenLink }) }, index));
 }
-function Drawer({ title, description, children, onClose, note, returnFocus, heading }) {
+function Drawer({ title, description, children, onClose, note, returnFocus }) {
   const trigger = useRef(returnFocus || (typeof document === "undefined" ? null : document.activeElement));
   const close = useRef(null);
   return /* @__PURE__ */ jsx(Dialog, { open: true, onOpenChange: (open) => !open && onClose(), children: /* @__PURE__ */ jsxs(
@@ -813,7 +813,6 @@ function Drawer({ title, description, children, onClose, note, returnFocus, head
       },
       children: [
         /* @__PURE__ */ jsxs(DialogHeader, { className: "ls-sheet-header", children: [
-          heading,
           /* @__PURE__ */ jsx(DialogTitle, { children: title }),
           /* @__PURE__ */ jsxs(Button, { ref: close, onClick: onClose, variant: "ghost", size: "sm", className: "ls-action", children: [
             /* @__PURE__ */ jsx(Icon, { name: "close" }),
@@ -2689,7 +2688,7 @@ function SpaceDetails({ space, dimensions, upkeepLabel, building, onOpen, onClos
   const net = grants.find((grant) => grant.capability === "net");
   const lastRun = space.recent_runs?.[0];
   const sources = space.freshness?.sources || [];
-  return /* @__PURE__ */ jsxs6(Drawer, { returnFocus, title: "Space details", description: `Freshness, storage, access, history and runtime for ${space.name}`, onClose, heading: /* @__PURE__ */ jsx6(SpaceTile, { space, size: 24 }), children: [
+  return /* @__PURE__ */ jsxs6(Drawer, { returnFocus, title: "Space details", description: `Freshness, storage, access, history and runtime for ${space.name}`, onClose, children: [
     /* @__PURE__ */ jsxs6("section", { "aria-label": "Space", className: "ls-detail ls-detail-hero", children: [
       /* @__PURE__ */ jsx6(SpaceTile, { space, size: 96 }),
       /* @__PURE__ */ jsxs6("div", { children: [

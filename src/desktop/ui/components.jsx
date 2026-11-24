@@ -112,13 +112,13 @@ export function Answer({ text, onOpenLink }) {
     : block.type === 'list' ? (() => { const List = block.ordered ? 'ol' : 'ul'; return <List key={index}>{block.items.map((item, n) => <li key={n}><Spans spans={item} onOpenLink={onOpenLink} /></li>)}</List> })()
     : <p key={index}><Spans spans={block.spans} onOpenLink={onOpenLink} /></p>)
 }
-export function Drawer({ title, description, children, onClose, note, returnFocus, heading }) {
+export function Drawer({ title, description, children, onClose, note, returnFocus }) {
   const trigger = useRef(returnFocus || (typeof document === 'undefined' ? null : document.activeElement))
   const close = useRef(null)
   return <Dialog open onOpenChange={open => !open && onClose()}><DialogContent className="ls-sheet" bodyClassName="ls-sheet-body" showCloseButton={false}
     onOpenAutoFocus={event => { event.preventDefault(); close.current?.focus() }}
     onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
-    <DialogHeader className="ls-sheet-header">{heading}<DialogTitle>{title}</DialogTitle><Button ref={close} onClick={onClose} variant="ghost" size="sm" className="ls-action"><Icon name="close" />Close</Button><DialogDescription className="ls-sr">{description || title}</DialogDescription></DialogHeader>
+    <DialogHeader className="ls-sheet-header"><DialogTitle>{title}</DialogTitle><Button ref={close} onClick={onClose} variant="ghost" size="sm" className="ls-action"><Icon name="close" />Close</Button><DialogDescription className="ls-sr">{description || title}</DialogDescription></DialogHeader>
     {note}<div className="ls-sheet-scroll">{children}</div>
   </DialogContent></Dialog>
 }

@@ -80,7 +80,7 @@ function SpaceDetails({ space, dimensions, upkeepLabel, building, onOpen, onClos
   const net = grants.find(grant => grant.capability === 'net')
   const lastRun = space.recent_runs?.[0]
   const sources = space.freshness?.sources || []
-  return <Drawer returnFocus={returnFocus} title="Space details" description={`Freshness, storage, access, history and runtime for ${space.name}`} onClose={onClose} heading={<SpaceTile space={space} size={24} />}>
+  return <Drawer returnFocus={returnFocus} title="Space details" description={`Freshness, storage, access, history and runtime for ${space.name}`} onClose={onClose}>
     <section aria-label="Space" className="ls-detail ls-detail-hero"><SpaceTile space={space} size={96} /><div><strong>{space.name}</strong>{space.description && <p className="ls-secondary">{space.description}</p>}</div></section>
     <section aria-label="Freshness" className="ls-detail"><h3>Freshness</h3><dl className="ls-facts">
       <div><dt>Latest change</dt><dd>{phrase.label}{phrase.at != null && <> · <Time at={phrase.at} /></>}</dd></div>
