@@ -117,6 +117,18 @@ def island():
     return dict(freshness_phrase=phrase, refresh_absent=True, mode=c.evaluate(OUT, 'document.querySelector("[data-testid=space-view]").dataset.headerMode'))
 
 
+TEXT_TYPES = {'«class utf8»', '«class ut16»', 'string', 'Unicode text'}
+
+
+def text_only_pasteboard():
+    """Return the pasteboard text, refusing when it holds anything pbcopy cannot put back (images, files, rich data)."""
+    info = subprocess.run(['osascript', '-e', 'clipboard info'], capture_output=True, text=True, check=True).stdout
+    kinds = {part.strip() for part in info.split(',')[0::2] if part.strip()}
+    if kinds - TEXT_TYPES:
+        raise AssertionError(f'Pasteboard holds {sorted(kinds)}; --clipboard restores plain text only. Clear it or omit --clipboard')
+    return subprocess.run(['pbpaste'], capture_output=True, check=True).stdout
+
+
 def unbound_notice(clipboard):
     open_notebook()
     if dock() == 'pill':
@@ -126,13 +138,13 @@ def unbound_notice(clipboard):
     assert c.evaluate(OUT, '!!document.querySelector(".ls-banner[role=alert]")')
     result = dict(title="Hermes didn't receive the request", copy_details='Copy details' in text())
     if clipboard:
-        saved = subprocess.run(['pbpaste'], capture_output=True).stdout
+        saved = text_only_pasteboard()
         try:
             c.click(OUT, 'text=Copy details')
             time.sleep(1)
-            copied = subprocess.run(['pbpaste'], capture_output=True, text=True).stdout
+            copied = subprocess.run(['pbpaste'], capture_output=True, text=True, check=True).stdout
         finally:
-            subprocess.run(['pbcopy'], input=saved)
+            subprocess.run(['pbcopy'], input=saved, check=True)
         (OUT / 'copy-details.txt').write_text(copied)
         assert '"reason":"unbound"' in copied and not any(w in copied.lower() for w in ['bearer', 'token', 'api_key', 'password', 'cookie'])
         result['copied'] = copied

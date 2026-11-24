@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Verify Living Spaces
 
-**Status: usable scoped Desktop driver, re-exercised on main `92486e1` (post-Gallery). Product acceptance is not complete.** The isolated Desktop decision enables the native Spaces page. Native note save and reopen pass with visible and SQLite evidence. On main, the Gallery landing, floating island, Details sheet, notice dock, unbound bot notice, Copy details and storage notice also pass natively. The Desktop plus chat Refresh race created two native one-shots and two model-backed cron sessions on both older pins; it needs a model route, which the current launch no longer has. Do not treat this skill as a release approval.
+**Status: usable scoped Desktop driver, re-exercised on main `92486e1` (post-Gallery). Product acceptance is not complete.** The isolated Desktop decision enables the native Spaces page. Native note save and reopen pass with visible and SQLite evidence. On main, the Gallery landing, floating island, Details sheet, notice dock, unbound bot notice, Copy details and storage notice also pass natively. Copy details redaction is checked from source only. The Desktop plus chat Refresh race created two native one-shots and two model-backed cron sessions on both older pins; it needs a model route, which the current launch no longer has. Do not treat this skill as a release approval.
 
 Read [the feature index](features/README.md) before driving. Use `/maintain-verification-skill` when the host or product changes.
 
@@ -113,7 +113,7 @@ Gallery chrome and notices are driven by:
 "$(dirname "$C")/chrome_journeys.py" --out "$RUN" --clipboard
 ```
 
-It needs a fresh instance with the fixture and writes `chrome-journeys.json`. `--clipboard` reads Copy details through the macOS pasteboard, restoring its earlier text. Supporting manual commands: `hover --value <selector|corner>`, `box --value <selector>` and `focused`.
+It needs a fresh instance with the fixture and writes `chrome-journeys.json`. `--clipboard` reads Copy details through the macOS pasteboard. It refuses a pasteboard holding anything but plain text, and restores that text afterwards. Supporting manual commands: `hover --value <selector|corner>`, `box --value <selector>` and `focused`.
 
 ## Native inspection and interruption
 
@@ -149,7 +149,7 @@ Evidence root `/Volumes/Expansion/Development/Build/living-spaces-app-verificati
 - `baseline-journeys-01` and `candidate-journeys-01` contain the broader mapped native trials.
 - `candidate-journeys-01/native-inspect-tool-results.json`, `stop-attempt.json`, and `stop-outcome.json` bind native dispatch, cancellation, unchanged SQL, and browser cleanup.
 - `baseline-desktop-chat-race-01` and `candidate-desktop-chat-race-01` contain the actual duplicated native dispatches.
-- `main-92486e1-reproof-20261123-183543` is the post-Gallery re-proof on main: `chrome-journeys.json` (7/7 passed), `mapped-journeys.json` (7 passed, `refresh-double-agent` verified-unreachable), `copy-details.txt` and 36 PNGs. `main-92486e1-20261123-182324` holds the exploratory drives that found the harness gaps, including its failed first attempts.
+- `main-92486e1-reproof2-20261123-184505` is the final re-proof after review fixes (same results; checkout `4428901` plus those fixes, `src/` identical to `92486e1`). `main-92486e1-reproof-20261123-183445` is the first post-Gallery re-proof on main: `chrome-journeys.json` (7/7 passed), `mapped-journeys.json` (7 passed, `refresh-double-agent` verified-unreachable), `copy-details.txt` and 36 PNGs. Its `product-pin.json` records checkout `79a095c`, whose `src/` is identical to `92486e1` (product tree `7eb1844`). `main-92486e1-20261123-182324` holds the exploratory drives that found the harness gaps, including its failed first attempts.
 - Earlier flag trials remain as failed harness attempts. `flag-01` failed the old switch-only check. `baseline-flag-02` did not wait for the polled card. `baseline-flag-03` used a forbidden submit fixture. Do not relabel these green.
 - Driver-only unit receipts are `followup-unit-tests-green.json`. Mocked guard and classifier tests are not product proof. The earlier red receipt records a missing `wait_text` mock, not a product failure.
 
