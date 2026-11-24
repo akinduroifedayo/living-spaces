@@ -1,8 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.1.4
 
-- Fix a storage warning that a full diagnostic log history could cause. Log history trims itself and never stops a write, so it no longer replaces record, source or project warnings. A hidden storage warning stays hidden only at its current levels. It shows again when another resource nears its limit or a level changes.
+- Browse Spaces in a gallery. Each card shows a preview of the Space, kept only on this machine, with its icon, name and how fresh it is. An open Space gives the canvas the whole window, with floating controls, a notice dock and a Details sheet.
+- Give each Space its own icon. The bot that builds a Space can generate one with your configured Hermes image provider. Living Spaces checks it when the Space is saved and falls back to a glyph, then a sigil. Without an image provider, Spaces keep a glyph icon.
+- Read bot replies from Space controls as collapsed, formatted messages you can expand, copy, continue in chat or dismiss.
+- Fix a storage warning that a full diagnostic log history could cause. Log history trims itself and never stops a write, so it no longer hides record, source or project warnings.
+- Copy details never includes any part of a credential.
+- When a Space is refused a permission, its error names the missing capability again. Inspection reads return the same outcome status as live reads.
 
 ## 0.1.3
 
