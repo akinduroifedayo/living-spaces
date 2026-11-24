@@ -36,17 +36,23 @@ KNOWN_CASES_SHA256 = "4df25664e6a96b3afa0d1a78ea57f76c3da435cf4666f2400d7007e391
 REDACTED = "Operation could not be completed"
 
 
-def known_difference(got, live):
-    """Return F4/F5 when got differs from live only by those findings, else None."""
+NOT_GRANTED = "Capability or requested scope is not granted"
+
+
+def known_difference(got, live, needed, granted):
+    """Return F4/F5 when got differs from live only by those findings, else None.
+
+    F5 is granted only when the adapter's own reply is the contract's not_granted for the capability this op
+    needs and lacks (CONTRACTS.md:118), so a wrong message or capability from the adapter is never excused."""
     rest = dict(live)
     outcome = rest.pop("outcome", None)
     if outcome != {"status": "success" if got.get("ok") else "rejected"}:
         return None
     if rest == got:
         return "F4"
-    if (not got.get("ok") and not rest.get("ok") and set(rest) == {"ok", "error"}
-            and got["error"]["code"] == "not_granted" == rest["error"]["code"]
-            and rest["error"] == {"code": "not_granted", "message": REDACTED}):
+    if (needed and needed not in granted and set(got) == {"ok", "error"} and got["ok"] is False
+            and got["error"] == {"code": "not_granted", "message": NOT_GRANTED, "capability": needed}
+            and rest == {"ok": False, "error": {"code": "not_granted", "message": REDACTED}}):
         return "F5"
     return None
 
@@ -137,7 +143,7 @@ def check(core, home):
                     else:
                         live = core.dispatch(sid, session, op, dict(args))
                         if got != live:
-                            finding = known_difference(got, live)
+                            finding = known_difference(got, live, core.bridge._OPS.get(op, (None,))[0], on)
                             if finding is None:
                                 raise Violation(f"SameAsLive: the live bridge returned {live}. {story}")
                             findings.setdefault(finding, {"count": 0, "example": f"live {live}. {story}"})["count"] += 1

@@ -193,4 +193,10 @@ MUTANTS = {
         "why": "fixing (or changing) the live not_granted redaction must change the pinned F4/F5 case set",
         "edits": [("bridge.py", "        return _failure(authority, invocation.effect, authorized=False)",
                    "        return _failure(authority, invocation.effect)")]},
+    "inspect-F5-wrong-adapter-error-not-excused": {
+        "check": "inspection_readonly", "expect": "SameAsLive", "requires": "inspection.py",
+        "why": "a wrong not_granted message or capability from PassiveAdapter must not pass as the known F5 difference",
+        "edits": [("inspection.py",
+                   '            raise SpacesError("not_granted", "Capability or requested scope is not granted", capability=capability)',
+                   '            raise SpacesError("not_granted", "WRONG MESSAGE", capability="WRONG CAPABILITY")')]},
 }
