@@ -1,0 +1,43 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Verification Notebook</title><style>
+body { font: 18px system-ui; padding: 24px; color: #18312a; background: #f4f5ed; }
+label { display: block; margin-bottom: 12px; } input, button { font: inherit; padding: 10px; }
+article { padding: 12px; margin-top: 14px; border: 1px solid #78998a; }
+</style></head><body><h1>Verification Notebook</h1><p>This disposable canvas stores notes in this Space only.</p>
+<section aria-label="Write a note"><label>Note <input id="note" aria-label="Note" required></label><button type="button" id="save">Save note</button></section>
+<section aria-label="Notice probes"><button type="button" id="ask">Ask Hermes</button> <button type="button" id="fill">Fill storage</button></section>
+<p role="status" id="status">Loading notes</p><section aria-label="Saved notes" id="notes"></section>
+<script type="module">
+const notes = document.getElementById('notes');
+const status = document.getElementById('status');
+async function load() {
+  const rows = await space.query('notes');
+  notes.replaceChildren(...rows.map(row => {
+    const article = document.createElement('article'); article.textContent = row.data.text; return article;
+  }));
+  status.textContent = rows.length ? `${rows.length} saved note` : 'No saved notes';
+}
+const save = document.getElementById('save');
+let saving = false;
+save.addEventListener('click', async () => {
+  const input = document.getElementById('note');
+  if (saving || !input.reportValidity() || !input.value.trim()) return;
+  saving = true; save.disabled = true;
+  status.textContent = 'Saving';
+  try {
+    await space.put('notes', crypto.randomUUID(), {text: input.value}, {base_rev: 0});
+    input.value = ''; await load(); status.textContent = 'Note saved';
+  } catch(error) { status.textContent = `Not saved: ${error.message}`; }
+  finally { saving = false; save.disabled = false; }
+});
+// Notice probes: real bridge calls from visible buttons, so the host shows its own bot and storage notices.
+document.getElementById('ask').addEventListener('click', async () => {
+  try { const reply = await space.ask('Verification notice probe'); status.textContent = `Asked: ${reply?.status ?? 'sent'}`; }
+  catch(error) { status.textContent = `Ask failed: ${error.message}`; }
+});
+document.getElementById('fill').addEventListener('click', async () => {
+  try { await space.put('bulk', 'near-limit', {text: 'x'.repeat(240000)}); status.textContent = 'Storage filled'; }
+  catch(error) { status.textContent = `Fill failed: ${error.message}`; }
+});
+await load();
+</script></body></html>
