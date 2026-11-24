@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Verification Notebook</title><style>
+body { font: 18px system-ui; padding: 24px; color: #18312a; background: #f4f5ed; }
+label { display: block; margin-bottom: 12px; } input, button { font: inherit; padding: 10px; }
+article { padding: 12px; margin-top: 14px; border: 1px solid #78998a; }
+</style></head><body><h1>Verification Notebook</h1><p>This disposable canvas stores notes in this Space only.</p>
+<form><label>Note <input id="note" aria-label="Note" required></label><button type="submit">Save note</button></form>
+<p role="status" id="status">Loading notes</p><section aria-label="Saved notes" id="notes"></section>
+<script type="module">
+const notes = document.getElementById('notes');
+const status = document.getElementById('status');
+async function load() {
+  const rows = await space.query('notes');
+  notes.replaceChildren(...rows.map(row => {
+    const article = document.createElement('article'); article.textContent = row.data.text; return article;
+  }));
+  status.textContent = rows.length ? `${rows.length} saved note` : 'No saved notes';
+}
+document.querySelector('form').addEventListener('submit', async event => {
+  event.preventDefault(); const input = document.getElementById('note');
+  status.textContent = 'Saving';
+  try {
+    await space.put('notes', crypto.randomUUID(), {text: input.value}, {base_rev: 0});
+    input.value = ''; await load(); status.textContent = 'Note saved';
+  } catch(error) { status.textContent = `Not saved: ${error.message}`; }
+});
+await load();
+</script></body></html>
