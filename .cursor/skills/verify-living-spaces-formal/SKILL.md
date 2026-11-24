@@ -104,7 +104,7 @@ Each finding's exact case set is pinned by a SHA-256 over its inputs; any change
 
 - **F4 Inspection replies lack the live outcome envelope.** Since `10517b9` `bridge.dispatch` adds
   `outcome: {status: success|rejected}` to every reply (`bridge.py:213-273`). `inspection.PassiveAdapter.call`
-  adds it only to editor saves (`inspection.py:585-586`). 3376 of the 6768 calls differ only by this field.
+  never adds it; only the `RecordOverlay` subclass does, for editor saves (`inspection.py:585-586`). 3376 of the 6768 calls differ only by this field.
 - **F5 Live not_granted replies drop the documented detail.** `bridge._delivery_failure` re-runs `_authorize`;
   when the grant is missing, that refusal goes through `_failure(authorized=False)` and becomes
   `{"code": "not_granted", "message": "Operation could not be completed"}` with no `capability`
@@ -115,7 +115,7 @@ Each finding's exact case set is pinned by a SHA-256 over its inputs; any change
 
 Fixed since 0.1.1, now hard properties with regression controls:
 - **F1** (Refresh reported refused after it ran): `b57f3cc`/`f56321d` raise `post_run_check_failed` with the run
-  reply (`upkeep.py:605-607`); controls `refresh-verify-refusal-reported-as-refused` and
+  reply (`upkeep.py:607-609`); controls `refresh-verify-refusal-reported-as-refused` and
   `f1-verify-refusal-reported-as-refused`.
 - **F2** (deleted file contents kept): `bfc0e09` deletes blobs only the deleted Space referenced
   (`projects.py:610-616`); control `delete-keeps-unique-blobs`.
