@@ -9,7 +9,7 @@ Check selected high-risk properties against real `living_spaces_core` code and a
 Deliberately broken copies show whether each check can still detect its named regression.
 
 ```bash
-python3 verification/formal/run.py                       # this tree: checks + negative controls, about 12 min
+python3 verification/formal/run.py                       # this tree: checks + negative controls, about 20 min
 python3 verification/formal/run.py --only records_integrity --no-controls   # one check, ~12 s
 ```
 
