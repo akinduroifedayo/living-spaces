@@ -29,8 +29,8 @@ Preconditions:
 
 - **Open.** Run `"$C" click --out "$RUN" --value 'a[href="#/spaces?space=verification-notebook"]'`. Require the heading and Note input in the actual Space frame.
 - **Type.** Run `"$C" guest-fill --out "$RUN" --selector 'input[aria-label="Note"]' --value 'W32 persisted note'`. Capture `"$C" capture --out "$RUN" --value before-save` before submission.
-- **Save.** Run `"$C" guest-click --out "$RUN" --value 'button[type="submit"]'`. Require **Note saved**, **W32 persisted note**, and a host saved status. Capture `after-save` and run `"$C" records --out "$RUN"` for a read-only SQLite second view.
-- **Reopen.** Run `"$C" click --out "$RUN" --value 'text=Spaces'`, then reopen the same card. Capture `after-reopen`. Require the note in the rendered guest and the same payload in the database.
+- **Save.** Run `"$C" guest-click --out "$RUN" --value 'button#save'`. Require **Note saved** and **W32 persisted note**. Capture `after-save` and run `"$C" records --out "$RUN"` for a read-only SQLite second view.
+- **Reopen.** Run `"$C" click --out "$RUN" --value 'header.ls-framebar > button:first-child'`, then reopen the same card. Capture `after-reopen`. Require the note in the rendered guest and the same payload in the database.
 - **Shared chat.** Ask `Read the saved notes from Verification Notebook, then change W32 persisted note to W32 edited note.` through the composer. Require the persisted changed record and a live canvas update. This is not covered by SQLite readback alone.
 - **Conflict.** Two real writers must load the same current record revision. Save from one, then submit the stale second draft. Capture the conflict banner, choose **Compare**, then test **Keep my note** and **Use updated record** in separate runs. The baseline fixture has no existing-record editor, so this entry has an unmet app precondition.
 - **Batch and assets.** Use the actual authored app controls and native chat tool calls. Require all changed records in the second view, local asset success, and each view's visible output. No canned response or API-only probe covers these entries.
@@ -38,6 +38,7 @@ Preconditions:
 ## Gotchas
 
 - The fixture proves only its own form, sandbox rendering, persistence, and reentry. It is not a complete product qualification.
+- Both product pins passed native save and reopen in `baseline-flag-04` and `candidate-flag-02`. The fixture uses an explicit button click because native form submission is forbidden by the shipped sandbox. The failed submit fixture remains recorded in `baseline-flag-03`.
 - A success message alone is not persistence proof. Reopen and inspect a read-only second view.
 - Fixture state starts with zero notes. Code revision changes and restore must not erase records.
 - Bot controls require a native maintaining-session binding. The fixture deliberately has none, so bot requests remain mapped only.

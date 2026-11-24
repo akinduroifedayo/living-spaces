@@ -4,7 +4,7 @@ body { font: 18px system-ui; padding: 24px; color: #18312a; background: #f4f5ed;
 label { display: block; margin-bottom: 12px; } input, button { font: inherit; padding: 10px; }
 article { padding: 12px; margin-top: 14px; border: 1px solid #78998a; }
 </style></head><body><h1>Verification Notebook</h1><p>This disposable canvas stores notes in this Space only.</p>
-<form><label>Note <input id="note" aria-label="Note" required></label><button type="submit">Save note</button></form>
+<section aria-label="Write a note"><label>Note <input id="note" aria-label="Note" required></label><button type="button" id="save">Save note</button></section>
 <p role="status" id="status">Loading notes</p><section aria-label="Saved notes" id="notes"></section>
 <script type="module">
 const notes = document.getElementById('notes');
@@ -16,13 +16,18 @@ async function load() {
   }));
   status.textContent = rows.length ? `${rows.length} saved note` : 'No saved notes';
 }
-document.querySelector('form').addEventListener('submit', async event => {
-  event.preventDefault(); const input = document.getElementById('note');
+const save = document.getElementById('save');
+let saving = false;
+save.addEventListener('click', async () => {
+  const input = document.getElementById('note');
+  if (saving || !input.reportValidity() || !input.value.trim()) return;
+  saving = true; save.disabled = true;
   status.textContent = 'Saving';
   try {
     await space.put('notes', crypto.randomUUID(), {text: input.value}, {base_rev: 0});
     input.value = ''; await load(); status.textContent = 'Note saved';
   } catch(error) { status.textContent = `Not saved: ${error.message}`; }
+  finally { saving = false; save.disabled = false; }
 });
 await load();
 </script></body></html>

@@ -18,11 +18,18 @@ plugin = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = plugin
 spec.loader.exec_module(plugin)
 html = (Path(__file__).resolve().parents[1] / 'fixtures/notebook.html').read_text()
-args = dict(name='Verification Notebook', description='Disposable note persistence check',
+args: dict = dict(name='Verification Notebook', description='Disposable note persistence check',
             files={'index.html': html}, libraries=[], manifest={'entry': 'index.html',
             'data': {'version': 1, 'collections': {'notes': {'description': 'Saved user notes'}}}})
+variant = sys.argv[3] if len(sys.argv) > 3 else 'notebook'
+assert variant in ['notebook', 'agent']
+if variant == 'agent':
+    args['name'] = 'Verification Agent Refresh'
+    args['description'] = 'Disposable agent Refresh dispatch check; no recurring upkeep'
+    args['manifest']['upkeep'] = dict(handler='agent', prompt='Read this Space with spaces_get, then stop. Do not write records or code, use external network, install, change authentication, or schedule anything.')
 reply = json.loads(plugin._handler(plugin.spaces_create)(args))
-(out / 'fixture-create.json').write_text(json.dumps(dict(evidence_class='fixture preparation, not Desktop chat creation',
+receipt = 'agent-fixture-create.json' if variant == 'agent' else 'fixture-create.json'
+(out / receipt).write_text(json.dumps(dict(evidence_class='fixture preparation, not Desktop chat creation',
                                                       arguments=args, reply=reply), indent=2))
 assert reply['ok'], reply
 print(json.dumps(reply))

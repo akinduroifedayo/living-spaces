@@ -31,7 +31,7 @@ Preconditions:
 - **Pin.** Open the fixture card, click `button[aria-label="More Space actions"]`, then `text=Pin Space`. Return to the index and require Pinned plus a persisted pinned value from `"$C" records --out "$RUN"`. Repeat for Unpin Space.
 - **Archive.** Open More Space actions, click `text=Archive Space…`, capture the confirmation, then click `text=Archive Space`. Require the archived banner, absent canvas, unchanged note payload, and archived database state.
 - **Restore.** Click `text=Restore Space`, require the canvas and saved note, and verify any upkeep remains paused. The fixture has no upkeep, so the schedule part is unverified.
-- **Delete.** Archive the fixture again, click `text=Delete…`, capture the exact target name, then click `text=Delete Space`. Require the empty index and no active fixture rows in the database. This is logical deletion, not secure disk erasure.
+- **Delete.** Archive the fixture again, click `text=Delete…`, capture the exact target name, then click `text=Delete Space`. Require the index and no Notebook row or records in the database. A separately prepared agent fixture may remain. This is logical deletion, not secure disk erasure.
 
 ## Gotchas
 
@@ -40,3 +40,4 @@ Preconditions:
 - Archive and restore are not deletion. Never accept one as proof of the other.
 - Product deletion does not guarantee byte erasure of blobs or backups. Do not assert secure erase.
 - Do not delete live data to satisfy a cleanup check. Teardown removes the owned disposable home after evidence capture.
+- Both `*-journeys-01` runs exercised name search, no-match state, empty Archived filter, pin and unpin, archive with preserved note rows, restore with the rendered note, and logical deletion. The empty index itself appeared in both primary proofs. Its new-chat/copy actions and a genuine attention fixture remain unverified.

@@ -1,154 +1,157 @@
 ---
 name: verify-living-spaces
-description: "Drive Living Spaces in an isolated Hermes Desktop; use to prove user journeys, capture evidence, and diagnose startup."
+description: "Drive Living Spaces in an isolated Hermes Desktop; use to prove user journeys, capture evidence, and reproduce native Refresh races."
 disable-model-invocation: true
 ---
 
 # Verify Living Spaces
 
-**Status: exercised draft, NOT an accepted Desktop verification skill.** The current clean-home runs reach a healthy isolated backend and finish native onboarding, but Living Spaces is absent from the Desktop plugin inventory. `proof` deliberately exits nonzero. No mapped Desktop product journey has passed. Do not equate the candidate's successful headless inspection with Desktop coverage.
+**Status: usable scoped Desktop driver, exercised on both pins. Product acceptance is not complete.** The isolated Desktop decision enables the native Spaces page. Native note save and reopen pass with visible and SQLite evidence. The actual Desktop plus chat Refresh race creates two native one-shots and two model-backed cron sessions on both pins. Do not treat this skill as a release approval.
 
-This skill is for an agent reading the checkout cold. Read [the feature index](features/README.md), then the matching feature recipe. Use `/maintain-verification-skill` when the application or its host changes.
+Read [the feature index](features/README.md) before driving. Use `/maintain-verification-skill` when the host or product changes.
 
 ## Product and pin
 
-Primary surface: the **Spaces** tab in Hermes Desktop, including a sandboxed app canvas. Secondary surfaces: normal chat's `living_spaces` tools and Open Space transcript card; guest `space.*` APIs; ordinary Hermes cron upkeep; scoped diagnostics and revision history. HTTP transport is implementation plumbing, not a replacement for a Desktop click.
+- Released baseline `4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98`, version 0.1.1.
+- Unpublished candidate `8008dcc6f77c3f5cb51f966ab1241bd9f89dc37a`. Runtime inspection exists only on this candidate.
+- Baseline verification worktree `/Volumes/Expansion/Development/Build/living-spaces-app-verification`, branch `verify/living-spaces-app`.
+- Candidate worktree `/Volumes/Expansion/Development/Build/living-spaces-app-verification-candidate`. Never edit product code there.
+- Existing host `/Applications/Hermes.app`, observed Desktop `v0.23.1+6306`. The runtime and interpreter are existing dependencies, not a build produced by this skill.
 
-- Released product baseline: `4aea12db5375b30e90b5e0fa8f7d12ad7e0fdf98` (0.1.1).
-- Separate unpublished inspection candidate: exact Git commit `8008dcc`, resolved and recorded in each `product-pin.json`. **Runtime inspection is not shipped in the released baseline.**
-- Verification checkout: `/Volumes/Expansion/Development/Build/living-spaces-app-verification`, branch `verify/living-spaces-app`.
-- Candidate copy: `/Volumes/Expansion/Development/Build/living-spaces-app-verification-candidate` (detached; never edit product code there).
-- Installed host exercised: `/Applications/Hermes.app`, Desktop `v0.23.1+6306`; existing source/runtime `/Users/ifedayoakinduro/.hermes/hermes-agent` and its existing venv. This is a host dependency, not a bundled product build.
-
-The repo documents `harness/app.py prepare`, `start`, `status`, `enable-desktop`, and `stop`; `harness/cdp.py` provides CDP primitives. Do **not** execute that launcher verbatim here: prepare also enables a model plugin, enable-desktop mutates localStorage, and stop uses gateway stop. This helper instead copies only the product into a fresh home, enables only `living-spaces` in that home's config, uses native onboarding/plugin controls, and kills identity-checked owned PIDs.
+Do not run the released `harness/app.py` whole. Its prepare step configures a model plugin and its stop step invokes gateway stop. Reuse only protocol details. The helper owns its PID group, detached gateway, OS home, Hermes home, userData, cwd, and temporary directory.
 
 ## Launch
 
-No builds or dependency installs are authorized or needed. Use existing executables only. No auth is copied; the host may create its own anonymous Welcome state. No chat/model submission is authorized by these instructions. Do not enable the model plugin, sign in, access credentials, modify another profile, or use the everyday Desktop session.
+No installs, auth copying, sign-in, live profile changes, gateway restart, publication, or product repairs are permitted. Use only the existing host and interpreter. The scoped native follow-up used the disposable app's existing `nous/welcome` model. It did not configure a model plugin or copy credentials. Do not select a paid provider to make a journey work.
 
 ```sh
 cd /Volumes/Expansion/Development/Build/living-spaces-app-verification
 export C="$PWD/.cursor/skills/verify-living-spaces/scripts/control.py"
-export RUN=/Volumes/Expansion/Development/Build/living-spaces-app-verification-evidence/baseline-rerun
-"$C" proof --out "$RUN"
+export RUN="/Volumes/Expansion/Development/Build/living-spaces-app-verification-evidence/baseline-$(date +%Y%m%d-%H%M%S)"
+"$C" proof --enable-isolated-desktop --out "$RUN"
 ```
 
-`proof` is the exact end-to-end rerun command: prepare an empty home; recheck `127.0.0.1:19432` is free; launch the actual Desktop executable in a new process group; native **Skip setup > No thanks > Capabilities > Plugins**; native **Cmd-K > Reload desktop plugins** if necessary; enable Spaces through its native switch if inventoried; require a usable empty Spaces index; Doctor; fixture preparation; native card entry, form submission, persisted note and reopen; evidence; owned-PID teardown in `finally`. Today it fails before the usable index and records that gap. An existing evidence path is refused. Rename neither baseline-04 nor candidate-01 and never reuse their state.
+The proof prepares fresh directories, disables lazy installs, rechecks loopback CDP 19432 immediately before launch, then proves actual storage isolation before its one Desktop decision write. It completes native onboarding, selects Reload desktop plugins, clicks native Spaces navigation, requires a usable index, prepares a fixture, saves a note through its visible controls, verifies SQLite, leaves and reopens, and cleans up in `finally`.
 
-For manual diagnosis of one new instance:
+`--enable-isolated-desktop` is opt-in and valid only for `proof`. Without it, the clean-home loader can lack Spaces. Existing output directories are refused and never erased for a rerun. Do not touch the unrelated listener on 9222.
+
+Candidate comparison uses a separate fresh output path:
 
 ```sh
-export RUN=/Volumes/Expansion/Development/Build/living-spaces-app-verification-evidence/manual-rerun
+"$C" proof --enable-isolated-desktop --repo /Volumes/Expansion/Development/Build/living-spaces-app-verification-candidate --out "/Volumes/Expansion/Development/Build/living-spaces-app-verification-evidence/candidate-$(date +%Y%m%d-%H%M%S)"
+```
+
+A candidate proof also runs the separately labeled headless handler check after the native feature passes. That secondary result never replaces Desktop proof.
+
+For an owned live instance used by the broader recipes:
+
+```sh
 "$C" launch --out "$RUN"
 trap '"$C" cleanup --out "$RUN"' EXIT INT TERM
+"$(dirname "$C")/flag_enable.py" --out "$RUN"
 "$C" setup --out "$RUN"
 "$C" doctor --out "$RUN"
+"$C" fixture --out "$RUN"
 ```
 
-A CDP page or a healthy backend is **not readiness**. Readiness requires native `[data-testid="spaces-index"]` and its usable empty-state/card controls. If setup fails, preserve the failure, run `diagnostic`, and clean up. Do not inject a plugin registration, route, grant, mount, or test-only endpoint to make it pass. The loopback port is dedicated to this run; do not touch the unrelated Google listener at 9222. Reconfirm coordination before concurrent host tests.
+Choose `--repo` on `launch` for the candidate. Do not use an already completed proof's output directory for this sequence.
 
-Candidate comparison, after the baseline attempt:
+## Isolated Desktop decision
 
-```sh
-"$C" proof --out /Volumes/Expansion/Development/Build/living-spaces-app-verification-evidence/candidate-rerun --repo /Volumes/Expansion/Development/Build/living-spaces-app-verification-candidate
-```
+The release's `harness/app.py:123-128` evaluates a write through CDP in the page selected by `/dist/index.html`. It preserves the JSON object under `hermes.desktop.pluginDecisions.v2` and sets only `living-spaces` to `true`, then reloads the page. It does not hard-code an origin.
 
-This uses the same Desktop path and, separately, exercises the candidate's registered `spaces_inspect` handler against the disposable fixture. The comparison does not install or publish the candidate.
+The observed renderer is `file:///Applications/Hermes.app/Contents/Resources/app.asar.unpacked/dist/index.html`, origin `file://`. `flag_enable.py` writes the same one-field decision through `Runtime.evaluate`, reads it back, reloads through CDP, and reads it again.
+
+**Fail closed before the write.** The guard binds the CDP listener to the manifest PID and start identity, verifies renderer command lines use exactly `RUN/state/ud`, and requires that PID's open `Local Storage/leveldb/LOCK` under that directory. It rejects foreign Local Storage and paths under the real Application Support or Hermes home. Environment variables alone are not proof. Receipts are `flag-isolation.json`, `flag-write.json`, and `flag-after-reload.json`.
+
+A native inventory switch is not required when Spaces navigation is already present. Click that navigation and assert the actual index. The old switch-only test produced a false negative after the flag had worked.
 
 ## Doctor
 
 ```sh
 "$C" doctor --out "$RUN"
-```
-
-Doctor is read-only: it reads the launch manifest, checks PID start identity/process group, requires the CDP listener to belong to that PID on loopback, checks isolated plugin enablement, and reads the renderer DOM for the usable Spaces index. It neither opens a Space (which writes last-opened metadata), calls root reconciliation, starts a backend, authenticates, nor changes config. It exits nonzero when the app is not worth driving. Auth is deliberately absent for model journeys; those cannot pass Doctor's UI readiness as an authorization substitute.
-
-For a retained diagnostic rather than Doctor:
-
-```sh
 "$C" diagnostic --out "$RUN"
 "$C" capture --out "$RUN" --value diagnosis
 ```
 
-Diagnostic reads native `host.status()`, `plugins.manage` list, exact directory listings, and the visible Desktop switches. It asserts `hermes_home` equals this run's home. `desktopPluginsRoot()` is intentionally not a read-only check: the host implementation reconciles/migrates files when called.
+Doctor is read-only. It verifies PID and port ownership, disposable backend enablement, and the current native Spaces index. It does not navigate, mount a Space, set a permission, authenticate, or establish model access. Run it on the index, not while a detail page is open.
+
+Diagnostic reads scoped host status, package inventory, known directory entries, and visible switches. `desktopPluginsRoot()` is not a read-only diagnostic because the host can reconcile files when called.
 
 ## Drive
 
-`control-living-spaces` is the feature map's name for `scripts/control.py`. It uses CDP solely against its manifest-owned real Electron renderer. Native gestures are kept together on one debugger connection; splitting press/release across connections can cancel them. DOM evaluation is for observations and element bounds, not internal setters.
+The feature map calls `scripts/control.py` **control-living-spaces**. CDP gestures drive the actual owned renderer. Read DOM and SQLite for observations, never use internal setters or HTTP calls as substitutes for native actions.
 
 ```sh
 "$C" read --out "$RUN"
-"$C" click --out "$RUN" --value 'button[data-tour="tab-plugins"]'
-"$C" fill --out "$RUN" --selector 'input[aria-label="Search plugins"]' --value living
-"$C" key --out "$RUN" --value Escape
-"$C" capture --out "$RUN" --value before-action
-```
-
-`click` accepts a unique visible CSS target or `text=` followed by exact button/link/menu text. Ambiguity is a failure. Do not guess by coordinates; the helper derives coordinates from the selected element. `fill` sends native select-all and insert-text editing events. `key` supports Enter, Escape, Tab. A successful input dispatch alone is not an asserted outcome.
-
-Once Doctor passes, the mapped persistence recipe is:
-
-```sh
-"$C" fixture --out "$RUN"
 "$C" click --out "$RUN" --value 'a[href="#/spaces?space=verification-notebook"]'
-"$C" capture --out "$RUN" --value before-save
 "$C" guest-fill --out "$RUN" --selector 'input[aria-label="Note"]' --value 'W32 persisted note'
-"$C" guest-click --out "$RUN" --value 'button[type="submit"]'
+"$C" guest-click --out "$RUN" --value 'button#save'
 "$C" guest-read --out "$RUN"
-"$C" capture --out "$RUN" --value after-save
 "$C" records --out "$RUN"
 ```
 
-Require **Note saved**, rendered **W32 persisted note**, the inserted SQLite record, then leave and reopen through the native card and verify the same note. **This segment remains unexercised because Doctor cannot pass in the current host.** Guest helpers are draft code, not verified controls. No success claim is permitted from fixture creation or a raw database read.
+Wait for the fixture's polled native card before clicking. Require **Note saved**, the rendered note, and a matching SQLite record. Return through `header.ls-framebar > button:first-child`, reopen the native card, and require the same note. A persisted row without visible success fails.
 
-`fixture` invokes the real released `spaces_create` handler with the included public HTML fixture. That is explicit preparation, **not** natural-language creation, native chat dispatch, maintaining-session binding, or a Desktop UI action. It creates one revision, no notes, no refresh handler, no upkeep, no pending grant, and no second profile. Missing preconditions stay failures in the map. Do not replace them with tests that prove less.
+The fixture uses a labeled input and an explicit `type="button"` click handler. Native form submission is forbidden by the shipped sandbox, including `onSubmit`. Do not loosen the sandbox or use `requestSubmit()` to repair a fixture.
 
-## Evidence
+`fixture` prepares one code revision through the shipped handler. It is not chat creation or maintaining-session binding. Its warning about the absent maintaining session is real. The visible Bot request offline banner does not invalidate a separately proven note save.
 
-Each attempt lives under `/Volumes/Expansion/Development/Build/living-spaces-app-verification-evidence/`, outside disposable `state/` and outside every Forge/W31 tree. Relevant retained runs:
+Run the broader native recipes in a live prepared instance:
 
-- `baseline-01`: failed first setup; the config CLI unexpectedly prepared dependencies. This is a recorded boundary deviation, not a clean no-install pass.
-- `baseline-02` and `baseline-03`: native startup/loader investigations; fixture preparation in baseline-03 is not UI proof.
-- `baseline-04`, `baseline-05`, and `baseline-rerun`: scripted baseline attempts and diagnostics. Screenshot review showed the early Enter-based reload did not close the palette, so these do not prove completed reload selection.
-- `baseline-reload-click`: native reload option clicked, palette closure asserted and visually checked; package still absent from native inventory. Doctor failed.
-- `candidate-01`, `candidate-02`, and `candidate-rerun`: Desktop attempts and separately successful headless inspection handler with canonical SQL invariance. Their early reload selection was not confirmed.
-- `candidate-reload-click`: an intermediate onboarding click failed; preserved rather than counted as plugin coverage.
-- `candidate-final`: focus-before-coordinate capture, native reload option clicked with palette closure asserted, same missing native inventory/Doctor failure; headless inspection passed again.
+```sh
+"$(dirname "$C")/mapped_journeys.py" --out "$RUN"
+```
 
-For every proof retain the feature/entry ID, command and exit status, action log, before/action/result screenshots, AX snapshots, DOM text, relevant backend logs, persisted side-effect second view, and teardown receipt. `capture` saves PNG/AX/text; `records` reads SQLite with `mode=ro` and `query_only`; cleanup saves the plugin's canonical SQL and logs before removing the home. Evidence must still exist after cleanup.
+This drives note save and reopen, History, empty Upkeep, Internet Off and its audit, search and Archived filter, pin and unpin, Desktop double Refresh, and archive, restore, and logical deletion of the disposable Notebook. It creates a separate agent-upkeep fixture for Refresh. Results are in `mapped-journeys.json`; inspect every case, not just the command exit. The double-click row is telemetry, not a passed concurrency test. The fixture deletion is intentional and is not suitable for live data.
 
-The candidate `inspection-proof.json` reports **loaded**, actual viewport 1024×768, notebook text and one data query, no errors, browser process/temp cleanup, and equal canonical SQL digests before/after. It has **no screenshot** and proves neither Desktop pixels, a form save, chat tool dispatch, nor `/stop`. Inspection uses a passive disposable real Chromium renderer and the production bridge; no external mocks are used.
+## Native inspection and interruption
 
-Do not treat all mapped entries as covered by one entry. Do not claim API/headless proof as native Desktop proof. Side effects require a read-only second view alongside the visible result. Mock only where production already isolates an external boundary, disclose the boundary, and never pass mock/source transport as real network compatibility. Refresh requests that merely queue jobs are not completed upkeep.
+Use the candidate only. From the native **Getting started** chat, verify the existing model remains `nous/welcome`. Submit a read-only request to inspect Verification Notebook revision 1 with the runtime tool. Require the actual stored `spaces_inspect` tool result, not the model's summary. The completed native candidate trial returned `loaded`, no errors, and renderer and temporary-directory cleanup. It also returned a host notice about the unrecognized CSP `webrtc` directive. Inspection has no screenshot and does not prove visual quality.
 
-## Cleanup
+```sh
+"$C" click --out "$RUN" --value 'text=Getting started'
+"$(dirname "$C")/native_inspection.py" inspect-results --out "$RUN"
+"$(dirname "$C")/native_inspection.py" stop-trial --out "$RUN"
+```
+
+`inspect-results` reads the owned native session database. `stop-trial` submits a second native read-only inspection, waits for **Running spaces inspect**, then types `/stop` and submits it. It records whether the tool was still visibly running immediately before submission, the exact native cancellation result, canonical SQL digests, and owned browser-process observations. A completed inspection before the stop attempt is not interruption proof. The candidate trial demonstrated explicit-stop cancellation and unchanged canonical SQL; its owned renderer disappeared on the following process sample. The PNG taken immediately after stop is intermediate; the later DOM and stored tool result establish completion.
+
+## Desktop plus chat Refresh race
+
+The native Desktop busy button suppresses a second Desktop click. It does not establish protection against a native chat Refresh. Run the exact race in a new disposable home:
+
+```sh
+"$(dirname "$C")/race_native.py" --repo /Volumes/Expansion/Development/Build/living-spaces-app-verification-candidate --out "/Volumes/Expansion/Development/Build/living-spaces-app-verification-evidence/candidate-race-$(date +%Y%m%d-%H%M%S)"
+```
+
+For the baseline, change `--repo` to this verification worktree and use another output path. The runner launches and cleans up itself. It prepares one agent fixture, primes native chat with the tool schema without firing Refresh, drafts the chat request, presses Desktop Refresh, switches back to native chat, and submits immediately.
+
+`race-result.json` reports exact native one-shot IDs, cron session IDs, actual model API-call counts, timestamps proving overlap, native tool-call arguments, and Space run rows. **Both product pins failed this race:** two one-shots and two model-backed native cron sessions for the same Space. The chat call arrived before the first cron session ended. No product repair is included. The empty Space `runs` table is not evidence that no model work happened.
+
+A runner exit of zero means the experiment completed, not that deduplication passed. The observed bug is `observed_two_with_overlap=true`. Both recorded races left one disabled, paused one-shot before teardown. The owned home and detached gateway were then removed; do not report zero jobs before teardown for these two races.
+
+## Evidence and cleanup
+
+Evidence root `/Volumes/Expansion/Development/Build/living-spaces-app-verification-evidence` is outside disposable `state/` and every Forge or W31 tree.
+
+- `baseline-flag-04` and `candidate-flag-02` contain the successful native proof, note rows, screenshots, and cleanup.
+- `baseline-journeys-01` and `candidate-journeys-01` contain the broader mapped native trials.
+- `candidate-journeys-01/native-inspect-tool-results.json`, `stop-attempt.json`, and `stop-outcome.json` bind native dispatch, cancellation, unchanged SQL, and browser cleanup.
+- `baseline-desktop-chat-race-01` and `candidate-desktop-chat-race-01` contain the actual duplicated native dispatches.
+- Earlier flag trials remain as failed harness attempts. `flag-01` failed the old switch-only check. `baseline-flag-02` did not wait for the polled card. `baseline-flag-03` used a forbidden submit fixture. Do not relabel these green.
+- Driver-only unit receipts are `followup-unit-tests-green.json`. Mocked guard and classifier tests are not product proof. The earlier red receipt records a missing `wait_text` mock, not a product failure.
 
 ```sh
 "$C" cleanup --out "$RUN"
 ```
 
-Teardown verifies the owned Desktop PID's start identity, terminates its owned process group, and discovers detached native gateways only by the exact fresh `HERMES_HOME` environment plus command/PID/start identity. No process-name kill, global gateway stop, app restart, or other person's session is allowed. Detached gateway ownership matters: the first implementation checked only Electron's process group and initially missed those processes; the corrected cleanup was run against every earlier attempt.
+Cleanup verifies PID start identity and the owned process group, discovers detached gateways by the exact disposable `HERMES_HOME`, preserves logs and canonical SQL, removes only `RUN/state`, and records remaining processes and the CDP port. Existing-output refusal gives no cleanup authority. Orphan signals require identity and the exact disposable path. A failed cleanup leaves evidence and a failure receipt. After native inspection or cron, independently scan owned path-bearing processes as well. Never claim final containment from Electron's exit alone.
 
-Cleanup preserves evidence, copies scoped logs and SQL, removes only `RUN/state`, then records zero owned processes and whether port 19432 is free. A refused existing output path grants no cleanup authority: launch/proof only clean directories acquired by that invocation. If the Desktop leader has exited, orphan signals require both the original group and the exact disposable user-data path plus PID/start identity. A refusal/failure preserves logs/SQL and writes `cleanup-failed.json`, leaving state for diagnosis. Never claim complete teardown if either check fails. It may report the port occupied by a different owned attempt rather than kill that listener. After the final attempt, require a free port and all evidence present. No live profile, cron, Spaces data, auth, or user-installed app is removed. Local worktrees and evidence remain for review.
+## Helpers and remaining coverage
 
-## Helpers
+All scripts use the existing interpreter and are executable. `test_driver_safety.py` covers reused-output refusal, real owned orphan cleanup, and visible-save classification. `test_flag_enable.py` covers the matching-storage control, missing lock, foreign renderer directory, foreign Local Storage, one-field preservation, and the fixture's supported click path. The flag boundary cases use mocks and are driver checks only.
 
-All shipped Python scripts are executable and use the already-installed venv; no package admission occurs.
+`.agents/skills/verify-living-spaces` is the repo-local alias. No live project-trust setting was changed.
 
-- `scripts/control.py`: all public commands above, plus `inspect --out "$RUN"` for candidate-only secondary proof and `proof` for the owned complete attempt.
-- `scripts/fixture.py`: called by `control.py fixture`; direct invocation requires the exact disposable HERMES_HOME. It is not a user action.
-- `scripts/inspection_tool.py`: called by `control.py inspect`; compares canonical SQL around the registered candidate handler. It is not native chat/tool-dispatch proof.
-- `scripts/test_driver_safety.py`: run `"$C"`'s sibling directly: `.cursor/skills/verify-living-spaces/scripts/test_driver_safety.py`. Three driver-only regression cases cover reused-path refusal, real owned orphan cleanup/log survival, and rejection of a persisted note without visible save success. The classifier case uses mocks and is explicitly **not product/UI evidence**. Red and green receipts live at `review-safety-red.json` and `review-safety-green.json` in the evidence root. Safety fixtures now use the dedicated Hermes scratch path; the first red run inherited the host's system TMPDIR and was automatically removed.
-- `fixtures/notebook.html`: tiny in-canvas form using production `space.query` and `space.put`. No hidden writes from the driver.
-
-The canonical skill stays in `.cursor/skills/verify-living-spaces/` as commissioned. `.agents/skills/verify-living-spaces` is a repo-local alias for Hermes discovery; project trust remains a separate host prerequisite and no live trust registry is changed.
-
-## Current acceptance and next owner
-
-**UNMET:** a usable fresh-home Spaces index; read-only Doctor success; at least one mapped native Desktop product feature with visible and persisted side effects. Consequently this is a draft local diff, not a completed verification skill or a release recommendation.
-
-**Observed on both product pins:** backend enabled and inventories Living Spaces with `has_desktop_half=true`; correct root/child directory entries; native onboarding and reload action; no Spaces inventory switch/navigation. The root cause is not established. Do not blame package enablement or the empty explicit-decisions map based on this evidence.
-
-**Mapped only:** authoring/editing/chat-card entry; native record save/reopen; permissions; lifecycle; refresh/upkeep; ownership; all alternative entry paths. The W31-reported double agent Refresh must be driven and native one-shot jobs counted on both pins once the Desktop gap is resolved; it is not reproduced by this workstream. `/stop` remains unverified.
-
-Forge remains the sole integration owner. Changes stay local on this branch; do not merge, push, publish, live-install, restart a gateway/Desktop, repair product/host code, copy credentials, or enable a model to unblock this draft. Return the precise startup evidence to Forge/Bjorn. A working safe host path must be established before changing this status.
+Coverage remains partial. Natural-language creation and editing, older-code restore, shared chat data editing, record conflicts and batches, assets and multiple views, feed success and failure, recurring upkeep controls, pending-grant decisions, cross-profile isolation, and maintained-bot binding are not qualified by these trials. Keep those entries explicit in the feature map. A working driver and the reproduced F-refresh bug do not qualify the whole product. Forge owns integration and any repair. No merge, push, live install, restart, auth change, or publication follows from this skill.

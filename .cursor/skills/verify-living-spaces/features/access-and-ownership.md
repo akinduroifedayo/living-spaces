@@ -39,3 +39,4 @@ Preconditions:
 - Turning Internet access off does not disable the bot's normal native tools.
 - Do not call permission endpoints to stand in for a Desktop switch click.
 - The fixture has no pending grant or second profile. Record those as precondition gaps, not passes.
+- Both product pins passed native Internet Off, drawer reopen, persisted `net=revoked`, and matching audit evidence in the `*-journeys-01` runs. This covers `access-internet` and that decision's audit, not all grant or ownership behavior.

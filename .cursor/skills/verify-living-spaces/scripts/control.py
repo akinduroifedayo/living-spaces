@@ -198,7 +198,7 @@ def doctor(out):
     text = evaluate(out, 'document.body.innerText')
     result = dict(pid=m['pid'], revision=m['revision'], cdp_port=PORT, scope=m['state'],
                   plugin_copied=(Path(m['state']) / 'home/desktop-plugins/living-spaces/plugin.js').is_file(),
-                  spaces_text_present='Spaces' in text, auth='not configured; no model journeys authorized',
+                  spaces_text_present='Spaces' in text, auth='No credentials copied; Doctor does not assess model access',
                   usable='Build your first Space in chat' in text or 'data-testid="spaces-index"' in evaluate(out, 'document.body.innerHTML'))
     print(json.dumps(result))
     assert result['usable'], 'Desktop is not usable at the Spaces index'
@@ -381,9 +381,11 @@ def setup(out):
         time.sleep(3)
         assert not evaluate(out, '!!document.querySelector("input[role=combobox]")'), 'Native reload command did not close its palette'
     capture(out, 'plugin-inventory')
-    if not evaluate(out, f'!!document.querySelector({json.dumps(selector)})'):
-        raise RuntimeError('Living Spaces is missing from native plugin inventory; see plugin-inventory artifacts')
-    if evaluate(out, f'document.querySelector({json.dumps(selector)}).getAttribute("aria-checked")') != 'true':
+    switch_present = evaluate(out, f'!!document.querySelector({json.dumps(selector)})')
+    nav_present = evaluate(out, '[...document.querySelectorAll("button,a,[role=button]")].some(e=>e.getClientRects().length && e.textContent.trim()==="Spaces")')
+    if not switch_present and not nav_present:
+        raise RuntimeError('Living Spaces has neither a native inventory switch nor visible Spaces navigation; see plugin-inventory artifacts')
+    if switch_present and evaluate(out, f'document.querySelector({json.dumps(selector)}).getAttribute("aria-checked")') != 'true':
         click(out, selector)
     wait_text(out, 'Spaces')
     click(out, 'text=Spaces')
@@ -493,21 +495,25 @@ def cleanup_acquired(out, acquisition):
         dump(out / 'cleanup.json', dict(state_removed=not state.exists(), process_never_recorded=True))
 
 
-def proof(out, repo):
+def proof(out, repo, enable_isolated_desktop=False):
     result = dict(primary_desktop='unmet', secondary_inspection='not requested', stop_interruption='unverified')
     acquisition = {}
     try:
         launch(out, repo, acquisition)
+        if enable_isolated_desktop:
+            from flag_enable import enable
+            enable(sys.modules[__name__], out)
         try:
             setup(out)
             dump(out / 'doctor.json', doctor(out))
             fixture(out)
+            wait_text(out, 'Verification Notebook')
             # Native card entry; the fixture preparation above is not chat creation.
             click(out, 'a[href="#/spaces?space=verification-notebook"]')
             time.sleep(3)
             capture(out, 'before-save')
             guest_fill(out, 'input[aria-label="Note"]', 'W32 persisted note')
-            guest_click(out, 'button[type="submit"]')
+            guest_click(out, 'button#save')
             time.sleep(2)
             capture(out, 'after-save')
             status = guest_read(out, '#status')
@@ -516,7 +522,7 @@ def proof(out, repo):
             assert isinstance(notes, dict) and 'W32 persisted note' in notes.get('text', ''), 'Visible saved note missing'
             saved = records(out)
             assert any('W32 persisted note' in str(row) for row in saved['records']), 'No persisted note'
-            click(out, 'text=Spaces')
+            click(out, 'header.ls-framebar > button:first-child')
             click(out, 'a[href="#/spaces?space=verification-notebook"]')
             time.sleep(3)
             capture(out, 'after-reopen')
@@ -530,7 +536,9 @@ def proof(out, repo):
                 doctor(out)
             except Exception as doctor_error:
                 result['doctor_error'] = str(doctor_error)
-        if manifest(out)['revision'].startswith(CANDIDATE):
+        if enable_isolated_desktop and not result['primary_desktop'].startswith('passed'):
+            result['secondary_inspection'] = 'not requested: stopped at the Desktop blocker'
+        elif manifest(out)['revision'].startswith(CANDIDATE):
             if not (out / 'fixture-create.json').exists():
                 fixture(out)
             try:
@@ -553,10 +561,14 @@ def main():
     parser.add_argument('--repo', type=Path, default=Path(__file__).resolve().parents[4])
     parser.add_argument('--value')
     parser.add_argument('--selector')
+    parser.add_argument('--enable-isolated-desktop', action='store_true',
+                        help='Opt-in flag experiment; requires runtime proof of disposable Local Storage')
     args = parser.parse_args()
+    if args.enable_isolated_desktop and args.command != 'proof':
+        parser.error('--enable-isolated-desktop is valid only for proof; use flag_enable.py for a live owned run')
     out = args.out.resolve()
     if args.command == 'proof':
-        proof(out, args.repo.resolve())
+        proof(out, args.repo.resolve(), args.enable_isolated_desktop)
     elif args.command == 'launch':
         acquisition = {}
         try:

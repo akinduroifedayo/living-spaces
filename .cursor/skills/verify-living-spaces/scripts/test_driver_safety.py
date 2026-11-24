@@ -91,6 +91,7 @@ class DriverSafety(unittest.TestCase):
                         return {'text': 'W32 persisted note'}
                     return [{'text': 'Verification Notebook\nW32 persisted note'}]
                 mocks = dict(launch=fake_launch, setup=lambda *_: None, doctor=lambda *_: {},
+                             wait_text=lambda *_: None,
                              fixture=lambda *_: None, click=lambda *_: None, capture=lambda *_: None,
                              guest_fill=lambda *_: None, guest_click=lambda *_: None,
                              records=lambda *_: {'records': [{'data': 'W32 persisted note'}]},
