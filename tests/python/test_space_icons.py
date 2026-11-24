@@ -93,6 +93,31 @@ class Checks(IconCase):
         check = projects.icon_check(space["id"])
         self.assertEqual((check["pass"], check["attempt"], check["fallback"]), (True, 1, "glyph:graph"))
 
+    def test_an_opaque_rgba_icon_over_the_size_cap_is_normalised_and_passes(self):
+        # A template icon with per-channel grain, as provider PNGs carry, saved RGBA with every alpha at 255.
+        image = Image.open(io.BytesIO(icon())).convert("RGB")
+        def grain(channel):
+            mask = Image.effect_noise(image.size, 64).convert("L").point(lambda v: 255 if v > 128 else 0)
+            return Image.composite(channel.point(lambda v: min(255, v + 2)), channel, mask)
+        image = Image.merge("RGBA", (*map(grain, image.split()), Image.new("L", image.size, 255)))
+        out = io.BytesIO()
+        image.save(out, "PNG")
+        raw = out.getvalue()
+        self.assertGreater(len(raw), icons.LIMITS["max_bytes"], "the fixture must exceed the cap before normalising")
+        space = self.create({"image": "assets/icon.png", "glyph": "graph"}, {"assets/icon.png": raw})
+        self.assertTrue(space["icon_image"]["pass"], space["icon_image"])
+        stored = Image.open(io.BytesIO(base64.b64decode(projects.read_file(space["id"], "assets/icon.png")["b64"])))
+        self.assertEqual(stored.size, (512, 512), "an opaque alpha channel does not skip normalisation")
+
+    def test_a_see_through_rgba_icon_is_stored_as_given_and_fails(self):
+        image = Image.open(io.BytesIO(icon())).convert("RGBA")
+        image.putalpha(200)
+        out = io.BytesIO()
+        image.save(out, "PNG")
+        space = self.create({"image": "assets/icon.png", "glyph": "graph"}, {"assets/icon.png": out.getvalue()})
+        self.assertFalse(space["icon_image"]["pass"])
+        self.assertTrue(any("transparency" in f for f in space["icon_image"]["fails"]), space["icon_image"])
+
     def test_every_failure_is_a_plain_sentence(self):
         cases = {
             "format": (icon(fmt="JPEG"), "format JPEG"),

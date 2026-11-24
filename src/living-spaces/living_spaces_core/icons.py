@@ -104,7 +104,10 @@ def _structure(image):
 
 
 def _transparent(image):
-    return "A" in image.getbands() or "transparency" in image.info
+    """Whether a decoded image has any pixel a viewer could see through. An opaque alpha channel is not one."""
+    if "A" not in image.getbands() and "transparency" not in image.info:
+        return False
+    return image.convert("RGBA").getchannel("A").getextrema()[0] < 250  # type: ignore[index]
 
 
 def _stored(path, image):
@@ -121,11 +124,13 @@ def prepare(path, raw):
         return raw
     try:
         image = _open(Image, raw)
-        if _stored(path, image) or _structure(image) or _transparent(image):
+        if _stored(path, image) or _structure(image):
             return raw
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
             image.load()
+        if _transparent(image):
+            return raw
         out = io.BytesIO()
         image = image.convert("RGB").resize((STORED_PX, STORED_PX), Image.Resampling.LANCZOS)
         if path.endswith(".webp"):
@@ -200,7 +205,7 @@ def check(raw, accent):
     except Exception:
         fails.append("unreadable: not a PNG or WebP image")
         return result
-    if _transparent(image) and image.convert("RGBA").getchannel("A").getextrema()[0] < 250:  # type: ignore[index]
+    if _transparent(image):
         fails.append("has transparency (the field must be opaque, edge to edge)")
     n = 256
     data = image.convert("RGB").resize((n, n), Image.Resampling.LANCZOS).tobytes()
